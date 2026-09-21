@@ -22,8 +22,10 @@ from dumpstagram._private.transport import (
    Response,
    Sender,
    Timeouts,
+   cookies_for,
 )
 from dumpstagram.errors import SchemaChanged, TransportFailure
+from dumpstagram.session import Session
 
 
 def make_transport(handler, **kwargs) -> HttpxTransport:
@@ -252,3 +254,24 @@ def test_the_module_holds_no_mutable_state() -> None:
          mutable.append(name)
 
    assert mutable == []
+
+
+def test_the_required_cookies_cannot_be_shadowed_by_extras() -> None:
+   """Catches a stale copy in extra_cookies answering for the session's own credential.
+
+   A jar built extras-last authenticates as whatever was pasted in alongside, which is a
+   wrong account rather than an error.
+   """
+   session = Session(
+      sessionid="live-session",
+      ds_user_id="1234567890",
+      csrftoken="live-csrf",
+      extra_cookies={"sessionid": "stale-session", "mid": "mid-value"},
+   )
+
+   jar = cookies_for(session)
+
+   assert jar["sessionid"] == "live-session"
+   assert jar["ds_user_id"] == "1234567890"
+   assert jar["csrftoken"] == "live-csrf"
+   assert jar["mid"] == "mid-value"

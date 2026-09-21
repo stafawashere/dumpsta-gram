@@ -101,9 +101,12 @@ one task's stack. Splitting them made the record independently observable. The f
 **Sharing contract.** A `Pacer` is sequentially reusable and task safe. It is not thread safe,
 and it is bound to the loop its lock was first awaited on, which is the engine's loop thread.
 
-**Not yet true.** No request passes the pacer, because `_core` has no request path yet. The
-pacer is gated in isolation. The end-to-end assertion that every outbound request actually went
-through it arrives with build plan Step 8 and is listed in
+**True since 2026-09-21.** Every request leaves through `PacedSender` in
+`_core/requesting.py`, which is a `Sender` wrapping the real sender and the pacer. Code above it
+receives the paced object and has no unpaced one to reach for, which is what closes the bypass:
+the pacer being correct and the pacer being used are two claims, and only the second one decides
+what departs. Both are gated, the second by a counting transport behind a `PacedSender` whose
+spacing is asserted at the transport rather than at the pacer. See
 [engineering/gates.md](engineering/gates.md).
 
 ## Backoff

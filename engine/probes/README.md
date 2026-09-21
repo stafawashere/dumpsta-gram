@@ -26,6 +26,7 @@ assertions, and they are not a gate. They are reproducible evidence-gathering to
 
 | Script | Requests | What it answers |
 |---|---|---|
+| `end_to_end_read.py` | 2 | Are the library's own layers wired to each other. Drives `Session`, `HttpxTransport`, `PacedSender`, `bootstrap`, the request builder and the classifier through `_core.smoke.read_one_thread_page`, rather than reimplementing the request shape. Ran 2026-09-21, 20 edges, 2956 ms for both requests. Run it with `uv run python probes/end_to_end_read.py`, no `--no-project`, because it imports the library. |
 | `live_repro_bootstrap_page.py` | 2 | Does bootstrap token extraction plus one `useIGDMessageListPaginationQuery` page still work from Python. Written up in [live-reproduction-2026-09-20.md](../../docs/knowledge/live-reproduction-2026-09-20.md) and replayed in [live-reproduction-2026-09-21.md](../../docs/knowledge/live-reproduction-2026-09-21.md). |
 
 Run it with:

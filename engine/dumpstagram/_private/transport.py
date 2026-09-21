@@ -30,7 +30,7 @@ from typing import Protocol, runtime_checkable
 import httpx
 
 from dumpstagram.errors import TransportFailure
-from dumpstagram.session import ProxyConfig
+from dumpstagram.session import ProxyConfig, Session
 
 __all__ = [
    "DEFAULT_MAX_RESPONSE_BYTES",
@@ -40,6 +40,7 @@ __all__ = [
    "Response",
    "Sender",
    "Timeouts",
+   "cookies_for",
 ]
 
 
@@ -101,6 +102,22 @@ class Response:
    @property
    def text(self) -> str:
       return _decode(self.content, self.headers.get("content-type", ""))
+
+
+def cookies_for(session: Session) -> dict[str, str]:
+   """The cookie jar one account's requests carry.
+
+   The three required cookies are written last, so an ``extra_cookies`` mapping that happens
+   to carry a stale ``sessionid`` cannot shadow the one the session was constructed with.
+   """
+
+   jar = dict(session.extra_cookies)
+
+   jar["sessionid"] = session.sessionid
+   jar["ds_user_id"] = session.ds_user_id
+   jar["csrftoken"] = session.csrftoken
+
+   return jar
 
 
 @runtime_checkable

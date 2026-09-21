@@ -32,10 +32,12 @@ dumpstagram/
    session.py             Session, SpinParameters, ProxyConfig, SCHEMA_VERSION
    _core/
       pacer.py            Pacer, PacingPolicy, BackoffPolicy, run_with_retries
+      requesting.py       PacedSender, the one path a request leaves by
+      smoke.py            read_one_thread_page, internal, no model and no public name
       loop_thread.py      _LoopThread, refcounted and shared, the seam and its note
       redaction.py        redact, RedactingFormatter
    _private/
-      transport.py        Sender, Request, Response, HttpxTransport
+      transport.py        Sender, Request, Response, HttpxTransport, cookies_for
       web/
          classify.py      classify, classify_checkpoint_only
          bootstrap.py     token harvest from one authenticated page
