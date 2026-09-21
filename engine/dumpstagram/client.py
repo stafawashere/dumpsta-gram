@@ -21,6 +21,7 @@ from types import TracebackType
 
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
+from dumpstagram.models import Message, Page
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -75,6 +76,29 @@ class SyncClient:
       """Whether :meth:`close` has run."""
 
       return self._closed
+
+   def thread_messages(
+      self,
+      thread_fbid: str,
+      *,
+      after: str | None = None,
+      newer_than_message_id: str | None = None,
+   ) -> Page[Message]:
+      """Read one page of one direct thread. Blocks until it has one.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.thread_messages`, with the same
+      arguments and the same result, run on the shared loop thread. Exceptions cross back as
+      themselves, with a note naming this method.
+      """
+
+      return self._loop.run(
+         self._impl.thread_messages(
+            thread_fbid,
+            after=after,
+            newer_than_message_id=newer_than_message_id,
+         ),
+         operation="SyncClient.thread_messages",
+      )
 
    def close(self) -> None:
       """Close the connection pool and drop this client's hold on the loop thread.

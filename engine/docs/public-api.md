@@ -60,8 +60,19 @@ class SyncClient:
       return self._loop.run(self._impl.user_info(username), operation="SyncClient.user_info")
 ```
 
-Written 2026-09-21, minus the capability. `user_info` above is the shape every capability
-takes, and the first real one arrives with the first typed model.
+Written 2026-09-21. `user_info` above is the shape every capability takes, and the first real
+one is `thread_messages`, which landed the same day:
+
+```python
+page = client.thread_messages("17945046917948992")        # sync, returns Page[Message]
+page = await aclient.thread_messages(thread_fbid)          # async, same result
+
+while page.has_next_page:
+   page = client.thread_messages(thread_fbid, after=page.end_cursor)
+```
+
+`Page.has_next_page` is the only terminator. A short page is not the end of a connection, and
+neither is an empty one.
 
 Two properties of this shape are load-bearing.
 

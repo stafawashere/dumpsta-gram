@@ -4,53 +4,29 @@ This is not a capability and it is not public. Build plan Step 8 calls for an in
 end-to-end read so that the pacer, the adapter, the transport and the classifier are exercised
 together before Phase 2 builds anything on top of them, and the roadmap is explicit that the
 transport must not be proved by shipping a feature. So this returns the parsed structure the
-classifier produced, untouched. Nothing here reads a GraphQL field, and no typed model exists
-for it to build.
+classifier produced, untouched. Nothing here reads a GraphQL field, which is what keeps it a
+wiring check rather than a second copy of the capability in `_core/direct.py`.
 
-The re-bootstrap path is the only judgement in the module. Stale per-page tokens are not a
-measured failure mode: what was measured is that a request carrying no ``fb_dtsg`` comes back
-as the HTML application shell under HTTP 200, and the shortest token lifetime anyone has
-observed here is a lower bound of 16 minutes with no upper bound. INFERENCE, not FACT: a token
-that has expired behaves like one that was never sent. So both the missing-token error and the
-application-shell rejection re-bootstrap once, and only once. A second failure is raised,
-because a loop that re-bootstraps forever spends a live request per attempt against an account
-that is already refusing them.
+The probes under `probes/` still drive this rather than the capability, deliberately: their
+measured runs are the evidence for the layers underneath, and a probe that goes through the
+mapper would fail on an upstream field rename that the layers it is checking survived.
+
+The re-bootstrap judgement it used to own now lives in `_core/tokens.py`, because the
+capability needs the same one.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from dumpstagram._core.pacer import run_with_retries
 from dumpstagram._core.requesting import PacedSender
+from dumpstagram._core.tokens import HTML_APP_SHELL, with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.requests import build_thread_page_request
-from dumpstagram.errors import AuthenticationFailed, UpstreamRejected
 from dumpstagram.session import Session
 
 __all__ = ["HTML_APP_SHELL", "read_one_thread_page"]
-
-HTML_APP_SHELL = "html_app_shell"
-"""The classifier's code for the shell, which is what an unusable ``fb_dtsg`` produces."""
-
-
-def _is_a_stale_token_failure(failure: Exception) -> bool:
-   """Whether re-bootstrapping is a plausible fix for this failure.
-
-   :class:`~dumpstagram.errors.AuthenticationFailed` is raised by the request builder when the
-   session carries no token at all, and by the token scraper when the bootstrap page carried
-   none. :class:`~dumpstagram.errors.UpstreamRejected` with the shell code is what the upstream
-   returns for a token it will not accept.
-   """
-
-   if isinstance(failure, AuthenticationFailed):
-      return True
-
-   if not isinstance(failure, UpstreamRejected):
-      return False
-
-   return failure.code == HTML_APP_SHELL
 
 
 async def read_one_thread_page(
@@ -78,20 +54,4 @@ async def read_one_thread_page(
 
       return classify(response)
 
-   token_before_the_attempt = session.fb_dtsg
-
-   try:
-      return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)
-   except (AuthenticationFailed, UpstreamRejected) as failure:
-      if not _is_a_stale_token_failure(failure):
-         raise
-
-      used_a_token_it_had_not_just_fetched = (
-         token_before_the_attempt is not None and session.fb_dtsg == token_before_the_attempt
-      )
-      if not used_a_token_it_had_not_just_fetched:
-         raise
-
-      session.fb_dtsg = None
-
-      return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

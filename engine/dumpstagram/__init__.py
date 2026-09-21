@@ -21,6 +21,7 @@ from dumpstagram.errors import (
    TransportFailure,
    UpstreamRejected,
 )
+from dumpstagram.models import Message, MessageSender, Page, Reaction
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
 
 __all__ = [
@@ -30,10 +31,14 @@ __all__ = [
    "AuthenticationFailed",
    "CheckpointRequired",
    "DumpstagramError",
+   "Message",
+   "MessageSender",
    "NotFound",
    "OperationCancelled",
+   "Page",
    "RateLimited",
    "ProxyConfig",
+   "Reaction",
    "SchemaChanged",
    "Session",
    "SpinParameters",

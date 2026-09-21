@@ -8,9 +8,8 @@ This module is thin by rule. It owns the connection pool and the pacer for one a
 it delegates everything else. It knows nothing about endpoints, headers, cursors, or GraphQL,
 and `engine/docs/architecture.md` forbids it from learning any of them.
 
-Capabilities arrive with the typed models in the rest of Phase 2. What is here now is the
-lifecycle and the ownership contract they will hang off, which is deliberately the first thing
-written: the public surface snapshot gates every name added after it.
+Capabilities are one method each and hold no logic of their own. Every one of them delegates
+to `_core`, which is where pacing, retries, pagination and the token recovery live.
 """
 
 from __future__ import annotations
@@ -18,10 +17,12 @@ from __future__ import annotations
 import os
 from types import TracebackType
 
+from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
+from dumpstagram.models import Message, Page
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -77,6 +78,42 @@ class AsyncClient:
       """Whether :meth:`aclose` has run."""
 
       return self._closed
+
+   async def thread_messages(
+      self,
+      thread_fbid: str,
+      *,
+      after: str | None = None,
+      newer_than_message_id: str | None = None,
+   ) -> Page[Message]:
+      """Read one page of one direct thread.
+
+      ``thread_fbid`` is the thread's ``fbid``, which is one of three identifiers the same
+      thread has. The other two return an empty answer rather than an error, so the parameter
+      name says which one it wants.
+
+      ``after`` is an ``end_cursor`` from a previous page. ``newer_than_message_id`` fetches
+      only what has arrived since a message already seen, which makes a poll a top-up rather
+      than a full re-read.
+
+      The returned page's ``has_next_page`` is the only thing that says whether more exist. A
+      short page is not the end of the thread.
+      """
+
+      self._refuse_when_closed()
+
+      return await read_thread_messages(
+         self._sender,
+         self._session,
+         thread_fbid,
+         after=after,
+         newer_than_message_id=newer_than_message_id,
+         user_agent=self._user_agent,
+      )
+
+   def _refuse_when_closed(self) -> None:
+      if self._closed:
+         raise RuntimeError("this client is closed, so its connection pool is gone")
 
    async def aclose(self) -> None:
       """Close the connection pool this client created. Idempotent."""

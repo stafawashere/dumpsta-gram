@@ -22,23 +22,28 @@ dumpstagram/
    _private/              endpoints, signing, device, transport
 ```
 
-What exists as of 2026-09-21, which is the target shape above minus the models and the
+What exists as of 2026-09-21, which is the target shape above minus `_core/realtime/` and the
 capabilities Phase 2 still has to bring:
 
 ```
 dumpstagram/
    __init__.py            the public exports, and the declared surface
    py.typed
-   client.py              SyncClient, lifecycle only, no capability yet
-   aio.py                 AsyncClient, lifecycle only, no capability yet
+   client.py              SyncClient, the blocking facade
+   aio.py                 AsyncClient, the awaitable surface
    errors.py              the full public exception hierarchy
    session.py             Session, SpinParameters, ProxyConfig, SCHEMA_VERSION
    _core/
+      direct.py           read_thread_messages, the first capability
       pacer.py            Pacer, PacingPolicy, BackoffPolicy, run_with_retries
       requesting.py       PacedSender, the one path a request leaves by
+      tokens.py           the re-bootstrap judgement both readers share
       smoke.py            read_one_thread_page, internal, no model and no public name
       loop_thread.py      _LoopThread, refcounted and shared, the seam and its note
       redaction.py        redact, RedactingFormatter
+   models/
+      messages.py         Message, MessageSender, Reaction
+      pagination.py       Page[ItemT]
    _private/
       transport.py        Sender, Request, Response, HttpxTransport, cookies_for
       web/
@@ -46,12 +51,13 @@ dumpstagram/
          bootstrap.py     token harvest from one authenticated page
          documents.py     the persisted GraphQL query registry
          requests.py      the body and header set
+         parse.py         the payload mapped into typed models
 ```
 
-No `models/`, no `_core/realtime/`, and no capability. The two facades carry construction,
-the session and user-agent accessors, and the close lifecycle, because the public surface
-snapshot in `tests/public_surface.txt` gates every name added after them and the cheapest time
-to start that file is before the first model. See
+No `_core/realtime/`, and one capability: `thread_messages` on both facades, which reads one
+page of one direct thread and returns `Page[Message]`. The facades were written before the
+first model deliberately, because the public surface snapshot in `tests/public_surface.txt`
+gates every name added after them. See
 [web-request-contract.md](web-request-contract.md) for the `_private/web/` layer and
 [build-plan.md](build-plan.md) for what comes next.
 

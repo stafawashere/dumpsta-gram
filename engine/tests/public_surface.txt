@@ -3,11 +3,15 @@ alias dumpstagram.AsyncClient -> dumpstagram.aio.AsyncClient
 alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFailed
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
+alias dumpstagram.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
+alias dumpstagram.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
 alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
+alias dumpstagram.Reaction -> dumpstagram.models.messages.Reaction
 data dumpstagram.SCHEMA_VERSION: int = 1
 alias dumpstagram.SchemaChanged -> dumpstagram.errors.SchemaChanged
 alias dumpstagram.Session -> dumpstagram.session.Session
@@ -24,6 +28,7 @@ def dumpstagram.aio.AsyncClient.aclose(self) -> None
 property dumpstagram.aio.AsyncClient.closed -> bool
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> AsyncClient
 property dumpstagram.aio.AsyncClient.session -> Session
+def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 property dumpstagram.aio.AsyncClient.user_agent -> str
 module dumpstagram.client
 class dumpstagram.client.SyncClient()
@@ -34,6 +39,7 @@ def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> SyncClient
 property dumpstagram.client.SyncClient.session -> Session
+def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 property dumpstagram.client.SyncClient.user_agent -> str
 module dumpstagram.errors
 class dumpstagram.errors.AuthenticationFailed(dumpstagram.errors.DumpstagramError)
@@ -50,6 +56,37 @@ def dumpstagram.errors.SchemaChanged.__init__(self, message: str = '', *, path: 
 class dumpstagram.errors.TransportFailure(dumpstagram.errors.DumpstagramError)
 class dumpstagram.errors.UpstreamRejected(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.UpstreamRejected.__init__(self, message: str = '', *, code: str | None = None) -> None
+module dumpstagram.models
+alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
+module dumpstagram.models.messages
+class dumpstagram.models.messages.Message()
+field dumpstagram.models.messages.Message.content_type: str
+field dumpstagram.models.messages.Message.id: str
+field dumpstagram.models.messages.Message.is_ai_generated: bool = False
+field dumpstagram.models.messages.Message.is_forwarded: bool = False
+field dumpstagram.models.messages.Message.is_pinned: bool = False
+field dumpstagram.models.messages.Message.reactions: tuple[Reaction, ...] = ()
+field dumpstagram.models.messages.Message.replied_to_message_id: str | None = None
+field dumpstagram.models.messages.Message.sender: MessageSender
+field dumpstagram.models.messages.Message.sent_at: datetime
+field dumpstagram.models.messages.Message.text: str | None
+field dumpstagram.models.messages.Message.thread_fbid: str
+class dumpstagram.models.messages.MessageSender()
+field dumpstagram.models.messages.MessageSender.fbid: str
+field dumpstagram.models.messages.MessageSender.igid: str | None = None
+field dumpstagram.models.messages.MessageSender.name: str | None = None
+class dumpstagram.models.messages.Reaction()
+field dumpstagram.models.messages.Reaction.emoji: str
+field dumpstagram.models.messages.Reaction.sender_fbid: str
+module dumpstagram.models.pagination
+class dumpstagram.models.pagination.Page(typing.Generic)
+def dumpstagram.models.pagination.Page.__iter__(self) -> Iterator[ItemT]
+field dumpstagram.models.pagination.Page.end_cursor: str | None = None
+field dumpstagram.models.pagination.Page.has_next_page: bool
+field dumpstagram.models.pagination.Page.items: tuple[ItemT, ...]
 module dumpstagram.session
 class dumpstagram.session.ProxyConfig()
 field dumpstagram.session.ProxyConfig.url: str
