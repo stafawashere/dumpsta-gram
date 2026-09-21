@@ -4,11 +4,16 @@ alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFaile
 alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
+alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
+alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
 alias dumpstagram.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.Post -> dumpstagram.models.feed.Post
+alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
@@ -28,6 +33,7 @@ def dumpstagram.aio.AsyncClient.__aexit__(self, exc_type: type[BaseException] | 
 def dumpstagram.aio.AsyncClient.__init__(self, session: Session, *, user_agent: str | None = None) -> None
 def dumpstagram.aio.AsyncClient.aclose(self) -> None
 property dumpstagram.aio.AsyncClient.closed -> bool
+def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> AsyncClient
 def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
 def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
@@ -41,6 +47,7 @@ def dumpstagram.client.SyncClient.__exit__(self, exc_type: type[BaseException] |
 def dumpstagram.client.SyncClient.__init__(self, session: Session, *, user_agent: str | None = None) -> None
 def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
+def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> SyncClient
 def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
 def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
@@ -64,11 +71,64 @@ class dumpstagram.errors.UpstreamRejected(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.UpstreamRejected.__init__(self, message: str = '', *, code: str | None = None) -> None
 module dumpstagram.models
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
+alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
+alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
+alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
+module dumpstagram.models.feed
+class dumpstagram.models.feed.FeedItem()
+field dumpstagram.models.feed.FeedItem.kind: FeedItemKind
+field dumpstagram.models.feed.FeedItem.post: Post | None = None
+class dumpstagram.models.feed.FeedItemKind(enum.StrEnum)
+data dumpstagram.models.feed.FeedItemKind.AD: FeedItemKind = <FeedItemKind.AD: 'ad'>
+data dumpstagram.models.feed.FeedItemKind.AD_FOR_AD: FeedItemKind = <FeedItemKind.AD_FOR_AD: 'ad4ad_in_webfeed'>
+data dumpstagram.models.feed.FeedItemKind.BLOKS_UNIT: FeedItemKind = <FeedItemKind.BLOKS_UNIT: 'bloks_netego'>
+data dumpstagram.models.feed.FeedItemKind.END_OF_FEED: FeedItemKind = <FeedItemKind.END_OF_FEED: 'end_of_feed_demarcator'>
+data dumpstagram.models.feed.FeedItemKind.EXPLORE_STORY: FeedItemKind = <FeedItemKind.EXPLORE_STORY: 'explore_story'>
+data dumpstagram.models.feed.FeedItemKind.ICEBREAKERS: FeedItemKind = <FeedItemKind.ICEBREAKERS: 'abra_icebreakers_in_feed_unit'>
+data dumpstagram.models.feed.FeedItemKind.POST: FeedItemKind = <FeedItemKind.POST: 'media'>
+data dumpstagram.models.feed.FeedItemKind.STORIES_TRAY: FeedItemKind = <FeedItemKind.STORIES_TRAY: 'stories_netego'>
+data dumpstagram.models.feed.FeedItemKind.SUGGESTED_USERS: FeedItemKind = <FeedItemKind.SUGGESTED_USERS: 'suggested_users'>
+class dumpstagram.models.feed.MediaImage()
+field dumpstagram.models.feed.MediaImage.height: int
+field dumpstagram.models.feed.MediaImage.url: str
+field dumpstagram.models.feed.MediaImage.width: int
+class dumpstagram.models.feed.Post()
+field dumpstagram.models.feed.Post.accessibility_caption: str | None = None
+field dumpstagram.models.feed.Post.author: PostAuthor
+field dumpstagram.models.feed.Post.caption: str | None = None
+field dumpstagram.models.feed.Post.carousel_media_count: int | None = None
+field dumpstagram.models.feed.Post.code: str
+field dumpstagram.models.feed.Post.comment_count: int
+field dumpstagram.models.feed.Post.has_liked: bool
+field dumpstagram.models.feed.Post.id: str
+field dumpstagram.models.feed.Post.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.feed.Post.is_paid_partnership: bool = False
+field dumpstagram.models.feed.Post.is_seen: bool
+field dumpstagram.models.feed.Post.like_and_view_counts_disabled: bool = False
+field dumpstagram.models.feed.Post.like_count: int
+field dumpstagram.models.feed.Post.media_type: int
+field dumpstagram.models.feed.Post.original_height: int | None = None
+field dumpstagram.models.feed.Post.original_width: int | None = None
+field dumpstagram.models.feed.Post.pk: str
+field dumpstagram.models.feed.Post.product_type: str
+field dumpstagram.models.feed.Post.taken_at: datetime
+class dumpstagram.models.feed.PostAuthor()
+field dumpstagram.models.feed.PostAuthor.full_name: str
+field dumpstagram.models.feed.PostAuthor.hd_profile_pic_url: str | None = None
+field dumpstagram.models.feed.PostAuthor.id: str
+field dumpstagram.models.feed.PostAuthor.is_favorite: bool | None = None
+field dumpstagram.models.feed.PostAuthor.is_following: bool | None = None
+field dumpstagram.models.feed.PostAuthor.is_private: bool
+field dumpstagram.models.feed.PostAuthor.is_verified: bool
+field dumpstagram.models.feed.PostAuthor.profile_pic_url: str
+field dumpstagram.models.feed.PostAuthor.username: str
 module dumpstagram.models.messages
 class dumpstagram.models.messages.Message()
 field dumpstagram.models.messages.Message.content_type: str

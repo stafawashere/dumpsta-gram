@@ -23,7 +23,7 @@ from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL
-from dumpstagram._private.web.requests import GRAPHQL_URL
+from dumpstagram._private.web.documents import API_GRAPHQL_URL
 from dumpstagram.aio import AsyncClient
 from dumpstagram.client import SyncClient
 from dumpstagram.models import Message, Page
@@ -91,7 +91,7 @@ def json_response(parsed: dict[str, Any]) -> Response:
       status_code=200,
       headers={"content-type": "application/json; charset=utf-8"},
       content=json.dumps(parsed).encode("utf-8"),
-      final_url=GRAPHQL_URL,
+      final_url=API_GRAPHQL_URL,
    )
 
 
@@ -170,7 +170,7 @@ async def test_a_session_without_a_token_bootstraps_first() -> None:
 
    await read_thread_messages(make_paced(transport), session, THREAD_FBID)
 
-   assert [request.url for request in transport.sent] == [BOOTSTRAP_URL, GRAPHQL_URL]
+   assert [request.url for request in transport.sent] == [BOOTSTRAP_URL, API_GRAPHQL_URL]
    assert session.fb_dtsg == FB_DTSG
 
 
@@ -180,7 +180,7 @@ async def test_a_stale_token_is_re_bootstrapped_once_for_the_capability_too() ->
 
    transport = ScriptedTransport(
       [
-         html_response(APP_SHELL, final_url=GRAPHQL_URL),
+         html_response(APP_SHELL, final_url=API_GRAPHQL_URL),
          html_response(BOOTSTRAP_PAGE),
          json_response(payload([node()])),
       ]
@@ -190,9 +190,9 @@ async def test_a_stale_token_is_re_bootstrapped_once_for_the_capability_too() ->
    page = await read_thread_messages(make_paced(transport), session, THREAD_FBID)
 
    assert [request.url for request in transport.sent] == [
-      GRAPHQL_URL,
+      API_GRAPHQL_URL,
       BOOTSTRAP_URL,
-      GRAPHQL_URL,
+      API_GRAPHQL_URL,
    ]
    assert session.fb_dtsg == FB_DTSG
    assert page.items[0].id == MESSAGE_ID

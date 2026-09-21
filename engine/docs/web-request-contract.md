@@ -94,11 +94,25 @@ a value that was correct twice, not to a guess.
 ## The persisted query registry
 
 `documents.py` holds one `PersistedQuery` per query, each carrying its `doc_id`, its
-`friendly_name`, and the id of the finding it came from. One name, one place.
+`friendly_name`, the id of the finding it came from, and the URL it answers on. One name, one
+place.
 
-| Name | `doc_id` | Friendly name | Finding |
-|---|---|---|---|
-| `THREAD_MESSAGE_PAGE` | `27502152406082940` | `useIGDMessageListPaginationQuery` | `direct-thread-message-page` |
+| Name | `doc_id` | Friendly name | URL | Finding |
+|---|---|---|---|---|
+| `THREAD_MESSAGE_PAGE` | `27502152406082940` | `useIGDMessageListPaginationQuery` | `API_GRAPHQL_URL` | `direct-thread-message-page` |
+| `PROFILE_BY_ID` | `28036671149327607` | `PolarisProfilePageContentQuery` | `API_GRAPHQL_URL` | `read-a-user-profile` |
+| `USER_ID_BY_USERNAME` | `28821682214127849` | `PolarisProfilePostsQuery` | `API_GRAPHQL_URL` | `resolve-a-username-to-a-user-id` |
+| `HOME_TIMELINE_FEED` | `27932834733065642` | `PolarisFeedRootPaginationCachedQuery_subscribe` | `GRAPHQL_QUERY_URL` | `home-timeline-feed-page` |
+
+**The URL is per query, and that was learned the hard way rather than designed.** It was one
+module constant until 2026-09-21, when the feed was added. The feed answers only on
+`https://www.instagram.com/graphql/query`. The identical request, same `doc_id`, same headers,
+same variables, posted to `https://www.instagram.com/api/graphql` where the other three answer,
+comes back HTTP 200 with `data.xdt_api__v1__feed__timeline__connection` set to null, no `errors`
+array, no `error` field and no `errorSummary`. There is nothing in that body for `classify` to
+catch, so a caller sees an empty feed rather than a failure. A query's path is therefore part of
+its recorded contract, and a new entry copies the path its finding observed rather than the one
+its neighbour uses.
 
 A `doc_id` written inline at a call site is the literal the provenance gate exists to catch.
 Rotation is the most fragile thing in the system: a rotated id returns an error envelope under
@@ -189,15 +203,16 @@ which is the mechanism the gate documents for exactly this case.
 | `ORIGIN = "https://www.instagram.com"` | An origin. It is used for the `origin` and `referer` headers, not as a request target |
 | `DEFAULT_APP_ID = "936619743392459"` | An `x-ig-app-id` header value. Fifteen digits, so it matches the `doc_id` pattern |
 
-A related trap is worth naming. `BOOTSTRAP_URL` and `GRAPHQL_URL` were originally f-strings over
-`ORIGIN`, which meant the scanner never saw either endpoint and reported a clean tree that proved
-nothing about them. They are written as full literals so the gate can actually check them. Any
-URL assembled at runtime is invisible to this gate.
+A related trap is worth naming. `BOOTSTRAP_URL` and the GraphQL URL were originally f-strings
+over `ORIGIN`, which meant the scanner never saw either endpoint and reported a clean tree that
+proved nothing about them. They are written as full literals so the gate can actually check them,
+and `API_GRAPHQL_URL` and `GRAPHQL_QUERY_URL` in `documents.py` keep that form. Any URL assembled
+at runtime is invisible to this gate.
 
 ## What is not implemented here
 
-- No capability. `_core` has no request path yet, so nothing calls these builders outside their
-  own gates. That is build plan Step 8.
-- No response mapping. `classify` returns the parsed payload; turning
-  `data.fetch__SlideThread.as_ig_direct_thread.slide_messages` into typed models is Phase 2.
-- No second query. The registry has one entry.
+- No write. Every query here is a read, and the write path is unmeasured on this surface.
+- No mobile surface. The registry and the builders are web only, per ADR-0007.
+- Nothing inside a post beyond its own fields. A carousel's slides, a video's renditions, the
+  comments and the likers all arrive on the feed payload and all stop at the mapper, because no
+  capability reads them.

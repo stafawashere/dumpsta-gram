@@ -21,7 +21,7 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.smoke import read_one_thread_page
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL
-from dumpstagram._private.web.requests import GRAPHQL_URL
+from dumpstagram._private.web.documents import API_GRAPHQL_URL
 from dumpstagram.errors import CheckpointRequired, UpstreamRejected
 from dumpstagram.session import Session, SpinParameters
 
@@ -106,7 +106,7 @@ def json_response(payload: dict) -> Response:
       status_code=200,
       headers={"content-type": "application/json; charset=utf-8"},
       content=json.dumps(payload).encode("utf-8"),
-      final_url=GRAPHQL_URL,
+      final_url=API_GRAPHQL_URL,
    )
 
 
@@ -155,7 +155,7 @@ async def test_an_unbootstrapped_session_costs_two_requests() -> None:
 
    parsed = await read_one_thread_page(make_paced(clock, transport), session, THREAD_FBID)
 
-   assert [request.url for request in transport.sent] == [BOOTSTRAP_URL, GRAPHQL_URL]
+   assert [request.url for request in transport.sent] == [BOOTSTRAP_URL, API_GRAPHQL_URL]
    assert transport.sent[1].method == "POST"
    assert session.fb_dtsg == FB_DTSG
    assert parsed == PAGE_PAYLOAD
@@ -170,7 +170,7 @@ async def test_a_bootstrapped_session_costs_one_request() -> None:
 
    parsed = await read_one_thread_page(make_paced(clock, transport), session, THREAD_FBID)
 
-   assert [request.url for request in transport.sent] == [GRAPHQL_URL]
+   assert [request.url for request in transport.sent] == [API_GRAPHQL_URL]
    assert parsed == PAGE_PAYLOAD
 
 
@@ -204,7 +204,7 @@ async def test_a_stale_token_is_re_bootstrapped_once() -> None:
    transport = ScriptedTransport(
       clock,
       [
-         html_response(APP_SHELL, final_url=GRAPHQL_URL),
+         html_response(APP_SHELL, final_url=API_GRAPHQL_URL),
          html_response(BOOTSTRAP_PAGE),
          json_response(PAGE_PAYLOAD),
       ],
@@ -214,9 +214,9 @@ async def test_a_stale_token_is_re_bootstrapped_once() -> None:
    parsed = await read_one_thread_page(make_paced(clock, transport), session, THREAD_FBID)
 
    assert [request.url for request in transport.sent] == [
-      GRAPHQL_URL,
+      API_GRAPHQL_URL,
       BOOTSTRAP_URL,
-      GRAPHQL_URL,
+      API_GRAPHQL_URL,
    ]
    assert session.fb_dtsg == FB_DTSG
    assert parsed == PAGE_PAYLOAD
@@ -231,7 +231,7 @@ async def test_a_freshly_fetched_token_is_not_re_bootstrapped() -> None:
    """
    clock = FakeClock()
    transport = ScriptedTransport(
-      clock, [html_response(BOOTSTRAP_PAGE), html_response(APP_SHELL, final_url=GRAPHQL_URL)]
+      clock, [html_response(BOOTSTRAP_PAGE), html_response(APP_SHELL, final_url=API_GRAPHQL_URL)]
    )
 
    with pytest.raises(UpstreamRejected) as raised:

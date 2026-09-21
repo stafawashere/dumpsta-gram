@@ -29,7 +29,16 @@ from dumpstagram.errors import (
    DumpstagramError,
    RateLimited,
 )
-from dumpstagram.models import Message, MessageSender, Page, Profile
+from dumpstagram.models import (
+   FeedItem,
+   FeedItemKind,
+   Message,
+   MessageSender,
+   Page,
+   Post,
+   PostAuthor,
+   Profile,
+)
 from dumpstagram.session import Session
 
 CLI_DIRECTORY = Path(__file__).resolve().parent.parent / "dumpstagram" / "_cli"
@@ -87,6 +96,44 @@ def a_page(*, has_next_page: bool, end_cursor: str | None, message_count: int = 
    )
 
 
+def a_post(code: str = "Cxxxxxxxxxx") -> Post:
+   return Post(
+      id="3757563240116259739_50476469797",
+      pk="3757563240116259739",
+      code=code,
+      taken_at=datetime(2026, 9, 20, 11, 14, 35, tzinfo=UTC),
+      author=PostAuthor(
+         id="50476469797",
+         username="an-account",
+         full_name="a name",
+         is_private=False,
+         is_verified=False,
+         profile_pic_url="https://example.invalid/pic.jpg",
+      ),
+      media_type=8,
+      product_type="carousel_container",
+      like_count=41,
+      comment_count=3,
+      has_liked=False,
+      is_seen=True,
+      caption="a caption",
+   )
+
+
+def a_feed_page(
+   *, has_next_page: bool, end_cursor: str | None, kinds: tuple[FeedItemKind, ...] | None = None
+) -> Page[FeedItem]:
+   """A feed page whose default shape is the measured one: more items than posts."""
+
+   chosen = kinds or (FeedItemKind.POST, FeedItemKind.AD, FeedItemKind.EXPLORE_STORY)
+   items = tuple(
+      FeedItem(kind=kind, post=a_post(f"C{index:010d}") if kind is FeedItemKind.POST else None)
+      for index, kind in enumerate(chosen)
+   )
+
+   return Page(items=items, has_next_page=has_next_page, end_cursor=end_cursor)
+
+
 class FakeClient:
    """A `Client` that records what it was asked for and answers from a script."""
 
@@ -97,12 +144,14 @@ class FakeClient:
       failure: BaseException | None = None,
       token_harvested: str | None = None,
       profile: Profile | None = None,
+      feed_pages: list[Page[FeedItem]] | None = None,
    ) -> None:
       self.session = session
       self.pages = pages or [a_page(has_next_page=False, end_cursor=None)]
       self.failure = failure
       self.token_harvested = token_harvested
       self.profile_answer = profile if profile is not None else a_profile()
+      self.feed_pages = feed_pages or [a_feed_page(has_next_page=False, end_cursor=None)]
       self.calls: list[dict[str, object]] = []
       self.closed = False
 
@@ -130,6 +179,19 @@ class FakeClient:
       index = min(len(self.calls) - 1, len(self.pages) - 1)
 
       return self.pages[index]
+
+   def feed(self, *, after: str | None = None) -> Page[FeedItem]:
+      self.calls.append({"feed_after": after})
+
+      if self.failure is not None:
+         raise self.failure
+
+      if self.token_harvested is not None:
+         self.session.fb_dtsg = self.token_harvested
+
+      index = min(len(self.calls) - 1, len(self.feed_pages) - 1)
+
+      return self.feed_pages[index]
 
    def profile(self, username: str) -> Profile:
       self.calls.append({"profile_username": username})
@@ -633,3 +695,105 @@ def test_the_profile_command_closes_its_client_even_when_the_read_fails() -> Non
 
    assert code == EXIT_BY_ERROR[RateLimited]
    assert client.closed
+
+
+def test_the_feed_command_reads_one_page_by_default() -> None:
+   """Catches a command that paginates on its own and spends requests nobody asked for."""
+
+   client = FakeClient(a_session())
+   code, out, errors = run(["--session", "/tmp/session.json", "feed"], client=client)
+
+   assert code == 0
+   assert client.calls == [{"feed_after": None}]
+   assert "an-account" in out
+   assert errors == ""
+
+
+def test_the_feed_command_stops_on_the_terminator_and_not_on_a_page_length() -> None:
+   """Catches a loop that treats a short page as the end, which every measured page was."""
+
+   client = FakeClient(
+      a_session(),
+      feed_pages=[
+         a_feed_page(has_next_page=True, end_cursor="cursor-one"),
+         a_feed_page(has_next_page=False, end_cursor=None),
+      ],
+   )
+   code, out, _ = run(
+      ["--session", "/tmp/session.json", "--json", "feed", "--pages", "4"], client=client
+   )
+
+   assert code == 0
+   assert client.calls == [{"feed_after": None}, {"feed_after": "cursor-one"}]
+   assert json.loads(out)["pages_read"] == 2
+   assert json.loads(out)["more_available"] is False
+
+
+def test_the_feed_command_passes_a_given_cursor_to_the_first_request() -> None:
+   client = FakeClient(a_session())
+   run(["--session", "/tmp/session.json", "feed", "--after", "a-cursor"], client=client)
+
+   assert client.calls == [{"feed_after": "a-cursor"}]
+
+
+def test_the_feed_json_form_separates_items_from_posts() -> None:
+   """Catches a count that conflates the two, which differed on every measured page."""
+
+   client = FakeClient(a_session())
+   _, out, _ = run(["--session", "/tmp/session.json", "--json", "feed"], client=client)
+
+   described = json.loads(out)
+
+   assert described["item_count"] == 3
+   assert described["post_count"] == 1
+   assert described["kinds"] == {"ad": 1, "explore_story": 1, "media": 1}
+
+
+def test_the_feed_json_form_carries_the_post_identity_and_its_author() -> None:
+   """The JSON keys are a contract, so a renamed one breaks whatever scripts this command."""
+
+   client = FakeClient(a_session())
+   _, out, _ = run(["--session", "/tmp/session.json", "--json", "feed"], client=client)
+
+   post = json.loads(out)["items"][0]["post"]
+
+   assert post["pk"] == "3757563240116259739"
+   assert post["id"] == "3757563240116259739_50476469797"
+   assert post["author"]["username"] == "an-account"
+   assert post["like_count"] == 41
+
+
+def test_posts_only_hides_the_other_items_but_still_counts_them() -> None:
+   """Catches a filter that also filters the trailer, making a page look shorter than it was."""
+
+   client = FakeClient(a_session())
+   _, out, _ = run(
+      ["--session", "/tmp/session.json", "--json", "feed", "--posts-only"], client=client
+   )
+
+   described = json.loads(out)
+
+   assert len(described["items"]) == 1
+   assert described["item_count"] == 3
+   assert described["post_count"] == 1
+
+
+def test_the_feed_command_prints_no_credential_when_the_read_fails() -> None:
+   """The same redaction gate the other commands have, because stderr is the leak path."""
+
+   client = FakeClient(
+      a_session(), failure=AuthenticationFailed(f"the call failed with sessionid={SESSIONID}")
+   )
+   code, _, errors = run(["--session", "/tmp/session.json", "feed"], client=client)
+
+   assert code == exit_code_for(AuthenticationFailed("x"))
+   assert SESSIONID not in errors
+
+
+def test_the_feed_command_closes_its_client_even_when_the_read_fails() -> None:
+   """A failed read that leaks the loop thread makes the command hang instead of exiting."""
+
+   client = FakeClient(a_session(), failure=RateLimited("slow down"))
+   run(["--session", "/tmp/session.json", "feed"], client=client)
+
+   assert client.closed is True

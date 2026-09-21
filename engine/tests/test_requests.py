@@ -16,9 +16,8 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.documents import THREAD_MESSAGE_PAGE
+from dumpstagram._private.web.documents import API_GRAPHQL_URL, THREAD_MESSAGE_PAGE
 from dumpstagram._private.web.requests import (
-   GRAPHQL_URL,
    PAGE_SIZE,
    VALIDATED_BODY_FIELDS,
    VALIDATED_HEADERS,
@@ -134,7 +133,7 @@ def test_the_persisted_query_comes_from_the_registry() -> None:
    request = build_thread_page_request(bootstrapped_session(), THREAD_FBID)
    body = body_of(request)
 
-   assert request.url == GRAPHQL_URL
+   assert request.url == API_GRAPHQL_URL
    assert body["doc_id"] == THREAD_MESSAGE_PAGE.doc_id
    assert body["fb_api_req_friendly_name"] == THREAD_MESSAGE_PAGE.friendly_name
    assert request.headers["x-fb-friendly-name"] == THREAD_MESSAGE_PAGE.friendly_name

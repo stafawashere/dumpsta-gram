@@ -35,12 +35,26 @@ from datetime import UTC, datetime
 from typing import Any
 
 from dumpstagram.errors import SchemaChanged
-from dumpstagram.models import BioLink, Message, MessageSender, Page, Profile, Reaction
+from dumpstagram.models import (
+   BioLink,
+   FeedItem,
+   FeedItemKind,
+   MediaImage,
+   Message,
+   MessageSender,
+   Page,
+   Post,
+   PostAuthor,
+   Profile,
+   Reaction,
+)
 
 __all__ = [
+   "FEED_PAGE_PATH",
    "PROFILE_PATH",
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
+   "parse_feed_page",
    "parse_profile",
    "parse_thread_message_page",
    "parse_user_id",
@@ -54,6 +68,14 @@ PROFILE_PATH = ("data", "user")
 
 TIMELINE_PATH = ("data", "xdt_api__v1__feed__user_timeline_graphql_connection")
 """The path to the timeline connection the username resolution reads an author id off."""
+
+FEED_PAGE_PATH = ("data", "xdt_api__v1__feed__timeline__connection")
+"""The path to the home timeline connection.
+
+One character away from :data:`TIMELINE_PATH`, which is a different connection on a different
+query: that one is one account's posts keyed on a username, this one is the signed-in
+account's home feed.
+"""
 
 MILLISECONDS_PER_SECOND = 1000
 
@@ -415,3 +437,255 @@ def parse_user_id(payload: Any) -> str | None:
    author = _required(node, "user", node_path)
 
    return _required_string(author, "pk", f"{node_path}.user")
+
+
+def _optional_integer(node: dict[str, Any], key: str, path: str) -> int | None:
+   value = _required(node, key, path)
+
+   if value is None:
+      return None
+
+   if isinstance(value, bool) or not isinstance(value, int):
+      raise SchemaChanged(f"{path}.{key} is not an integer or null", path=f"{path}.{key}")
+
+   return value
+
+
+def _taken_at(node: dict[str, Any], path: str) -> datetime:
+   """Convert ``taken_at`` to timezone-aware UTC.
+
+   The timeline sends whole seconds since the Unix epoch as a JSON number, which is a
+   different unit and a different type from the ``timestamp_ms`` string a direct message
+   carries. The two are kept apart rather than unified, because a converter that guesses the
+   unit from the magnitude is a converter that silently dates a post to 1970 or to the year
+   58000 when the upstream changes it.
+   """
+
+   raw = _required(node, "taken_at", path)
+
+   if isinstance(raw, bool) or not isinstance(raw, int):
+      raise SchemaChanged(f"{path}.taken_at is not an integer", path=f"{path}.taken_at")
+
+   return datetime.fromtimestamp(raw, tz=UTC)
+
+
+def _caption_text(node: dict[str, Any], path: str) -> str | None:
+   """The poster's caption, which arrives wrapped in an object with its own identifier.
+
+   A null wrapper means no caption. An object that is not a dict is the upstream changing
+   rather than an absent caption, so it raises.
+   """
+
+   raw = _required(node, "caption", path)
+
+   if raw is None:
+      return None
+
+   if not isinstance(raw, dict):
+      raise SchemaChanged(f"{path}.caption is not an object or null", path=f"{path}.caption")
+
+   return _optional_string(raw, "text", f"{path}.caption")
+
+
+def _images(node: dict[str, Any], path: str) -> tuple[MediaImage, ...]:
+   """Every rendition the upstream offered, in the order it sent them.
+
+   Thirteen arrived per post across two aspect ratios, so these are crops as well as sizes and
+   nothing here picks one or sorts them.
+   """
+
+   wrapper = _required(node, "image_versions2", path)
+
+   if wrapper is None:
+      return ()
+
+   if not isinstance(wrapper, dict):
+      raise SchemaChanged(
+         f"{path}.image_versions2 is not an object or null", path=f"{path}.image_versions2"
+      )
+
+   wrapper_path = f"{path}.image_versions2"
+   candidates = _required(wrapper, "candidates", wrapper_path)
+
+   if candidates is None:
+      return ()
+
+   if not isinstance(candidates, list):
+      raise SchemaChanged(
+         f"{wrapper_path}.candidates is not a list or null", path=f"{wrapper_path}.candidates"
+      )
+
+   built: list[MediaImage] = []
+
+   for index, entry in enumerate(candidates):
+      entry_path = f"{wrapper_path}.candidates[{index}]"
+
+      built.append(
+         MediaImage(
+            url=_required_string(entry, "url", entry_path),
+            width=_required_integer(entry, "width", entry_path),
+            height=_required_integer(entry, "height", entry_path),
+         )
+      )
+
+   return tuple(built)
+
+
+def _post_author(node: dict[str, Any], path: str) -> PostAuthor:
+   """The posting account, read off the media's own ``user`` object.
+
+   ``id`` and ``pk`` held the identical value on all six measured nodes, and ``id`` is the one
+   read, matching :func:`parse_profile`.
+
+   The media also carries ``owner_id``, which is an object holding those same two fields again
+   rather than the bare number its name suggests. It is dropped, because reading the third
+   copy of one value adds a way to be wrong and nothing else.
+
+   ``friendship_status`` is the viewer's relationship with this account. It is optional here
+   rather than required, because it is absent on an account the viewer has no relationship
+   with and losing a boolean is not a reason to fail a page.
+   """
+
+   author = _required(node, "user", path)
+   author_path = f"{path}.user"
+
+   if not isinstance(author, dict):
+      raise SchemaChanged(f"{author_path} is not an object", path=author_path)
+
+   friendship = author.get("friendship_status")
+   following = friendship.get("following") if isinstance(friendship, dict) else None
+   is_favorite = friendship.get("is_feed_favorite") if isinstance(friendship, dict) else None
+
+   return PostAuthor(
+      id=_required_string(author, "id", author_path),
+      username=_required_string(author, "username", author_path),
+      full_name=_required_string(author, "full_name", author_path),
+      is_private=_required_flag(author, "is_private", author_path),
+      is_verified=_required_flag(author, "is_verified", author_path),
+      profile_pic_url=_required_string(author, "profile_pic_url", author_path),
+      hd_profile_pic_url=_hd_profile_pic_url(author, author_path),
+      is_following=following if isinstance(following, bool) else None,
+      is_favorite=is_favorite if isinstance(is_favorite, bool) else None,
+   )
+
+
+def parse_post(node: Any, path: str) -> Post:
+   """One media node, mapped field by field."""
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   return Post(
+      id=_required_string(node, "id", path),
+      pk=_required_string(node, "pk", path),
+      code=_required_string(node, "code", path),
+      taken_at=_taken_at(node, path),
+      author=_post_author(node, path),
+      media_type=_required_integer(node, "media_type", path),
+      product_type=_required_string(node, "product_type", path),
+      like_count=_required_integer(node, "like_count", path),
+      comment_count=_required_integer(node, "comment_count", path),
+      has_liked=_required_flag(node, "has_liked", path),
+      is_seen=_required_flag(node, "is_seen", path),
+      caption=_caption_text(node, path),
+      accessibility_caption=_optional_string(node, "accessibility_caption", path),
+      original_width=_optional_integer(node, "original_width", path),
+      original_height=_optional_integer(node, "original_height", path),
+      carousel_media_count=_optional_integer(node, "carousel_media_count", path),
+      images=_images(node, path),
+      is_paid_partnership=_required_flag(node, "is_paid_partnership", path),
+      like_and_view_counts_disabled=_required_flag(node, "like_and_view_counts_disabled", path),
+   )
+
+
+def _feed_item(node: Any, path: str) -> FeedItem:
+   """One timeline item, reduced to the one union slot the upstream filled.
+
+   Exactly one slot was non-null on all fifteen measured items. Two filled slots, or none,
+   raises rather than picking a winner, because both shapes would mean the union stopped being
+   a union and neither has a measured meaning.
+   """
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   filled = [key for key, value in node.items() if key != "__typename" and value is not None]
+
+   if len(filled) != 1:
+      raise SchemaChanged(
+         f"{path} filled {len(filled)} of its union slots rather than exactly one", path=path
+      )
+
+   slot = filled[0]
+
+   try:
+      kind = FeedItemKind(slot)
+   except ValueError as failure:
+      raise SchemaChanged(
+         f"{path}.{slot} is a union slot this version does not know", path=path
+      ) from failure
+
+   if kind is not FeedItemKind.POST:
+      return FeedItem(kind=kind)
+
+   return FeedItem(kind=kind, post=parse_post(node["media"], f"{path}.media"))
+
+
+def parse_feed_page(payload: Any) -> Page[FeedItem]:
+   """One ``PolarisFeedRootPaginationCachedQuery_subscribe`` payload, mapped into feed items.
+
+   Items keep the order the upstream sent them in, and no item is dropped. Six of fifteen
+   measured items were posts, so filtering the rest out here would make a page's length
+   unexplainable to the caller and would hide how much of a feed is not posts.
+
+   The per-edge ``cursor`` is ignored, and on this connection it has to be: it was null on all
+   fifteen edges measured, while ``page_info.end_cursor`` was populated on every page. The
+   cursor in ``page_info`` is the only one that paginates this surface.
+
+   What the upstream sends on a media node and this mapper drops, from the fifteen-item page
+   recorded on 2026-09-21:
+
+   - ``owner_id``, an object repeating the author's ``pk`` and ``id`` a third time.
+   - ``message_id``-style second names aside, ``caption.pk`` and ``caption.has_translation``,
+     which belong to a caption capability that does not exist yet.
+   - ``carousel_media``, the slides themselves, for the same reason.
+   - ``clips_metadata``, ``video_versions``, ``video_dash_manifest``, ``has_audio``,
+     ``number_of_qualities`` and ``view_count``, all null across the measured page because
+     every post on it was a photo or a photo carousel. Video is unmeasured on this surface.
+   - ``facepile_top_likers``, ``top_likers``, ``social_context``, ``floating_context_items``
+     and ``media_notes``, which are presentation the web client assembles.
+   - ``logging_info_token``, ``organic_tracking_token``, ``inventory_source`` and
+     ``crosspost_metadata``, which are telemetry.
+   - ``comments_disabled``, ``commenting_disabled_for_viewer``, ``has_viewer_saved``,
+     ``can_reshare``, ``usertags``, ``location``, ``sponsor_tags`` and thirty more, null on
+     every measured node, so there is nothing measured to model.
+
+   Finding: `skills/reverse-engineer/knowledge/endpoints/home-timeline-feed-page.md`.
+   """
+
+   connection = _object_at(payload, FEED_PAGE_PATH)
+   connection_path = ".".join(FEED_PAGE_PATH)
+
+   edges = _required(connection, "edges", connection_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{connection_path}.edges is not a list", path=f"{connection_path}.edges")
+
+   items = tuple(
+      _feed_item(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
+   )
+
+   page_info_path = f"{connection_path}.page_info"
+   page_info = _required(connection, "page_info", connection_path)
+
+   if not isinstance(page_info, dict):
+      raise SchemaChanged(f"{page_info_path} is not an object", path=page_info_path)
+
+   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   return Page(items=items, has_next_page=has_next_page, end_cursor=end_cursor)

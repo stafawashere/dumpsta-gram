@@ -15,13 +15,17 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from dumpstagram.models import Message, Page, Profile
+from dumpstagram.models import FeedItem, FeedItemKind, Message, Page, Post, Profile
 from dumpstagram.session import Session
 
 __all__ = [
+   "describe_feed_item",
+   "describe_feed_pages",
    "describe_message",
    "describe_pages",
+   "describe_post",
    "describe_profile",
+   "render_feed",
    "describe_session",
    "render_messages",
    "render_profile",
@@ -181,5 +185,122 @@ def render_profile(profile: Profile) -> str:
    if profile.biography:
       lines.append("")
       lines.append(profile.biography)
+
+   return "\n".join(lines)
+
+
+def describe_post(post: Post) -> dict[str, Any]:
+   """The JSON form of one post. Every key here is part of the CLI's contract.
+
+   ``id`` and ``pk`` are both present because they are different identifiers on this surface,
+   which is unusual enough that dropping either would make a harness guess.
+
+   ``images`` carries every rendition the upstream offered rather than one chosen here, since
+   they are crops at several aspect ratios rather than one picture at several sizes.
+   """
+
+   return {
+      "id": post.id,
+      "pk": post.pk,
+      "code": post.code,
+      "taken_at": post.taken_at.isoformat(),
+      "author": {
+         "id": post.author.id,
+         "username": post.author.username,
+         "full_name": post.author.full_name,
+         "is_private": post.author.is_private,
+         "is_verified": post.author.is_verified,
+         "profile_pic_url": post.author.profile_pic_url,
+         "hd_profile_pic_url": post.author.hd_profile_pic_url,
+         "is_following": post.author.is_following,
+         "is_favorite": post.author.is_favorite,
+      },
+      "media_type": post.media_type,
+      "product_type": post.product_type,
+      "like_count": post.like_count,
+      "comment_count": post.comment_count,
+      "has_liked": post.has_liked,
+      "is_seen": post.is_seen,
+      "caption": post.caption,
+      "accessibility_caption": post.accessibility_caption,
+      "original_width": post.original_width,
+      "original_height": post.original_height,
+      "carousel_media_count": post.carousel_media_count,
+      "images": [
+         {"url": image.url, "width": image.width, "height": image.height} for image in post.images
+      ],
+      "is_paid_partnership": post.is_paid_partnership,
+      "like_and_view_counts_disabled": post.like_and_view_counts_disabled,
+   }
+
+
+def describe_feed_item(item: FeedItem) -> dict[str, Any]:
+   return {
+      "kind": item.kind.value,
+      "post": describe_post(item.post) if item.post is not None else None,
+   }
+
+
+def describe_feed_pages(pages: list[Page[FeedItem]]) -> dict[str, Any]:
+   """What was read, including the terminator and the split between posts and everything else.
+
+   ``more_available`` comes from the last page's own `has_next_page`, never from the number of
+   items that arrived. ``item_count`` and ``post_count`` are both reported because they differ
+   on every page measured, and reporting only one of them would make the other a guess.
+   """
+
+   last = pages[-1] if pages else None
+   items = [item for page in pages for item in page.items]
+   kinds: dict[str, int] = {}
+
+   for item in items:
+      kinds[item.kind.value] = kinds.get(item.kind.value, 0) + 1
+
+   return {
+      "pages_read": len(pages),
+      "item_count": len(items),
+      "post_count": sum(1 for item in items if item.kind is FeedItemKind.POST),
+      "kinds": dict(sorted(kinds.items())),
+      "more_available": last.has_next_page if last is not None else False,
+      "end_cursor": last.end_cursor if last is not None else None,
+   }
+
+
+def render_feed(pages: list[Page[FeedItem]], *, posts_only: bool = False) -> str:
+   """The human form: one line per item, in the order the upstream sent them.
+
+   An item that is not a post is printed as its kind alone, so the shape of a real timeline
+   stays visible instead of a filtered list that never explains its own length.
+
+   ``posts_only`` drops those lines on request. The trailer still counts every item that
+   arrived, so a filtered listing says how much it hid rather than looking like a short page.
+   """
+
+   lines = []
+
+   for page in pages:
+      for item in page.items:
+         post = item.post
+
+         if post is None:
+            if not posts_only:
+               lines.append(f"{item.kind.value}")
+
+            continue
+
+         caption = post.caption.splitlines()[0] if post.caption else ""
+         lines.append(
+            f"{post.taken_at.isoformat()}  {post.author.username}  "
+            f"likes {post.like_count}  comments {post.comment_count}  {post.code}  {caption}"
+         )
+
+   trailer = describe_feed_pages(pages)
+   lines.append(
+      f"pages_read: {trailer['pages_read']}  items: {trailer['item_count']}  "
+      f"posts: {trailer['post_count']}  more_available: {trailer['more_available']}"
+   )
+
+   if trailer["end_cursor"]:
+      lines.append(f"next_cursor: {trailer['end_cursor']}")
 
    return "\n".join(lines)

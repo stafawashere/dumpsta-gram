@@ -21,7 +21,7 @@ from types import TracebackType
 
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
-from dumpstagram.models import Message, Page, Profile
+from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -123,6 +123,18 @@ class SyncClient:
       return self._loop.run(
          self._impl.profile_by_id(user_id),
          operation="SyncClient.profile_by_id",
+      )
+
+   def feed(self, *, after: str | None = None) -> Page[FeedItem]:
+      """Read one page of the home timeline. Blocks until it has one.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.feed`, run on the shared loop
+      thread. One live request.
+      """
+
+      return self._loop.run(
+         self._impl.feed(after=after),
+         operation="SyncClient.feed",
       )
 
    def close(self) -> None:

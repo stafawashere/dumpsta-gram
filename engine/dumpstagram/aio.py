@@ -18,12 +18,13 @@ import os
 from types import TracebackType
 
 from dumpstagram._core.direct import read_thread_messages
+from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
-from dumpstagram.models import Message, Page, Profile
+from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -147,6 +148,33 @@ class AsyncClient:
          self._sender,
          self._session,
          user_id,
+         user_agent=self._user_agent,
+      )
+
+   async def feed(self, *, after: str | None = None) -> Page[FeedItem]:
+      """Read one page of the signed-in account's home timeline. One live request.
+
+      ``after`` is an ``end_cursor`` from a previous page, and omitting it asks for the first
+      page. The upstream serves both with one query, so there is no separate first-page call.
+
+      The returned page holds :class:`~dumpstagram.models.FeedItem` rather than posts, because
+      most of a timeline is not posts: of fifteen measured items, six were posts and the rest
+      were advertisements and suggestions. An item carrying a post has
+      :attr:`~dumpstagram.models.FeedItem.kind` equal to
+      :attr:`~dumpstagram.models.FeedItemKind.POST`, and every other kind is reported by name
+      and carries nothing.
+
+      The page's length is the upstream's decision. Three measured pages carried 14, 12 and 5
+      items for the same request, so a caller collecting posts keeps asking and stops on
+      ``has_next_page``, never on a page looking short.
+      """
+
+      self._refuse_when_closed()
+
+      return await read_feed_page(
+         self._sender,
+         self._session,
+         after=after,
          user_agent=self._user_agent,
       )
 

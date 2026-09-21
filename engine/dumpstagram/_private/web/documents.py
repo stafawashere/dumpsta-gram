@@ -16,7 +16,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["PROFILE_BY_ID", "THREAD_MESSAGE_PAGE", "USER_ID_BY_USERNAME", "PersistedQuery"]
+__all__ = [
+   "API_GRAPHQL_URL",
+   "GRAPHQL_QUERY_URL",
+   "HOME_TIMELINE_FEED",
+   "PROFILE_BY_ID",
+   "THREAD_MESSAGE_PAGE",
+   "USER_ID_BY_USERNAME",
+   "PersistedQuery",
+]
+
+API_GRAPHQL_URL = "https://www.instagram.com/api/graphql"
+"""Where every query observed before the feed answered."""
+
+GRAPHQL_QUERY_URL = "https://www.instagram.com/graphql/query"
+"""Where the timeline feed answers, and the reason the path is per query rather than global.
+
+The feed query posted to :data:`API_GRAPHQL_URL` with the same id, the same headers and the
+same variables returned HTTP 200 carrying a null connection, with no ``errors`` array, no
+``error`` field and no ``errorSummary``. That is a silent wrong answer rather than a failure,
+and no classifier reading error envelopes would catch it, so the path is part of each query's
+contract.
+
+Observed on 2026-09-21, recorded in
+``skills/reverse-engineer/knowledge/patterns/the-timeline-feed-answers-only-on-graphql-query-and-api-grap.md``.
+"""
 
 
 @dataclass(frozen=True)
@@ -26,11 +50,16 @@ class PersistedQuery:
    ``friendly_name`` is sent twice, as the ``fb_api_req_friendly_name`` body field and as the
    ``x-fb-friendly-name`` header. The upstream validated neither under ablation. They are sent
    because a request that omits what a browser sends is a fingerprint.
+
+   ``url`` is the path this particular query answers on, and it is per query because two
+   paths were observed and posting to the wrong one succeeds emptily. See
+   :data:`GRAPHQL_QUERY_URL`.
    """
 
    doc_id: str
    friendly_name: str
    finding_id: str
+   url: str = API_GRAPHQL_URL
 
 
 THREAD_MESSAGE_PAGE = PersistedQuery(
@@ -73,6 +102,22 @@ as :class:`~dumpstagram.errors.NotFound`.
 
 The obvious alternative, ``GET /api/v1/users/web_profile_info/?username=``, answered 429 with
 an HTML body on its first and only attempt on 2026-09-21, so it is not used.
+
+Observed live on 2026-09-21.
+"""
+
+
+HOME_TIMELINE_FEED = PersistedQuery(
+   doc_id="27932834733065642",
+   friendly_name="PolarisFeedRootPaginationCachedQuery_subscribe",
+   finding_id="home-timeline-feed-page",
+   url=GRAPHQL_QUERY_URL,
+)
+"""One page of the signed-in account's home timeline.
+
+The only query in this registry that does not answer on :data:`API_GRAPHQL_URL`. The same
+operation paginates and fetches the first page, with ``after`` null for the first, so there
+is no first-page variant of it.
 
 Observed live on 2026-09-21.
 """
