@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Dumpsta-Module is a Python library that provides high-level access to Instagram. Two
+Dumpsta-Engine is a Python library that provides high-level access to Instagram. Two
 goals drive it, and they are in tension, which is why the architecture looks the way
 it does.
 
@@ -34,7 +34,7 @@ Direct HTTP. See
 
 The CLI is not throwaway. It is how the public API gets validated before the expensive
 Swift work starts. See
-[../../docs/decisions/ADR-0005-module-first-build-order.md](../../docs/decisions/ADR-0005-module-first-build-order.md).
+[../../docs/decisions/ADR-0005-engine-first-build-order.md](../../docs/decisions/ADR-0005-engine-first-build-order.md).
 
 ## Capability scope
 

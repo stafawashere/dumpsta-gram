@@ -9,7 +9,7 @@ are not repeated here.
 
 The Python runtime is a prerequisite of the app, not a product of it.
 
-1. `module/scripts/build_runtime.sh` downloads a relocatable CPython per architecture
+1. `engine/scripts/build_runtime.sh` downloads a relocatable CPython per architecture
    into `Runtime/<arch>/` and installs the locked dependencies into each one's
    `site-packages` using that architecture's own interpreter. Until the final Intel step,
    `<arch>` is `aarch64` and nothing else.
@@ -17,11 +17,11 @@ The Python runtime is a prerequisite of the app, not a product of it.
 3. A run-script phase signs every `.so` and `.dylib` under `Runtime/` individually,
    across both architectures.
 4. The app's own signing phase runs, with Developer ID and the hardened runtime.
-5. Release builds copy `Runtime/` and `module/src` into `Contents/Resources`.
+5. Release builds copy `Runtime/` and `engine/src` into `Contents/Resources`.
 6. Notarization and stapling.
 
 Step 3 must precede step 4. Step 3 is slow in proportion to the dependency count, and it now
-runs over two runtimes, which is a practical reason to keep the module's dependency list lean.
+runs over two runtimes, which is a practical reason to keep the engine's dependency list lean.
 
 There is no App Store submission and no sandbox entitlement. See
 [../../docs/decisions/ADR-0010-distribution-targets.md](../../docs/decisions/ADR-0010-distribution-targets.md).
@@ -30,10 +30,10 @@ There is no App Store submission and no sandbox entitlement. See
 
 This is the app-specific piece and it is the one most likely to be gotten wrong.
 
-| Build | `Runtime/` | Module source |
+| Build | `Runtime/` | Engine source |
 |---|---|---|
-| Debug | Repository `Runtime/<arch>` | Repository `module/src`, on `sys.path` live |
-| Release | `Contents/Resources/Runtime/<arch>` | `Contents/Resources/module/src` |
+| Debug | Repository `Runtime/<arch>` | Repository `engine/src`, on `sys.path` live |
+| Release | `Contents/Resources/Runtime/<arch>` | `Contents/Resources/engine/src` |
 
 `<arch>` is the running slice's architecture, `aarch64` or `x86_64`. Resolve it from the first
 build, while `aarch64` is still the only directory that exists, because retrofitting the
@@ -62,7 +62,7 @@ the difference between a fast and a miserable development loop.
 
 ## Reproducibility
 
-`module/uv.lock` is the pin. It is committed. Without it, two builds of the same
+`engine/uv.lock` is the pin. It is committed. Without it, two builds of the same
 commit can vendor different dependency versions against an already unstable upstream
 API, which turns a dependency change into an indistinguishable cause when something
 breaks. The build script exports a flat requirements file from the lock rather than

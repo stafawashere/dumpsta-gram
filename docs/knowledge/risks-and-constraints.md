@@ -6,7 +6,7 @@ absorb.
 
 ## Legal and terms of service
 
-Dumpsta-Module targets an undocumented, unofficial API. That is against Instagram's
+Dumpsta-Engine targets an undocumented, unofficial API. That is against Instagram's
 terms of service. This was raised explicitly during design and accepted by the user as
 a known cost rather than a blocker. It occupies the same territory as existing
 open-source clients in this space, `instagrapi` being the commonly cited example.
@@ -18,7 +18,7 @@ Three consequences follow, and all three are engineering requirements, not
 disclaimers.
 
 **Users can have accounts restricted or banned.** This is the reason pacing lives in
-the module and defaults conservative. An open-source client that ships fast defaults
+the engine and defaults conservative. An open-source client that ships fast defaults
 harms its users.
 
 **Endpoints break without notice.** The upstream API is not versioned for third
@@ -77,7 +77,7 @@ import with nobody noticing. ASSUMPTION until an Intel machine runs it. Sequenci
 project's final step keeps it out of every earlier build, and concentrates the risk at the
 point where a first release is expected.
 
-**Dependencies are vendored at build time**, resolved from `module/uv.lock`. Installing
+**Dependencies are vendored at build time**, resolved from `engine/uv.lock`. Installing
 packages into the bundle at runtime was never acceptable, and leaving the App Store does not
 make it acceptable, because it makes the shipped artifact non-deterministic. See
 [../decisions/ADR-0009-uv-toolchain-python-floor.md](../decisions/ADR-0009-uv-toolchain-python-floor.md).

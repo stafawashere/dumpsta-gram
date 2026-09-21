@@ -1,0 +1,11 @@
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+dist/
+
+# Run logs are build products and can carry account-linked ids. The README stays.
+logs/*
+!logs/README.md

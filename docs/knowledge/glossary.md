@@ -6,22 +6,23 @@ whether two words mean the same thing.
 
 ## Products
 
-**Dumpsta-Gram**
+**Dumpstagram**
 The repository containing both products.
 
-**Dumpsta-Module**
-The Python library in `module/`. Package name `dumpstagram`. Holds all Instagram
+**Dumpsta-Engine**
+The Python library in `engine/`. Package name `dumpstagram`. Holds all Instagram
 capability. Every feature the system has lives here.
 
 **Dumpsta-App**
-The Swift macOS client in `app/`. Open source. Embeds Dumpsta-Module and serves as its
+The Swift macOS client in `client-app/`. Open source. Embeds Dumpsta-Engine and serves as its
 flagship reference implementation.
 
-## Module architecture
+## Engine architecture
 
 **Engine**
-The HTTP-level implementation that talks to Instagram without a browser. Informal name
-for what lives under `_core` and `_private`.
+Short form of Dumpsta-Engine. Used for the Python library as a whole, and most often for
+the HTTP-level implementation under `_core` and `_private` that talks to Instagram
+without a browser.
 
 **Public surface**
 Everything importable from `dumpstagram` that is not underscore-prefixed. Versioned and
@@ -44,7 +45,7 @@ most Python callers use.
 want concurrency.
 
 **Loop thread**
-The background thread hosting the module's persistent asyncio event loop. Shared and
+The background thread hosting the engine's persistent asyncio event loop. Shared and
 refcounted across client instances, never per instance. See
 [ADR-0004](../decisions/ADR-0004-instance-scoped-sessions.md).
 
@@ -63,7 +64,7 @@ no generator exists. It becomes relevant only if a mobile adapter is ever built.
 
 **Pacer**
 The per-account rate limiter and backoff controller. Owns the decision of when a
-request is allowed to leave. Lives in the module, never in the app.
+request is allowed to leave. Lives in the engine, never in the app.
 
 **Listener**
 A long-lived object produced by `events()` that delivers events until stopped.
@@ -98,7 +99,7 @@ the interpreter. Runs once per process, before any other PythonKit use.
 
 **Phase**
 One of the six ordered build stages in
-[ADR-0005](../decisions/ADR-0005-module-first-build-order.md). Each has an explicit
+[ADR-0005](../decisions/ADR-0005-engine-first-build-order.md). Each has an explicit
 stop condition.
 
 **Stop condition**
@@ -138,7 +139,7 @@ query is redeployed, with no notice.
 **Alias, canonical id, and internal id**
 Three different identifiers Instagram uses for one direct thread. Confusing them returns empty
 results rather than errors. See
-[../../module/docs/session-and-auth.md](../../module/docs/session-and-auth.md).
+[../../engine/docs/session-and-auth.md](../../engine/docs/session-and-auth.md).
 
 ## Terms deliberately not used
 
@@ -158,5 +159,5 @@ obtained by logging in from the library. The Phase 1 credential model. See
 
 **uv**
 The only Python toolchain used in this repository. Manages interpreters, the project
-environment, dependency resolution, and `module/uv.lock`. See
+environment, dependency resolution, and `engine/uv.lock`. See
 [../decisions/ADR-0009-uv-toolchain-python-floor.md](../decisions/ADR-0009-uv-toolchain-python-floor.md).

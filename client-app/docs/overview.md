@@ -3,7 +3,7 @@
 ## Purpose
 
 Dumpsta-App is a custom Instagram client for macOS, written in Swift, that uses
-Dumpsta-Module to do everything the official app and website can do, and more.
+Dumpsta-Engine to do everything the official app and website can do, and more.
 
 It has two jobs, and the second one shapes the code as much as the first.
 
@@ -11,7 +11,7 @@ It has two jobs, and the second one shapes the code as much as the first.
 the things it covers.
 
 **Job two, be the reference implementation.** The app is open source and is meant to
-be a heavily developed demonstration of how to consume Dumpsta-Module at a high level.
+be a heavily developed demonstration of how to consume Dumpsta-Engine at a high level.
 Other people will read this code and copy from it.
 
 The second job has practical consequences. A shortcut taken here propagates into other
@@ -25,7 +25,7 @@ most damage, because each one is easy to get subtly wrong.
 - Application state, including what is currently displayed and what is cached for the
   session.
 - Account selection, when multiple accounts arrive.
-- Orchestration, deciding which module calls to make and in what order.
+- Orchestration, deciding which engine calls to make and in what order.
 - Presentation of challenge and checkpoint states as something a person can act on.
 - Persistence of session files on disk.
 
@@ -33,16 +33,16 @@ most damage, because each one is easy to get subtly wrong.
 
 - Any knowledge of Instagram. No endpoints, no headers, no signing, no cursor formats, no
   identifier resolution.
-- Rate limiting and pacing. That lives in the module, deliberately. See
-  [../../module/docs/rate-limiting-and-safety.md](../../module/docs/rate-limiting-and-safety.md).
+- Rate limiting and pacing. That lives in the engine, deliberately. See
+  [../../engine/docs/rate-limiting-and-safety.md](../../engine/docs/rate-limiting-and-safety.md).
 - Retry policy for upstream failures, and in particular any decision about whether something is
-  retryable. Checkpoints are never retried, and that rule is enforced in the module.
+  retryable. Checkpoints are never retried, and that rule is enforced in the engine.
 - Interpreting whether a response succeeded. HTTP 200 is not a success signal on this API, and
-  classification happens in the module.
-- Session identity management beyond handing the module a file path.
+  classification happens in the engine.
+- Session identity management beyond handing the engine a file path.
 
 The dividing rule is simple and worth applying literally. If Swift needs to know something about
-how Instagram works, the module's public API has a gap. The fix goes in the module.
+how Instagram works, the engine's public API has a gap. The fix goes in the engine.
 
 ## Visual fidelity, and the measurements that already exist
 
@@ -86,12 +86,12 @@ signed with Developer ID and notarized, carrying one CPython runtime per archite
 sandbox entitlement, so arbitrary proxy configuration stays permissible. See
 [../../docs/decisions/ADR-0010-distribution-targets.md](../../docs/decisions/ADR-0010-distribution-targets.md).
 
-## Relationship to the module
+## Relationship to the engine
 
-The app embeds a relocatable CPython and drives the module in-process through
+The app embeds a relocatable CPython and drives the engine in-process through
 PythonKit, which gives it the same access a Python program would have. The alternatives
 and the reasoning are in
 [ADR-0002](../../docs/decisions/ADR-0002-embedded-python-pythonkit.md).
 
-In development, `module/src` is on `sys.path` directly, so editing Python takes effect
+In development, `engine/src` is on `sys.path` directly, so editing Python takes effect
 without an Xcode rebuild.

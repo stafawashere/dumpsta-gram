@@ -73,7 +73,7 @@ SyncClient.user_info("x")
 AsyncClient.user_info("x")
    _core delegates to the capability implementation
    pacer decides when the request may leave
-   _private builds the signed request for the session's device identity
+   _private builds the client-shaped request from the session's credential material
    transport sends it
    response parsed into a raw structure
    models maps it into a typed User
@@ -81,10 +81,19 @@ AsyncClient.user_info("x")
 SyncClient returns a User
 ```
 
-Fan-out works the same way, except `_core` issues many `_private` calls concurrently
-with `asyncio.gather` while the pacer serializes their departure. One public call can
-produce thirty concurrent requests, which is the entire point of the async core. See
-[ADR-0001](../../docs/decisions/ADR-0001-async-core-sync-facade.md).
+**`_core` is serial by default.** Revised 2026-09-20. An earlier version of this document
+described one public call producing thirty concurrent requests and called that the point of
+the async core. Measurement disproved it: the pacer spaces departures further apart than any
+single request takes, so concurrency over paced API calls buys nothing and only makes the
+traffic pattern harder to reason about. The async core stands on a different argument, which
+is that only an async implementation can serve a blocking surface and an awaitable surface
+honestly.
+
+`asyncio.gather` is therefore reserved for work the pacer does not serialize: media and CDN
+fetches, traffic belonging to different accounts, and work overlapping a long-lived
+connection. A concurrent fan-out over paced API calls is a defect, not an optimization. See
+[ADR-0001](../../docs/decisions/ADR-0001-async-core-sync-facade.md) and
+[engineering/05-io-concurrency-and-pacing.md](engineering/05-io-concurrency-and-pacing.md).
 
 ## Ownership of state
 

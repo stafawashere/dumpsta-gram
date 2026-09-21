@@ -1,0 +1,17 @@
+# Three-space indentation is this repository's authoring convention, and it is deliberate.
+# ruff enforces it for Python through indent-width in engine/pyproject.toml.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 3
+
+[*.md]
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

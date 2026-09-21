@@ -11,8 +11,8 @@ was to convert facts inherited from `dumpsta-js` into facts measured here. Relat
 
 ## What was run
 
-A throwaway probe script in the session scratchpad, not committed and not part of the module.
-No product code was scaffolded, because the module's public API has not been designed yet and
+A throwaway probe script in the session scratchpad, not committed and not part of the engine.
+No product code was scaffolded, because the engine's public API has not been designed yet and
 this run must not prejudge it.
 
 | Step | Request | Purpose |
@@ -91,14 +91,14 @@ the first match is the logged-out placeholder and a later match carries the real
 this run there was no non-zero match at all, so the fallback to the `ds_user_id` cookie is not
 a safety net, it is the only source of the viewer id. A client that trusts the HTML for
 `viewer_id` and has no cookie fallback will set it to `"0"` and invert the outgoing flag on
-every record. The module must read the viewer id from the cookie and treat the HTML as
+every record. The engine must read the viewer id from the cookie and treat the HTML as
 confirmation at best.
 
 **The message node carries fields the prior corpus never recorded**, including
 `bot_response_id`, `is_ai_generated`, `igd_wearables_attribution_text`,
 `igd_wearables_attribution_type`, `is_tombstone_revealable` and `is_pinned`. The schema has
 moved since 2026-09-21. This is the churn that
-[ADR-0007](../decisions/ADR-0007-web-graphql-surface-first.md) expects to stop at the module
+[ADR-0007](../decisions/ADR-0007-web-graphql-surface-first.md) expects to stop at the engine
 boundary, and it is a concrete argument for typed models that ignore unknown fields rather
 than models that fail on them.
 

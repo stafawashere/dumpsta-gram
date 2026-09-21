@@ -46,7 +46,7 @@ Rosetta is not a fallback. Each slice loads the runtime for its own architecture
 
 ## Build script shape
 
-`module/scripts/build_runtime.sh`, illustrative rather than verified. ASSUMPTION, no
+`engine/scripts/build_runtime.sh`, illustrative rather than verified. ASSUMPTION, no
 bundle has been built here.
 
 ```bash
@@ -62,7 +62,7 @@ ARCHES=(aarch64)
 rm -rf "$RUNTIME"
 mkdir -p "$RUNTIME"
 
-uv export --project "${PROJECT_ROOT}/module" --no-dev --no-emit-project \
+uv export --project "${PROJECT_ROOT}/engine" --no-dev --no-emit-project \
    --format requirements-txt -o "$RUNTIME/requirements.txt"
 
 for ARCH in "${ARCHES[@]}"; do
@@ -85,7 +85,7 @@ Four properties of this script matter more than its details.
 - The interpreter is a **uv-managed python-build-standalone** build, which is relocatable
   by construction. Whether a copy of one codesigns and relocates cleanly inside a signed
   `.app` is ASSUMPTION until a bundle is actually built.
-- Dependencies are resolved from `module/uv.lock`, not from a hand-maintained list. The
+- Dependencies are resolved from `engine/uv.lock`, not from a hand-maintained list. The
   exported requirements file is a build product written into `Runtime/`, and it is never
   committed. Both architectures install from that one export, which is what keeps the two
   trees in step.
@@ -153,9 +153,9 @@ notarization, and stapling on every release. See
 ## Bundle layout, release
 
 ```
-DumpstaGram.app/
+Dumpstagram.app/
    Contents/
-      MacOS/DumpstaGram          universal binary
+      MacOS/Dumpstagram          universal binary
       Resources/
          Runtime/
             aarch64/
@@ -164,13 +164,13 @@ DumpstaGram.app/
             x86_64/
                python/
                site-packages/
-         module/src/dumpstagram/
+         engine/dumpstagram/
 ```
 
 `PythonRuntime.bootstrap()` resolves `Runtime/<arch>` for the running slice before it touches a
 PythonKit symbol. See [overview.md](overview.md).
 
-Debug builds resolve both `Runtime/` and `module/src` to their repository locations
+Debug builds resolve both `Runtime/` and `engine` to their repository locations
 instead, so Python edits take effect without an Xcode rebuild. See
 [overview.md](overview.md).
 
@@ -179,7 +179,7 @@ instead, so Python edits take effect without an Xcode rebuild. See
 `Runtime/` is a build product and is never committed. Its size makes committing it
 impractical, and its contents are reproducible from the build script plus the lock.
 
-`module/uv.lock` is committed and is what makes the runtime reproducible. Without it,
+`engine/uv.lock` is committed and is what makes the runtime reproducible. Without it,
 two builds of the same commit can ship different dependency versions against an
 already unstable upstream API. The exported requirements file inside `Runtime/` is
 generated on every build and is not a source of truth.

@@ -156,8 +156,8 @@ it. It has to be copied by hand from the browser's developer tools. Any approach
 read it from page JavaScript is either wrong or is describing a browser extension with cookie
 permissions. Dumpsta-App therefore needs a credential-entry flow rather than a login form.
 
-The second constraint is that the module cannot renew what it did not create. When the browser
-session expires or the user logs out elsewhere, the module detects the revocation and says so
+The second constraint is that the engine cannot renew what it did not create. When the browser
+session expires or the user logs out elsewhere, the engine detects the revocation and says so
 plainly. It does not attempt recovery.
 
 ### Token lifetime is unmeasured

@@ -1,0 +1,65 @@
+[project]
+name = "dumpstagram"
+version = "0.0.0"
+description = "A high-level Python library for interacting with Instagram"
+readme = "docs/overview.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+   "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+cli = []
+
+[dependency-groups]
+dev = [
+   "pytest>=8.0",
+   "pytest-asyncio>=0.23",
+   "mypy>=1.11",
+   "ruff>=0.16.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dumpstagram"]
+
+# A run log can carry account-linked ids, and a probe spends live requests. Neither belongs
+# in a distribution a stranger downloads.
+[tool.hatch.build.targets.sdist]
+only-include = ["dumpstagram", "tests", "docs", "LICENSE", "uv.lock", ".python-version"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["dumpstagram"]
+
+# Three-space indentation is the repository's authoring convention. ruff is used because
+# indent-width is configurable here, which black and its derivatives do not allow.
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+indent-width = 3
+# ruff formats Python inside Markdown fences. The documentation corpus aligns comments in its
+# illustrative snippets on purpose, so it is excluded.
+extend-exclude = ["*.md"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+# A probe reproduces a real client's request, and a user-agent string cannot be wrapped without
+# changing what is sent.
+[tool.ruff.lint.per-file-ignores]
+"probes/*" = ["E501"]

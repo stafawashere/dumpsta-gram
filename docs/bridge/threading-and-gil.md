@@ -25,7 +25,7 @@ call site. A dedicated serial queue or actor makes the constraint structural ins
 of remembered.
 
 Note that this serialization is not a throughput problem for this app. Fan-out
-concurrency happens inside the module's asyncio loop, below the bridge. One Swift call
+concurrency happens inside the engine's asyncio loop, below the bridge. One Swift call
 can trigger thirty concurrent HTTP requests. See
 [ADR-0001](../decisions/ADR-0001-async-core-sync-facade.md).
 
@@ -48,8 +48,8 @@ can then crash the process.
 
 ## Rule 3, never hand Python a Swift callback
 
-Events originate on the module's asyncio loop thread. The tempting design is to pass a
-Swift closure into the module so it can push events directly.
+Events originate on the engine's asyncio loop thread. The tempting design is to pass a
+Swift closure into the engine so it can push events directly.
 
 Do not. That means arbitrary Swift code executing on a Python-owned thread while
 holding the GIL. Expected outcome is deadlock or crash. INFERENCE, based on the
@@ -80,13 +80,13 @@ await MainActor.run { store.apply(decoded) }
 Two drain strategies, both acceptable:
 
 - Swift polls `drain()` on a timer, on the order of every 200ms.
-- The module exposes a blocking `wait_for_events(timeout)` that parks on the Python
+- The engine exposes a blocking `wait_for_events(timeout)` that parks on the Python
   side and returns a batch. This trades a parked queue slot for lower latency.
 
 Whichever is chosen, the drain call itself must obey Rule 1 and run on the Python
 queue.
 
-A consequence worth stating: this design also keeps the module free of Swift-specific
+A consequence worth stating: this design also keeps the engine free of Swift-specific
 hooks, so it stays usable from a plain script, a CLI, or a web backend. The bridge
 constraint improved the library's portability rather than compromising it.
 
@@ -99,12 +99,12 @@ once per process, before the first PythonKit symbol is touched, and is idempoten
 ## Rule 5, exceptions cross deliberately
 
 A Python exception surfaces through PythonKit as a Swift error only where the wrapper
-converts it. Wrapper methods map module exception types onto a Swift error enum on the
+converts it. Wrapper methods map engine exception types onto a Swift error enum on the
 Python queue. Raw Python exception objects do not travel outward, for the same reason
 raw `PythonObject` values do not.
 
 The wrapper formats the traceback into a Swift `String` on the Python queue and carries it as
-a payload on the error case. That string is already redacted by the module, and the app shows
+a payload on the error case. That string is already redacted by the engine, and the app shows
 it in debug builds only, since it names internal paths.
 
 On the Python side the exception has already crossed one thread boundary before it reaches the

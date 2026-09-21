@@ -1,6 +1,6 @@
 # The Swift and Python bridge
 
-Canonical description of how Dumpsta-App reaches Dumpsta-Module. Owned jointly by both
+Canonical description of how Dumpsta-App reaches Dumpsta-Engine. Owned jointly by both
 products, which is why it lives at the repository root rather than inside either one.
 
 Decision and alternatives: [ADR-0002](../decisions/ADR-0002-embedded-python-pythonkit.md).
@@ -9,13 +9,13 @@ Shipping the runtime: [runtime-packaging.md](runtime-packaging.md).
 
 ## Model
 
-Dumpsta-App embeds CPython in-process and drives Dumpsta-Module through PythonKit.
+Dumpsta-App embeds CPython in-process and drives Dumpsta-Engine through PythonKit.
 There is no subprocess and no serialization protocol. Swift gets real
 `PythonObject` values with keyword arguments, attribute access, iteration, and
 exceptions.
 
-Swift talks to the module's `SyncClient` facade, never to `aio.AsyncClient`, because
-Swift cannot await a Python coroutine. The facade internally crosses into the module's
+Swift talks to the engine's `SyncClient` facade, never to `aio.AsyncClient`, because
+Swift cannot await a Python coroutine. The facade internally crosses into the engine's
 persistent asyncio loop thread. See
 [ADR-0001](../decisions/ADR-0001-async-core-sync-facade.md).
 
@@ -28,7 +28,7 @@ PythonKit
    calls
 dumpstagram.SyncClient
    hands the coroutine to
-the module's persistent asyncio loop thread
+the engine's persistent asyncio loop thread
    which runs
 dumpstagram._core.AsyncClient
    which speaks HTTP to
@@ -36,7 +36,7 @@ Instagram
 ```
 
 Two thread boundaries exist in that chain, and both are managed. Swift's serial queue
-to the Python interpreter is one. The module's facade to its own loop thread is the
+to the Python interpreter is one. The engine's facade to its own loop thread is the
 other. Neither is the caller's problem if the rules in
 [threading-and-gil.md](threading-and-gil.md) are followed.
 
@@ -44,12 +44,12 @@ other. Neither is the caller's problem if the rules in
 
 ```
 dumpsta-gram/
-   app/
-      src/DumpstaGram/
+   client-app/
+      src/Dumpstagram/
          PythonRuntime.swift
-   module/
+   engine/
       pyproject.toml
-      src/dumpstagram/
+      dumpstagram/
       scripts/build_runtime.sh
    Runtime/                  generated, gitignored
       aarch64/
@@ -72,7 +72,7 @@ reconfigured afterwards.
    [../decisions/ADR-0010-distribution-targets.md](../decisions/ADR-0010-distribution-targets.md).
 2. Set `PYTHONHOME`, `PYTHONNOUSERSITE`, `PYTHON_LIBRARY`, and `PYTHONPATH`.
 3. Touch PythonKit for the first time, which initializes the interpreter.
-4. Insert the module source path into `sys.path` if it is not already present.
+4. Insert the engine source path into `sys.path` if it is not already present.
 
 ```swift
 import Foundation
@@ -94,7 +94,7 @@ enum PythonRuntime {
 
       let searchPaths = [
          runtime.appendingPathComponent("site-packages").path,
-         resolveModuleSource().path
+         resolveEngineSource().path
       ]
       setenv("PYTHONPATH", searchPaths.joined(separator: ":"), 1)
 
@@ -114,11 +114,11 @@ enum PythonRuntime {
       #endif
    }
 
-   private static func resolveModuleSource() -> URL {
+   private static func resolveEngineSource() -> URL {
       #if DEBUG
-      return repositoryRoot().appendingPathComponent("module/src")
+      return repositoryRoot().appendingPathComponent("engine")
       #else
-      return Bundle.main.resourceURL!.appendingPathComponent("module/src")
+      return Bundle.main.resourceURL!.appendingPathComponent("engine")
       #endif
    }
 }
@@ -132,7 +132,7 @@ the app and shadow a vendored dependency.
 `#filePath` heuristics, because the debug binary needs to find the sources wherever
 Xcode places the product.
 
-## Calling the module
+## Calling the engine
 
 ```swift
 PythonRuntime.bootstrap()
@@ -148,7 +148,7 @@ choosing in-process embedding.
 
 ## Development loop
 
-`module/src` is on `sys.path` directly in debug builds, so editing Python needs no
+`engine` is on `sys.path` directly in debug builds, so editing Python needs no
 Xcode rebuild.
 
 ```swift
@@ -163,7 +163,7 @@ re-fetched after a reload. INFERENCE from CPython's documented reload semantics.
 ## Invariants
 
 - Swift contains zero Instagram knowledge. No endpoints, no headers, no signing, no
-  cursor formats. A need for any of those in Swift is a gap in the module's public API.
+  cursor formats. A need for any of those in Swift is a gap in the engine's public API.
 - Swift never imports `dumpstagram._private` or `dumpstagram._core`.
 - Values crossing into Swift are decoded into Swift types promptly. A `PythonObject`
   must not be stored in a view model or passed to the main actor. See

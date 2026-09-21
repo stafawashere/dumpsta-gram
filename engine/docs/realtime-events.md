@@ -79,7 +79,7 @@ layer if the boundary did not already exist.
 
 ## The event buffer
 
-Events originate on the module's asyncio loop thread. Consumers live elsewhere. The
+Events originate on the engine's asyncio loop thread. Consumers live elsewhere. The
 library never calls back into consumer code across that boundary.
 
 ```python
