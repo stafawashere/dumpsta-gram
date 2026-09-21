@@ -1,0 +1,1 @@
+echo "Builds and compiles a runnable application from source and cleans up any past compiles"

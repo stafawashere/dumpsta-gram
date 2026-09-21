@@ -1,0 +1,1 @@
+echo "Runs the build-app.command then run-app.command"
