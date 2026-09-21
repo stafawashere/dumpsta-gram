@@ -12,6 +12,8 @@ to ``engine/logs/``.
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -22,6 +24,9 @@ LOG_DIR = ENGINE / "logs"
 
 REQUESTING = "dumpstagram/_core/requesting.py"
 SMOKE = "dumpstagram/_core/smoke.py"
+# The stale-token judgement moved here when the first capability arrived and two
+# call sites started needing it.
+TOKENS = "dumpstagram/_core/tokens.py"
 TRANSPORT = "dumpstagram/_private/transport.py"
 ERRORS = "dumpstagram/errors.py"
 
@@ -134,14 +139,14 @@ MUTATIONS = [
    {
       "gate": "tests/test_smoke.py::test_a_stale_token_is_re_bootstrapped_once",
       "defect": "the read gives up on the one failure a fresh token fixes",
-      "file": SMOKE,
+      "file": TOKENS,
       "find": STALE_TOKEN_CHECK,
       "replace": STALE_TOKEN_NEVER,
    },
    {
       "gate": "tests/test_smoke.py::test_a_freshly_fetched_token_is_not_re_bootstrapped",
       "defect": "a re-bootstrap loop, one live request per attempt",
-      "file": SMOKE,
+      "file": TOKENS,
       "find": "      if not used_a_token_it_had_not_just_fetched:\n         raise",
       "replace": "      pass",
    },
@@ -163,11 +168,27 @@ MUTATIONS = [
 
 
 def run_gate(gate: str) -> subprocess.CompletedProcess[str]:
+   """Run one gate in a subprocess that cannot read a stale `.pyc`.
+
+   CPython validates a cached bytecode file against the source's size and its mtime in whole
+   seconds. A mutation that changes neither, which is any same-length edit applied and undone
+   inside one second, is invisible to that check, and the run then reports the unmutated
+   source. It produced two false results on 2026-09-21 before this was found: one mutation
+   that looked harmless and one restore that looked broken.
+   """
+
+   environment = dict(os.environ)
+   environment["PYTHONDONTWRITEBYTECODE"] = "1"
+
+   for cached in ENGINE.glob("dumpstagram/**/__pycache__"):
+      shutil.rmtree(cached, ignore_errors=True)
+
    return subprocess.run(
-      [sys.executable, "-m", "pytest", gate, "-q", "--no-header", "-p", "no:cacheprovider"],
+      [sys.executable, "-B", "-m", "pytest", gate, "-q", "--no-header", "-p", "no:cacheprovider"],
       cwd=ENGINE,
       capture_output=True,
       text=True,
+      env=environment,
    )
 
 

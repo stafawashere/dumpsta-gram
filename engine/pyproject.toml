@@ -11,7 +11,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The command line is stdlib only. The extra reserves the name for a dependency that earns
+# its place later.
 cli = []
+
+[project.scripts]
+dumpsta = "dumpstagram._cli:main"
 
 [dependency-groups]
 dev = [

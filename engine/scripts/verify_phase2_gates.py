@@ -12,6 +12,8 @@ to ``engine/logs/``.
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -281,11 +283,27 @@ MUTATIONS = [
 
 
 def run_gate(gate: str) -> subprocess.CompletedProcess[str]:
+   """Run one gate in a subprocess that cannot read a stale `.pyc`.
+
+   CPython validates a cached bytecode file against the source's size and its mtime in whole
+   seconds. A mutation that changes neither, which is any same-length edit applied and undone
+   inside one second, is invisible to that check, and the run then reports the unmutated
+   source. It produced two false results on 2026-09-21 before this was found: one mutation
+   that looked harmless and one restore that looked broken.
+   """
+
+   environment = dict(os.environ)
+   environment["PYTHONDONTWRITEBYTECODE"] = "1"
+
+   for cached in ENGINE.glob("dumpstagram/**/__pycache__"):
+      shutil.rmtree(cached, ignore_errors=True)
+
    return subprocess.run(
-      [sys.executable, "-m", "pytest", gate, "-q", "--no-header", "-p", "no:cacheprovider"],
+      [sys.executable, "-B", "-m", "pytest", gate, "-q", "--no-header", "-p", "no:cacheprovider"],
       cwd=ENGINE,
       capture_output=True,
       text=True,
+      env=environment,
    )
 
 
