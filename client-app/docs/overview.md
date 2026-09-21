@@ -93,5 +93,5 @@ PythonKit, which gives it the same access a Python program would have. The alter
 and the reasoning are in
 [ADR-0002](../../docs/decisions/ADR-0002-embedded-python-pythonkit.md).
 
-In development, `engine/src` is on `sys.path` directly, so editing Python takes effect
+In development, `engine` is on `sys.path` directly, so editing Python takes effect
 without an Xcode rebuild.

@@ -26,10 +26,25 @@ assertions, and they are not a gate. They are reproducible evidence-gathering to
 
 | Script | Requests | What it answers |
 |---|---|---|
-| `live_repro_bootstrap_page.py` | 2 | Does bootstrap token extraction plus one `useIGDMessageListPaginationQuery` page still work from Python. Written up in [live-reproduction-2026-09-20.md](../../docs/knowledge/live-reproduction-2026-09-20.md). |
+| `live_repro_bootstrap_page.py` | 2 | Does bootstrap token extraction plus one `useIGDMessageListPaginationQuery` page still work from Python. Written up in [live-reproduction-2026-09-20.md](../../docs/knowledge/live-reproduction-2026-09-20.md) and replayed in [live-reproduction-2026-09-21.md](../../docs/knowledge/live-reproduction-2026-09-21.md). |
 
 Run it with:
 
 ```
-uv run --with httpx python probes/live_repro_bootstrap_page.py
+uv run --with httpx --no-project python probes/live_repro_bootstrap_page.py
 ```
+
+`--no-project` matters. A probe is not part of the package and does not use its environment, so
+without it uv tries to resolve the engine's own project first.
+
+## A probe nothing reruns is a probe whose claims expire
+
+Learned the hard way on 2026-09-21. `live_repro_bootstrap_page.py` resolved `.env` with
+`parents[3]`, which was correct under the old `module/` directory name and pointed at
+`~/Documents` after the rename to `engine/`. It failed on the first line that touched the file
+system, and the break had sat there for a day because nothing had rerun it.
+
+Two consequences worth carrying. The command that runs a probe belongs in
+[../docs/engineering/project-profile.md](../docs/engineering/project-profile.md) with its last
+verified result, like every other command. And a probe's evidence is only as current as its last
+run, so a document citing one should say when it last ran rather than that it exists.

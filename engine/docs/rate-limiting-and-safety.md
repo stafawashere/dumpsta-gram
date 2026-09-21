@@ -74,6 +74,38 @@ This matters for pacing because it makes request count a direct function of data
 tuning available. An operation's cost is predictable in advance, which is what makes a dry-run
 cost estimate feasible.
 
+## What is implemented, 2026-09-21
+
+`dumpstagram/_core/pacer.py`. Build plan Step 6.
+
+| Name | Shape | Notes |
+|---|---|---|
+| `PacingPolicy` | `floor_seconds=2.5`, `mean_jitter_seconds=0.35` | The measured pair above. Jitter is drawn uniformly over `[0, 2 * mean)`, so the mean gap is 2.85 s and the mean rate is 0.351 req/s |
+| `BackoffPolicy` | `initial_seconds=4.0`, `multiplier=2.0`, `ceiling_seconds=120.0`, `max_attempts=5` | The inherited parameters. Still never observed to fire |
+| `Pacer.slot()` | Async context manager | Waits for the account's next departure instant and holds one `asyncio.Lock` across both the wait and the caller's body |
+| `Pacer.hold(seconds)` | Records an account-wide stop, does not sleep | This is what makes a backoff account-wide: every other task inherits it at its next slot |
+| `Pacer.hold_for(seconds)` | Records and sleeps | Used by the retry helper, so an operation that never reaches a slot still pays its backoff |
+| `backoff_delay(attempt, policy, retry_after)` | `4, 8, 16, 32, 64, 120, ...` | A larger upstream `retry-after` wins and is **not** clipped by the ceiling. The ceiling bounds what this library invents, not what the upstream explicitly asks for |
+| `run_with_retries(operation, pacer, deadline)` | Retry loop | Catches `RETRYABLE` and nothing else, so `CheckpointRequired` cannot reach the backoff path. A backoff that would cross the caller's deadline is not taken and the last failure is raised instead |
+
+The clock, the sleep, and the jitter source are injected. A pacer whose spacing can only be
+observed by waiting several real seconds per assertion does not get tested, and the gate suite
+would grow a lowered floor instead.
+
+**Why `hold` and `hold_for` are separate.** They were one method that recorded and slept. On a
+fake clock where sleeping advances shared time, the hold duration passes whether or not the
+record was ever written, so no gate could distinguish an account-wide hold from a hold living in
+one task's stack. Splitting them made the record independently observable. The full account is in
+[../../docs/knowledge/session-archive-2026-09-21.md](../../docs/knowledge/session-archive-2026-09-21.md).
+
+**Sharing contract.** A `Pacer` is sequentially reusable and task safe. It is not thread safe,
+and it is bound to the loop its lock was first awaited on, which is the engine's loop thread.
+
+**Not yet true.** No request passes the pacer, because `_core` has no request path yet. The
+pacer is gated in isolation. The end-to-end assertion that every outbound request actually went
+through it arrives with build plan Step 8 and is listed in
+[engineering/gates.md](engineering/gates.md).
+
 ## Backoff
 
 Inherited parameters, exercised only in tests and never observed to fire against the live API:

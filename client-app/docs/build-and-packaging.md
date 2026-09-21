@@ -17,7 +17,7 @@ The Python runtime is a prerequisite of the app, not a product of it.
 3. A run-script phase signs every `.so` and `.dylib` under `Runtime/` individually,
    across both architectures.
 4. The app's own signing phase runs, with Developer ID and the hardened runtime.
-5. Release builds copy `Runtime/` and `engine/src` into `Contents/Resources`.
+5. Release builds copy `Runtime/` and `engine` into `Contents/Resources`.
 6. Notarization and stapling.
 
 Step 3 must precede step 4. Step 3 is slow in proportion to the dependency count, and it now
@@ -32,8 +32,8 @@ This is the app-specific piece and it is the one most likely to be gotten wrong.
 
 | Build | `Runtime/` | Engine source |
 |---|---|---|
-| Debug | Repository `Runtime/<arch>` | Repository `engine/src`, on `sys.path` live |
-| Release | `Contents/Resources/Runtime/<arch>` | `Contents/Resources/engine/src` |
+| Debug | Repository `Runtime/<arch>` | Repository `engine`, on `sys.path` live |
+| Release | `Contents/Resources/Runtime/<arch>` | `Contents/Resources/engine` |
 
 `<arch>` is the running slice's architecture, `aarch64` or `x86_64`. Resolve it from the first
 build, while `aarch64` is still the only directory that exists, because retrofitting the

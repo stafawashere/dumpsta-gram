@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 
 LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
-ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
+ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
 def write_log(kind, payload):

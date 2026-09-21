@@ -72,7 +72,7 @@ GIL discipline, which is a meaningful increase in complexity. Start with polling
 
 ## Development loop
 
-In debug builds `engine/src` is on `sys.path` directly, so editing Python needs no
+In debug builds `engine` is on `sys.path` directly, so editing Python needs no
 Xcode rebuild.
 
 ```swift

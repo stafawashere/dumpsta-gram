@@ -10,8 +10,18 @@ one.
 
 ## Current state
 
-Empty. `uv run pytest` collects zero items and exits 5, verified 2026-09-20. The first gates arrive
-in Phase 2 of [../docs/roadmap.md](../docs/roadmap.md), with the first real public API.
+Five modules of gates, `63 passed in 0.11s` on 2026-09-21: `test_errors.py` for the exception
+hierarchy and the retry tuple, `test_session.py` for the session and its on-disk form,
+`test_transport.py` for the HTTP boundary, `test_classify.py` for response classification, and
+`test_pacer.py`. Every one of them was seen to fail against a deliberate mutation before it counted.
+
+`conftest.py` is not a module of gates but a precondition on the run itself. It refuses to collect
+when the interpreter sits inside the sync-managed `~/Documents` tree, or when any `.pth` in the
+environment's site-packages carries the macOS hidden flag, because that combination silently drops
+the editable install off `sys.path` and surfaces as `ModuleNotFoundError: No module named
+'dumpstagram'`. Both branches were seen red on 2026-09-21, exit 4 each, and the run is green at
+`63 passed` with neither condition present. Background and the permanent fix are in
+[../docs/engineering/project-profile.md](../docs/engineering/project-profile.md).
 
 ## Target shape
 

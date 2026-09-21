@@ -22,6 +22,31 @@ dumpstagram/
    _private/              endpoints, signing, device, transport
 ```
 
+What exists as of 2026-09-21, which is the target shape above minus everything Phase 2 brings:
+
+```
+dumpstagram/
+   __init__.py            empty package marker
+   py.typed
+   errors.py              the full public exception hierarchy
+   session.py             Session, SpinParameters, ProxyConfig, SCHEMA_VERSION
+   _core/
+      pacer.py            Pacer, PacingPolicy, BackoffPolicy, run_with_retries
+      loop_thread.py      _LoopThread, refcounted and shared, the seam and its note
+      redaction.py        redact, RedactingFormatter
+   _private/
+      transport.py        Sender, Request, Response, HttpxTransport
+      web/
+         classify.py      classify, classify_checkpoint_only
+         bootstrap.py     token harvest from one authenticated page
+         documents.py     the persisted GraphQL query registry
+         requests.py      the body and header set
+```
+
+No `client.py`, no `aio.py`, no `models/`, no `_core/realtime/`, and no capability. See
+[web-request-contract.md](web-request-contract.md) for the `_private/web/` layer and
+[build-plan.md](build-plan.md) for what comes next.
+
 Each layer has a single job and a rule about what it may know.
 
 **`client.py` and `aio.py`, the public surfaces.** Thin. They contain no logic beyond

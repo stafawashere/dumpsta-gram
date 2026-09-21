@@ -97,6 +97,20 @@ This extraction is the second most fragile thing in the system, behind `doc_id` 
 module rename, a quoting change, or a Relay upgrade breaks it with no notice. The failure must
 be loud: raise rather than proceed with a null token.
 
+Implemented 2026-09-21 in `dumpstagram/_private/web/bootstrap.py`. A missing `fb_dtsg` or `lsd`
+raises `AuthenticationFailed`, and the response URL is scanned for a challenge before the page
+is read, so an account sitting in a checkpoint is not reported as having bad credentials. The
+finding behind it is `bootstrap-web-tokens` in the reverse-engineer knowledge base.
+
+### What the session file stores, added 2026-09-21
+
+`hsi` and `haste_session` joined the serialised session at `schema_version` 1. They are the
+`__hsi` and `__hs` body fields, both ignored by the upstream under ablation and both sent to
+match the shape a browser sends. The version was not bumped because the format already ignores
+unknown keys on read and defaults missing ones, and nothing has been released that could hold
+a file without them. A reloaded session therefore reproduces the observed request exactly,
+rather than sending two empty fields.
+
 ## Two inherited bugs worth not repeating
 
 Both had the same shape, and both produced a complete, plausible, entirely wrong result rather

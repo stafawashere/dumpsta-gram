@@ -141,6 +141,27 @@ Three different identifiers Instagram uses for one direct thread. Confusing them
 results rather than errors. See
 [../../engine/docs/session-and-auth.md](../../engine/docs/session-and-auth.md).
 
+## Terms from the request layer, added 2026-09-21
+
+Defined here because [../../engine/docs/web-request-contract.md](../../engine/docs/web-request-contract.md)
+uses them constantly and they are not self-explanatory.
+
+| Term | Meaning |
+|---|---|
+| Bootstrap | One authenticated page load whose only purpose is to harvest per-page tokens out of the HTML. Not a login. Costs one request |
+| `fb_dtsg` | A per-page token embedded in the bundle. The only body field the upstream was measured to validate. 84 characters on both measured days |
+| `lsd` | A second per-page token, 22 characters, sent both as a body field and as the `x-fb-lsd` header |
+| `jazoest` | A computed body field: `"2"` followed by the sum of the character codes of `fb_dtsg`. Not verified upstream, reproduced because the browser sends it |
+| Haste session | The `haste_session` value from the bundle, sent as the `__hs` body field. Measured to be ignored |
+| Persisted query | A server-stored GraphQL query addressed by `doc_id` rather than sent as query text. Instagram's web client sends only the id |
+| `doc_id` | The identifier of a persisted query. Rotates, and a rotated one fails as HTTP 200 with an error envelope |
+| Friendly name | `fb_api_req_friendly_name`, the human-readable label for a persisted query, sent twice and validated neither time |
+| Padding | The roughly 35 body fields and headers sent although the upstream ignores them. Sent because a minimal request is a fingerprint |
+| Finding | One recorded observation of a request contract in the reverse-engineer knowledge base, with a status of `verified`, `stale`, `hypothesis`, or `dead` |
+| Provenance gate | `check_provenance.py`, which fails when a URL, path, or `doc_id` literal in `engine/dumpstagram/` has no `verified` finding behind it |
+| Slot | The pacer's unit of permission to send. `Pacer.slot()` is an async context manager holding one lock across both the wait and the send |
+| Hold | An account-wide stop recorded on the pacer. Every task inherits it at its next slot, as opposed to a wait that lives in one task's stack |
+
 ## Terms deliberately not used
 
 **Scraper.** The engine is a client, not a scraper. Scraping implies parsing rendered
