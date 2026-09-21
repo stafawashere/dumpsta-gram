@@ -34,7 +34,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from dumpstagram.errors import NotFound, SchemaChanged
+from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import Message, MessageSender, Page, Reaction
 
 __all__ = ["THREAD_PAGE_PATH", "parse_thread_message_page"]
@@ -208,23 +208,20 @@ def parse_thread_message_page(payload: Any) -> Page[Message]:
    normalisation applied at the boundary is a normalisation a recorded oracle has to know
    about, and reordering hides whether the upstream order ever changes.
 
-   Raises :class:`~dumpstagram.errors.NotFound` when the thread field resolves to null, which
-   is what the upstream returns for a thread this account cannot see and for the two thread
-   identifiers that are not the ``fbid``. INFERENCE: the empty answer was measured, the null
-   shape of it was not.
+   Two shapes are deliberately not special cased, because neither has been observed and a
+   mapper that invents a meaning for an unmeasured shape is guessing in the one place this
+   package exists to stop guessing.
+
+   A thread field resolving to null is one of them. It stops the walk like any other
+   unreachable path and raises :class:`~dumpstagram.errors.SchemaChanged` naming where it
+   stopped. What was measured is that the two thread identifiers which are not the ``fbid``
+   answer with nothing; the null shape of that answer was not, so it is reported as a payload
+   this mapper cannot map rather than as a thread that does not exist.
+
+   A page claiming a successor while carrying no cursor is the other. It is returned exactly
+   as it arrived, with ``has_next_page`` true and ``end_cursor`` ``None``, and the caller sees
+   the contradiction the upstream sent.
    """
-
-   data = payload.get("data") if isinstance(payload, dict) else None
-   thread_field = data.get("fetch__SlideThread") if isinstance(data, dict) else None
-
-   thread_is_explicitly_null = (
-      isinstance(thread_field, dict)
-      and "as_ig_direct_thread" in thread_field
-      and thread_field["as_ig_direct_thread"] is None
-   )
-
-   if thread_is_explicitly_null:
-      raise NotFound("no thread is visible to this account under that fbid")
 
    connection = _object_at(payload, THREAD_PAGE_PATH)
    connection_path = ".".join(THREAD_PAGE_PATH)
@@ -250,11 +247,5 @@ def parse_thread_message_page(payload: Any) -> Page[Message]:
 
    has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
    end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
-
-   if has_next_page and end_cursor is None:
-      raise SchemaChanged(
-         f"{page_info_path} claims another page and carries no cursor to reach it",
-         path=page_info_path,
-      )
 
    return Page(items=messages, has_next_page=has_next_page, end_cursor=end_cursor)

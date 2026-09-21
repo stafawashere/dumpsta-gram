@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 
 from dumpstagram._private.web.parse import parse_thread_message_page
-from dumpstagram.errors import NotFound, SchemaChanged
+from dumpstagram.errors import SchemaChanged
 
 THREAD_FBID = "17945046917948992"
 MESSAGE_ID = "mid.$cAAANx1A4CESm8y_m2mgweqeUAaea"
@@ -239,11 +239,18 @@ def test_edges_keep_the_order_the_upstream_sent_them_in() -> None:
    assert [message.id for message in page.items] == [MESSAGE_ID, OTHER_MESSAGE_ID]
 
 
-def test_another_page_with_no_cursor_to_reach_it_raises() -> None:
-   """A caller that trusts has_next_page and gets no cursor stops paginating silently."""
+def test_another_page_with_no_cursor_to_reach_it_is_reported_as_sent() -> None:
+   """Catches the mapper inventing a meaning for a shape nobody has observed.
 
-   with pytest.raises(SchemaChanged):
-      parse_thread_message_page(payload([node()], has_next_page=True, end_cursor=None))
+   The contradiction reaches the caller intact rather than becoming a schema complaint, because
+   a page claiming a successor with no cursor has never been seen and a mapper that rules on it
+   is guessing.
+   """
+
+   page = parse_thread_message_page(payload([node()], has_next_page=True, end_cursor=None))
+
+   assert page.has_next_page is True
+   assert page.end_cursor is None
 
 
 def test_the_last_page_is_allowed_to_carry_a_cursor() -> None:
@@ -255,11 +262,18 @@ def test_the_last_page_is_allowed_to_carry_a_cursor() -> None:
    assert page.end_cursor == CURSOR
 
 
-def test_an_unresolved_thread_raises_not_found() -> None:
-   """The two non-fbid thread identifiers answer with nothing, which must not read as empty."""
+def test_an_unresolved_thread_stops_the_walk_where_it_stopped_resolving() -> None:
+   """Catches a null thread being given a meaning the upstream was never observed to give it.
 
-   with pytest.raises(NotFound):
+   What was measured is that a non-fbid thread identifier answers with nothing. The null shape
+   of that answer was not, so it is a payload this mapper cannot map, named at the path that
+   stopped resolving, and not a claim that the thread does not exist.
+   """
+
+   with pytest.raises(SchemaChanged) as raised:
       parse_thread_message_page(payload([], thread=None))
+
+   assert raised.value.path == "data.fetch__SlideThread.as_ig_direct_thread.slide_messages"
 
 
 def test_an_empty_thread_is_an_empty_page_and_not_an_error() -> None:

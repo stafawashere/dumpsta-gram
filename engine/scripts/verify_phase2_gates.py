@@ -36,14 +36,26 @@ REQUIRED_DEFAULTS = """   if not isinstance(node, dict) or key not in node:
 
    return node[key]"""
 
-CURSOR_CONTRADICTION_RAISES = """   if has_next_page and end_cursor is None:
-      raise SchemaChanged(
-         f"{page_info_path} claims another page and carries no cursor to reach it",
-         path=page_info_path,
-      )"""
+CURSOR_REPORTED_AS_SENT = """
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
 
-NOT_FOUND_RAISES = """   if thread_is_explicitly_null:
-      raise NotFound("no thread is visible to this account under that fbid")"""
+   return Page("""
+
+CURSOR_CONTRADICTION_RULED_ON = """
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   if has_next_page and end_cursor is None:
+      raise SchemaChanged(page_info_path, path=page_info_path)
+
+   return Page("""
+
+UNREACHABLE_PATH_RAISES = """      if not isinstance(current, dict):
+         raise SchemaChanged(
+            f"{reached} is not reachable, its parent is not an object", path=reached
+         )"""
+
+UNREACHABLE_PATH_INVENTS_AN_EMPTY_PAGE = """      if not isinstance(current, dict):
+         return {"edges": [], "page_info": {"has_next_page": False, "end_cursor": None}}"""
 
 MESSAGES_IN_UPSTREAM_ORDER = """   messages = tuple(
       parse_message(
@@ -178,18 +190,22 @@ MUTATIONS = [
       "replace": '   if value is None:\n      return ""',
    },
    {
-      "gate": "tests/test_parse.py::test_another_page_with_no_cursor_to_reach_it_raises",
-      "defect": "a page claiming a successor with no way to reach it is accepted",
+      "gate": (
+         "tests/test_parse.py::test_another_page_with_no_cursor_to_reach_it_is_reported_as_sent"
+      ),
+      "defect": "the mapper rules on a shape nobody has observed instead of passing it on",
       "file": PARSE,
-      "find": CURSOR_CONTRADICTION_RAISES,
-      "replace": "   if False:\n      raise SchemaChanged(page_info_path, path=page_info_path)",
+      "find": CURSOR_REPORTED_AS_SENT,
+      "replace": CURSOR_CONTRADICTION_RULED_ON,
    },
    {
-      "gate": "tests/test_parse.py::test_an_unresolved_thread_raises_not_found",
-      "defect": "a thread this account cannot see reads as a thread with no messages",
+      "gate": (
+         "tests/test_parse.py::test_an_unresolved_thread_stops_the_walk_where_it_stopped_resolving"
+      ),
+      "defect": "an unreachable path is given an invented meaning instead of being reported",
       "file": PARSE,
-      "find": NOT_FOUND_RAISES,
-      "replace": "   if thread_is_explicitly_null:\n      pass",
+      "find": UNREACHABLE_PATH_RAISES,
+      "replace": UNREACHABLE_PATH_INVENTS_AN_EMPTY_PAGE,
    },
    {
       "gate": "tests/test_parse.py::test_edges_keep_the_order_the_upstream_sent_them_in",
