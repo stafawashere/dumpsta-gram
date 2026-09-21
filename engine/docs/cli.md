@@ -38,6 +38,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `adopt` | 0 | Builds a session from cookie material and saves it |
 | `session` | 0 | Prints what the saved session holds, redacted |
 | `thread FBID` | 1 per page, plus 1 if the session has no token yet | Reads pages of one direct thread |
+| `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -94,6 +95,31 @@ Pagination stops on the page's own `has_next_page` and never on how many message
 Tokens harvested during a read are written back to the session file by default. Without it
 every invocation pays a bootstrap request the previous one already paid for.
 
+### `profile`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json profile some-account
+```
+
+Reads one account's profile. By default the argument is a username and the command spends two
+live requests, because the upstream's profile query takes a numeric account id and no
+username, so the id has to be resolved first.
+
+- `--by-id` treats the argument as the numeric account id and spends one request instead of
+  two. That id is what the `id` key of the output carries, and it is not the `fbid` the same
+  account carries as a message sender.
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
+`requests_spent` in the JSON form says which of the two routes ran, so a harness does not have
+to infer the cost from the flags it passed.
+
+The resolution route reads the id off the first post of the account's timeline, which is the
+only call on this surface observed to accept a username. An account with nothing visible to
+the session therefore resolves to nothing and the command exits 7, `NotFound`, whether the
+account does not exist, is private to this viewer, or genuinely has no posts. The upstream
+does not distinguish the three on this route. Such an account is still readable with
+`--by-id`.
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -121,14 +147,24 @@ reaches output with nobody having written it there.
 ## What it does not cover yet
 
 The Phase 2 stop condition in [roadmap.md](roadmap.md) asks for a profile, a feed page with
-working pagination, and a direct thread. Only the thread exists, because `thread_messages` is
-the only capability the engine carries. The profile and feed commands arrive with the
-capabilities behind them, and each is one subparser plus one renderer.
+working pagination, and a direct thread. The thread and the profile exist. The feed command
+arrives with the capability behind it, as one subparser plus one renderer.
+
+Two fields the upstream sends on a profile are not modelled, because the only live response
+measured was the viewer reading the viewer and both were null on it: `friendship_status` and
+`mutual_followers_count`. Reading someone else's profile is expected to populate them, and
+that has not been observed.
 
 ## Verification
 
-Twenty-three gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
+Twenty-nine gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
-then green. The live acceptance run is recorded in `logs/cli-acceptance-2026-09-21-025734.json`:
-three requests, one page of 20 messages, then two pages of 40 distinct messages in 3394 ms,
-which is the pacer's floor showing up as wall time.
+then green. The live acceptance run for the thread command is recorded in
+`logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
+two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
+time.
+
+The profile command's live acceptance run is in
+`logs/cli-profile-acceptance-2026-09-21-042735.txt`: three requests, the username route
+reporting `requests_spent` 2 and the `--by-id` route reporting 1, both returning the same
+account with the same counts, and the text form rendering in eight lines.

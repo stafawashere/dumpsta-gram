@@ -7,5 +7,6 @@ fields, because an extras bag reopens the boundary this package exists to close.
 
 from dumpstagram.models.messages import Message, MessageSender, Reaction
 from dumpstagram.models.pagination import Page
+from dumpstagram.models.profiles import BioLink, Profile
 
-__all__ = ["Message", "MessageSender", "Page", "Reaction"]
+__all__ = ["BioLink", "Message", "MessageSender", "Page", "Profile", "Reaction"]

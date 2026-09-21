@@ -1,6 +1,7 @@
 module dumpstagram
 alias dumpstagram.AsyncClient -> dumpstagram.aio.AsyncClient
 alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFailed
+alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
@@ -8,6 +9,7 @@ alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
 alias dumpstagram.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
 alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
@@ -27,6 +29,8 @@ def dumpstagram.aio.AsyncClient.__init__(self, session: Session, *, user_agent: 
 def dumpstagram.aio.AsyncClient.aclose(self) -> None
 property dumpstagram.aio.AsyncClient.closed -> bool
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> AsyncClient
+def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
+def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.aio.AsyncClient.session -> Session
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 property dumpstagram.aio.AsyncClient.user_agent -> str
@@ -38,6 +42,8 @@ def dumpstagram.client.SyncClient.__init__(self, session: Session, *, user_agent
 def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None) -> SyncClient
+def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
+def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.client.SyncClient.session -> Session
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 property dumpstagram.client.SyncClient.user_agent -> str
@@ -57,9 +63,11 @@ class dumpstagram.errors.TransportFailure(dumpstagram.errors.DumpstagramError)
 class dumpstagram.errors.UpstreamRejected(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.UpstreamRejected.__init__(self, message: str = '', *, code: str | None = None) -> None
 module dumpstagram.models
+alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 module dumpstagram.models.messages
 class dumpstagram.models.messages.Message()
@@ -87,6 +95,39 @@ def dumpstagram.models.pagination.Page.__iter__(self) -> Iterator[ItemT]
 field dumpstagram.models.pagination.Page.end_cursor: str | None = None
 field dumpstagram.models.pagination.Page.has_next_page: bool
 field dumpstagram.models.pagination.Page.items: tuple[ItemT, ...]
+module dumpstagram.models.profiles
+class dumpstagram.models.profiles.BioLink()
+field dumpstagram.models.profiles.BioLink.is_pinned: bool
+field dumpstagram.models.profiles.BioLink.link_id: str
+field dumpstagram.models.profiles.BioLink.link_type: str
+field dumpstagram.models.profiles.BioLink.lynx_url: str
+field dumpstagram.models.profiles.BioLink.title: str
+field dumpstagram.models.profiles.BioLink.url: str
+class dumpstagram.models.profiles.Profile()
+field dumpstagram.models.profiles.Profile.account_type: int | None = None
+field dumpstagram.models.profiles.Profile.bio_links: tuple[BioLink, ...] = ()
+field dumpstagram.models.profiles.Profile.biography: str
+field dumpstagram.models.profiles.Profile.category: str | None = None
+field dumpstagram.models.profiles.Profile.external_lynx_url: str | None = None
+field dumpstagram.models.profiles.Profile.external_url: str | None = None
+field dumpstagram.models.profiles.Profile.follower_count: int
+field dumpstagram.models.profiles.Profile.following_count: int
+field dumpstagram.models.profiles.Profile.full_name: str
+field dumpstagram.models.profiles.Profile.has_profile_pic: bool = True
+field dumpstagram.models.profiles.Profile.has_story_archive: bool = False
+field dumpstagram.models.profiles.Profile.hd_profile_pic_url: str | None = None
+field dumpstagram.models.profiles.Profile.id: str
+field dumpstagram.models.profiles.Profile.is_business: bool = False
+field dumpstagram.models.profiles.Profile.is_embeds_disabled: bool = False
+field dumpstagram.models.profiles.Profile.is_memorialized: bool = False
+field dumpstagram.models.profiles.Profile.is_private: bool
+field dumpstagram.models.profiles.Profile.is_professional_account: bool = False
+field dumpstagram.models.profiles.Profile.is_unpublished: bool = False
+field dumpstagram.models.profiles.Profile.is_verified: bool
+field dumpstagram.models.profiles.Profile.media_count: int
+field dumpstagram.models.profiles.Profile.profile_pic_url: str
+field dumpstagram.models.profiles.Profile.total_clips_count: int
+field dumpstagram.models.profiles.Profile.username: str
 module dumpstagram.session
 class dumpstagram.session.ProxyConfig()
 field dumpstagram.session.ProxyConfig.url: str

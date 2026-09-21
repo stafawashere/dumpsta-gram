@@ -148,12 +148,25 @@ def test_no_httpx_type_reaches_the_public_surface() -> None:
 
 
 def test_no_internal_module_reaches_the_public_surface() -> None:
-   """`_core` and `_private` may be reorganized in any release, so no public name may cite one."""
+   """`_core` and `_private` may be reorganized in any release, so no public name may cite one.
+
+   The match is on the dotted module citation rather than on the bare word, because the
+   renderer writes every module fully qualified and a public field may legitimately be named
+   after one of these words. `Profile.is_private` is such a field, and matching the bare word
+   reported it as a leak on 2026-09-21.
+
+   The last two assertions are the positive control: zero hits means nothing until the same
+   check is shown finding one.
+   """
 
    committed = SNAPSHOT_PATH.read_text(encoding="utf-8")
 
-   assert not names(committed, "_private")
-   assert not names(committed, "_core")
+   assert not names(committed, "._private")
+   assert not names(committed, "._core")
    assert names(
-      "property dumpstagram.aio.AsyncClient.pacer -> dumpstagram._core.pacer.Pacer", "_core"
+      "property dumpstagram.aio.AsyncClient.pacer -> dumpstagram._core.pacer.Pacer", "._core"
+   )
+   assert names(
+      "def dumpstagram.aio.AsyncClient.send(r: dumpstagram._private.transport.Request) -> None",
+      "._private",
    )

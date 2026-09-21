@@ -21,7 +21,7 @@ from dumpstagram.errors import (
    TransportFailure,
    UpstreamRejected,
 )
-from dumpstagram.models import Message, MessageSender, Page, Reaction
+from dumpstagram.models import BioLink, Message, MessageSender, Page, Profile, Reaction
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
    "SCHEMA_VERSION",
    "AsyncClient",
    "AuthenticationFailed",
+   "BioLink",
    "CheckpointRequired",
    "DumpstagramError",
    "Message",
@@ -36,6 +37,7 @@ __all__ = [
    "NotFound",
    "OperationCancelled",
    "Page",
+   "Profile",
    "RateLimited",
    "ProxyConfig",
    "Reaction",

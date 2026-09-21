@@ -29,14 +29,16 @@ from dumpstagram._cli.exits import EXIT_OK, EXIT_USAGE, exit_code_for
 from dumpstagram._cli.render import (
    describe_message,
    describe_pages,
+   describe_profile,
    describe_session,
    render_messages,
+   render_profile,
    render_session,
 )
 from dumpstagram._core.redaction import redact
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import DumpstagramError
-from dumpstagram.models import Message, Page
+from dumpstagram.models import Message, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["build_parser", "main"]
@@ -66,6 +68,10 @@ class Client(Protocol):
       after: str | None = None,
       newer_than_message_id: str | None = None,
    ) -> Page[Message]: ...
+
+   def profile(self, username: str) -> Profile: ...
+
+   def profile_by_id(self, user_id: str) -> Profile: ...
 
    def close(self) -> None: ...
 
@@ -161,6 +167,35 @@ def build_parser() -> argparse.ArgumentParser:
       help="do not save tokens harvested during this run back to the session file",
    )
 
+   profile = commands.add_parser(
+      "profile",
+      help="read one account's profile, two live requests by username and one by id",
+      description=(
+         "The upstream's profile query takes a numeric account id and no username, so "
+         "--by-id spends one live request where a username spends two."
+      ),
+   )
+   profile.add_argument(
+      "who",
+      metavar="USERNAME",
+      help="the username to read, or the numeric account id when --by-id is passed",
+   )
+   profile.add_argument(
+      "--by-id",
+      action="store_true",
+      help="treat the argument as a numeric account id and skip the resolution request",
+   )
+   profile.add_argument(
+      "--user-agent",
+      metavar="STRING",
+      help="override the user agent every request claims to be",
+   )
+   profile.add_argument(
+      "--no-session-writeback",
+      action="store_true",
+      help="do not save tokens harvested during this run back to the session file",
+   )
+
    return parser
 
 
@@ -236,6 +271,41 @@ def read_pages(client: Client, arguments: argparse.Namespace) -> list[Page[Messa
    return pages
 
 
+def run_profile(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_read = client.session.fb_dtsg
+
+   try:
+      if arguments.by_id:
+         profile = client.profile_by_id(arguments.who)
+      else:
+         profile = client.profile(arguments.who)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   payload = {
+      "command": "profile",
+      "requests_spent": 1 if arguments.by_id else 2,
+      "profile": describe_profile(profile),
+   }
+
+   emit(payload, render_profile(profile), as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
 def run_thread(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -294,6 +364,9 @@ def main(
 
       if arguments.command == "session":
          return run_session(arguments, chosen_environment, out)
+
+      if arguments.command == "profile":
+         return run_profile(arguments, chosen_environment, out, client_factory)
 
       return run_thread(arguments, chosen_environment, out, client_factory)
    except DumpstagramError as failure:

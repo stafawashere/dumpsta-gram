@@ -19,10 +19,11 @@ from types import TracebackType
 
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.pacer import Pacer
+from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
-from dumpstagram.models import Message, Page
+from dumpstagram.models import Message, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -108,6 +109,44 @@ class AsyncClient:
          thread_fbid,
          after=after,
          newer_than_message_id=newer_than_message_id,
+         user_agent=self._user_agent,
+      )
+
+   async def profile(self, username: str) -> Profile:
+      """Read one account's profile by username. Two live requests.
+
+      The upstream's profile query takes an account id and no username, so the username is
+      resolved first and the profile is read second. A caller that already holds the id wants
+      :meth:`profile_by_id`, which spends one request instead of two.
+
+      Raises :class:`~dumpstagram.errors.NotFound` when the resolution comes back empty. On
+      this route that means the account does not exist, or its posts are not visible to this
+      session, or it has none, and the upstream does not say which.
+      """
+
+      self._refuse_when_closed()
+
+      return await read_profile(
+         self._sender,
+         self._session,
+         username,
+         user_agent=self._user_agent,
+      )
+
+   async def profile_by_id(self, user_id: str) -> Profile:
+      """Read one account's profile by its numeric account id. One live request.
+
+      ``user_id`` is the account's ``pk``, which is what :attr:`~dumpstagram.models.Profile.id`
+      carries. It is not the ``fbid`` the same account carries as a message sender, and the
+      two are different numbers for the same person.
+      """
+
+      self._refuse_when_closed()
+
+      return await read_profile_by_id(
+         self._sender,
+         self._session,
+         user_id,
          user_agent=self._user_agent,
       )
 

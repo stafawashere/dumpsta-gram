@@ -21,7 +21,7 @@ from types import TracebackType
 
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
-from dumpstagram.models import Message, Page
+from dumpstagram.models import Message, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -98,6 +98,31 @@ class SyncClient:
             newer_than_message_id=newer_than_message_id,
          ),
          operation="SyncClient.thread_messages",
+      )
+
+   def profile(self, username: str) -> Profile:
+      """Read one account's profile by username. Blocks until it has one.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.profile`, with the same arguments
+      and the same result, run on the shared loop thread. Two live requests, because the
+      upstream's profile query takes an account id rather than a username.
+      """
+
+      return self._loop.run(
+         self._impl.profile(username),
+         operation="SyncClient.profile",
+      )
+
+   def profile_by_id(self, user_id: str) -> Profile:
+      """Read one account's profile by its numeric account id. Blocks until it has one.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.profile_by_id`, run on the shared
+      loop thread. One live request.
+      """
+
+      return self._loop.run(
+         self._impl.profile_by_id(user_id),
+         operation="SyncClient.profile_by_id",
       )
 
    def close(self) -> None:

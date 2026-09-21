@@ -29,7 +29,7 @@ from dumpstagram.errors import (
    DumpstagramError,
    RateLimited,
 )
-from dumpstagram.models import Message, MessageSender, Page
+from dumpstagram.models import Message, MessageSender, Page, Profile
 from dumpstagram.session import Session
 
 CLI_DIRECTORY = Path(__file__).resolve().parent.parent / "dumpstagram" / "_cli"
@@ -60,6 +60,25 @@ def a_message(identifier: str = "mid.1") -> Message:
    )
 
 
+def a_profile(**overrides: object) -> Profile:
+   fields: dict[str, object] = {
+      "id": "58435292991",
+      "username": "an-account",
+      "full_name": "a name",
+      "biography": "a bio",
+      "is_private": True,
+      "is_verified": False,
+      "follower_count": 80,
+      "following_count": 124,
+      "media_count": 8,
+      "total_clips_count": 1,
+      "profile_pic_url": "https://example.invalid/pic.jpg",
+   }
+   fields.update(overrides)
+
+   return Profile(**fields)  # type: ignore[arg-type]
+
+
 def a_page(*, has_next_page: bool, end_cursor: str | None, message_count: int = 1) -> Page[Message]:
    return Page(
       items=tuple(a_message(f"mid.{index}") for index in range(message_count)),
@@ -77,11 +96,13 @@ class FakeClient:
       pages: list[Page[Message]] | None = None,
       failure: BaseException | None = None,
       token_harvested: str | None = None,
+      profile: Profile | None = None,
    ) -> None:
       self.session = session
       self.pages = pages or [a_page(has_next_page=False, end_cursor=None)]
       self.failure = failure
       self.token_harvested = token_harvested
+      self.profile_answer = profile if profile is not None else a_profile()
       self.calls: list[dict[str, object]] = []
       self.closed = False
 
@@ -109,6 +130,28 @@ class FakeClient:
       index = min(len(self.calls) - 1, len(self.pages) - 1)
 
       return self.pages[index]
+
+   def profile(self, username: str) -> Profile:
+      self.calls.append({"profile_username": username})
+
+      if self.failure is not None:
+         raise self.failure
+
+      if self.token_harvested is not None:
+         self.session.fb_dtsg = self.token_harvested
+
+      return self.profile_answer
+
+   def profile_by_id(self, user_id: str) -> Profile:
+      self.calls.append({"profile_user_id": user_id})
+
+      if self.failure is not None:
+         raise self.failure
+
+      if self.token_harvested is not None:
+         self.session.fb_dtsg = self.token_harvested
+
+      return self.profile_answer
 
    def close(self) -> None:
       self.closed = True
@@ -513,3 +556,80 @@ def test_a_page_count_below_one_is_refused_before_a_request(tmp_path: Path) -> N
       run(["--session", str(tmp_path / "session.json"), "thread", "123", "--pages", "0"])
 
    assert refused.value.code == 2
+
+
+def test_the_profile_command_reads_by_username_by_default() -> None:
+   """Catches a command that quietly treats every argument as an id and never resolves."""
+
+   client = FakeClient(a_session())
+   code, out, errors = run(
+      ["--session", "/tmp/session.json", "profile", "an-account"], client=client
+   )
+
+   assert code == 0
+   assert client.calls == [{"profile_username": "an-account"}]
+   assert "an-account" in out
+   assert errors == ""
+
+
+def test_the_profile_command_skips_resolution_under_by_id() -> None:
+   """The flag exists to spend one request instead of two, so it must reach the other call."""
+
+   client = FakeClient(a_session())
+   code, out, _ = run(
+      ["--session", "/tmp/session.json", "--json", "profile", "58435292991", "--by-id"],
+      client=client,
+   )
+
+   assert code == 0
+   assert client.calls == [{"profile_user_id": "58435292991"}]
+   assert json.loads(out)["requests_spent"] == 1
+
+
+def test_the_profile_command_reports_two_requests_when_it_resolves() -> None:
+   client = FakeClient(a_session())
+   _, out, _ = run(
+      ["--session", "/tmp/session.json", "--json", "profile", "an-account"], client=client
+   )
+
+   assert json.loads(out)["requests_spent"] == 2
+
+
+def test_the_profile_json_form_carries_the_identity_and_the_counts() -> None:
+   """The JSON keys are a contract, so a renamed one breaks whatever scripts this command."""
+
+   client = FakeClient(a_session())
+   _, out, _ = run(
+      ["--session", "/tmp/session.json", "--json", "profile", "an-account"], client=client
+   )
+
+   described = json.loads(out)["profile"]
+
+   assert described["id"] == "58435292991"
+   assert described["username"] == "an-account"
+   assert described["follower_count"] == 80
+   assert described["following_count"] == 124
+   assert described["media_count"] == 8
+
+
+def test_the_profile_command_prints_no_credential_when_the_read_fails() -> None:
+   """The same redaction gate the thread command has, because stderr is the leak path.
+
+   The message carries the credential in the ``sessionid=`` form the redactor recognises,
+   which is the form the library itself produces, so this gates redaction rather than luck.
+   """
+
+   leaky = AuthenticationFailed(f"the upstream refused sessionid={SESSIONID}")
+   client = FakeClient(a_session(), failure=leaky)
+   code, _, errors = run(["--session", "/tmp/session.json", "profile", "an-account"], client=client)
+
+   assert code == EXIT_BY_ERROR[AuthenticationFailed]
+   assert SESSIONID not in errors
+
+
+def test_the_profile_command_closes_its_client_even_when_the_read_fails() -> None:
+   client = FakeClient(a_session(), failure=RateLimited("slow down"))
+   code, _, _ = run(["--session", "/tmp/session.json", "profile", "an-account"], client=client)
+
+   assert code == EXIT_BY_ERROR[RateLimited]
+   assert client.closed
