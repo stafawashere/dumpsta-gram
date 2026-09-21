@@ -22,12 +22,15 @@ dumpstagram/
    _private/              endpoints, signing, device, transport
 ```
 
-What exists as of 2026-09-21, which is the target shape above minus everything Phase 2 brings:
+What exists as of 2026-09-21, which is the target shape above minus the models and the
+capabilities Phase 2 still has to bring:
 
 ```
 dumpstagram/
-   __init__.py            empty package marker
+   __init__.py            the public exports, and the declared surface
    py.typed
+   client.py              SyncClient, lifecycle only, no capability yet
+   aio.py                 AsyncClient, lifecycle only, no capability yet
    errors.py              the full public exception hierarchy
    session.py             Session, SpinParameters, ProxyConfig, SCHEMA_VERSION
    _core/
@@ -45,7 +48,10 @@ dumpstagram/
          requests.py      the body and header set
 ```
 
-No `client.py`, no `aio.py`, no `models/`, no `_core/realtime/`, and no capability. See
+No `models/`, no `_core/realtime/`, and no capability. The two facades carry construction,
+the session and user-agent accessors, and the close lifecycle, because the public surface
+snapshot in `tests/public_surface.txt` gates every name added after them and the cheapest time
+to start that file is before the first model. See
 [web-request-contract.md](web-request-contract.md) for the `_private/web/` layer and
 [build-plan.md](build-plan.md) for what comes next.
 

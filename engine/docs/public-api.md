@@ -52,13 +52,16 @@ exactly why login can be added later without touching the public surface. See
 
 ```python
 class SyncClient:
-   def __init__(self, session: Session) -> None:
+   def __init__(self, session: Session, *, user_agent: str | None = None) -> None:
       self._loop = _LoopThread.acquire()
-      self._impl = AsyncClient(session)
+      self._impl = AsyncClient(session, user_agent=user_agent)
 
    def user_info(self, username: str) -> User:
-      return self._loop.run(self._impl.user_info(username))
+      return self._loop.run(self._impl.user_info(username), operation="SyncClient.user_info")
 ```
+
+Written 2026-09-21, minus the capability. `user_info` above is the shape every capability
+takes, and the first real one arrives with the first typed model.
 
 Two properties of this shape are load-bearing.
 
@@ -67,6 +70,11 @@ Two properties of this shape are load-bearing.
 `self._loop.run(...)` wraps `asyncio.run_coroutine_threadsafe`. It never calls
 `asyncio.run()`, which would create and destroy the loop per call, tearing down the
 connection pool and discarding loop-bound session state.
+
+The reference is held from construction until `close`, so both surfaces carry a lifecycle:
+`SyncClient` supports `with` and `close()`, `AsyncClient` supports `async with` and
+`aclose()`, and both are idempotent. A client that is never closed keeps the shared thread
+alive for the lifetime of the process.
 
 ## Stability contract
 
@@ -96,6 +104,14 @@ because a wording fix is not an API change.
 Changing the public API therefore means regenerating the snapshot in the same change, which
 puts the change in a diff a human reads. The snapshot is a gate, so it may be regenerated
 deliberately and may never be regenerated to make a failing test pass.
+
+Landed 2026-09-21, as the first thing Phase 2 built. `scripts/snapshot_surface.py` renders it,
+`tests/test_public_surface.py` diffs it, and the committed file is 79 lines. The declared
+surface is `__all__`, a name re-exported from another module renders as one alias line rather
+than a second copy of the definition, and the renderer sorts by dotted path so a diff groups by
+name. Stability is gated in two subprocesses under different `PYTHONHASHSEED` values, because
+set iteration order is what usually makes a generated artifact unstable and it is invisible
+inside one process.
 
 ### Versioning
 

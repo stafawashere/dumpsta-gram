@@ -7,6 +7,8 @@ Everything importable from here without a leading underscore carries the stabili
 from logging import NullHandler as _NullHandler
 from logging import getLogger as _getLogger
 
+from dumpstagram.aio import AsyncClient
+from dumpstagram.client import SyncClient
 from dumpstagram.errors import (
    RETRYABLE,
    AuthenticationFailed,
@@ -24,6 +26,7 @@ from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParame
 __all__ = [
    "RETRYABLE",
    "SCHEMA_VERSION",
+   "AsyncClient",
    "AuthenticationFailed",
    "CheckpointRequired",
    "DumpstagramError",
@@ -34,6 +37,7 @@ __all__ = [
    "SchemaChanged",
    "Session",
    "SpinParameters",
+   "SyncClient",
    "TransportFailure",
    "UpstreamRejected",
 ]
