@@ -153,6 +153,14 @@ durable because it has no `doc_id` to rotate.
 The Phase 1 stop condition is unchanged: authenticate, save the session to disk, kill the
 process, reload, and make an authenticated call without re-authenticating.
 
+Met 2026-09-21 by `probes/adopt_and_save.py` and `probes/reload_and_call.py`, three live requests
+across two processes. The reload probe read no credential from `.env` at all, and the stored
+`fb_dtsg` was accepted without a re-bootstrap, so the session file alone carried the call. The
+session file is `engine/state/session.json`, gitignored under `state/`, written owner-only, 734
+bytes. What the run does not establish is token lifetime: the stored token was 6.1 seconds old,
+against an existing lower bound of 16 minutes. Rerunning the reload probe against an old session
+file is the cheapest measurement of that, one request.
+
 **This project reaches it the same way the prior project did, by not logging in.** Phase 1
 adopts an existing browser session. Ruled 2026-09-20 in
 [../../docs/decisions/ADR-0008-adopt-existing-browser-session.md](../../docs/decisions/ADR-0008-adopt-existing-browser-session.md).

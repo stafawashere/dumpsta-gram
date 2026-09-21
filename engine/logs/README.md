@@ -27,3 +27,5 @@ Logs live at `engine/logs/` rather than under `engine/tests/`, moved 2026-09-20 
 | File | What it is |
 |---|---|
 | `live-repro-2026-09-20-json.log` | First live two-request run from this repository. Written up in [docs/knowledge/live-reproduction-2026-09-20.md](../../docs/knowledge/live-reproduction-2026-09-20.md). |
+| `adopt-and-save-<stamp>.json` | One run of `../probes/adopt_and_save.py`. Two live requests, and the observed mode and size of the session file it wrote. |
+| `reload-and-call-<stamp>.json` | One run of `../probes/reload_and_call.py`. The Phase 1 stop condition, including whether the stored tokens were accepted and how old they were. |
