@@ -21,6 +21,7 @@ the page's: both measured loads sent all six within 5 ms.
 
 from __future__ import annotations
 
+from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.pacer import run_with_retries
 from dumpstagram._core.page_load import raise_only_what_concerns_the_account, send_companions
 from dumpstagram._core.requesting import PacedSender
@@ -125,6 +126,7 @@ async def read_profile(
    *,
    route: ProfileRoute = ProfileRoute.QUERIES,
    companions: bool = False,
+   cookie_sync: CookieSync | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Profile:
@@ -132,7 +134,8 @@ async def read_profile(
 
    Under :attr:`ProfileRoute.QUERIES` that is two live requests, serial because the second
    needs the first one's answer. Under :attr:`ProfileRoute.PAGE` it is the page load
-   :func:`read_profile_from_page` describes, and ``companions`` applies only there. ``QUERIES``
+   :func:`read_profile_from_page` describes, and ``companions`` and ``cookie_sync`` apply only
+   there. ``QUERIES``
    and no companions stay the defaults at this level so callers below the client keep the
    requests they had, and the client passes its behavior down.
    """
@@ -143,6 +146,7 @@ async def read_profile(
          session,
          username,
          companions=companions,
+         cookie_sync=cookie_sync,
          user_agent=user_agent,
          deadline=deadline,
       )
@@ -167,6 +171,7 @@ async def read_profile_from_page(
    username: str,
    *,
    companions: bool = False,
+   cookie_sync: CookieSync | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Profile:
@@ -184,12 +189,16 @@ async def read_profile_from_page(
    Only the profile query's answer is read. The other five are checked for a checkpoint or a
    throttle, which concern the whole account, and otherwise left alone, so a companion the
    upstream stops answering does not cost the caller the profile.
+
+   With ``cookie_sync`` a successful load schedules the page's cookie sync tail, timed from the
+   document's departure. A load that raises schedules none.
    """
 
    page_url = profile_page_url(username)
 
    async def attempt() -> Profile:
       async with sender.action() as action:
+         loaded_at = sender.pacer.now()
          document = await action.send(build_document_request(page_url, user_agent))
 
          apply_tokens(session, tokens_from(document))
@@ -214,6 +223,11 @@ async def read_profile_from_page(
             )
             await send_companions(action, groups)
 
-      return parse_profile(classify(profile_response))
+      profile = parse_profile(classify(profile_response))
+
+      if cookie_sync is not None:
+         cookie_sync.start(session, page_url, loaded_at=loaded_at, user_agent=user_agent)
+
+      return profile
 
    return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)

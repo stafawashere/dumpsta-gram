@@ -20,6 +20,7 @@ __all__ = [
    "API_GRAPHQL_URL",
    "BADGE_COUNT",
    "CHAT_TABS_JEWEL",
+   "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
    "OMNI_PICKER_NULL_STATE",
@@ -257,3 +258,12 @@ STORIES_TRAY = PersistedQuery(
 )
 """The stories tray, prefetched by every load that is not the home page. The home document
 carries it as a preloader instead."""
+
+
+GET_FR_COOKIE = PersistedQuery(
+   doc_id="27399811883030165",
+   friendly_name="PolarisAPIGetFrCookieQuery",
+   finding_id="get-encrypted-fr-cookie",
+)
+"""The page-load cookie sync's exchange of the stored ``fr`` for the current one. Sent seconds
+after the document, outside its action, never inside one."""

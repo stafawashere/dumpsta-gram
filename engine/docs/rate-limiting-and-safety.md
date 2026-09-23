@@ -186,6 +186,17 @@ timeline query the page sends and the engine does not read. Another account meas
 browser capture cost 1.51 MB of answers. `ProfileRoute.QUERIES` costs two requests and about
 32 kB.
 
+The page-load cookie sync is the one traffic that departs outside any slot, ruling 17 in
+[build-plan.md](build-plan.md). After a document action succeeds, `_core/cookie_sync.py`
+schedules four requests on the client's loop, two to www.facebook.com through the cookieless
+transport and two to www.instagram.com, 4 to 10 s after the document departed, as twelve
+captured loads sent them. They go through `BackgroundSender`, which waits while the account is
+held for a throttle but takes no slot and records no departure, so the tail neither stalls the
+user's next action nor sets the gap before it. A tail departs nothing once
+`Session.checkpoint_active` is set, a checkpoint on any later call drops it, and a newer
+document load or closing the client cancels it. `Behavior.cookie_sync` set to False sends none
+of it.
+
 ## Defaults
 
 Conservative. Consumers who know what they are doing can widen them, and the widening is

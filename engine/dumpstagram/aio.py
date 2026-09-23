@@ -15,16 +15,19 @@ to `_core`, which is where pacing, retries, pagination and the token recovery li
 from __future__ import annotations
 
 import os
+from collections.abc import Awaitable
 from types import TracebackType
 
+from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
-from dumpstagram._core.requesting import PacedSender
+from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
+from dumpstagram.errors import CheckpointRequired
 from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
 
@@ -72,6 +75,10 @@ class AsyncClient:
       )
 
       self._sender = PacedSender(transport, Pacer(), pacing_for(behavior))
+      self._cookie_sync = CookieSync(
+         self._sender.background(),
+         BackgroundSender(self._facebook, self._sender.pacer),
+      )
 
    @classmethod
    def from_session_file(
@@ -110,6 +117,7 @@ class AsyncClient:
       scoped._owner = self._owner or self
       scoped._facebook = self._facebook
       scoped._sender = self._sender.with_pacing(pacing_for(behavior))
+      scoped._cookie_sync = self._cookie_sync
 
       return scoped
 
@@ -168,14 +176,16 @@ class AsyncClient:
 
       self._refuse_when_closed()
 
-      return await read_thread_messages(
-         self._sender,
-         self._session,
-         thread_fbid,
-         after=after,
-         newer_than_message_id=newer_than_message_id,
-         first_page=self._behavior.thread_first_page,
-         user_agent=self._user_agent,
+      return await self._watch_for_checkpoint(
+         read_thread_messages(
+            self._sender,
+            self._session,
+            thread_fbid,
+            after=after,
+            newer_than_message_id=newer_than_message_id,
+            first_page=self._behavior.thread_first_page,
+            user_agent=self._user_agent,
+         )
       )
 
    async def profile(self, username: str) -> Profile:
@@ -196,13 +206,16 @@ class AsyncClient:
 
       self._refuse_when_closed()
 
-      return await read_profile(
-         self._sender,
-         self._session,
-         username,
-         route=self._behavior.profile_route,
-         companions=self._behavior.page_load_companions,
-         user_agent=self._user_agent,
+      return await self._watch_for_checkpoint(
+         read_profile(
+            self._sender,
+            self._session,
+            username,
+            route=self._behavior.profile_route,
+            companions=self._behavior.page_load_companions,
+            cookie_sync=self._cookie_sync_if_on(),
+            user_agent=self._user_agent,
+         )
       )
 
    async def profile_by_id(self, user_id: str) -> Profile:
@@ -215,11 +228,13 @@ class AsyncClient:
 
       self._refuse_when_closed()
 
-      return await read_profile_by_id(
-         self._sender,
-         self._session,
-         user_id,
-         user_agent=self._user_agent,
+      return await self._watch_for_checkpoint(
+         read_profile_by_id(
+            self._sender,
+            self._session,
+            user_id,
+            user_agent=self._user_agent,
+         )
       )
 
    async def feed(self, *, after: str | None = None) -> Page[FeedItem]:
@@ -245,14 +260,30 @@ class AsyncClient:
 
       self._refuse_when_closed()
 
-      return await read_feed_page(
-         self._sender,
-         self._session,
-         after=after,
-         first_page=self._behavior.feed_first_page,
-         companions=self._behavior.page_load_companions,
-         user_agent=self._user_agent,
+      return await self._watch_for_checkpoint(
+         read_feed_page(
+            self._sender,
+            self._session,
+            after=after,
+            first_page=self._behavior.feed_first_page,
+            companions=self._behavior.page_load_companions,
+            cookie_sync=self._cookie_sync_if_on(),
+            user_agent=self._user_agent,
+         )
       )
+
+   def _cookie_sync_if_on(self) -> CookieSync | None:
+      return self._cookie_sync if self._behavior.cookie_sync else None
+
+   async def _watch_for_checkpoint[T](self, operation: Awaitable[T]) -> T:
+      """Drop a pending cookie sync tail the moment the account turns out to be in a checkpoint,
+      since nothing may be sent on its behalf until the user clears it."""
+
+      try:
+         return await operation
+      except CheckpointRequired:
+         self._cookie_sync.drop()
+         raise
 
    def _refuse_when_closed(self) -> None:
       if self.closed:
@@ -272,9 +303,12 @@ class AsyncClient:
       owns_the_pool = self._owner is None
       if owns_the_pool:
          try:
-            await self._sender.aclose()
+            await self._cookie_sync.aclose()
          finally:
-            await self._facebook.aclose()
+            try:
+               await self._sender.aclose()
+            finally:
+               await self._facebook.aclose()
 
    async def __aenter__(self) -> AsyncClient:
       return self

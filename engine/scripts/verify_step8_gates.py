@@ -30,8 +30,11 @@ TOKENS = "dumpstagram/_core/tokens.py"
 TRANSPORT = "dumpstagram/_private/transport.py"
 ERRORS = "dumpstagram/errors.py"
 
-PACED_SEND_BODY = """      async with self.pacer.slot():
+PACED_SEND_BODY = """      async with self.pacer.slot(self.pacing):
          return await self._sender.send(request)"""
+
+PACED_SEND_SIGNATURE = """   async def send(self, request: Request) -> Response:
+      \"\"\"Wait until this account may send again, then send inside the same slot."""
 
 BYPASS_THE_PACER = "      return await self._sender.send(request)"
 
@@ -84,8 +87,8 @@ MUTATIONS = [
       "gate": "tests/test_requesting.py::test_the_paced_sender_is_a_sender",
       "defect": "the wrapper stops satisfying Sender, so callers must unwrap it to send",
       "file": REQUESTING,
-      "find": "   async def send(self, request: Request) -> Response:",
-      "replace": "   async def dispatch(self, request: Request) -> Response:",
+      "find": PACED_SEND_SIGNATURE,
+      "replace": PACED_SEND_SIGNATURE.replace("def send", "def dispatch"),
    },
    {
       "gate": "tests/test_requesting.py::test_every_outbound_request_is_spaced_at_the_transport",

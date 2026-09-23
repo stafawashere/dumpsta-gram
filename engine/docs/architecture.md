@@ -38,6 +38,7 @@ dumpstagram/
       pacer.py            Pacer, PacingPolicy, BackoffPolicy, run_with_retries
       requesting.py       PacedSender, the one path a request leaves by
       page_load.py        send_companions, the page load burst after a document
+      cookie_sync.py      CookieSync, the delayed cookie sync tail after a document
       tokens.py           the re-bootstrap judgement both readers share
       smoke.py            read_one_thread_page, internal, no model and no public name
       loop_thread.py      _LoopThread, refcounted and shared, the seam and its note
@@ -51,6 +52,7 @@ dumpstagram/
          classify.py      classify, classify_checkpoint_only
          bootstrap.py     token harvest from one authenticated page
          documents.py     the persisted GraphQL query registry
+         cookie_sync.py   the four cookie sync requests and how their answers are read
          requests.py      the body and header set
          parse.py         the payload mapped into typed models
 ```
@@ -131,7 +133,10 @@ honestly.
 
 `asyncio.gather` is therefore reserved for work the pacer does not serialize: media and CDN
 fetches, traffic belonging to different accounts, and work overlapping a long-lived
-connection. A concurrent fan-out over paced API calls is a defect, not an optimization. See
+connection. A concurrent fan-out over paced API calls is a defect, not an optimization. Two
+named exceptions exist, both ruled by the owner on 2026-09-23: the requests of one page load
+that a browser sends together go out together inside one pacer slot, and the page-load cookie
+sync runs as a delayed task outside any slot after the document action ends. See
 [ADR-0001](../../docs/decisions/ADR-0001-async-core-sync-facade.md) and
 [engineering/05-io-concurrency-and-pacing.md](engineering/05-io-concurrency-and-pacing.md).
 

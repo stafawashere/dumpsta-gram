@@ -128,6 +128,14 @@ when absent, never in a representation or a log. The design, the update rule it 
 from the page, and the ruling that lets it be supplied at adoption as `IG_FR` are in
 [build-plan.md](build-plan.md), section 17.2.3.
 
+The cookie sync tail in `_core/cookie_sync.py` applies that rule since 2026-09-23. It sends
+the stored value, or null, as the exchange's payload. An answer equal to it changes nothing,
+an empty answer sets `fr` to `None`, any other answer is stored, and a failed exchange sets it
+to `None`. The engine changes the session in memory only. The CLI saves it after each command,
+but a one-shot command usually closes its client before the tail departs, so the stored value
+changes only for a caller whose client lives past the 4 to 10 s delay. A tail that meets a
+checkpoint sets `Session.checkpoint_active`.
+
 ## Two inherited bugs worth not repeating
 
 Both had the same shape, and both produced a complete, plausible, entirely wrong result rather

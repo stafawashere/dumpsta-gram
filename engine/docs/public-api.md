@@ -69,7 +69,8 @@ override keyword and no existing snapshot line changes when a setting is added. 
 does not close the pool. Closing the owner stops both.
 
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
-`feed_first_page`, `profile_route`, `thread_first_page` and `page_load_companions`.
+`feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions` and
+`cookie_sync`.
 `feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a
@@ -106,8 +107,21 @@ document's own paced action and in the recorded page's order and grouping. None 
 is read, a checkpoint or throttle on one is still raised, and any other failure on one is
 ignored. The badge count and the jewel are keyed on a device id each document carries, and are
 left out when a document carries none. What a browser also sends and these do not: the manifest,
-`fxcal/ig_sso_users`, the profile page's feed prefetch, and the facebook.com cookie sync. False
-leaves the companions out and changes nothing else. Every preset keeps True.
+`fxcal/ig_sso_users`, and the profile page's feed prefetch. The facebook.com cookie sync is
+governed by `cookie_sync`, not by this setting. False leaves the companions out and changes
+nothing else. Every preset keeps True.
+
+`cookie_sync` decides whether a document load leaves behind the cookie sync a browser's page runs
+seconds later. It applies to the same two routes, and only when the load succeeds. True, the
+parity default, sends four requests 4 to 10 s after the document departed, outside the
+document's action and without waiting for the caller's next one: the facebook.com
+`/instagram/login_sync/` iframe document, then together the `PolarisAPIGetFrCookieQuery`
+exchange of `Session.fr` and the iframe's `/instagram/sync/` fetch, then the post of the
+fetched blob to `/sync/instagram/`. The two facebook.com requests carry no cookies. Nothing is
+returned to the caller and no failure reaches them. The exchange updates `Session.fr` by the
+page's rule. A client closed before the delay sends none of it, which is the usual case for a
+single CLI command. False sends none of it and changes nothing else, and it is the setting for
+a caller who wants no traffic to facebook.com. Every preset keeps True.
 
 Other companion requests and side effects such as marking a thread read become fields with
 parity defaults when the requests behind them are implemented, which is an additive snapshot

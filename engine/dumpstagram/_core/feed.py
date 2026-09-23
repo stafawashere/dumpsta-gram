@@ -19,6 +19,7 @@ the feed scrolls.
 
 from __future__ import annotations
 
+from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.pacer import run_with_retries
 from dumpstagram._core.page_load import send_companions
 from dumpstagram._core.requesting import PacedSender
@@ -56,6 +57,7 @@ async def read_feed_page(
    after: str | None = None,
    first_page: FeedFirstPage = FeedFirstPage.QUERY,
    companions: bool = False,
+   cookie_sync: CookieSync | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Page[FeedItem]:
@@ -68,15 +70,20 @@ async def read_feed_page(
    a caller counting posts has to keep asking and must stop on
    :attr:`~dumpstagram.models.Page.has_next_page` rather than on a page looking short.
 
-   ``companions`` applies only when the first page is read from the home document, since that
-   is the only page load here.
+   ``companions`` and ``cookie_sync`` apply only when the first page is read from the home
+   document, since that is the only page load here.
    """
 
    reads_the_document = after is None and first_page is FeedFirstPage.DOCUMENT
 
    if reads_the_document:
       return await read_first_feed_page_from_document(
-         sender, session, companions=companions, user_agent=user_agent, deadline=deadline
+         sender,
+         session,
+         companions=companions,
+         cookie_sync=cookie_sync,
+         user_agent=user_agent,
+         deadline=deadline,
       )
 
    async def attempt() -> Page[FeedItem]:
@@ -98,6 +105,7 @@ async def read_first_feed_page_from_document(
    session: Session,
    *,
    companions: bool = False,
+   cookie_sync: CookieSync | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Page[FeedItem]:
@@ -112,10 +120,14 @@ async def read_first_feed_page_from_document(
    With ``companions`` the document and the home page load companions are one action, and the
    companions go out after the document's tokens are on the session and before the preload is
    read, as a page's do whether or not its feed renders.
+
+   With ``cookie_sync`` a successful load schedules the page's cookie sync tail, timed from the
+   document's departure. A load that raises schedules none.
    """
 
    async def attempt() -> Page[FeedItem]:
       async with sender.action() as action:
+         loaded_at = sender.pacer.now()
          response = await action.send(build_document_request(HOME_DOCUMENT_URL, user_agent))
 
          apply_tokens(session, tokens_from(response))
@@ -129,7 +141,11 @@ async def read_first_feed_page_from_document(
             await send_companions(action, groups)
 
       result = read_preloaded_result(response.text, FEED_TIMELINE_PRELOADER)
+      page = parse_feed_page(classify_preloaded(result))
 
-      return parse_feed_page(classify_preloaded(result))
+      if cookie_sync is not None:
+         cookie_sync.start(session, HOME_DOCUMENT_URL, loaded_at=loaded_at, user_agent=user_agent)
+
+      return page
 
    return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)

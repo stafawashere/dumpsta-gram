@@ -52,6 +52,7 @@ property dumpstagram.aio.AsyncClient.user_agent -> str
 def dumpstagram.aio.AsyncClient.with_behavior(self, behavior: Behavior) -> AsyncClient
 module dumpstagram.behavior
 class dumpstagram.behavior.Behavior()
+field dumpstagram.behavior.Behavior.cookie_sync: bool = True
 field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
 field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>

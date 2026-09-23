@@ -66,8 +66,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             FEED,
-            "return parse_feed_page(classify_preloaded(result))",
-            "return parse_feed_page(result)",
+            "page = parse_feed_page(classify_preloaded(result))",
+            "page = parse_feed_page(result)",
          )
       ],
    },

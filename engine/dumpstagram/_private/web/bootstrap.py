@@ -36,10 +36,13 @@ __all__ = [
    "FACEBOOK_HOST",
    "INSTAGRAM_HOST",
    "BootstrapTokens",
+   "PageParameters",
    "apply_tokens",
    "bootstrap",
    "build_bootstrap_request",
    "build_document_request",
+   "read_page_parameters",
+   "read_spin",
    "read_tokens",
    "tokens_from",
 ]
@@ -117,6 +120,16 @@ class BootstrapTokens:
 # G9N7E-K9NZE-GTWKC-XQ9TR
 
 
+@dataclass(frozen=True)
+class PageParameters:
+   """The request parameters a page carries that do not depend on being logged in."""
+
+   lsd: str | None
+   spin: SpinParameters
+   hsi: str | None
+   haste_session: str | None
+
+
 def _first_match(pattern: re.Pattern[str], html: str) -> str | None:
    """The first capture of ``pattern``, or ``None``.
 
@@ -181,21 +194,42 @@ def read_tokens(html: str) -> BootstrapTokens:
          "token extraction has broken against a new bundle"
       )
 
-   spin_revision = _first_match(_SPIN_REVISION, html)
-   server_revision = _first_match(_SERVER_REVISION, html) or spin_revision
-
    return BootstrapTokens(
       fb_dtsg=fb_dtsg,
       lsd=lsd,
       app_id=_first_match(_APP_ID, html) or DEFAULT_APP_ID,
-      spin=SpinParameters(
-         revision=server_revision,
-         branch=_first_match(_SPIN_BRANCH, html),
-         timestamp=_first_match(_SPIN_TIMESTAMP, html),
-      ),
+      spin=read_spin(html),
       hsi=_first_match(_HSI, html),
       haste_session=_first_match(_HASTE_SESSION, html),
       bloks_version_id=_first_match(_BLOKS_VERSION_ID, html),
+   )
+
+
+def read_spin(html: str) -> SpinParameters:
+   """The ``__spin_*`` family of one page, with ``server_revision`` preferred as the revision."""
+
+   spin_revision = _first_match(_SPIN_REVISION, html)
+   server_revision = _first_match(_SERVER_REVISION, html) or spin_revision
+
+   return SpinParameters(
+      revision=server_revision,
+      branch=_first_match(_SPIN_BRANCH, html),
+      timestamp=_first_match(_SPIN_TIMESTAMP, html),
+   )
+
+
+def read_page_parameters(html: str) -> PageParameters:
+   """What any page built on the same bundle carries for its own requests, logged in or not.
+
+   The facebook.com cookie sync iframe is such a page. It carries no ``fb_dtsg`` because it is
+   logged out, so :func:`read_tokens` would call it a dead session.
+   """
+
+   return PageParameters(
+      lsd=_first_match(_LSD, html),
+      spin=read_spin(html),
+      hsi=_first_match(_HSI, html),
+      haste_session=_first_match(_HASTE_SESSION, html),
    )
 
 

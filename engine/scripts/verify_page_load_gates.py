@@ -185,9 +185,9 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             CLIENT,
-            "         first_page=self._behavior.feed_first_page,\n"
-            "         companions=self._behavior.page_load_companions,\n",
-            "         first_page=self._behavior.feed_first_page,\n",
+            "            first_page=self._behavior.feed_first_page,\n"
+            "            companions=self._behavior.page_load_companions,\n",
+            "            first_page=self._behavior.feed_first_page,\n",
          )
       ],
    },
@@ -197,9 +197,9 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             CLIENT,
-            "         route=self._behavior.profile_route,\n"
-            "         companions=self._behavior.page_load_companions,\n",
-            "         route=self._behavior.profile_route,\n         companions=True,\n",
+            "            route=self._behavior.profile_route,\n"
+            "            companions=self._behavior.page_load_companions,\n",
+            "            route=self._behavior.profile_route,\n            companions=True,\n",
          )
       ],
    },

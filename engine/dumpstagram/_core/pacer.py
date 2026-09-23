@@ -179,6 +179,25 @@ class Pacer:
 
       await self._sleep(seconds)
 
+   async def wait_out_hold(self) -> None:
+      """Wait while the account is held, without taking a slot or recording a departure.
+
+      For traffic a page sends on its own between the user's actions, which a throttle still
+      stops and which the next action's gap is not measured from.
+      """
+
+      while True:
+         remaining = self._held_until - self._clock()
+         if remaining <= 0:
+            return
+
+         await self._sleep(remaining)
+
+   async def sleep(self, seconds: float) -> None:
+      """Sleep on this pacer's clock, so a fake clock covers whoever waits through it."""
+
+      await self._sleep(seconds)
+
    async def _wait_until_allowed(self, pacing: PacingPolicy) -> None:
       gap = self._gap_seconds(pacing)
 

@@ -24,7 +24,7 @@ from types import TracebackType
 from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._private.transport import Request, Response, Sender
 
-__all__ = ["ActionSender", "PacedSender"]
+__all__ = ["ActionSender", "BackgroundSender", "PacedSender"]
 
 
 class ActionSender:
@@ -53,6 +53,25 @@ class ActionSender:
          tasks = [group.create_task(self._sender.send(request)) for request in requests]
 
       return [task.result() for task in tasks]
+
+
+class BackgroundSender:
+   """Sends what a page sends on its own between the user's actions, outside any slot.
+
+   It still passes the account's pacer: every send waits while the account is held for a
+   throttle. It takes no slot and records no departure, because a page's own background
+   traffic neither waits for the user's next action nor sets the gap before it. The page-load
+   cookie sync is the one sender of this kind, ruling 17 in ``engine/docs/build-plan.md``.
+   """
+
+   def __init__(self, sender: Sender, pacer: Pacer) -> None:
+      self._sender = sender
+      self.pacer = pacer
+
+   async def send(self, request: Request) -> Response:
+      await self.pacer.wait_out_hold()
+
+      return await self._sender.send(request)
 
 
 class PacedSender:
@@ -100,6 +119,14 @@ class PacedSender:
 
       async with self.pacer.slot(self.pacing):
          yield ActionSender(self._sender)
+
+   def background(self) -> BackgroundSender:
+      """A :class:`BackgroundSender` over the same transport and the same account's pacer.
+
+      The transport still belongs to this sender's owner.
+      """
+
+      return BackgroundSender(self._sender, self.pacer)
 
    async def aclose(self) -> None:
       closer = getattr(self._sender, "aclose", None)

@@ -6,10 +6,10 @@ never global, per ADR-0004. The presets below are ordinary instances, so a prese
 nothing a caller could not set by hand, and ``dataclasses.replace`` derives a variant of one.
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
-feed's first page the second, the profile route the third, a thread's first page the fourth
-and the page load companions the fifth. Other companion requests and side effects such as
-marking a thread read become settings when the requests behind them are implemented, as new
-fields with parity defaults.
+feed's first page the second, the profile route the third, a thread's first page the fourth,
+the page load companions the fifth and the cookie sync the sixth. Other companion requests and
+side effects such as marking a thread read become settings when the requests behind them are
+implemented, as new fields with parity defaults.
 
 What every departure costs is in ``engine/docs/rate-limiting-and-safety.md``. There is no floor
 on rate: a caller may set spacing to zero, and the engine does not overrule that decision.
@@ -116,6 +116,13 @@ class Behavior:
    picker, two quick promotion calls, and on a profile page the stories tray. None of their
    answers is read. Five or six requests inside the document's own action, departing in the
    page's order and grouping. False leaves them out and changes nothing else.
+
+   ``cookie_sync`` runs, after every document the engine loads, the four requests a browser's
+   page sends seconds later to keep its ``fr`` in step with facebook.com: two to
+   www.facebook.com carrying no cookies and two to www.instagram.com. They go out 4 to 10 s
+   after the document, outside any action and without waiting for the next one, and a client
+   closed before then sends none of them. False leaves them out, including all traffic to
+   facebook.com, and changes nothing else. The page load companions do not govern it.
    """
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
@@ -123,6 +130,7 @@ class Behavior:
    profile_route: ProfileRoute = ProfileRoute.PAGE
    thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
    page_load_companions: bool = True
+   cookie_sync: bool = True
 
 
 PARITY = Behavior()
