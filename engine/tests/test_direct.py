@@ -3,7 +3,7 @@
 Three defect classes live here. The capability can return the wrong shape, which is how a raw
 dict reaches a caller and the churn boundary stops existing. It can drop a pagination argument,
 which reads page one forever and looks like a thread that never grows. And the two facades can
-disagree, which is the drift ADR-0011 can detect and nothing yet prevents.
+disagree, which is the drift ADR-0011 detects and `test_facade_parity.py` prevents.
 
 Every response is canned. Nothing in this file touches the network.
 """
@@ -246,7 +246,7 @@ async def test_the_async_facade_forwards_every_argument(monkeypatch: pytest.Monk
 
 
 def test_the_sync_facade_forwards_every_argument(monkeypatch: pytest.MonkeyPatch) -> None:
-   """Catches the two surfaces drifting, which the snapshot detects and nothing prevents."""
+   """Catches the two surfaces drifting on the arguments of this capability."""
 
    spy = SpyCapability()
    monkeypatch.setattr(aio, "read_thread_messages", spy)

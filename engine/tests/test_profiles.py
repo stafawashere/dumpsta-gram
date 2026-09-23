@@ -13,7 +13,7 @@ read what went on the wire.
 The username route can lose its emptiness. An account with nothing visible resolves to no id
 at all, and returning a hollow profile there would be worse than failing.
 
-And the two facades can disagree, which is the drift ADR-0011 detects and nothing prevents.
+And the two facades can disagree, which is the drift `test_facade_parity.py` prevents.
 
 Every response is canned. Nothing in this file touches the network.
 """

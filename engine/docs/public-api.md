@@ -143,16 +143,34 @@ repairing it is invisible to callers, so it is a patch. See
 Every public capability exists in both a sync and an async form. Without a mechanism,
 they drift. This is the main long-term maintenance risk in the design.
 
-Three candidate mechanisms, none chosen yet:
+**Ruled 2026-09-22: one shared parity suite.** The other two candidates were generating the
+facade mechanically from the async surface, and manual discipline plus review. Generation was
+rejected because each facade method is five lines of forwarding, and a generator, a
+do-not-edit file and a freshness gate cost more than they save at this size. Review alone was
+rejected because it is the thing that already missed nothing only by luck.
 
-- Generate the facade mechanically from the async surface.
-- Drive both through one shared test suite, so a missing facade method fails a test.
-- Manual discipline plus review.
+`tests/test_facade_parity.py` names no capability. It discovers every public coroutine on
+`AsyncClient` and, for each one, demands a `SyncClient` method that:
 
-UNRESOLVED as a mechanism. What is no longer missing is detection: both surfaces appear in
-`tests/public_surface.txt`, so a method added to one and not the other shows up as an
-asymmetric diff. That catches drift, it does not prevent it, and whoever implements the facade
-should still choose a mechanism before the method count grows. See
+- exists, under the same name, and is not itself a coroutine
+- takes the same parameters, in the same order, with the same kinds, defaults and annotations,
+  and returns the same type
+- forwards every argument to the async method unchanged, proven with one distinct object per
+  parameter so a dropped or swapped argument cannot compare equal
+- runs the coroutine on the shared loop thread and returns the object it returned
+- re-raises the object the async side raised, carrying the seam note under its own name
+
+The two public name sets must also match, with `aclose` answering to `close`, and every shared
+name must be the same kind of member on both classes. The discovery itself has a positive
+control: the capability list read off the class must equal the one read off
+`tests/public_surface.txt`, so a discovery rule that finds nothing fails instead of leaving
+every parametrised gate green by running none of them.
+
+What it prevents is a drift reaching a commit, since adding a coroutine to `AsyncClient` fails
+the suite until the facade method exists and forwards correctly. It does not write the facade
+method, and a facade method still has to be written by hand. `scripts/verify_parity_gates.py`
+breaks the facades ten ways and watches each gate go red, including a capability added to the
+async surface with the snapshot updated to match. See
 [../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md](../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md).
 
 ## Errors as part of the API

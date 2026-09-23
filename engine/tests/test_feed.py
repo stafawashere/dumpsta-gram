@@ -416,7 +416,7 @@ async def test_the_capability_passes_the_cursor_it_was_given_to_the_wire() -> No
 
 
 def test_both_facades_carry_the_feed_with_the_same_signature() -> None:
-   """Catches the asymmetric drift ADR-0011 detects and nothing else prevents."""
+   """Catches the asymmetric drift ADR-0011 detects, for this capability by name."""
 
    from inspect import signature
 
