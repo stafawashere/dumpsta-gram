@@ -6,9 +6,9 @@ never global, per ADR-0004. The presets below are ordinary instances, so a prese
 nothing a caller could not set by hand, and ``dataclasses.replace`` derives a variant of one.
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
-feed's first page the second and the profile route the third. Other companion requests and
-side effects such as marking a thread read become settings when the requests behind them are
-implemented, as new fields with parity defaults.
+feed's first page the second, the profile route the third and a thread's first page the
+fourth. Other companion requests and side effects such as marking a thread read become settings
+when the requests behind them are implemented, as new fields with parity defaults.
 
 What every departure costs is in ``engine/docs/rate-limiting-and-safety.md``. There is no floor
 on rate: a caller may set spacing to zero, and the engine does not overrule that decision.
@@ -19,7 +19,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-__all__ = ["EXPORT", "FAST", "PARITY", "Behavior", "FeedFirstPage", "ProfileRoute", "Spacing"]
+__all__ = [
+   "EXPORT",
+   "FAST",
+   "PARITY",
+   "Behavior",
+   "FeedFirstPage",
+   "ProfileRoute",
+   "Spacing",
+   "ThreadFirstPage",
+]
 
 
 @dataclass(frozen=True)
@@ -74,6 +83,25 @@ class ProfileRoute(Enum):
    QUERIES = "queries"
 
 
+class ThreadFirstPage(Enum):
+   """How the newest page of a direct thread is read.
+
+   ``DETAIL`` is what a browser does when it opens a thread: it sends the thread detail query,
+   which answers with the thread and its newest 20 messages, about 42 kB for 20. Every older
+   page then goes through the pagination query.
+
+   ``QUERY`` asks the pagination query for the newest page too, which no browser was observed
+   to do. It is one request either way and returns the same messages.
+
+   Neither sends the rest of what a browser's thread load sends, the eleven inbox queries and
+   the detail query for fifteen other threads, and neither marks the thread seen, which a
+   browser does over a socket nothing here speaks yet.
+   """
+
+   DETAIL = "detail"
+   QUERY = "query"
+
+
 @dataclass(frozen=True)
 class Behavior:
    """Everything about a client's traffic that is not the shape of a single request.
@@ -86,6 +114,7 @@ class Behavior:
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
    feed_first_page: FeedFirstPage = FeedFirstPage.DOCUMENT
    profile_route: ProfileRoute = ProfileRoute.PAGE
+   thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
 
 
 PARITY = Behavior()

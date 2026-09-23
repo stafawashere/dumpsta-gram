@@ -16,6 +16,7 @@ from dumpstagram.behavior import (
    FeedFirstPage,
    ProfileRoute,
    Spacing,
+   ThreadFirstPage,
 )
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import (
@@ -78,6 +79,7 @@ __all__ = [
    "Spacing",
    "SpinParameters",
    "SyncClient",
+   "ThreadFirstPage",
    "TransportFailure",
    "UpstreamRejected",
 ]

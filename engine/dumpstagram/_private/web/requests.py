@@ -39,7 +39,9 @@ from dumpstagram._private.web.documents import (
    PROFILE_POSTS,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
+   THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
+   THREAD_OLDER_PAGE,
    PersistedQuery,
 )
 from dumpstagram.errors import AuthenticationFailed, NotFound, SchemaChanged
@@ -57,10 +59,13 @@ __all__ = [
    "build_graphql_request",
    "build_profile_page_requests",
    "build_profile_request",
+   "build_thread_detail_request",
+   "build_thread_older_page_request",
    "build_thread_page_request",
    "build_username_resolution_request",
    "jazoest_for",
    "profile_page_url",
+   "thread_url",
 ]
 
 PAGE_SIZE = 20
@@ -227,7 +232,27 @@ def build_thread_page_request(
    which is what makes a polling listener a top-up rather than a full re-read.
    """
 
-   variables = {
+   return build_graphql_request(
+      session,
+      THREAD_MESSAGE_PAGE,
+      _thread_page_variables(thread_fbid, after, newer_than_message_id),
+      referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def thread_url(thread_fbid: str) -> str:
+   """The page a browser has open while it reads a thread, and so the referer of every read."""
+
+   return f"{ORIGIN}/direct/t/{thread_fbid}/"
+
+
+def _thread_page_variables(
+   thread_fbid: str,
+   after: str | None,
+   newer_than_message_id: str | None,
+) -> dict[str, Any]:
+   return {
       "after": after,
       "before": None,
       "first": PAGE_SIZE,
@@ -238,11 +263,64 @@ def build_thread_page_request(
       "__relay_internal__pv__IGDInitialMessagePageCountrelayprovider": PAGE_SIZE,
    }
 
+
+def build_thread_detail_request(
+   session: Session,
+   thread_fbid: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The query a browser sends to open a thread, which answers with its newest page.
+
+   ``IGDEnableOffMsysChatThemesQErelayprovider`` is false because every one of the 63 requests
+   a browser sent across four captures on 2026-09-23 carried false. The finding's replay
+   template carries true, and that replay answered too, so the flag is not what makes the
+   request succeed. It is reproduced as the browser sends it.
+
+   ``min_uq_seq_id`` was null on all 63.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/open-a-direct-thread.md``.
+   """
+
+   variables = {
+      "min_uq_seq_id": None,
+      "thread_fbid": thread_fbid,
+      "__relay_internal__pv__IGDEnableOffMsysChatThemesQErelayprovider": False,
+      "__relay_internal__pv__IGDInitialMessagePageCountrelayprovider": PAGE_SIZE,
+   }
+
    return build_graphql_request(
       session,
-      THREAD_MESSAGE_PAGE,
+      THREAD_DETAIL,
       variables,
-      referer=f"{ORIGIN}/direct/t/{thread_fbid}/",
+      referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def build_thread_older_page_request(
+   session: Session,
+   thread_fbid: str,
+   *,
+   after: str | None = None,
+   newer_than_message_id: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """One page of one thread, as a browser asks for it when the thread scrolls up.
+
+   The variables are the ones :func:`build_thread_page_request` sends, in the order the browser
+   sends them. Every captured browser request carried a 132-character ``after`` and a null
+   ``newer_than_message_id``. A null ``after`` was replayed twice and answered. A
+   ``newer_than_message_id`` has not been sent on this query by anything yet.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/direct-thread-older-page-offmsys.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      THREAD_OLDER_PAGE,
+      _thread_page_variables(thread_fbid, after, newer_than_message_id),
+      referer=thread_url(thread_fbid),
       user_agent=user_agent,
    )
 

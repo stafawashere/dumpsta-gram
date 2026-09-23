@@ -25,6 +25,7 @@ from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL
 from dumpstagram._private.web.documents import API_GRAPHQL_URL
 from dumpstagram.aio import AsyncClient
+from dumpstagram.behavior import ThreadFirstPage
 from dumpstagram.client import SyncClient
 from dumpstagram.models import Message, Page
 from dumpstagram.session import Session, SpinParameters
@@ -217,10 +218,13 @@ class SpyCapability:
       *,
       after: str | None = None,
       newer_than_message_id: str | None = None,
+      first_page: ThreadFirstPage = ThreadFirstPage.QUERY,
       user_agent: str = "",
       deadline: float | None = None,
    ) -> Page[Message]:
-      self.calls.append((sender, session, thread_fbid, after, newer_than_message_id, user_agent))
+      self.calls.append(
+         (sender, session, thread_fbid, after, newer_than_message_id, first_page, user_agent)
+      )
 
       return Page(items=(), has_next_page=False)
 
@@ -239,13 +243,14 @@ async def test_the_async_facade_forwards_every_argument(monkeypatch: pytest.Monk
          THREAD_FBID, after=CURSOR, newer_than_message_id=MESSAGE_ID
       )
 
-   sender, passed_session, thread_fbid, after, newer_than, user_agent = spy.calls[0]
+   sender, passed_session, thread_fbid, after, newer_than, first_page, user_agent = spy.calls[0]
 
    assert sender is client._sender
    assert passed_session is session
    assert thread_fbid == THREAD_FBID
    assert after == CURSOR
    assert newer_than == MESSAGE_ID
+   assert first_page is ThreadFirstPage.DETAIL
    assert user_agent == "a-user-agent"
    assert page.items == ()
 
@@ -261,12 +266,13 @@ def test_the_sync_facade_forwards_every_argument(monkeypatch: pytest.MonkeyPatch
    with SyncClient(session, user_agent="a-user-agent") as client:
       page = client.thread_messages(THREAD_FBID, after=CURSOR, newer_than_message_id=MESSAGE_ID)
 
-   _, passed_session, thread_fbid, after, newer_than, user_agent = spy.calls[0]
+   _, passed_session, thread_fbid, after, newer_than, first_page, user_agent = spy.calls[0]
 
    assert passed_session is session
    assert thread_fbid == THREAD_FBID
    assert after == CURSOR
    assert newer_than == MESSAGE_ID
+   assert first_page is ThreadFirstPage.DETAIL
    assert user_agent == "a-user-agent"
    assert page.items == ()
 

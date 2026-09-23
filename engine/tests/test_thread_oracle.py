@@ -45,6 +45,7 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.documents import API_GRAPHQL_URL
 from dumpstagram.aio import AsyncClient
+from dumpstagram.behavior import Behavior, ThreadFirstPage
 from dumpstagram.models import Message
 from tests.test_direct import FakeClock, a_bootstrapped_session
 
@@ -95,7 +96,9 @@ class RecordedThread:
 async def read_the_whole_thread() -> tuple[list[Message], RecordedThread, int]:
    thread = RecordedThread(RECORDED_PAGES)
    clock = FakeClock()
-   client = AsyncClient(a_bootstrapped_session())
+   client = AsyncClient(
+      a_bootstrapped_session(), behavior=Behavior(thread_first_page=ThreadFirstPage.QUERY)
+   )
    client._sender = PacedSender(thread, Pacer(clock=clock, sleep=clock.sleep, jitter=lambda: 0.0))
 
    messages: list[Message] = []

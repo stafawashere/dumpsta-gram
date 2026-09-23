@@ -52,16 +52,26 @@ from dumpstagram.models import (
 __all__ = [
    "FEED_PAGE_PATH",
    "PROFILE_PATH",
+   "THREAD_DETAIL_PATH",
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
    "parse_feed_page",
    "parse_profile",
+   "parse_thread_detail",
    "parse_thread_message_page",
    "parse_user_id",
 ]
 
 THREAD_PAGE_PATH = ("data", "fetch__SlideThread", "as_ig_direct_thread", "slide_messages")
 """The canonical path to the message connection, unchanged across both measured days."""
+
+THREAD_DETAIL_PATH = (
+   "data",
+   "get_slide_thread_nullable",
+   "as_ig_direct_thread",
+   "slide_messages",
+)
+"""The same message connection in an ``IGDThreadDetailQuery`` payload, under its own root."""
 
 PROFILE_PATH = ("data", "user")
 """The path to the profile object in a ``PolarisProfilePageContentQuery`` payload."""
@@ -237,7 +247,10 @@ def parse_message(node: Any, path: str) -> Message:
 
 
 def parse_thread_message_page(payload: Any) -> Page[Message]:
-   """One ``useIGDMessageListPaginationQuery`` payload, mapped into typed messages.
+   """One page of the pagination query, mapped into typed messages.
+
+   ``useIGDMessageListPaginationQuery`` and ``IGDMessageListOffMsysQuery`` answer with the same
+   root field, so this maps both.
 
    Edges keep the order the upstream sent them in. Nothing is sorted here, because a
    normalisation applied at the boundary is a normalisation a recorded oracle has to know
@@ -258,8 +271,26 @@ def parse_thread_message_page(payload: Any) -> Page[Message]:
    the contradiction the upstream sent.
    """
 
-   connection = _object_at(payload, THREAD_PAGE_PATH)
-   connection_path = ".".join(THREAD_PAGE_PATH)
+   return _message_page(payload, THREAD_PAGE_PATH)
+
+
+def parse_thread_detail(payload: Any) -> Page[Message]:
+   """One ``IGDThreadDetailQuery`` payload, mapped into the thread's newest page.
+
+   The thread object around the connection also carries its title, members, read receipts and
+   pinned messages. None of that is mapped yet, because no public model holds it.
+
+   A null ``get_slide_thread_nullable`` raises :class:`~dumpstagram.errors.SchemaChanged` for
+   the reason :func:`parse_thread_message_page` gives: the name says null is possible, and no
+   null answer has been observed, so nothing here claims to know what one means.
+   """
+
+   return _message_page(payload, THREAD_DETAIL_PATH)
+
+
+def _message_page(payload: Any, path: tuple[str, ...]) -> Page[Message]:
+   connection = _object_at(payload, path)
+   connection_path = ".".join(path)
 
    edges = _required(connection, "edges", connection_path)
 

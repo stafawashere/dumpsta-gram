@@ -176,6 +176,10 @@ for the action, so nothing else on the account departs inside it, and a throttle
 whole account. Every other capability is still one request per action. The concurrency inside
 the slot is the carve-out in the 2026-09-23 amendment to ADR-0001.
 
+A thread read stays one request per page. `ThreadFirstPage.DETAIL` and `ThreadFirstPage.QUERY`
+cost the same request count, and the detail answer is about 42 kB against about 39 kB for the
+same 20 messages from the scrolling query.
+
 What the profile page costs, FACT from `probes/profile_page_route.py` on 2026-09-23 against the
 viewer's own account: about 0.78 MB of document and 0.51 MB of answers, 474 kB of which is the
 timeline query the page sends and the engine does not read. Another account measured in a

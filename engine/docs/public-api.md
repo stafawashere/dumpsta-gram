@@ -69,7 +69,7 @@ override keyword and no existing snapshot line changes when a setting is added. 
 does not close the pool. Closing the owner stops both.
 
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
-`feed_first_page` and `profile_route`. `feed_first_page` decides where `feed()` with no cursor reads from.
+`feed_first_page`, `profile_route` and `thread_first_page`. `feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a
 browser does. It is one request of about 1.2 MB, four measured loads carried 3 or 4 items,
@@ -85,6 +85,15 @@ finds an account with no visible posts, and raises `NotFound` when no account ha
 `ProfileRoute.QUERIES` is the route the engine used before: the account's timeline for its id,
 then the profile query, two requests in series. `profile_by_id` sends the profile query alone
 under both, since no browser page is keyed on an id.
+
+`thread_first_page` decides how `thread_messages` with no cursor and no `newer_than_message_id`
+reads. `ThreadFirstPage.DETAIL`, the parity default, sends `IGDThreadDetailQuery`, the query a
+browser sends when it opens a thread, about 42 kB for 20 messages. `ThreadFirstPage.QUERY`
+sends the scrolling query instead, which no browser was observed to do for the newest page.
+Every older page and every top-up goes through `IGDMessageListOffMsysQuery` under both, which
+replaced `useIGDMessageListPaginationQuery` in the browser by 2026-09-23. One request either
+way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries,
+and neither marks the thread seen.
 
 Other companion requests and side effects such as marking a thread read become fields with
 parity defaults when the requests behind them are implemented, which is an additive snapshot

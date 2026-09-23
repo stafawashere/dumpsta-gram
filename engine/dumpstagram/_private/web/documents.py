@@ -26,7 +26,9 @@ __all__ = [
    "PROFILE_POSTS",
    "PROFILE_SCHOOL_BADGE",
    "PROFILE_SUGGESTED_USERS",
+   "THREAD_DETAIL",
    "THREAD_MESSAGE_PAGE",
+   "THREAD_OLDER_PAGE",
    "PersistedQuery",
 ]
 
@@ -90,6 +92,33 @@ THREAD_MESSAGE_PAGE = PersistedQuery(
 """One page of messages in one direct thread, 20 edges, capped server side.
 
 Observed live on 2026-09-20 and again on 2026-09-21.
+"""
+
+
+THREAD_DETAIL = PersistedQuery(
+   doc_id="28730473946590056",
+   friendly_name="IGDThreadDetailQuery",
+   finding_id="open-a-direct-thread",
+)
+"""What a browser sends to open a thread: the thread, with its newest 20 messages.
+
+The messages are the same 28-key nodes :data:`THREAD_OLDER_PAGE` returns, under a different
+root field, and the connection's ``end_cursor`` is what the browser's first older page sends
+as ``after``.
+
+Observed on two cold loads of a thread on 2026-09-23 and replayed twice the same day.
+"""
+
+THREAD_OLDER_PAGE = PersistedQuery(
+   doc_id="28079551424999855",
+   friendly_name="IGDMessageListOffMsysQuery",
+   finding_id="direct-thread-older-page-offmsys",
+)
+"""What a browser sends for each older page of a thread as it scrolls up.
+
+The same variables and root field as :data:`THREAD_MESSAGE_PAGE`, under a new name and id. On
+2026-09-23 a browser sent this one twelve times across two captures and the old one never,
+while the old one still answered a replay the same day.
 """
 
 

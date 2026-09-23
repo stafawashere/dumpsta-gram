@@ -100,6 +100,8 @@ place.
 | Name | `doc_id` | Friendly name | URL | Finding |
 |---|---|---|---|---|
 | `THREAD_MESSAGE_PAGE` | `27502152406082940` | `useIGDMessageListPaginationQuery` | `API_GRAPHQL_URL` | `direct-thread-message-page` |
+| `THREAD_DETAIL` | `28730473946590056` | `IGDThreadDetailQuery` | `API_GRAPHQL_URL` | `open-a-direct-thread` |
+| `THREAD_OLDER_PAGE` | `28079551424999855` | `IGDMessageListOffMsysQuery` | `API_GRAPHQL_URL` | `direct-thread-older-page-offmsys` |
 | `PROFILE_BY_ID` | `28036671149327607` | `PolarisProfilePageContentQuery` | `API_GRAPHQL_URL` | `read-a-user-profile` |
 | `USER_ID_BY_USERNAME` | `28821682214127849` | `PolarisProfilePostsQuery` | `API_GRAPHQL_URL` | `resolve-a-username-to-a-user-id` |
 | `HOME_TIMELINE_FEED` | `27932834733065642` | `PolarisFeedRootPaginationCachedQuery_subscribe` | `GRAPHQL_QUERY_URL` | `home-timeline-feed-page` |
@@ -188,6 +190,20 @@ session that needs to know which three they are does not have to find this docum
 `build_thread_page_request` takes `after` for the cursor and `newer_than_message_id` for a
 top-up. Termination comes from `page_info.has_next_page` and never from a short page.
 
+Since 2026-09-23 the capability sends two other queries and the old builder serves only the
+internal smoke read and the probes. `build_thread_detail_request` is the thread open: variables
+`min_uq_seq_id` null, `thread_fbid`, `IGDEnableOffMsysChatThemesQErelayprovider` false and
+`IGDInitialMessagePageCountrelayprovider` 20, in that order. FACT from the four captures of
+2026-09-23: all 63 browser requests carried exactly that, false included. The finding's replay
+template carries true and answered too, so the flag is not what makes the request succeed, and
+the engine sends what the browser sends. The answer roots at
+`data.get_slide_thread_nullable.as_ig_direct_thread.slide_messages`, with the same 28-key message
+nodes the pagination query returns. Its `end_cursor` is the `after` of the browser's first older
+page, FACT from the same captures. `build_thread_older_page_request` sends the eight variables
+`build_thread_page_request` sends to `IGDMessageListOffMsysQuery`. Every browser request on it
+carried a 132-character `after` and a null `newer_than_message_id`, so a top-up on this query is
+ASSUMPTION: same variables and root field as the old query, never sent by anything yet.
+
 `PAGE_SIZE` is 20 and there is no reason to change it. Requesting 20, 50, and 200 each returned
 exactly 20. Request count is therefore a fixed function of data volume, which is what makes a
 dry-run cost estimate possible at all.
@@ -204,6 +220,12 @@ names are not portable across Instagram's own surfaces: `thread_fbid` in server-
 `thread_v2_id` in REST, `messaging_thread_key` for the URL alias, and `thread_id` meaning
 something else entirely. Passing the wrong kind returns an empty result rather than an error,
 so the kind belongs in the signature rather than in something a caller works out.
+
+One exception observed on 2026-09-23. `IGDThreadDetailQuery` takes its id as `thread_fbid`, yet
+14 of the 16 detail queries in one capture asked with a different id and got back a thread whose
+`thread_fbid` differed from the one asked for, with `thread_key` echoing the asked id. The
+browser's older pages then used the returned `thread_fbid`. So the detail query resolves at
+least the URL id to the fbid. FACT from one capture. The engine does not rely on it yet.
 
 ## Two literals the provenance gate is told to ignore
 

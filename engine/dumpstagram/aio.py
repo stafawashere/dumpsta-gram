@@ -148,6 +148,12 @@ class AsyncClient:
 
       The returned page's ``has_next_page`` is the only thing that says whether more exist. A
       short page is not the end of the thread.
+
+      Under the default behavior the newest page is read with the query a browser sends when
+      it opens the thread, and every other page with the query it sends as the thread scrolls.
+      :attr:`~dumpstagram.behavior.Behavior.thread_first_page` set to
+      :attr:`~dumpstagram.behavior.ThreadFirstPage.QUERY` reads the newest page with the
+      scrolling query too. One live request either way.
       """
 
       self._refuse_when_closed()
@@ -158,6 +164,7 @@ class AsyncClient:
          thread_fbid,
          after=after,
          newer_than_message_id=newer_than_message_id,
+         first_page=self._behavior.thread_first_page,
          user_agent=self._user_agent,
       )
 
