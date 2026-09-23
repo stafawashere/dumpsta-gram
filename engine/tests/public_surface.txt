@@ -7,6 +7,7 @@ alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
 alias dumpstagram.EXPORT -> dumpstagram.behavior.EXPORT
 alias dumpstagram.FAST -> dumpstagram.behavior.FAST
+alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
@@ -49,9 +50,13 @@ property dumpstagram.aio.AsyncClient.user_agent -> str
 def dumpstagram.aio.AsyncClient.with_behavior(self, behavior: Behavior) -> AsyncClient
 module dumpstagram.behavior
 class dumpstagram.behavior.Behavior()
+field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
 data dumpstagram.behavior.EXPORT: Behavior = <dumpstagram.behavior.Behavior>
 data dumpstagram.behavior.FAST: Behavior = <dumpstagram.behavior.Behavior>
+class dumpstagram.behavior.FeedFirstPage(enum.Enum)
+data dumpstagram.behavior.FeedFirstPage.DOCUMENT: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
+data dumpstagram.behavior.FeedFirstPage.QUERY: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 data dumpstagram.behavior.PARITY: Behavior = <dumpstagram.behavior.Behavior>
 class dumpstagram.behavior.Spacing()
 field dumpstagram.behavior.Spacing.floor_seconds: float

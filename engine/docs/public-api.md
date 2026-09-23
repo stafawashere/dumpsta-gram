@@ -68,8 +68,15 @@ session, the pool and the pacer, and differs only in behavior, so no capability 
 override keyword and no existing snapshot line changes when a setting is added. Closing it
 does not close the pool. Closing the owner stops both.
 
-`Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`.
-Companion requests and side effects such as marking a thread read become fields with parity
+`Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing` and
+`feed_first_page`. The second decides where `feed()` with no cursor reads from.
+`FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
+navigation and reads the first page the server preloaded into that document, which is what a
+browser does. It is one request of about 1.2 MB, four measured loads carried 3 or 4 items,
+and it refreshes the session's page tokens. `FeedFirstPage.QUERY` asks the pagination query
+instead, the route the engine used before, which no browser was observed to take. Later pages
+use the pagination query under both. Every preset keeps `DOCUMENT`, because a preset departs
+only in what it names. Companion requests and side effects such as marking a thread read become fields with parity
 defaults when the requests behind them are implemented, which is an additive snapshot change.
 The presets are `PARITY`, `EXPORT` and `FAST`, and what each one costs is in
 [rate-limiting-and-safety.md](rate-limiting-and-safety.md).

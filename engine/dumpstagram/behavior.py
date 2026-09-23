@@ -5,9 +5,10 @@ ADR-0013 makes browser parity the default and every departure from it a named se
 never global, per ADR-0004. The presets below are ordinary instances, so a preset changes
 nothing a caller could not set by hand, and ``dataclasses.replace`` derives a variant of one.
 
-Each setting is added here only once the engine can honour it. Spacing is the first. Companion
-requests and side effects such as marking a thread read become settings when the requests
-behind them are implemented, as new fields with parity defaults.
+Each setting is added here only once the engine can honour it. Spacing was the first and the
+feed's first page the second. Companion requests and side effects such as marking a thread
+read become settings when the requests behind them are implemented, as new fields with parity
+defaults.
 
 What every departure costs is in ``engine/docs/rate-limiting-and-safety.md``. There is no floor
 on rate: a caller may set spacing to zero, and the engine does not overrule that decision.
@@ -16,8 +17,9 @@ on rate: a caller may set spacing to zero, and the engine does not overrule that
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
-__all__ = ["EXPORT", "FAST", "PARITY", "Behavior", "Spacing"]
+__all__ = ["EXPORT", "FAST", "PARITY", "Behavior", "FeedFirstPage", "Spacing"]
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,21 @@ class Spacing:
          raise ValueError("spacing cannot be negative, zero is the fastest there is")
 
 
+class FeedFirstPage(Enum):
+   """Where the first page of the home timeline is read from.
+
+   ``DOCUMENT`` is what a browser does: it loads the home page, and the server preloads the
+   first page into that document. It is one request of about 1.2 MB, four measured loads
+   carried 3 or 4 items, and it refreshes the session's page tokens on the way.
+
+   ``QUERY`` asks the pagination query for the first page, which no browser was observed to
+   do. It is one request, and the measured pages carried between 5 and 15 items.
+   """
+
+   DOCUMENT = "document"
+   QUERY = "query"
+
+
 @dataclass(frozen=True)
 class Behavior:
    """Everything about a client's traffic that is not the shape of a single request.
@@ -50,6 +67,7 @@ class Behavior:
    """
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
+   feed_first_page: FeedFirstPage = FeedFirstPage.DOCUMENT
 
 
 PARITY = Behavior()

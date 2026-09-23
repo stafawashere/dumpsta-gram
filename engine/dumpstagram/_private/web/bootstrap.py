@@ -34,9 +34,12 @@ __all__ = [
    "DEFAULT_APP_ID",
    "DEFAULT_USER_AGENT",
    "BootstrapTokens",
+   "apply_tokens",
    "bootstrap",
    "build_bootstrap_request",
+   "build_document_request",
    "read_tokens",
+   "tokens_from",
 ]
 
 ORIGIN = "https://www.instagram.com"  # provenance: ignore, an origin, not an endpoint
@@ -92,6 +95,9 @@ class BootstrapTokens:
    haste_session: str | None
 
 
+# G9N7E-K9NZE-GTWKC-XQ9TR
+
+
 def _first_match(pattern: re.Pattern[str], html: str) -> str | None:
    """The first capture of ``pattern``, or ``None``.
 
@@ -107,7 +113,13 @@ def _first_match(pattern: re.Pattern[str], html: str) -> str | None:
 
 
 def build_bootstrap_request(user_agent: str) -> Request:
-   """The page load, shaped as a navigation rather than as an API call.
+   """The page load the tokens are read from."""
+
+   return build_document_request(BOOTSTRAP_URL, user_agent)
+
+
+def build_document_request(url: str, user_agent: str) -> Request:
+   """A page load, shaped as a navigation rather than as an API call.
 
    ``sec-fetch-site: none`` and the document fetch metadata are what a browser sends when the
    user types the address, which is what this request is pretending to be.
@@ -115,7 +127,7 @@ def build_bootstrap_request(user_agent: str) -> Request:
 
    return Request(
       method="GET",
-      url=BOOTSTRAP_URL,
+      url=url,
       headers={
          "user-agent": user_agent,
          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -181,7 +193,14 @@ async def bootstrap(
 
    response = await sender.send(build_bootstrap_request(user_agent))
 
-   tokens = _tokens_from(response)
+   tokens = tokens_from(response)
+   apply_tokens(session, tokens)
+
+   return tokens
+
+
+def apply_tokens(session: Session, tokens: BootstrapTokens) -> None:
+   """Write one page load's tokens onto ``session``, whichever page they came from."""
 
    session.fb_dtsg = tokens.fb_dtsg
    session.lsd = tokens.lsd
@@ -191,10 +210,8 @@ async def bootstrap(
    session.haste_session = tokens.haste_session
    session.bootstrapped_at = datetime.now(UTC)
 
-   return tokens
 
-
-def _tokens_from(response: Response) -> BootstrapTokens:
+def tokens_from(response: Response) -> BootstrapTokens:
    """Check for a challenge before reading the page, then read it.
 
    A checkpoint redirect returns HTML that carries no ``fb_dtsg``, so without this the caller

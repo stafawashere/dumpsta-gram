@@ -22,7 +22,7 @@ from typing import Any
 from dumpstagram._private.transport import Response
 from dumpstagram.errors import CheckpointRequired, SchemaChanged, UpstreamRejected
 
-__all__ = ["classify", "classify_checkpoint_only"]
+__all__ = ["classify", "classify_checkpoint_only", "classify_preloaded"]
 
 _JSONP_PREFIX = "for (;;);"
 
@@ -87,6 +87,21 @@ def classify_checkpoint_only(response: Response) -> None:
    challenge and a dead session need different things from the user.
    """
    _raise_if_the_location_says_checkpoint(response)
+
+
+def classify_preloaded(result: dict[str, Any]) -> dict[str, Any]:
+   """Return a result the page preloaded, or raise the envelope it carries.
+
+   A preloaded result has no response of its own, since it arrived inside a document that
+   :func:`classify_checkpoint_only` already judged, so only its envelope is left to read.
+   INFERENCE: a preloaded query that fails carries the same envelope a requested one would.
+   No failed preload has been observed.
+   """
+   envelope_code = _envelope_code(result)
+   if envelope_code is None:
+      return result
+
+   raise UpstreamRejected("upstream rejected the preloaded query", code=envelope_code)
 
 
 def _envelope_code(parsed: dict[str, Any]) -> str | None:

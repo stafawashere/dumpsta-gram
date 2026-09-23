@@ -203,7 +203,10 @@ class AsyncClient:
       """Read one page of the signed-in account's home timeline. One live request.
 
       ``after`` is an ``end_cursor`` from a previous page, and omitting it asks for the first
-      page. The upstream serves both with one query, so there is no separate first-page call.
+      page. Under the default behavior the first page is read out of the home document, as a
+      browser reads it, and it is short: four measured loads carried 3 or 4 items.
+      :attr:`~dumpstagram.behavior.Behavior.feed_first_page` set to
+      :attr:`~dumpstagram.behavior.FeedFirstPage.QUERY` asks the pagination query instead.
 
       The returned page holds :class:`~dumpstagram.models.FeedItem` rather than posts, because
       most of a timeline is not posts: of fifteen measured items, six were posts and the rest
@@ -223,6 +226,7 @@ class AsyncClient:
          self._sender,
          self._session,
          after=after,
+         first_page=self._behavior.feed_first_page,
          user_agent=self._user_agent,
       )
 
