@@ -21,6 +21,7 @@ SESSIONID = "sessionid-secret-value"
 CSRFTOKEN = "csrftoken-secret-value"
 FB_DTSG = "fb-dtsg-secret-value"
 LSD = "lsd-secret-value"
+FR = "fr-secret-value"
 PROXY_URL = "http://proxy-user:proxy-password@proxy.example:8080"
 
 
@@ -37,6 +38,7 @@ def full_session() -> Session:
       hsi="7551000000000000000",
       haste_session="20128.HYP:instagram_web_pkg.2.1...0",
       bloks_version_id="5f" * 32,
+      fr=FR,
       bootstrapped_at=datetime(2026, 9, 21, 12, 30, tzinfo=UTC),
       proxy=ProxyConfig(url=PROXY_URL, verify_tls=False),
       checkpoint_active=True,
@@ -61,7 +63,7 @@ def test_repr_carries_no_credential_material() -> None:
    representation = repr(session)
 
    serialised = json.dumps(session.to_dict())
-   control_values = [SESSIONID, CSRFTOKEN, FB_DTSG, LSD, PROXY_URL]
+   control_values = [SESSIONID, CSRFTOKEN, FB_DTSG, LSD, FR, PROXY_URL]
 
    for secret in control_values:
       assert secret in serialised, "positive control: the scan must find the live values"
@@ -176,10 +178,22 @@ def test_saved_format_keys_are_the_documented_set(tmp_path: Path) -> None:
       "hsi",
       "haste_session",
       "bloks_version_id",
+      "fr",
       "bootstrapped_at",
       "proxy",
       "checkpoint_active",
    }
+
+
+def test_a_file_saved_before_fr_existed_loads_with_none(tmp_path: Path) -> None:
+   """Catches a loader that demands the key, which would refuse every session saved before it."""
+   payload = full_session().to_dict()
+   del payload["fr"]
+
+   destination = tmp_path / "session.json"
+   destination.write_text(json.dumps(payload), encoding="utf-8")
+
+   assert Session.load(destination).fr is None
 
 
 def test_extra_cookies_default_is_not_shared_between_sessions() -> None:

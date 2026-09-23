@@ -235,6 +235,7 @@ field dumpstagram.session.Session.csrftoken: str = ''
 field dumpstagram.session.Session.ds_user_id: str = ''
 field dumpstagram.session.Session.extra_cookies: Mapping[str, str] = <factory dict>
 field dumpstagram.session.Session.fb_dtsg: str | None = None
+field dumpstagram.session.Session.fr: str | None = None
 classmethod dumpstagram.session.Session.from_dict(cls, payload: Mapping[str, Any]) -> Session
 field dumpstagram.session.Session.haste_session: str | None = None
 field dumpstagram.session.Session.hsi: str | None = None

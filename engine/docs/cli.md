@@ -57,6 +57,11 @@ cookie when it is present, because the request builders reproduce a full browser
 minimal request is a fingerprint. All missing keys are named at once, so pasting three cookies
 is one run rather than three.
 
+`IG_FR` is optional and is not a cookie. It is the `fr` value the browser keeps in
+`localStorage` for `https://www.instagram.com`, read from the developer tools storage panel.
+It becomes `Session.fr`, which the page-load cookie sync sends, and it is treated as a
+credential: never in `argv`, never in a log. Without it the session starts with none.
+
 Adoption spends no live request. That is deliberate: a check that costs a request cannot be
 used to check credentials.
 

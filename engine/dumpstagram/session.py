@@ -72,6 +72,9 @@ class Session:
    `sessionid` alone is a full account takeover token with no second factor, so it, the other
    credential material, and the proxy configuration are kept out of `__repr__` and out of every
    log line.
+
+   `fr` is not a cookie. It is the value a browser keeps in `localStorage` under that key and
+   hands to the page-load cookie sync, `None` when the browser holds none.
    """
 
    sessionid: str = field(repr=False)
@@ -85,6 +88,7 @@ class Session:
    hsi: str | None = None
    haste_session: str | None = None
    bloks_version_id: str | None = None
+   fr: str | None = field(default=None, repr=False)
    bootstrapped_at: datetime | None = None
    proxy: ProxyConfig | None = field(default=None, repr=False)
    checkpoint_active: bool = False
@@ -148,6 +152,7 @@ class Session:
          "hsi": self.hsi,
          "haste_session": self.haste_session,
          "bloks_version_id": self.bloks_version_id,
+         "fr": self.fr,
          "bootstrapped_at": bootstrapped_at,
          "proxy": proxy_payload,
          "checkpoint_active": self.checkpoint_active,
@@ -214,6 +219,7 @@ class Session:
          hsi=payload.get("hsi"),
          haste_session=payload.get("haste_session"),
          bloks_version_id=payload.get("bloks_version_id"),
+         fr=payload.get("fr"),
          bootstrapped_at=bootstrapped_at,
          proxy=proxy,
          checkpoint_active=bool(payload.get("checkpoint_active", False)),

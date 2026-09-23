@@ -529,6 +529,28 @@ def test_adopt_writes_a_reloadable_owner_only_session_and_spends_no_request(
    assert stat.filemode(session_path.stat().st_mode) == "-rw-------"
 
 
+def test_adopt_carries_fr_onto_the_session_and_never_into_the_cookie_jar(
+   tmp_path: Path,
+) -> None:
+   """Catches `IG_FR` dropped at intake, or sent as a cookie, which no browser does."""
+
+   session_path = tmp_path / "session.json"
+   environment = {
+      "IG_SESSIONID": SESSIONID,
+      "IG_DS_USER_ID": "17841400000000000",
+      "IG_CSRFTOKEN": CSRFTOKEN,
+      "IG_FR": "an-fr-value",
+   }
+
+   code, out, _ = run(["--session", str(session_path), "adopt"], environment=environment)
+   reloaded = Session.load(session_path)
+
+   assert code == 0
+   assert reloaded.fr == "an-fr-value"
+   assert "an-fr-value" not in reloaded.extra_cookies.values()
+   assert "an-fr-value" not in out
+
+
 def test_adopt_names_every_missing_key_at_once(tmp_path: Path) -> None:
    """Reporting one missing cookie at a time turns three cookies into three failed runs."""
 

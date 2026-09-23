@@ -57,6 +57,36 @@ def test_redacts_the_token_names_the_request_builder_sends() -> None:
    assert "csrfvalue" not in redacted
 
 
+def test_redacts_a_token_under_a_quoted_key() -> None:
+   """Catches the JSON form, where a closing quote sits between the key and the colon.
+
+   A session file, a dict repr and a JSON body all print keys that way, and the pattern once
+   required the separator straight after the key.
+   """
+
+   json_text = '{"fb_dtsg": "NAcPtoken1", "lsd":"AVqlsdvalue"}'
+   dict_repr = "{'sessionid': '" + SECRET + "'}"
+
+   assert "NAcPtoken1" in json_text, "positive control: the value is in the input"
+   assert SECRET in dict_repr, "positive control: the value is in the input"
+   assert "NAcPtoken1" not in redact(json_text)
+   assert "AVqlsdvalue" not in redact(json_text)
+   assert SECRET not in redact(dict_repr)
+
+
+def test_redacts_the_fr_value() -> None:
+   """Catches `fr` missing from the secret keys, since it rides with the cookie sync."""
+
+   fr_value = "1AbCdEfGhIjKlMnOp.frvalue"
+   assignment = f"fr={fr_value}"
+   json_text = f'{{"fr": "{fr_value}"}}'
+
+   assert fr_value in assignment, "positive control: the value is in the input"
+   assert fr_value in json_text, "positive control: the value is in the input"
+   assert fr_value not in redact(assignment)
+   assert fr_value not in redact(json_text)
+
+
 def test_the_formatter_redacts_a_formatted_traceback() -> None:
    """Catches the case nobody writes a log statement for.
 

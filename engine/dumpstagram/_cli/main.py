@@ -130,7 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
       description=(
          "Cookie material is read from the environment, or from --cookies-file, and never "
          "from the command line. Required keys: IG_SESSIONID, IG_DS_USER_ID, IG_CSRFTOKEN. "
-         "Optional: IG_MID."
+         "Optional: IG_MID, and IG_FR, the fr value from the browser's localStorage."
       ),
    )
    adopt.add_argument(

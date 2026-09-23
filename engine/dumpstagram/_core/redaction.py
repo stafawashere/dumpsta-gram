@@ -38,6 +38,7 @@ SECRET_KEYS = (
    "ig_did",
    "datr",
    "rur",
+   "fr",
 )
 """The key names whose values never appear in text this library produces.
 
@@ -49,7 +50,7 @@ that cannot answer which account was rate limited.
 _KEY_ALTERNATION = "|".join(re.escape(key) for key in SECRET_KEYS)
 
 _ASSIGNMENT = re.compile(
-   rf"(?i)(?<![\w-])({_KEY_ALTERNATION})(\s*[=:]\s*)(['\"]?)([^\s;,&'\"]+)",
+   rf"(?i)(?<![\w-])({_KEY_ALTERNATION})(['\"]?\s*[=:]\s*)(['\"]?)([^\s;,&'\"]+)",
 )
 
 _COOKIE_HEADER = re.compile(r"(?i)(?<![\w-])(cookie)(\s*[=:]\s*)([^\n]+)")

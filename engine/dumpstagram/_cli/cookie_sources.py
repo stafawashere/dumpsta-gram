@@ -27,6 +27,13 @@ OPTIONAL_COOKIE_KEYS: Mapping[str, str] = {"IG_MID": "mid"}
 request, and a minimal request is a fingerprint.
 """
 
+FR_KEY = "IG_FR"
+"""The `fr` value from the browser's `localStorage`, optional and never a cookie.
+
+Copied beside the cookies so the first page load sends what the browser last stored, which is
+the branch of the cookie sync every capture recorded. Without it the session starts with none.
+"""
+
 
 def read_cookie_file(path: Path) -> dict[str, str]:
    """Parse a file of `KEY=value` lines, ignoring blanks and `#` comments.
@@ -74,4 +81,5 @@ def session_from(source: Mapping[str, str]) -> Session:
       ds_user_id=source["IG_DS_USER_ID"],
       csrftoken=source["IG_CSRFTOKEN"],
       extra_cookies=extra_cookies,
+      fr=source.get(FR_KEY) or None,
    )

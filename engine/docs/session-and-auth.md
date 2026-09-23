@@ -120,6 +120,14 @@ tokens but no bloks id, and the feed bootstraps once to get it rather than faili
 is unmeasured. INFERENCE: it tracks a web build, so it changes on deploys rather than per
 session.
 
+### `fr`, added 2026-09-23
+
+The page-load cookie sync sends the `fr` value a browser keeps in `localStorage`, and the
+engine carries it as `Session.fr` under the key `"fr"` at `schema_version` 1, `None`
+when absent, never in a representation or a log. The design, the update rule it copies
+from the page, and the ruling that lets it be supplied at adoption as `IG_FR` are in
+[build-plan.md](build-plan.md), section 17.2.3.
+
 ## Two inherited bugs worth not repeating
 
 Both had the same shape, and both produced a complete, plausible, entirely wrong result rather
