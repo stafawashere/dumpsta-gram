@@ -26,6 +26,54 @@ listener.start()
 listener.stop()
 ```
 
+### The listener shape as landed
+
+Added 2026-09-23 as Step 22 of [build-plan.md](build-plan.md), before its transport. The whole
+surface is fixed now so the polling transport of Step 23 and a push transport later need no
+snapshot change:
+
+```python
+async with aclosing(aclient.events(since=last_seen_id)) as stream:
+   async for event in stream:
+      ...
+
+with client.events(since=last_seen_id) as listener:       # starts, and stops on exit
+   while True:
+      for event in listener.wait_for_events(1.0):
+         ...
+
+listener = client.events(on_event=handler)                # the handler gets every event
+```
+
+`AsyncClient.events(*, since=None)` is an async generator of `Event`.
+`SyncClient.events(*, since=None, on_event=None)` returns an `EventListener`, from
+`dumpstagram.listener`, which is not built directly and does nothing until `start()`. Its
+methods are `start`, `stop`, `drain`, `wait_for_events(timeout)`, and the context manager pair.
+The two `events` methods share every parameter except `on_event`, and a listener parity gate in
+`tests/test_facade_parity.py` holds that, because the facade parity suite cannot: it discovers
+capabilities by coroutine, and an async generator is not one.
+
+`since` is the only parameter, a message id watermark: the id of the last message the consumer
+handled, never delivered again, from which a restarted listener catches up. The poll interval
+is `Behavior.poll_interval_seconds`, 60 s by default and never an `events()` parameter, per
+ruling 9. The buffer bound, 1000, is not a parameter either.
+
+The events are frozen dataclasses in `dumpstagram.models.events`, all subclasses of `Event`:
+`NewMessage(message)`, the one kind from the upstream, the viewer's own messages included;
+`EventsDropped(count)`, the marker a full buffer leaves where it dropped the oldest; and
+`ListenerStopped(error)`, the last event a blocking listener delivers when a failure ends it,
+carrying the original exception with a seam note. The async iterator raises that exception
+instead. `CheckpointRequired` and `AuthenticationFailed` end a listener and are never polled
+through. `TransportFailure` and `RateLimited` are retried with account-wide backoff and cost one
+poll when they outlast it. Within a thread, events arrive in ascending `sent_at`, and no message
+id arrives twice. With `on_event`, events go to the handler on the listener's own thread and
+never to the buffer, and `drain()` raises. Every guarantee here is gated offline, see
+[engineering/gates.md](engineering/gates.md).
+
+Until Step 23 lands the poller, the first poll raises `NotImplementedError`, so the async
+iterator raises it and a blocking listener delivers it in a `ListenerStopped`. No request is
+sent. Full behavior in [realtime-events.md](realtime-events.md).
+
 ## Construction
 
 The caller builds a session and passes it in. The client never creates its own.
@@ -70,8 +118,11 @@ does not close the pool. Closing the owner stops both.
 
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
 `feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions`,
-`cookie_sync`, `write_spacing`, `write_budget_per_hour` and
-`stop_writes_after_unrecognised_rejection`.
+`cookie_sync`, `write_spacing`, `write_budget_per_hour`,
+`stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`. The last, added with the
+Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
+zero allowed and a negative a `ValueError`. The listener honours it today and has nothing to poll
+until Step 23, see the listener shape above.
 `feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a
@@ -336,7 +387,10 @@ What it prevents is a drift reaching a commit, since adding a coroutine to `Asyn
 the suite until the facade method exists and forwards correctly. It does not write the facade
 method, and a facade method still has to be written by hand. `scripts/verify_parity_gates.py`
 breaks the facades ten ways and watches each gate go red, including a capability added to the
-async surface with the snapshot updated to match. See
+async surface with the snapshot updated to match. Since Step 22, `LISTENER_METHODS` in the suite
+keeps `events` out of the snapshot control, the way `SCOPING_METHODS` keeps `with_behavior` out,
+and the listener parity gate plus a gate that each excluded name is in the snapshot on both
+surfaces hold it instead. See
 [../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md](../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md).
 
 ## Errors as part of the API

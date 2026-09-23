@@ -8,13 +8,18 @@ alias dumpstagram.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
 alias dumpstagram.EXPORT -> dumpstagram.behavior.EXPORT
+alias dumpstagram.Event -> dumpstagram.models.events.Event
+alias dumpstagram.EventListener -> dumpstagram.listener.EventListener
+alias dumpstagram.EventsDropped -> dumpstagram.models.events.EventsDropped
 alias dumpstagram.FAST -> dumpstagram.behavior.FAST
 alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.Note -> dumpstagram.models.notes.Note
 alias dumpstagram.NoteAudience -> dumpstagram.models.notes.NoteAudience
@@ -51,6 +56,7 @@ property dumpstagram.aio.AsyncClient.closed -> bool
 def dumpstagram.aio.AsyncClient.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.aio.AsyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.aio.AsyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.aio.AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
 def dumpstagram.aio.AsyncClient.like(self, post_pk: str) -> None
@@ -68,6 +74,7 @@ class dumpstagram.behavior.Behavior()
 field dumpstagram.behavior.Behavior.cookie_sync: bool = True
 field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
+field dumpstagram.behavior.Behavior.poll_interval_seconds: float = 60.0
 field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
 field dumpstagram.behavior.Behavior.stop_writes_after_unrecognised_rejection: bool = True
@@ -100,6 +107,7 @@ property dumpstagram.client.SyncClient.closed -> bool
 def dumpstagram.client.SyncClient.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.client.SyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.client.SyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.client.SyncClient.events(self, *, since: str | None = None, on_event: Callable[[Event], None] | None = None) -> EventListener
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
 def dumpstagram.client.SyncClient.like(self, post_pk: str) -> None
@@ -129,15 +137,28 @@ def dumpstagram.errors.SchemaChanged.__init__(self, message: str = '', *, path: 
 class dumpstagram.errors.TransportFailure(dumpstagram.errors.DumpstagramError)
 class dumpstagram.errors.UpstreamRejected(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.UpstreamRejected.__init__(self, message: str = '', *, code: str | None = None) -> None
+module dumpstagram.listener
+class dumpstagram.listener.EventListener()
+def dumpstagram.listener.EventListener.__enter__(self) -> EventListener
+def dumpstagram.listener.EventListener.__exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None) -> None
+def dumpstagram.listener.EventListener.__init__(self) -> None
+def dumpstagram.listener.EventListener.drain(self) -> list[Event]
+def dumpstagram.listener.EventListener.start(self) -> None
+def dumpstagram.listener.EventListener.stop(self) -> None
+def dumpstagram.listener.EventListener.wait_for_events(self, timeout: float | None) -> list[Event]
 module dumpstagram.models
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.models.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
+alias dumpstagram.models.Event -> dumpstagram.models.events.Event
+alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDropped
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.models.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.models.Note -> dumpstagram.models.notes.Note
 alias dumpstagram.models.NoteAudience -> dumpstagram.models.notes.NoteAudience
 alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
@@ -161,6 +182,14 @@ field dumpstagram.models.comments.CommentAuthor.id: str
 field dumpstagram.models.comments.CommentAuthor.is_verified: bool
 field dumpstagram.models.comments.CommentAuthor.profile_pic_url: str
 field dumpstagram.models.comments.CommentAuthor.username: str
+module dumpstagram.models.events
+class dumpstagram.models.events.Event()
+class dumpstagram.models.events.EventsDropped(dumpstagram.models.events.Event)
+field dumpstagram.models.events.EventsDropped.count: int
+class dumpstagram.models.events.ListenerStopped(dumpstagram.models.events.Event)
+field dumpstagram.models.events.ListenerStopped.error: Exception
+class dumpstagram.models.events.NewMessage(dumpstagram.models.events.Event)
+field dumpstagram.models.events.NewMessage.message: Message
 module dumpstagram.models.feed
 class dumpstagram.models.feed.FeedItem()
 field dumpstagram.models.feed.FeedItem.kind: FeedItemKind

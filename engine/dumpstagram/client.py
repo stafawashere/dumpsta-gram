@@ -17,12 +17,24 @@ blocking caller catches, with a note naming the seam, and ``asyncio.CancelledErr
 from __future__ import annotations
 
 import os
+from collections.abc import Callable, Coroutine
 from types import TracebackType
+from typing import Any
 
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior
-from dumpstagram.models import Comment, FeedItem, Message, Note, Page, PostDetail, Profile
+from dumpstagram.listener import EventListener
+from dumpstagram.models import (
+   Comment,
+   Event,
+   FeedItem,
+   Message,
+   Note,
+   Page,
+   PostDetail,
+   Profile,
+)
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -256,6 +268,37 @@ class SyncClient:
          self._impl.delete_comment(post_pk, comment_id),
          operation="SyncClient.delete_comment",
       )
+
+   def events(
+      self,
+      *,
+      since: str | None = None,
+      on_event: Callable[[Event], None] | None = None,
+   ) -> EventListener:
+      """A listener for every new direct message on this account, not yet started.
+
+      The blocking form of :meth:`~dumpstagram.aio.AsyncClient.events`, with the same ``since``
+      and the same events, polled on the shared loop thread from :meth:`EventListener.start
+      <dumpstagram.listener.EventListener.start>` until :meth:`EventListener.stop
+      <dumpstagram.listener.EventListener.stop>`. Without ``on_event`` the consumer takes
+      events with :meth:`~dumpstagram.listener.EventListener.drain` or
+      :meth:`~dumpstagram.listener.EventListener.wait_for_events`. With it, the listener calls
+      ``on_event`` once per event on its own delivery thread, and nothing goes to the buffer.
+
+      A failure that ends the listener arrives as a final
+      :class:`~dumpstagram.models.ListenerStopped` carrying the exception the poll raised, with
+      a note naming the seam, where the async iterator would raise it.
+      """
+
+      if self.closed:
+         raise RuntimeError("this client is closed, so its connection pool is gone")
+
+      async_client = self._impl
+
+      def poll_for_events(emit: Callable[[Event], None]) -> Coroutine[Any, Any, None]:
+         return async_client._poll_for_events(emit, since=since)
+
+      return EventListener._over(poll_for_events, on_event=on_event)
 
    def close(self) -> None:
       """Close the connection pool and drop this client's hold on the loop thread.

@@ -26,6 +26,7 @@ import pytest
 from dumpstagram._core.loop_thread import THREAD_NAME, seam_note
 from dumpstagram.aio import AsyncClient
 from dumpstagram.client import SyncClient
+from dumpstagram.listener import EventListener
 from dumpstagram.session import Session
 
 SNAPSHOT = Path(__file__).resolve().parent / "public_surface.txt"
@@ -38,6 +39,11 @@ ASYNC_NAME_FOR = {blocking: awaitable for awaitable, blocking in BLOCKING_NAME_F
 SCOPING_METHODS = {"with_behavior"}
 """Methods that build another client rather than read anything. Each surface returns its own
 type from them, so they cannot share a capability's return type and have a gate of their own."""
+
+LISTENER_METHODS = {"events"}
+"""Methods that start a listener rather than read once. The async one is an async generator, which
+discovery by coroutine does not find, and the blocking one takes a handler the async one has no
+use for, so they have the listener parity gate below instead of the capability gates."""
 
 
 def public_names(cls: type) -> set[str]:
@@ -73,8 +79,9 @@ def capabilities_in_the_snapshot() -> set[str]:
       name = line[len(prefix) :].split("(", 1)[0]
       is_lifecycle = name.startswith("_") or name in BLOCKING_NAME_FOR
       is_scoping = name in SCOPING_METHODS
+      is_listener = name in LISTENER_METHODS
 
-      if not is_lifecycle and not is_scoping:
+      if not is_lifecycle and not is_scoping and not is_listener:
          names.add(name)
 
    return names
@@ -250,3 +257,52 @@ def test_a_blocking_capability_raises_the_async_exception_under_its_own_name(
 
    assert caught.value is raised
    assert seam_note(f"SyncClient.{name}") in getattr(caught.value, "__notes__", [])
+
+
+def listener_methods_in_the_snapshot() -> set[str]:
+   names: set[str] = set()
+
+   for line in SNAPSHOT.read_text(encoding="utf-8").splitlines():
+      for prefix in ("def dumpstagram.aio.AsyncClient.", "def dumpstagram.client.SyncClient."):
+         if not line.startswith(prefix):
+            continue
+
+         name = line[len(prefix) :].split("(", 1)[0]
+
+         if name in LISTENER_METHODS:
+            names.add(name)
+
+   return names
+
+
+def test_every_listener_method_is_in_the_snapshot_on_both_surfaces() -> None:
+   """Catches the listener exclusion above hiding a name nothing checks, since each one it
+   names has to exist on both surfaces as the contract records them."""
+
+   assert LISTENER_METHODS
+   assert listener_methods_in_the_snapshot() == LISTENER_METHODS
+
+
+@pytest.mark.parametrize("name", sorted(LISTENER_METHODS))
+def test_both_listener_methods_share_every_parameter_except_the_handler(name: str) -> None:
+   """Catches a parameter added to, renamed on or re-defaulted on one listener method only, a
+   blocking method that hands back an async iterator, and an async one that stopped being an
+   async generator."""
+
+   blocking = getattr(SyncClient, name)
+   awaitable = getattr(AsyncClient, name)
+
+   blocking_parameters = [
+      parameter for parameter in parameters_of(blocking) if parameter[0] != "on_event"
+   ]
+   handler = [parameter for parameter in parameters_of(blocking) if parameter[0] == "on_event"]
+
+   assert blocking_parameters == parameters_of(awaitable)
+   assert len(handler) == 1
+   assert handler[0][1] is inspect.Parameter.KEYWORD_ONLY
+   assert handler[0][2] is None
+
+   assert inspect.isasyncgenfunction(awaitable)
+   assert not inspect.iscoroutinefunction(blocking)
+   assert not inspect.isasyncgenfunction(blocking)
+   assert get_type_hints(blocking)["return"] is EventListener

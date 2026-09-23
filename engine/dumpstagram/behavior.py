@@ -9,7 +9,8 @@ Each setting is added here only once the engine can honour it. Spacing was the f
 feed's first page the second, the profile route the third, a thread's first page the fourth,
 the page load companions the fifth and the cookie sync the sixth. The three write settings came
 with the write path, before any write capability, because a write is only safe with all three in
-place from the first one. Other companion requests and
+place from the first one. The listener's poll interval came with the ``events()`` surface.
+Other companion requests and
 side effects such as marking a thread read become settings when the requests behind them are
 implemented, as new fields with parity defaults.
 
@@ -144,6 +145,13 @@ class Behavior:
    action block takes. False lets writes continue after one.
 
    None of the three can make the engine retry a write. Nothing can.
+
+   ``poll_interval_seconds`` is how long a listener from ``events()`` waits after one poll
+   before the next. A browser does not poll, it holds a socket, so any polling departs from
+   parity and the default of 60 s is chosen to cost little: one inbox read a minute plus one
+   read per thread that changed, beside a read pacer that allows about 21 a minute. Every poll
+   passes the pacer as well, so a short interval is still spaced like any other request. Zero
+   polls back to back, and a negative interval is a :class:`ValueError`.
    """
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
@@ -155,6 +163,7 @@ class Behavior:
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
    write_budget_per_hour: int | None = 30
    stop_writes_after_unrecognised_rejection: bool = True
+   poll_interval_seconds: float = 60.0
 
    def __post_init__(self) -> None:
       budget = self.write_budget_per_hour
@@ -162,6 +171,11 @@ class Behavior:
 
       if has_negative_budget:
          raise ValueError("a write budget cannot be negative, zero refuses every write")
+
+      has_negative_interval = self.poll_interval_seconds < 0
+
+      if has_negative_interval:
+         raise ValueError("a poll interval cannot be negative, zero polls back to back")
 
 
 PARITY = Behavior()

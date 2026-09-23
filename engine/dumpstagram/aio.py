@@ -14,8 +14,9 @@ to `_core`, which is where pacing, retries, pagination and the token recovery li
 
 from __future__ import annotations
 
+import asyncio
 import os
-from collections.abc import Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from types import TracebackType
 
 from dumpstagram._core.comments import read_comment_page
@@ -26,6 +27,13 @@ from dumpstagram._core.notes import read_notes
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
+from dumpstagram._core.realtime.buffer import EventBuffer
+from dumpstagram._core.realtime.pump import (
+   SourceContext,
+   SourceFactory,
+   no_transport_yet,
+   pump_events,
+)
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
@@ -33,7 +41,17 @@ from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
-from dumpstagram.models import Comment, FeedItem, Message, Note, Page, PostDetail, Profile
+from dumpstagram.models import (
+   Comment,
+   Event,
+   FeedItem,
+   ListenerStopped,
+   Message,
+   Note,
+   Page,
+   PostDetail,
+   Profile,
+)
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -86,6 +104,7 @@ class AsyncClient:
          self._sender.background(),
          BackgroundSender(self._facebook, self._sender.pacer),
       )
+      self._event_source: SourceFactory = no_transport_yet
 
    @classmethod
    def from_session_file(
@@ -125,6 +144,7 @@ class AsyncClient:
       scoped._facebook = self._facebook
       scoped._sender = self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))
       scoped._cookie_sync = self._cookie_sync
+      scoped._event_source = self._event_source
 
       return scoped
 
@@ -455,6 +475,88 @@ class AsyncClient:
             post_pk,
             comment_id,
             user_agent=self._user_agent,
+         )
+      )
+
+   async def events(self, *, since: str | None = None) -> AsyncIterator[Event]:
+      """Every new direct message on this account, for as long as the iteration runs.
+
+      ``async for event in client.events()`` yields a :class:`~dumpstagram.models.NewMessage`
+      for each message not delivered before, in any thread, including the viewer's own messages
+      sent from elsewhere. Within a thread they arrive in ascending ``sent_at``, and no message
+      arrives twice. ``since`` is the id of the last message the consumer handled, so a
+      restarted listener picks up after it and never delivers it again. Without it the listener
+      starts from what it first sees.
+
+      The listener polls, waiting :attr:`~dumpstagram.behavior.Behavior.poll_interval_seconds`
+      between polls, and every request a poll sends passes this account's pacer. A
+      :class:`~dumpstagram.errors.TransportFailure` or :class:`~dumpstagram.errors.RateLimited`
+      is retried with account-wide backoff, and one that outlasts its retries costs that poll
+      only. Anything else ends the iteration by raising the object the poll raised, and a
+      :class:`~dumpstagram.errors.CheckpointRequired` is never polled through.
+
+      Events wait in a buffer of 1000 while the consumer is busy. Past that the oldest are
+      dropped, and a :class:`~dumpstagram.models.EventsDropped` saying how many stands where
+      they were. Leaving the loop stops the polling. Closing it explicitly, with
+      ``contextlib.aclosing``, stops it at once rather than when the iterator is collected.
+
+      The polling transport arrives in Step 23 of the build plan. Until then the first poll
+      raises :class:`NotImplementedError`.
+      """
+
+      self._refuse_when_closed()
+
+      buffer = EventBuffer()
+      arrived = asyncio.Event()
+
+      def emit(event: Event) -> None:
+         buffer.put(event)
+         arrived.set()
+
+      async def poll_until_stopped() -> None:
+         try:
+            await self._poll_for_events(emit, since=since)
+         except Exception as failure:
+            buffer.finish(ListenerStopped(error=failure))
+            arrived.set()
+
+      polling = asyncio.create_task(poll_until_stopped())
+
+      try:
+         while True:
+            arrived.clear()
+
+            for event in buffer.drain():
+               if isinstance(event, ListenerStopped):
+                  raise event.error
+
+               yield event
+
+            await arrived.wait()
+      finally:
+         polling.cancel()
+         await asyncio.wait([polling])
+
+   async def _poll_for_events(self, emit: Callable[[Event], None], *, since: str | None) -> None:
+      """The pump both ``events`` methods run, which returns only by raising."""
+
+      source = self._event_source(
+         SourceContext(
+            sender=self._sender,
+            session=self._session,
+            behavior=self._behavior,
+            user_agent=self._user_agent,
+            since=since,
+         )
+      )
+
+      await self._watch_for_checkpoint(
+         pump_events(
+            source,
+            emit,
+            pacer=self._sender.pacer,
+            interval_seconds=self._behavior.poll_interval_seconds,
+            since=since,
          )
       )
 

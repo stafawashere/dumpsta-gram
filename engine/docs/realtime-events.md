@@ -30,6 +30,76 @@ listener.start()
 listener.stop()
 ```
 
+### As landed, Step 22, 2026-09-23
+
+The whole surface exists and is in `tests/public_surface.txt`, and the transport behind it does
+not yet. Until Step 23 the first poll raises `NotImplementedError`, which ends the async iterator
+by raising it and ends a blocking listener with a final `ListenerStopped` carrying it.
+
+```python
+async def AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
+def SyncClient.events(self, *, since: str | None = None,
+                      on_event: Callable[[Event], None] | None = None) -> EventListener
+
+class EventListener:              # dumpstagram.listener, built only by SyncClient.events
+   def start(self) -> None
+   def stop(self) -> None
+   def drain(self) -> list[Event]
+   def wait_for_events(self, timeout: float | None) -> list[Event]
+   # a context manager that starts on entry and stops on exit
+
+class Event                       # dumpstagram.models.events, the base, never delivered itself
+class NewMessage(Event):      message: Message
+class EventsDropped(Event):   count: int
+class ListenerStopped(Event): error: Exception
+```
+
+What each part promises, rulings 9, 14 and 26 in [build-plan.md](build-plan.md) section 17.13:
+
+- **One event kind from the upstream**, `NewMessage`, carrying the existing `Message`. The
+  viewer's own messages are included, so a consumer wanting only incoming ones compares
+  `message.sender` with the viewer. `Event` is a base class rather than a union so that a kind
+  added later is a new snapshot line, not a changed one.
+- **`since`** is the id of the last message the consumer handled. The pump counts it as
+  delivered already, and the source is built with it so the transport can catch up from it.
+  How a transport turns a message id into a starting point across threads is Step 23's to
+  settle, since an id alone does not name its thread.
+- **Order and duplicates.** Each poll's messages are delivered oldest first by `sent_at`, so
+  every thread's messages ascend. An id already delivered is not delivered again, remembered for
+  the last 10000 ids.
+- **The buffer** holds 1000 events, HYPOTHESIS for the number. Past that the oldest waiting
+  event is dropped, and the next take starts with one `EventsDropped` saying how many went.
+  Both surfaces use it: the async iterator yields out of it, so a slow async consumer sees the
+  same marker. A take is at most once.
+- **Handler or buffer.** With `on_event` the listener calls the handler on its own thread,
+  `dumpstagram-events`, never the loop thread and never the caller's, and `drain()` and
+  `wait_for_events()` raise `RuntimeError`. A handler that raises is logged, redacted, and the
+  next event is delivered.
+- **Poll interval** is `Behavior.poll_interval_seconds`, 60 s by default, not an `events()`
+  parameter. It is measured from the end of one poll to the start of the next, on the pacer's
+  clock, and every request a poll sends passes the account's pacer on top of it.
+- **Failure.** A poll runs under `run_with_retries`, so `TransportFailure` and `RateLimited`
+  get account-wide backoff, and one that outlasts its retries costs that poll only. Anything
+  else ends the listener. The async iterator re-raises the original object after the events
+  before it. The blocking listener puts a final `ListenerStopped` whose `error` is that object,
+  with a note naming the seam per ADR-0012, and then stops polling. `CheckpointRequired` also
+  drops a pending cookie sync, as every capability does.
+- **Lifecycle.** A blocking listener holds a reference to the shared loop thread from `start()`
+  to `stop()`. `stop()` cancels the poll task, waits for it, joins the delivery thread and
+  releases the reference, and is idempotent. A listener stopped by a failure has stopped polling
+  and still wants `stop()` to let go of the loop thread. A listener starts once. Events buffered
+  before `stop()` stay drainable. An async iteration stops polling when it is closed, at once
+  under `contextlib.aclosing`, otherwise when the iterator is collected.
+
+Where it lives: the models in `dumpstagram/models/events.py`, the listener in
+`dumpstagram/listener.py`, and underneath, in `_core/realtime/`, the buffer (`buffer.py`) and
+the pump with its source protocol (`pump.py`). A source is anything with
+`async def poll(self) -> Sequence[Message]`, built from a `SourceContext` holding the client's
+paced sender, session, behavior, user agent and `since`. It makes one attempt per poll and sends
+only through that sender. Each client carries the factory as `_event_source`, which Step 23
+replaces with the poller and the gates replace with a scripted source. The gates are listed in
+[engineering/gates.md](engineering/gates.md), section "the listener surface and buffer".
+
 ## Transport, now and later
 
 **Now, polling.** Originally an ASSUMPTION that a REST inbox endpoint is suitable. Superseded on
@@ -123,6 +193,10 @@ class EventBuffer:
 ```
 
 The consumer drains. Data crosses as plain values.
+
+As landed in Step 22, `EventBuffer` is private, in `_core/realtime/buffer.py`, and a consumer
+calls `drain()` and `wait_for_events(timeout)` on the `EventListener` that owns one. Keeping the
+class private keeps its constructor and its capacity out of the frozen surface.
 
 ### Why not a callback
 
