@@ -1,10 +1,14 @@
-"""Break the session's fr field and the redaction it needs, watch each gate go red, restore.
+"""Break the network guard in ``tests/conftest.py``, watch each of its gates go red, restore.
 
-Same harness and same rule as ``verify_parity_gates.py``: one mutation per gate, only the gate
-that should catch it is run, and every file is restored from an in-memory copy in a
+Same harness and same rule as ``verify_cookie_sync_gates.py``: one mutation per line below, only
+the gate that should catch it is run, and every file is restored from an in-memory copy in a
 ``finally`` so an interrupted run cannot leave a mutation behind.
 
-Run from ``engine/`` with ``uv run python scripts/verify_fr_session_gates.py``. Writes its
+A mutated guard lets its gate's connection through for real. Every gate reaches only for
+192.0.2.1, which nothing answers, or for a name under ``.invalid``, so a red run here sends
+nothing to Instagram.
+
+Run from ``engine/`` with ``uv run python scripts/verify_network_guard_gates.py``. Writes its
 result to ``engine/logs/``.
 """
 
@@ -22,70 +26,56 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-SESSION = "dumpstagram/session.py"
-REDACTION = "dumpstagram/_core/redaction.py"
-COOKIE_SOURCES = "dumpstagram/_cli/cookie_sources.py"
-SESSION_GATES = "tests/test_session.py"
-REDACTION_GATES = "tests/test_redaction.py"
-CLI_GATES = "tests/test_cli.py"
+CONFTEST = "tests/conftest.py"
+GATES = "tests/test_network_guard.py"
 
-QUOTED_KEY_PATTERN = """(['\\"]?\\s*[=:]\\s*)(['\\"]?)"""
-BARE_KEY_PATTERN = """(\\s*[=:]\\s*)(['\\"]?)"""
+
+def gate(name: str) -> str:
+   return f"{GATES}::{name}"
+
 
 MUTATIONS: list[dict[str, object]] = [
    {
-      "gate": f"{SESSION_GATES}::test_round_trip_through_disk_preserves_every_field",
-      "defect": "fr is saved and not loaded back",
-      "edits": [(SESSION, '         fr=payload.get("fr"),\n', "")],
-   },
-   {
-      "gate": f"{SESSION_GATES}::test_saved_format_keys_are_the_documented_set",
-      "defect": "fr is never written to the session file",
-      "edits": [(SESSION, '         "fr": self.fr,\n', "")],
-   },
-   {
-      "gate": f"{SESSION_GATES}::test_a_file_saved_before_fr_existed_loads_with_none",
-      "defect": "the loader demands the fr key",
-      "edits": [(SESSION, 'fr=payload.get("fr"),', 'fr=payload["fr"],')],
-   },
-   {
-      "gate": f"{SESSION_GATES}::test_repr_carries_no_credential_material",
-      "defect": "the session representation prints fr",
+      "gate": gate("test_both_engine_transports_are_refused_a_real_connection"),
+      "defect": "the connect guard lets a non-loopback host through",
       "edits": [
          (
-            SESSION,
-            'f"Session(ds_user_id={self.ds_user_id!r}, ',
-            'f"Session(fr={self.fr!r}, ds_user_id={self.ds_user_id!r}, ',
+            CONFTEST,
+            '      if not is_loopback_host(host):\n         self.refuse(f"connect to',
+            '      if False:\n         self.refuse(f"connect to',
          )
       ],
    },
    {
-      "gate": f"{REDACTION_GATES}::test_redacts_the_fr_value",
-      "defect": "fr is not a secret key",
-      "edits": [(REDACTION, '   "fr",\n)', ")")],
-   },
-   {
-      "gate": f"{REDACTION_GATES}::test_redacts_a_token_under_a_quoted_key",
-      "defect": "the pattern requires the separator straight after the key",
-      "edits": [(REDACTION, QUOTED_KEY_PATTERN, BARE_KEY_PATTERN)],
-   },
-   {
-      "gate": (
-         f"{CLI_GATES}::test_adopt_carries_fr_onto_the_session_and_never_into_the_cookie_jar"
-      ),
-      "defect": "IG_FR is dropped at intake",
-      "edits": [(COOKIE_SOURCES, "      fr=source.get(FR_KEY) or None,\n", "")],
-   },
-   {
-      "gate": (
-         f"{CLI_GATES}::test_adopt_carries_fr_onto_the_session_and_never_into_the_cookie_jar"
-      ),
-      "defect": "IG_FR is sent as a cookie",
+      "gate": gate("test_both_engine_transports_are_refused_a_real_connection"),
+      "defect": "the guard is built and never installed",
       "edits": [
          (
-            COOKIE_SOURCES,
-            'OPTIONAL_COOKIE_KEYS: Mapping[str, str] = {"IG_MID": "mid"}',
-            'OPTIONAL_COOKIE_KEYS: Mapping[str, str] = {"IG_MID": "mid", "IG_FR": "fr"}',
+            CONFTEST,
+            "      guard.install(monkeypatch)\n",
+            "",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_name_lookup_is_refused"),
+      "defect": "a name lookup goes out, which offline is where a request dies quietly",
+      "edits": [
+         (
+            CONFTEST,
+            "      if not may_resolve:\n",
+            "      if False:\n",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_refusal_the_test_swallows_still_fails_it"),
+      "defect": "a refusal the code under test swallows leaves the test green",
+      "edits": [
+         (
+            CONFTEST,
+            "   if left_behind:\n",
+            "   if False:\n",
          )
       ],
    },
@@ -180,7 +170,7 @@ def main() -> int:
 
    LOG_DIR.mkdir(parents=True, exist_ok=True)
    stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-   log_path = LOG_DIR / f"mutation-fr-session-{stamp}.json"
+   log_path = LOG_DIR / f"mutation-network-guard-{stamp}.json"
    log_path.write_text(
       json.dumps({"every_gate_fired": every_gate_fired, "gates": results}, indent=2) + "\n",
       encoding="utf-8",

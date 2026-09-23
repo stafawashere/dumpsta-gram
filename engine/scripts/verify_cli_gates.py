@@ -89,6 +89,26 @@ COOKIE_FILE_WINS = """   source = (
 
 COOKIE_FILE_IGNORED = """   source = dict(environment)"""
 
+THREAD_PAGE_LOOP_TAIL = """      if not page.has_next_page:
+         break
+
+      cursor = page.end_cursor
+      newer_than = None"""
+
+THREAD_WRITEBACK = """      pages = read_pages(client, arguments)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)"""
+
+THREAD_MORE_AVAILABLE = """      "message_count": sum(len(page.items) for page in pages),
+      "more_available": last.has_next_page if last is not None else False,"""
+
+THREAD_SENT_AT = """      "sender_name": message.sender.name,
+      "sent_at": message.sent_at.isoformat(),"""
+
 MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_no_option_takes_cookie_material",
@@ -139,15 +159,15 @@ MUTATIONS = [
       "gate": "tests/test_cli.py::test_pagination_stops_on_the_servers_own_signal",
       "defect": "pagination terminated on a heuristic, so a full last page costs a spare request",
       "file": MAIN,
-      "find": "      if not page.has_next_page:\n         break",
-      "replace": "      if not page.items:\n         break",
+      "find": THREAD_PAGE_LOOP_TAIL,
+      "replace": THREAD_PAGE_LOOP_TAIL.replace("if not page.has_next_page", "if not page.items"),
    },
    {
       "gate": "tests/test_cli.py::test_each_page_after_the_first_carries_the_previous_cursor",
       "defect": "every page after the first re-reads the same page",
       "file": MAIN,
-      "find": "      cursor = page.end_cursor",
-      "replace": "      cursor = arguments.after",
+      "find": THREAD_PAGE_LOOP_TAIL,
+      "replace": THREAD_PAGE_LOOP_TAIL.replace("page.end_cursor", "arguments.after"),
    },
    {
       "gate": "tests/test_cli.py::test_the_top_up_marker_is_sent_on_the_first_page_only",
@@ -162,15 +182,17 @@ MUTATIONS = [
       ),
       "defect": "the terminator reported from how many messages arrived",
       "file": RENDER,
-      "find": '      "more_available": last.has_next_page if last is not None else False,',
-      "replace": '      "more_available": bool(last.items) if last is not None else False,',
+      "find": THREAD_MORE_AVAILABLE,
+      "replace": THREAD_MORE_AVAILABLE.replace("last.has_next_page", "bool(last.items)"),
    },
    {
       "gate": "tests/test_cli.py::test_json_carries_the_documented_message_fields",
       "defect": "the machine-readable timestamp changed shape under whatever scripts it",
       "file": RENDER,
-      "find": '      "sent_at": message.sent_at.isoformat(),',
-      "replace": '      "sent_at": str(message.sent_at.timestamp()),',
+      "find": THREAD_SENT_AT,
+      "replace": THREAD_SENT_AT.replace(
+         "message.sent_at.isoformat()", "str(message.sent_at.timestamp())"
+      ),
    },
    {
       "gate": "tests/test_cli.py::test_the_client_is_closed_even_when_the_read_fails",
@@ -183,22 +205,30 @@ MUTATIONS = [
       "gate": "tests/test_cli.py::test_a_token_harvested_during_a_read_is_written_back",
       "defect": "every invocation pays a bootstrap request the previous one already paid",
       "file": MAIN,
-      "find": "      if harvested_a_new_token and may_write_back:",
-      "replace": "      if harvested_a_new_token and not may_write_back:",
+      "find": THREAD_WRITEBACK,
+      "replace": THREAD_WRITEBACK.replace(
+         "if harvested_a_new_token and may_write_back",
+         "if harvested_a_new_token and not may_write_back",
+      ),
    },
    {
       "gate": "tests/test_cli.py::test_an_unchanged_token_is_not_written_back",
       "defect": "a credential file rewritten on every run for no reason",
       "file": MAIN,
-      "find": "      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read",
-      "replace": "      harvested_a_new_token = True",
+      "find": THREAD_WRITEBACK,
+      "replace": THREAD_WRITEBACK.replace(
+         "harvested_a_new_token = client.session.fb_dtsg != token_before_the_read",
+         "harvested_a_new_token = True",
+      ),
    },
    {
       "gate": "tests/test_cli.py::test_write_back_can_be_refused",
       "defect": "the refusal flag is accepted and ignored",
       "file": MAIN,
-      "find": "      may_write_back = not arguments.no_session_writeback",
-      "replace": "      may_write_back = True",
+      "find": THREAD_WRITEBACK,
+      "replace": THREAD_WRITEBACK.replace(
+         "may_write_back = not arguments.no_session_writeback", "may_write_back = True"
+      ),
    },
    {
       "gate": (
@@ -294,8 +324,13 @@ def apply_mutation(mutation: dict[str, str]) -> str:
    path = ENGINE / mutation["file"]
    original = path.read_text(encoding="utf-8")
 
-   if mutation["find"] not in original:
-      raise SystemExit(f"mutation anchor not found in {mutation['file']} for {mutation['gate']}")
+   occurrences = original.count(mutation["find"])
+
+   if occurrences != 1:
+      raise SystemExit(
+         f"mutation anchor found {occurrences} times in {mutation['file']} "
+         f"for {mutation['gate']}, expected exactly once"
+      )
 
    path.write_text(original.replace(mutation["find"], mutation["replace"], 1), encoding="utf-8")
 
@@ -327,7 +362,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

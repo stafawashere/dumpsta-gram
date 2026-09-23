@@ -23,6 +23,14 @@ the editable install off `sys.path` and surfaces as `ModuleNotFoundError: No mod
 `63 passed` with neither condition present. Background and the permanent fix are in
 [../docs/engineering/project-profile.md](../docs/engineering/project-profile.md).
 
+Since 2026-09-23 `conftest.py` also holds the network guard. It refuses every socket connect to a
+host that is not loopback and every name lookup other than localhost, for the whole run and on
+every thread, and a test that leaves a refusal behind fails at teardown even if the code under test
+swallowed the error. A gate that expects a refusal asks for `refused_connections` and clears it.
+`test_network_guard.py` gates the guard, and the network guard section of
+[../docs/engineering/gates.md](../docs/engineering/gates.md) records why it exists and what it found
+on its first run.
+
 ## Target shape
 
 ```

@@ -79,10 +79,12 @@ TAKEN_AT_IS_MILLISECONDS = """   raw = _required(node, "taken_at", path)
 
    return datetime.fromtimestamp(int(raw) / MILLISECONDS_PER_SECOND, tz=UTC)"""
 
-POST_READS_BOTH_IDENTIFIERS = """      id=_required_string(node, "id", path),
+POST_READS_BOTH_IDENTIFIERS = """   return Post(
+      id=_required_string(node, "id", path),
       pk=_required_string(node, "pk", path),"""
 
-POST_TREATS_THEM_AS_ONE = """      id=_required_string(node, "pk", path),
+POST_TREATS_THEM_AS_ONE = """   return Post(
+      id=_required_string(node, "pk", path),
       pk=_required_string(node, "pk", path),"""
 
 AUTHOR_COMES_FROM_USER = """   author = _required(node, "user", path)
@@ -337,8 +339,13 @@ def apply_mutation(mutation: dict[str, str]) -> str:
    path = ENGINE / mutation["file"]
    original = path.read_text(encoding="utf-8")
 
-   if mutation["find"] not in original:
-      raise SystemExit(f"mutation anchor not found in {mutation['file']} for {mutation['gate']}")
+   occurrences = original.count(mutation["find"])
+
+   if occurrences != 1:
+      raise SystemExit(
+         f"mutation anchor found {occurrences} times in {mutation['file']} "
+         f"for {mutation['gate']}, expected exactly once"
+      )
 
    path.write_text(original.replace(mutation["find"], mutation["replace"], 1), encoding="utf-8")
 
@@ -370,7 +377,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

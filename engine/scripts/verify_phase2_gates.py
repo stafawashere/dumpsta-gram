@@ -38,10 +38,17 @@ REQUIRED_DEFAULTS = """   if not isinstance(node, dict) or key not in node:
 
    return node[key]"""
 
+OPTIONAL_STRING_KEEPS_NULL = (
+   "def _optional_string(node: dict[str, Any], key: str, path: str) -> str | None:\n"
+   "   value = _required(node, key, path)\n\n"
+   "   if value is None:\n"
+   "      return None"
+)
+
 CURSOR_REPORTED_AS_SENT = """
    end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
 
-   return Page("""
+   return Page(items=messages,"""
 
 CURSOR_CONTRADICTION_RULED_ON = """
    end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
@@ -49,7 +56,7 @@ CURSOR_CONTRADICTION_RULED_ON = """
    if has_next_page and end_cursor is None:
       raise SchemaChanged(page_info_path, path=page_info_path)
 
-   return Page("""
+   return Page(items=messages,"""
 
 UNREACHABLE_PATH_RAISES = """      if not isinstance(current, dict):
          raise SchemaChanged(
@@ -160,8 +167,8 @@ MUTATIONS = [
       "gate": "tests/test_parse.py::test_the_identifier_comes_from_id_and_not_from_message_id",
       "defect": "the mapper reads the duplicate identifier instead of the one it documents",
       "file": PARSE,
-      "find": '      id=_required_string(node, "id", path),',
-      "replace": '      id=_required_string(node, "message_id", path),',
+      "find": '   return Message(\n      id=_required_string(node, "id", path),',
+      "replace": '   return Message(\n      id=_required_string(node, "message_id", path),',
    },
    {
       "gate": "tests/test_parse.py::test_reactions_come_from_reactions_and_not_from_msg_reactions",
@@ -188,8 +195,8 @@ MUTATIONS = [
       "gate": "tests/test_parse.py::test_a_null_text_body_stays_none_rather_than_becoming_empty",
       "defect": "null and empty collapsed into one state",
       "file": PARSE,
-      "find": "   if value is None:\n      return None",
-      "replace": '   if value is None:\n      return ""',
+      "find": OPTIONAL_STRING_KEEPS_NULL,
+      "replace": OPTIONAL_STRING_KEEPS_NULL.replace("return None", 'return ""'),
    },
    {
       "gate": (
@@ -262,8 +269,8 @@ MUTATIONS = [
       "gate": "tests/test_direct.py::test_the_async_facade_forwards_every_argument",
       "defect": "the async surface accepts a cursor and never passes it on",
       "file": AIO,
-      "find": "         after=after,",
-      "replace": "         after=None,",
+      "find": "            thread_fbid,\n            after=after,",
+      "replace": "            thread_fbid,\n            after=None,",
    },
    {
       "gate": "tests/test_direct.py::test_the_sync_facade_forwards_every_argument",
@@ -311,8 +318,13 @@ def apply_mutation(mutation: dict[str, str]) -> str:
    path = ENGINE / mutation["file"]
    original = path.read_text(encoding="utf-8")
 
-   if mutation["find"] not in original:
-      raise SystemExit(f"mutation anchor not found in {mutation['file']} for {mutation['gate']}")
+   occurrences = original.count(mutation["find"])
+
+   if occurrences != 1:
+      raise SystemExit(
+         f"mutation anchor found {occurrences} times in {mutation['file']} "
+         f"for {mutation['gate']}, expected exactly once"
+      )
 
    path.write_text(original.replace(mutation["find"], mutation["replace"], 1), encoding="utf-8")
 
@@ -344,7 +356,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

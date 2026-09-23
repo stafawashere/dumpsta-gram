@@ -76,10 +76,14 @@ HD_WRAPPER_IS_SHRUGGED_AT = """   if not isinstance(raw, dict):
    return _optional_string(raw, "url", f"{path}.hd_profile_pic_url_info")"""
 
 EMPTY_TIMELINE_IS_NOTHING = """   if not edges:
-      return None"""
+      return None
+
+   node_path = f"{connection_path}.edges[0].node\""""
 
 EMPTY_TIMELINE_IS_ZERO = """   if not edges:
-      return "0\""""
+      return "0"
+
+   node_path = f"{connection_path}.edges[0].node\""""
 
 READ_USES_THE_RESOLVED_ID = """   return await read_profile_by_id(
       sender,
@@ -291,8 +295,13 @@ def apply_mutation(mutation: dict[str, str]) -> str:
    path = ENGINE / mutation["file"]
    original = path.read_text(encoding="utf-8")
 
-   if mutation["find"] not in original:
-      raise SystemExit(f"mutation anchor not found in {mutation['file']} for {mutation['gate']}")
+   occurrences = original.count(mutation["find"])
+
+   if occurrences != 1:
+      raise SystemExit(
+         f"mutation anchor found {occurrences} times in {mutation['file']} "
+         f"for {mutation['gate']}, expected exactly once"
+      )
 
    path.write_text(original.replace(mutation["find"], mutation["replace"], 1), encoding="utf-8")
 
@@ -324,7 +333,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

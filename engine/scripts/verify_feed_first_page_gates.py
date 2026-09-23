@@ -144,8 +144,13 @@ def apply_edits(edits: list[tuple[str, str, str]], gate: str) -> dict[Path, str]
          originals.setdefault(path, path.read_text(encoding="utf-8"))
          current = path.read_text(encoding="utf-8")
 
-         if find not in current:
-            raise SystemExit(f"mutation anchor not found in {relative} for {gate}")
+         occurrences = current.count(find)
+
+         if occurrences != 1:
+            raise SystemExit(
+               f"mutation anchor found {occurrences} times in {relative} for {gate}, "
+               "expected exactly once"
+            )
 
          path.write_text(current.replace(find, replace, 1), encoding="utf-8")
    except BaseException:
@@ -189,7 +194,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

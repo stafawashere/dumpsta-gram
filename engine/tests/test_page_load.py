@@ -23,10 +23,11 @@ from urllib.parse import parse_qs
 
 import pytest
 
+from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.feed import read_first_feed_page_from_document
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.profiles import read_profile_from_page
-from dumpstagram._core.requesting import PacedSender
+from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.documents import (
    BADGE_COUNT,
@@ -44,7 +45,7 @@ from dumpstagram._private.web.documents import (
 from dumpstagram._private.web.preload import HOME_DOCUMENT_URL, read_iris_device_id
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior
-from dumpstagram.errors import CheckpointRequired
+from dumpstagram.errors import CheckpointRequired, TransportFailure
 from tests.test_direct import FakeClock, a_bootstrapped_session, html_response, json_response
 from tests.test_feed_first_page import a_feed_document
 from tests.test_profile_page import PAGE_URL, USERNAME, profile_document
@@ -335,11 +336,28 @@ def test_parity_sends_the_page_load_companions() -> None:
    assert Behavior().page_load_companions is True
 
 
+class NoFacebook:
+   """The cookie sync tail's facebook side, failing its first request so the tail ends there.
+
+   Without it the client keeps the real cookieless transport, and the tail it schedules after
+   each document reaches www.facebook.com from inside the suite. The network guard in
+   ``conftest.py`` found exactly that on 2026-09-23.
+   """
+
+   async def send(self, request: Request) -> Response:
+      raise TransportFailure("this gate has no facebook transport")
+
+
 async def client_over(transport: BurstTransport, behavior: Behavior) -> AsyncClient:
    client = AsyncClient(a_bootstrapped_session(), behavior=behavior)
    await client._sender.aclose()
+   await client._cookie_sync.aclose()
 
    client._sender, _ = paced(transport)
+   client._cookie_sync = CookieSync(
+      client._sender.background(),
+      BackgroundSender(NoFacebook(), client._sender.pacer),
+   )
 
    return client
 

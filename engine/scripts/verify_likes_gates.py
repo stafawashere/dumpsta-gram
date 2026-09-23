@@ -46,7 +46,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_each_write_sends_the_request_the_engine_replayed"),
       "defect": "the write names the post by the id form instead of the pk",
-      "edits": [(REQUESTS, '"media_id": post_pk,', '"media_id": f"{post_pk}_0",')],
+      "edits": [
+         (
+            REQUESTS,
+            '"media_id": post_pk,\n         "tracking_token": None,',
+            '"media_id": f"{post_pk}_0",\n         "tracking_token": None,',
+         )
+      ],
    },
    {
       "gate": gate("test_each_write_sends_the_request_the_engine_replayed"),
@@ -76,8 +82,12 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             LIKES,
-            "   if not session.fb_dtsg:\n      await bootstrap(",
-            "   if True:\n      await bootstrap(",
+            "   if not session.fb_dtsg:\n"
+            "      await bootstrap(sender, session, user_agent=user_agent)\n\n"
+            "   request = build_like_request(",
+            "   if True:\n"
+            "      await bootstrap(sender, session, user_agent=user_agent)\n\n"
+            "   request = build_like_request(",
          )
       ],
    },
@@ -180,7 +190,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_cli_refuses_the_id_form_before_opening_a_client"),
       "defect": "the CLI accepts any string as a pk",
-      "edits": [(CLI, "type=media_pk, ", "")],
+      "edits": [
+         (
+            CLI,
+            'write.add_argument("pk", metavar="PK", type=media_pk, ',
+            'write.add_argument("pk", metavar="PK", ',
+         )
+      ],
    },
 ]
 
@@ -217,8 +233,13 @@ def apply_edits(edits: list[tuple[str, str, str]], gate: str) -> dict[Path, str]
          originals.setdefault(path, path.read_text(encoding="utf-8"))
          current = path.read_text(encoding="utf-8")
 
-         if find not in current:
-            raise SystemExit(f"mutation anchor not found in {relative} for {gate}")
+         occurrences = current.count(find)
+
+         if occurrences != 1:
+            raise SystemExit(
+               f"mutation anchor found {occurrences} times in {relative} for {gate}, "
+               "expected exactly once"
+            )
 
          path.write_text(current.replace(find, replace, 1), encoding="utf-8")
    except BaseException:
@@ -262,7 +283,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 

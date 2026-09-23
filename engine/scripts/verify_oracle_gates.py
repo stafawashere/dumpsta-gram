@@ -54,10 +54,18 @@ THREAD_PAGE_REPEATS_ITS_LAST = (
    "end_cursor=end_cursor)"
 )
 
-EVERY_EDGE_MAPPED = """      for index, edge in enumerate(edges)
+EVERY_EDGE_MAPPED = """      parse_message(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
    )"""
 
-ONLY_TEXT_MAPPED = """      for index, edge in enumerate(edges)
+ONLY_TEXT_MAPPED = """      parse_message(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
       if edge["node"]["content_type"] == "TEXT"
    )"""
 
@@ -74,8 +82,12 @@ def replace_text(find: str, replace: str) -> Callable[[bytes], bytes]:
    def transform(original: bytes) -> bytes:
       text = original.decode("utf-8")
 
-      if find not in text:
-         raise SystemExit(f"mutation anchor not found: {find[:60]!r}")
+      occurrences = text.count(find)
+
+      if occurrences != 1:
+         raise SystemExit(
+            f"mutation anchor found {occurrences} times, expected exactly once: {find[:60]!r}"
+         )
 
       return text.replace(find, replace, 1).encode("utf-8")
 
@@ -198,7 +210,7 @@ def main() -> int:
          }
       )
 
-   every_gate_fired = all(
+   every_gate_fired = bool(results) and all(
       entry["red_under_mutation"] and entry["green_after_restore"] for entry in results
    )
 
