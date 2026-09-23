@@ -58,9 +58,10 @@ yet measures the denominator, which is the first thing E1 fixes.
    owner controls. Those items are collected in E6, so nothing before it waits on another account.
 6. Seven recorded parity departures, each an action sent alone rather than inside its page load.
    The inbox load and the post page document are the two missing page models behind most of them.
-7. An unexplained key-shaped comment, `# G9N7E-K9NZE-GTWKC-XQ9TR`, sits at
+7. An unexplained key-shaped comment, four dash-separated groups of five characters, sits at
    `dumpstagram/_private/web/bootstrap.py:134` and therefore ships in the 1.0.0 wheel. The
-   overnight handoff raised it and it is still there.
+   overnight handoff raised it and it is still there. Resolved in E1 under W4: the line is
+   removed and its text is no longer quoted in the engine's documents.
 8. Seven gates fail from an unpacked sdist because they read git. Recorded, not blocking.
 
 ## What 1:1 with the website can and cannot mean
@@ -113,6 +114,31 @@ Numbered W1 onward so they do not collide with the build plan's rulings in 17.13
   and a third account. If no third account exists, groups stay deferred rather than borrowing the
   ruling 30 target.
 
+Rulings from W10 on were made by the orchestrator on the owner's delegation while E1 ran.
+
+- **W10. The poller reads a known thread back with `newer_than_message_id`, and keeps its
+  bounds.** Ruled 2026-09-23 for E1 item 1. When a listed thread's newest message id moves,
+  the read back sends the thread's last known message id as `newer_than_message_id` on every
+  page, the first with `after` null and each later one with the previous page's cursor.
+  Evidence: finding `direct-thread-older-page-offmsys`, whose fifth pass
+  (`run-2026-09-23-185004`, `probes/newer_than_pages.py`, four requests) had a live base with
+  24 newer messages answer the newest 20 with `has_next_page` true, then after that cursor
+  with the same base the remaining 4 with `has_next_page` false and never the base itself. So
+  the filter pages newest first at 20 a page, exactly as the unfiltered read did, and a thread
+  that gained more than 60 messages still needs a bound. The three-page cap and the
+  `EventsDropped(count=None, thread_fbid=...)` marker therefore stay, and pagination still
+  ends only on `has_next_page` or the cap. The client-side stops at the known message and at
+  the known time also stay: with the filter honoured they never fire, and if the upstream
+  ever ignores the variable they keep the read correct rather than delivering history. The
+  `since` catch-up on a first poll sends no base, because the watermark belongs to one thread
+  and a base from another thread has never been sent, and a thread new to the first page
+  sends none because nothing in it is known. Cost is unchanged in requests and smaller in
+  bytes: the four-message filtered page of that pass was 8718 bytes, a full page 39825.
+- **W11. The key-shaped text is gone from the documents too.** W4 removed the comment. Its
+  literal text also stood in audit finding 7 above and in the 2026-09-23 overnight handoff,
+  which kept it discoverable in the tree, so both now describe it instead of quoting it. The
+  history of the finding is otherwise unchanged.
+
 ## Standing rules for every phase
 
 - Every capability starts with a `reverse-engineer` run and a verified finding, per the
@@ -134,7 +160,10 @@ structural work before it, since posting is the first capability that needs the 
 the per-domain layout.
 
 1. **Debt first.** Remove the `bootstrap.py:134` comment (W4). Move the poller onto
-   `newer_than_message_id`, which Step 21 found honoured on a live base.
+   `newer_than_message_id`, which Step 21 found honoured on a live base. Done 2026-09-23:
+   the comment is removed (W4, W11) and the poller sends the base on every page of a known
+   thread's read back (W10), gated by three new gates in `tests/test_poller.py` under four new
+   mutations in `scripts/verify_poller_gates.py`.
 2. **Operation census.** Run `driver/scout_operations.py` on each page type the website has (home,
    explore, reels, profile, post, stories, direct inbox, thread, notifications, search, saved,
    settings, hashtag, location, audio). It fires nothing and lists every compiled operation with

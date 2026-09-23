@@ -131,9 +131,6 @@ class BootstrapTokens:
    """
 
 
-# G9N7E-K9NZE-GTWKC-XQ9TR
-
-
 @dataclass(frozen=True)
 class PageParameters:
    """The request parameters a page carries that do not depend on being logged in."""

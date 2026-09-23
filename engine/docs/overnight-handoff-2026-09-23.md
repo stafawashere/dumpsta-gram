@@ -78,7 +78,9 @@ stored in `.env` as `IG_COMMENT_TEXT` and `IG_NOTE_TEXT`.
 ## Open questions for the owner
 
 - `engine/dumpstagram/_private/web/bootstrap.py:120` carries a comment line
-  `# G9N7E-K9NZE-GTWKC-XQ9TR`, added in ec7b338. It looks like a key, and it was left alone.
+  of four dash-separated groups of five characters, added in ec7b338. It looks like a key, and it was left
+  alone. Resolved in E1 by ruling W4 of [web-parity-plan.md](web-parity-plan.md): the line is
+  removed and its text is no longer quoted in these documents.
 - The Step 23 `since` bounds, three pages per thread and three threads searched, are guesses.
 - Twice during the night, a harness mutation came back into a file after it had been restored,
   most likely because the `~/Documents` sync agent restored an older copy. Every commit tonight

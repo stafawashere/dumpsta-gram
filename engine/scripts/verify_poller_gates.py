@@ -100,6 +100,55 @@ MUTATIONS: list[dict[str, object]] = [
       ],
    },
    {
+      "gate": gate("test_a_known_thread_is_read_back_with_its_last_known_message_as_the_base"),
+      "defect": "a known thread is read back without its known message as the base",
+      "edits": [
+         (
+            POLLER,
+            "            newer_than_message_id=known.last_message_id,\n",
+            "",
+         )
+      ],
+   },
+   {
+      "gate": gate(
+         "test_a_filtered_read_back_holds_the_base_on_every_page_and_ends_on_has_next_page"
+      ),
+      "defect": "the base is dropped from every page after the first",
+      "edits": [
+         (
+            POLLER,
+            "after=cursor, newer_than_message_id=newer_than_message_id\n",
+            "after=cursor, newer_than_message_id=None if cursor else newer_than_message_id\n",
+         )
+      ],
+   },
+   {
+      "gate": gate(
+         "test_a_filtered_read_back_holds_the_base_on_every_page_and_ends_on_has_next_page"
+      ),
+      "defect": "a filtered read back pages on past has_next_page false",
+      "edits": [
+         (
+            POLLER,
+            "         if not page.has_next_page:\n",
+            "         if False:\n",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_since_catch_up_sends_no_base_to_a_thread_it_did_not_come_from"),
+      "defect": "the since watermark is sent as the base to every thread caught up",
+      "edits": [
+         (
+            POLLER,
+            "            first_page=searched_pages.get(row.thread_fbid),\n",
+            "            first_page=searched_pages.get(row.thread_fbid),\n"
+            "            newer_than_message_id=self._since,\n",
+         )
+      ],
+   },
+   {
       "gate": gate(
          "test_a_thread_new_to_the_first_page_delivers_only_what_is_newer_than_the_last_poll"
       ),
@@ -163,7 +212,11 @@ MUTATIONS: list[dict[str, object]] = [
          (
             POLLER,
             "         return build_thread_older_page_request(\n"
-            "            self._session, thread_fbid, after=after, user_agent=self._user_agent\n"
+            "            self._session,\n"
+            "            thread_fbid,\n"
+            "            after=after,\n"
+            "            newer_than_message_id=newer_than_message_id,\n"
+            "            user_agent=self._user_agent,\n"
             "         )\n",
             "         return build_thread_detail_request(\n"
             "            self._session, thread_fbid, user_agent=self._user_agent\n"

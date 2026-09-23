@@ -4,8 +4,11 @@ Step 23 of ``engine/docs/build-plan.md``, on the first row of the Step 21 table.
 the inbox's first page of threads and compares every row's newest message id with what the
 previous poll saw. A row whose newest id moved is read back through the thread's scrolling
 query, newest page first, until the message the listener last knew in that thread is reached.
-Nothing else is sent: no thread open, no mark-seen mutation, no page load around it. Polling is
-a departure from parity under ADR-0013 whatever the preset, because a browser holds a socket.
+That message goes out as ``newer_than_message_id`` on every page of the read, so the upstream
+answers only what is newer and ends the read with ``has_next_page`` false at it. Ruling W10 in
+``engine/docs/web-parity-plan.md``. Nothing else is sent: no thread open, no mark-seen
+mutation, no page load around it. Polling is a departure from parity under ADR-0013 whatever the
+preset, because a browser holds a socket.
 
 The messages a row carries are not delivered as they are. Their nodes lack the sender object,
 the reactions, ``thread_fbid`` and three flags a :class:`~dumpstagram.models.Message` holds, so
@@ -208,6 +211,7 @@ class InboxPoller:
             row.thread_fbid,
             known_message_id=known.last_message_id,
             known_ms=known.last_activity_ms,
+            newer_than_message_id=known.last_message_id,
          )
          found.extend(gained(row.thread_fbid, catch_up))
 
@@ -238,6 +242,7 @@ class InboxPoller:
       known_message_id: str | None,
       known_ms: int,
       first_page: Page[Message] | None = None,
+      newer_than_message_id: str | None = None,
    ) -> CatchUp:
       """Read one thread back from its newest message to the known point.
 
@@ -245,6 +250,11 @@ class InboxPoller:
       ``known_ms``, which is how a known message that was since removed still closes the gap.
       A message sent in the same millisecond as the known one counts as new unless it is that
       message, since the upstream gives no finer order.
+
+      ``newer_than_message_id`` goes on every page. Only a message of this same thread is
+      passed, since a base from another thread has never been sent. The upstream then answers
+      the newest twenty past the base and pages back to it, so the read ends on
+      ``has_next_page`` and the checks above only matter if the filter is ever ignored.
       """
 
       gathered: list[Message] = []
@@ -253,7 +263,9 @@ class InboxPoller:
 
       for _ in range(THREAD_PAGES_PER_GAP):
          if page is None:
-            page = await self._thread_page(thread_fbid, after=cursor)
+            page = await self._thread_page(
+               thread_fbid, after=cursor, newer_than_message_id=newer_than_message_id
+            )
 
          for message in newest_first(page.items):
             is_the_known_message = message.id == known_message_id
@@ -306,10 +318,20 @@ class InboxPoller:
 
       return await self._read(build, parse)
 
-   async def _thread_page(self, thread_fbid: str, *, after: str | None) -> Page[Message]:
+   async def _thread_page(
+      self,
+      thread_fbid: str,
+      *,
+      after: str | None,
+      newer_than_message_id: str | None = None,
+   ) -> Page[Message]:
       def build() -> Request:
          return build_thread_older_page_request(
-            self._session, thread_fbid, after=after, user_agent=self._user_agent
+            self._session,
+            thread_fbid,
+            after=after,
+            newer_than_message_id=newer_than_message_id,
+            user_agent=self._user_agent,
          )
 
       return await self._read(build, parse_thread_message_page)

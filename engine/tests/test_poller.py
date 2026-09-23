@@ -11,7 +11,9 @@ It can lose what is new without saying so: a thread read back too short, a curso
 marker for every gap it knows of, so each of these must leave one.
 
 It can spend what it should not: a thread read on a row that did not move, a page read twice, a
-retry inside the pump's own retry, or a request that skips the account's pacer.
+retry inside the pump's own retry, or a request that skips the account's pacer. Since ruling W10
+of the web parity plan a thread is read back with its known message as
+``newer_than_message_id`` on every page, and only in its own thread.
 
 And it can send what a listener must not: a thread open, or anything else that could mark a
 thread seen. Polling reads the listing and the scrolling query and nothing else.
@@ -287,6 +289,69 @@ async def test_a_known_message_that_was_removed_still_closes_the_gap() -> None:
 
 
 @pytest.mark.asyncio
+async def test_a_known_thread_is_read_back_with_its_last_known_message_as_the_base() -> None:
+   """Catches the read back going out without ``newer_than_message_id``, which has the upstream
+   answer the newest page whatever the listener already holds."""
+
+   moved_b = row(THREAD_B, [("mid.$b3", 40), ("mid.$b2", 30), ("mid.$b1", 5)])
+   transport = ScriptedTransport(
+      [
+         listing(*QUIET_ROWS),
+         listing(moved_b, QUIET_ROWS[0]),
+         thread_page(THREAD_B, [("mid.$b3", 40), ("mid.$b2", 30)]),
+      ]
+   )
+   poller = a_poller(transport)
+
+   await poller.poll()
+   found = await poller.poll()
+
+   assert message_ids(found) == ["mid.$b2", "mid.$b3"]
+   assert names(transport.sent) == [LISTING, LISTING, SCROLLING]
+   assert sent_variables(transport.sent[2])["newer_than_message_id"] == "mid.$b1"
+   assert sent_variables(transport.sent[2])["after"] is None
+
+
+@pytest.mark.asyncio
+async def test_a_filtered_read_back_holds_the_base_on_every_page_and_ends_on_has_next_page() -> (
+   None
+):
+   """Catches the base dropped from the pages after the first, and a filtered read that pages on
+   past ``has_next_page`` false because the known message never appears in it.
+
+   Shaped after ``logs/newer-than-pages-2026-09-23-185050.json``: 24 messages newer than the
+   base came back as the newest 20 with ``has_next_page`` true, then, after that cursor with the
+   same base, the other 4 with ``has_next_page`` false and a cursor still present. The base
+   itself was on neither page.
+   """
+
+   newer = [(f"mid.$n{index}", 100 + index) for index in range(24, 0, -1)]
+   transport = ScriptedTransport(
+      [
+         listing(*QUIET_ROWS),
+         listing(row(THREAD_B, newer[:5]), QUIET_ROWS[0]),
+         thread_page(THREAD_B, newer[:20], has_next_page=True, end_cursor="cursor-one"),
+         thread_page(THREAD_B, newer[20:], has_next_page=False, end_cursor="cursor-two"),
+      ]
+   )
+   poller = a_poller(transport)
+
+   await poller.poll()
+   found = await poller.poll()
+
+   thread_reads = transport.sent[2:]
+
+   assert len(message_ids(found)) == 24
+   assert gaps(found) == []
+   assert names(thread_reads) == [SCROLLING, SCROLLING]
+   assert [sent_variables(request)["newer_than_message_id"] for request in thread_reads] == [
+      "mid.$b1",
+      "mid.$b1",
+   ]
+   assert [sent_variables(request)["after"] for request in thread_reads] == [None, "cursor-one"]
+
+
+@pytest.mark.asyncio
 async def test_a_thread_new_to_the_first_page_delivers_only_what_is_newer_than_the_last_poll() -> (
    None
 ):
@@ -358,6 +423,31 @@ async def test_since_found_on_a_thread_page_is_caught_up_from_that_same_page() -
 
    assert message_ids(found) == [f"mid.$a{index}" for index in range(2, 8)]
    assert names(transport.sent) == [LISTING, SCROLLING]
+
+
+@pytest.mark.asyncio
+async def test_a_since_catch_up_sends_no_base_to_a_thread_it_did_not_come_from() -> None:
+   """Catches the watermark sent as ``newer_than_message_id`` to every thread being caught up.
+   A base from another thread has never been sent, and an answer to it may be empty."""
+
+   transport = ScriptedTransport(
+      [
+         listing(
+            row(THREAD_A, [("mid.$a2", 40)]),
+            row(THREAD_D, [("mid.$d2", 25), ("mid.$d1", 20)]),
+         ),
+         thread_page(THREAD_A, [("mid.$a2", 40), ("mid.$a1", 5)]),
+         thread_page(THREAD_D, [("mid.$d2", 25), ("mid.$d1", 20)]),
+      ]
+   )
+
+   found = await a_poller(transport, since="mid.$d1").poll()
+
+   assert message_ids(found) == ["mid.$a2", "mid.$d2"]
+   assert [sent_variables(request)["newer_than_message_id"] for request in transport.sent[1:]] == [
+      None,
+      None,
+   ]
 
 
 @pytest.mark.asyncio

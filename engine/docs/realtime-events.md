@@ -110,7 +110,11 @@ each thread that changed.
 - **What a poll sends.** `PolarisDirectInboxQuery` once, with one iris device id minted for the
   listener's lifetime. For each row whose newest message id differs from the previous poll's,
   `IGDMessageListOffMsysQuery` for the thread's newest page, then older pages by cursor until
-  the message the listener last knew in that thread is reached, at most three pages. Nothing
+  the message the listener last knew in that thread is reached, at most three pages. Since E1
+  item 1 of [web-parity-plan.md](web-parity-plan.md), ruling W10, a row the previous poll
+  listed is read back with that last known message id as `newer_than_message_id` on every
+  page, so the answer holds only what is newer and the last page says `has_next_page` false at
+  the base. A thread new to the first page, and the `since` catch-up, send no base. Nothing
   else: no `IGDThreadDetailQuery`, which is how a browser opens a thread, and no mark-read
   mutation, which the engine has no builder for. So no thread is marked seen, and a gate holds
   the set of friendly names a poll may send. Polling is a departure from parity under ADR-0013
@@ -156,6 +160,11 @@ each thread that changed.
   per changed thread, all passing the pacer.
 
 Two bounds are HYPOTHESIS: three pages per thread and three threads searched for `since`.
+A reduced run after ruling W10, three polls on the async surface through
+`probes/events_live.py --surface async`, sent three listing reads, all 200 and 113071 bytes,
+and printed nothing, so no thread moved and the filtered read back was not exercised by the
+listener live. Its request shape was, by the probe above through the same builder. Log
+`engine/logs/events-live-async-2026-09-23-185926.json`.
 
 The reduced live acceptance of 2026-09-23 ran `dumpsta events --duration 150 --interval 60
 --json --ids-only` once per surface through `probes/events_live.py`: three polls on each, every
@@ -255,18 +264,30 @@ FACT that the capability exists, inherited. The message paging query accepts a
 noted it as directly useful given its reference thread grew by 275 messages in under a day.
 
 For a polling listener this is the difference between re-reading history and fetching only what
-is new. The Step 23 poller does not use it yet, because it was written before its filtering was
-observed. Step 18 sent it with
+is new. The Step 23 poller did not use it, because it was written before its filtering was
+observed, and since ruling W10 of E1 it does. Step 18 sent it with
 a value once, on 2026-09-23: after a send into a thread whose only other message had been unsent,
 with that unsent message's id as the base, it returned exactly the new message, `has_next_page`
 false, no error. FACT for that one read. The thread listed nothing else, so the answer cannot
 tell a filter from the newest page, and it only shows that an unsent message's id is accepted as
 a base. Step 21 then settled it on 2026-09-23: with a live base, the second of the two newest
 messages another thread carried, it returned exactly the newest one, `has_next_page` false,
-where the newest page would have held both. FACT, one read on one thread. The poller reads the
-newest page and diffs ids instead, which costs the same
-one request whenever fewer than twenty messages arrived between two polls, and pages back only
-when more did. Switching to the top-up is a change inside `poller.py`, now open on that one observation.
+where the newest page would have held both. FACT, one read on one thread.
+
+E1 item 1 measured the case a poller also meets, more than a page of new messages, on
+2026-09-23 through `probes/newer_than_pages.py`, four requests on one thread. With a live base
+24 messages back, the filtered read returned the newest 20, identical in length to the
+unfiltered newest page, with `has_next_page` true. The same base with `after` set to that
+cursor returned the other 4 with `has_next_page` false, and neither page held the base. FACT,
+one read pair on one thread, log `engine/logs/newer-than-pages-2026-09-23-185050.json`,
+finding `direct-thread-older-page-offmsys`, fifth pass. So the filter pages newest first at 20
+a page exactly as the unfiltered read does, and ends on the server's own signal at the base.
+The poller now sends the base on every page of a known thread's read back. It costs the same
+number of requests as before and fewer bytes, 8718 for the four-message page against 39825
+for a full one. The three-page bound and the gap marker stay, because a thread that gained
+more than 60 messages still pages past them, and the client-side stops at the known message
+and the known time stay as the check that the filter was honoured, since a read that ignored
+it would otherwise deliver history.
 
 Page size is capped at 20 server side regardless of what is requested, FACT, which makes the
 saving larger still.

@@ -387,8 +387,10 @@ def build_thread_older_page_request(
 
    The variables are the ones :func:`build_thread_page_request` sends, in the order the browser
    sends them. Every captured browser request carried a 132-character ``after`` and a null
-   ``newer_than_message_id``. A null ``after`` was replayed twice and answered. A
-   ``newer_than_message_id`` has not been sent on this query by anything yet.
+   ``newer_than_message_id``. A null ``after`` was replayed twice and answered. The engine sends
+   a ``newer_than_message_id`` too, which a browser never did: with a live base the answer holds
+   only newer messages, the newest twenty first, and ``after`` with the same base pages back to
+   the base and ends there with ``has_next_page`` false.
 
    Finding: ``skills/reverse-engineer/knowledge/endpoints/direct-thread-older-page-offmsys.md``.
    """
