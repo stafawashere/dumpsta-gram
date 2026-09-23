@@ -185,7 +185,8 @@ field dumpstagram.models.comments.CommentAuthor.username: str
 module dumpstagram.models.events
 class dumpstagram.models.events.Event()
 class dumpstagram.models.events.EventsDropped(dumpstagram.models.events.Event)
-field dumpstagram.models.events.EventsDropped.count: int
+field dumpstagram.models.events.EventsDropped.count: int | None
+field dumpstagram.models.events.EventsDropped.thread_fbid: str | None = None
 class dumpstagram.models.events.ListenerStopped(dumpstagram.models.events.Event)
 field dumpstagram.models.events.ListenerStopped.error: Exception
 class dumpstagram.models.events.NewMessage(dumpstagram.models.events.Event)

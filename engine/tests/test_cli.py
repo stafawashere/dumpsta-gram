@@ -13,9 +13,13 @@ instead of on the server's own signal.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import io
 import json
 import stat
+import time
+from collections.abc import AsyncIterator
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,6 +27,7 @@ import pytest
 
 from dumpstagram._cli.exits import EXIT_BY_ERROR, exit_code_for
 from dumpstagram._cli.main import build_parser, main
+from dumpstagram.behavior import Behavior
 from dumpstagram.errors import (
    AuthenticationFailed,
    CheckpointRequired,
@@ -30,10 +35,14 @@ from dumpstagram.errors import (
    RateLimited,
 )
 from dumpstagram.models import (
+   Event,
+   EventsDropped,
    FeedItem,
    FeedItemKind,
+   ListenerStopped,
    Message,
    MessageSender,
+   NewMessage,
    Note,
    NoteAudience,
    Page,
@@ -865,3 +874,222 @@ def test_the_note_list_marks_the_note_authored_by_the_viewer() -> None:
    assert payload["own_note_id"] == "18000000000000001"
    assert [note["is_own"] for note in payload["notes"]] == [False, False, True]
    assert payload["notes"][0]["audience"] == "close_friends"
+
+
+class FakeListener:
+   """A blocking listener that hands out one scripted batch per wait, then nothing."""
+
+   def __init__(self, batches: list[list[Event]]) -> None:
+      self.batches = list(batches)
+      self.started = False
+      self.stopped = False
+
+   def start(self) -> None:
+      self.started = True
+
+   def stop(self) -> None:
+      self.stopped = True
+
+   def wait_for_events(self, timeout: float | None) -> list[Event]:
+      if self.batches:
+         return self.batches.pop(0)
+
+      time.sleep(min(timeout or 0.01, 0.01))
+
+      return []
+
+
+class FakeListeningClient:
+   def __init__(self, listener: FakeListener) -> None:
+      self.session = a_session()
+      self.listener = listener
+      self.since: str | None = None
+      self.behavior: Behavior | None = None
+      self.closed = False
+
+   def events(self, *, since: str | None = None) -> FakeListener:
+      self.since = since
+
+      return self.listener
+
+   def close(self) -> None:
+      self.closed = True
+
+
+class FakeAsyncListeningClient:
+   def __init__(self, events: list[Event]) -> None:
+      self.session = a_session()
+      self.scripted = events
+      self.since: str | None = None
+      self.behavior: Behavior | None = None
+      self.closed = False
+
+   async def events(self, *, since: str | None = None) -> AsyncIterator[Event]:
+      self.since = since
+
+      for event in self.scripted:
+         yield event
+
+      await asyncio.Event().wait()
+
+   async def aclose(self) -> None:
+      self.closed = True
+
+
+SECRET_TEXT = "a body that must never reach a log"
+
+
+def a_new_message() -> NewMessage:
+   message = a_message("mid.$e1")
+
+   return NewMessage(
+      message=replace(message, text=SECRET_TEXT, sender=MessageSender(fbid="1", name="a name"))
+   )
+
+
+def run_events(
+   argv: list[str],
+   *,
+   blocking: FakeListeningClient | None = None,
+   awaitable: FakeAsyncListeningClient | None = None,
+) -> tuple[int, str]:
+   out = io.StringIO()
+
+   def blocking_factory(
+      path: Path, *, user_agent: str | None, behavior: Behavior
+   ) -> FakeListeningClient:
+      assert blocking is not None, "the blocking surface was not supposed to be used"
+      blocking.behavior = behavior
+
+      return blocking
+
+   def async_factory(
+      path: Path, *, user_agent: str | None, behavior: Behavior
+   ) -> FakeAsyncListeningClient:
+      assert awaitable is not None, "the async surface was not supposed to be used"
+      awaitable.behavior = behavior
+
+      return awaitable
+
+   code = main(
+      ["--session", "unused.json", *argv],
+      environment={},
+      listening_client_factory=blocking_factory,
+      async_listening_client_factory=async_factory,
+      stdout=out,
+      stderr=io.StringIO(),
+   )
+
+   return code, out.getvalue()
+
+
+def test_events_prints_one_json_object_per_event_and_a_summary() -> None:
+   """Catches --json ignored for a stream, which hands a script lines it cannot parse."""
+
+   listener = FakeListener([[a_new_message(), EventsDropped(count=None, thread_fbid="17")]])
+   code, out = run_events(
+      ["--json", "events", "--duration", "0.2", "--no-session-writeback"],
+      blocking=FakeListeningClient(listener),
+   )
+
+   lines = [json.loads(line) for line in out.splitlines()]
+
+   assert code == 0
+   assert lines[0]["event"] == "new_message"
+   assert lines[0]["message"]["id"] == "mid.$e1"
+   assert lines[1] == {"event": "events_dropped", "count": None, "thread_fbid": "17"}
+   assert lines[2]["command"] == "events"
+   assert lines[2]["new_messages"] == 1
+   assert lines[2]["events_dropped"] == 1
+
+
+def test_events_ids_only_never_prints_a_messages_text_or_sender_name() -> None:
+   """Catches --ids-only leaking a message body, which a live run's log must never hold. The
+   positive control is the same event printed without the flag, which does carry the text."""
+
+   printed = {}
+
+   for form in (["--json"], []):
+      for flag in (["--ids-only"], []):
+         listener = FakeListener([[a_new_message()]])
+         _, out = run_events(
+            [*form, "events", "--duration", "0.1", "--no-session-writeback", *flag],
+            blocking=FakeListeningClient(listener),
+         )
+         printed[(bool(form), bool(flag))] = out
+
+   assert SECRET_TEXT not in printed[(True, True)]
+   assert "a name" not in printed[(True, True)]
+   assert SECRET_TEXT not in printed[(False, True)]
+   assert "mid.$e1" in printed[(True, True)]
+   assert SECRET_TEXT in printed[(True, False)]
+   assert SECRET_TEXT in printed[(False, False)]
+
+
+def test_events_stops_the_listener_when_the_duration_ends() -> None:
+   """Catches a command that returns with its listener still polling the account."""
+
+   listener = FakeListener([])
+   client = FakeListeningClient(listener)
+
+   code, _ = run_events(
+      ["events", "--duration", "0.1", "--since", "mid.$e0", "--no-session-writeback"],
+      blocking=client,
+   )
+
+   assert code == 0
+   assert listener.started
+   assert listener.stopped
+   assert client.closed
+   assert client.since == "mid.$e0"
+
+
+def test_a_listener_stopped_by_a_checkpoint_exits_with_the_checkpoint_code() -> None:
+   """Catches the blocking listener's final event printed and ignored, which ends a run that a
+   checkpoint stopped with exit 0."""
+
+   failure = CheckpointRequired("a checkpoint")
+   listener = FakeListener([[ListenerStopped(error=failure)]])
+
+   code, _ = run_events(
+      ["events", "--duration", "5", "--no-session-writeback"],
+      blocking=FakeListeningClient(listener),
+   )
+
+   assert code == exit_code_for(failure)
+   assert listener.stopped
+
+
+def test_events_on_the_async_surface_reads_the_async_iterator() -> None:
+   """Catches --surface async quietly running the blocking listener instead, and the chosen
+   interval and since not reaching the client."""
+
+   client = FakeAsyncListeningClient([a_new_message()])
+
+   code, out = run_events(
+      [
+         "--json",
+         "events",
+         "--surface",
+         "async",
+         "--duration",
+         "0.2",
+         "--interval",
+         "7",
+         "--since",
+         "mid.$e0",
+         "--ids-only",
+         "--no-session-writeback",
+      ],
+      awaitable=client,
+   )
+
+   lines = [json.loads(line) for line in out.splitlines()]
+
+   assert code == 0
+   assert lines[0]["message"]["id"] == "mid.$e1"
+   assert lines[-1]["surface"] == "async"
+   assert client.since == "mid.$e0"
+   assert client.behavior is not None
+   assert client.behavior.poll_interval_seconds == 7.0
+   assert client.closed

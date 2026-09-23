@@ -6,8 +6,9 @@ rather than a union of the kinds: a union would be one snapshot line that change
 kind arrives, where a new subclass is a new line.
 
 The first version has one kind that comes from the upstream, :class:`NewMessage`. The other
-two are the listener's own: :class:`EventsDropped` marks a gap left by a full buffer, and
-:class:`ListenerStopped` is the last event a blocking listener delivers when a failure ended it.
+two are the listener's own: :class:`EventsDropped` marks a gap, from a full buffer or from a
+poll that could not see everything, and :class:`ListenerStopped` is the last event a blocking
+listener delivers when a failure ended it.
 Nothing here parses or touches the network.
 """
 
@@ -40,14 +41,25 @@ class NewMessage(Event):
 
 @dataclass(frozen=True)
 class EventsDropped(Event):
-   """``count`` events were dropped here because the buffer was full.
+   """Messages were not delivered here, and the listener says so rather than going quiet.
 
-   The dropped events were the oldest waiting, so this marker stands where they stood: before
-   every event that was kept. It tells a gap from silence, and what fell into the gap can be
-   read back with :meth:`~dumpstagram.SyncClient.thread_messages`.
+   Two things leave this marker. A full buffer drops its oldest waiting events, and then
+   ``count`` says how many and ``thread_fbid`` is None, because the dropped events may span
+   threads. The marker stands where they stood, before every event that was kept.
+
+   The polling transport leaves it when it cannot see everything that arrived: a thread gained
+   more messages between two polls than the listener reads back, or ``since`` named a message
+   the listener could not find, or more threads changed than the inbox's first page shows.
+   Then ``count`` is None, because the listener cannot know how many it missed, and
+   ``thread_fbid`` names the thread when the gap is in one. It comes before the messages the
+   same poll delivers.
+
+   Either way, what fell into the gap can be read back with
+   :meth:`~dumpstagram.SyncClient.thread_messages`.
    """
 
-   count: int
+   count: int | None
+   thread_fbid: str | None = None
 
 
 @dataclass(frozen=True)

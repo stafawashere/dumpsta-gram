@@ -25,7 +25,12 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram.errors import AuthenticationFailed, UpstreamRejected
 from dumpstagram.session import Session
 
-__all__ = ["HTML_APP_SHELL", "is_a_stale_token_failure", "with_token_recovery"]
+__all__ = [
+   "HTML_APP_SHELL",
+   "is_a_stale_token_failure",
+   "with_one_token_recovery",
+   "with_token_recovery",
+]
 
 HTML_APP_SHELL = "html_app_shell"
 """The classifier's code for the shell, which is what an unusable ``fb_dtsg`` produces."""
@@ -79,3 +84,34 @@ async def with_token_recovery[T](
       session.fb_dtsg = None
 
       return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)
+
+
+async def with_one_token_recovery[T](
+   attempt: Callable[[], Awaitable[T]],
+   *,
+   session: Session,
+) -> T:
+   """The judgement of :func:`with_token_recovery` around one attempt, with no retry policy.
+
+   The listener's poll already runs under ``run_with_retries`` in the pump, so a poll built on
+   :func:`with_token_recovery` would retry inside a retry and multiply what one failure costs.
+   This sends ``attempt`` once, and once more only after clearing a token that looks stale.
+   """
+
+   token_before_the_attempt = session.fb_dtsg
+
+   try:
+      return await attempt()
+   except (AuthenticationFailed, UpstreamRejected) as failure:
+      if not is_a_stale_token_failure(failure):
+         raise
+
+      kept_a_token_it_had_not_just_fetched = (
+         token_before_the_attempt is not None and session.fb_dtsg == token_before_the_attempt
+      )
+      if not kept_a_token_it_had_not_just_fetched:
+         raise
+
+      session.fb_dtsg = None
+
+      return await attempt()

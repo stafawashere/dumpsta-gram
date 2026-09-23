@@ -23,7 +23,12 @@ from urllib.parse import parse_qs
 
 import pytest
 
-from dumpstagram._private.web.parse import InboxThread, parse_inbox_listing
+from dumpstagram._private.web.parse import (
+   InboxMessage,
+   InboxThread,
+   parse_inbox_listing,
+   parse_inbox_recent_messages,
+)
 from dumpstagram._private.web.requests import build_inbox_listing_request
 from dumpstagram.errors import SchemaChanged
 from tests.test_direct import a_bootstrapped_session, sent_variables
@@ -280,3 +285,19 @@ def test_the_listing_request_is_the_one_an_inbox_load_sends() -> None:
    }
    assert request.headers["referer"] == INBOX_REFERER
    assert "x-root-field-name" not in request.headers
+
+
+def test_each_rows_carried_messages_map_in_order_with_their_times() -> None:
+   """Catches the carried messages reordered or given the wrong row's times. The listener
+   places a ``since`` in time from these, so a wrong time moves where its catch up starts."""
+
+   carried = parse_inbox_recent_messages(two_row_listing())
+
+   assert carried == (
+      (
+         InboxMessage(id="mid.$newest", sent_at_ms=1790153242519),
+         InboxMessage(id="mid.$middle", sent_at_ms=1790153102470),
+         InboxMessage(id="mid.$oldest", sent_at_ms=1790136891853),
+      ),
+      (InboxMessage(id="mid.$other", sent_at_ms=1790135581037),),
+   )

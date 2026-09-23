@@ -5,7 +5,9 @@ gate that should catch it is run, and every file is restored from an in-memory c
 ``finally`` so an interrupted run cannot leave a mutation behind.
 
 The first ten mutations are the gate table of Step 22 in ``docs/build-plan.md``, each under
-exactly the mutation that table names. The rest cover what the step added around them.
+exactly the mutation that table names. The rest cover what the step added around them. The
+gate on the placeholder source went with the placeholder in Step 23, and its successor, that a
+client polls the inbox by default, is in ``verify_poller_gates.py``.
 
 Run from ``engine/`` with ``uv run python scripts/verify_events_gates.py``. Writes its result to
 ``engine/logs/``.
@@ -267,18 +269,6 @@ MUTATIONS: list[dict[str, object]] = [
             LISTENER,
             "         await self._pump(self._buffer.put)\n",
             "         await self._pump(self._on_event or self._buffer.put)\n",
-         )
-      ],
-   },
-   {
-      "gate": gate("test_without_a_transport_the_listener_stops_saying_so"),
-      "defect": "the placeholder source quietly returns nothing",
-      "edits": [
-         (
-            PUMP,
-            '      raise NotImplementedError("events() has no transport yet, polling arrives in '
-            'Step 23")\n',
-            "      return ()\n",
          )
       ],
    },

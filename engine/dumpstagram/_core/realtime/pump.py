@@ -3,8 +3,10 @@
 Both public surfaces run the same pump. It asks an :class:`EventSource` for the messages it can
 see, emits each one it has not emitted before as a :class:`~dumpstagram.models.NewMessage`,
 waits the behavior's poll interval, and asks again. What the source reads and how is its own
-business, so the polling transport of Step 23 and a push transport later plug in here without
-the pump or the surface changing.
+business, so the polling transport in ``poller.py`` and a push transport later plug in here
+without the pump or the surface changing. A source that knows it missed something says so with
+an :class:`~dumpstagram.models.EventsDropped` among what it returns, and the pump passes that
+on ahead of the poll's messages.
 
 A poll is a read, so it runs under ``run_with_retries`` and its backoff holds the whole account.
 A source makes one attempt per poll and never retries on its own, because retry lives in one
@@ -29,19 +31,18 @@ from dumpstagram._core.pacer import Pacer, run_with_retries
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram.behavior import Behavior
 from dumpstagram.errors import RateLimited, TransportFailure
-from dumpstagram.models import Event, Message, NewMessage
+from dumpstagram.models import Event, EventsDropped, Message, NewMessage
 from dumpstagram.session import Session
 
 __all__ = [
    "SEEN_ID_MEMORY",
    "SURVIVABLE",
    "EventSource",
-   "NoTransportYet",
+   "Found",
    "SeenIds",
    "SourceContext",
    "SourceFactory",
    "in_delivery_order",
-   "no_transport_yet",
    "pump_events",
 ]
 
@@ -55,15 +56,20 @@ messages, so an id old enough to be forgotten is not returned again."""
 _logger = logging.getLogger("dumpstagram")
 
 
+type Found = Message | EventsDropped
+"""What one poll returns: messages, and a marker for each gap the source knows it left."""
+
+
 class EventSource(Protocol):
    """Whatever tells the pump which messages exist now.
 
    ``poll`` returns the messages the source can see, in any order, and may return one it
-   returned before. It makes one attempt, sends only through the sender in its
+   returned before, beside an :class:`~dumpstagram.models.EventsDropped` for each gap it knows
+   it could not read. It makes one attempt, sends only through the sender in its
    :class:`SourceContext`, and raises the library's own errors.
    """
 
-   async def poll(self) -> Sequence[Message]: ...
+   async def poll(self) -> Sequence[Found]: ...
 
 
 @dataclass(frozen=True)
@@ -81,17 +87,6 @@ class SourceContext:
 
 
 type SourceFactory = Callable[[SourceContext], EventSource]
-
-
-class NoTransportYet:
-   """The source a client has until the polling transport exists."""
-
-   async def poll(self) -> Sequence[Message]:
-      raise NotImplementedError("events() has no transport yet, polling arrives in Step 23")
-
-
-def no_transport_yet(context: SourceContext) -> EventSource:
-   return NoTransportYet()
 
 
 class SeenIds:
@@ -153,7 +148,13 @@ async def pump_events(
    while True:
       messages = await poll_once(source, pacer)
 
-      for message in in_delivery_order(messages):
+      gaps = [found for found in messages if isinstance(found, EventsDropped)]
+      delivered = [found for found in messages if isinstance(found, Message)]
+
+      for gap in gaps:
+         emit(gap)
+
+      for message in in_delivery_order(delivered):
          is_new = seen.add(message.id)
 
          if is_new:
@@ -162,7 +163,7 @@ async def pump_events(
       await pacer.sleep(interval_seconds)
 
 
-async def poll_once(source: EventSource, pacer: Pacer) -> Sequence[Message]:
+async def poll_once(source: EventSource, pacer: Pacer) -> Sequence[Found]:
    try:
       return await run_with_retries(source.poll, pacer=pacer)
    except SURVIVABLE as failure:

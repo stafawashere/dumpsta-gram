@@ -4,7 +4,8 @@ The engine's first consumer, and the acceptance harness for the Phase 2 stop con
 [ADR-0005](../../docs/decisions/ADR-0005-engine-first-build-order.md) makes it a real
 consumer rather than a demo: every capability it reaches, it reaches through `SyncClient`, so
 anything awkward to do from the command line is a gap in the public API rather than something
-the command works around.
+the command works around. `events --surface async` is the one exception, and it goes through
+the other public surface, `AsyncClient`, never past it.
 
 It lives at `dumpstagram/_cli/`. The installed console script is the contract and the module
 layout behind it is not, which is why `_cli` is private and why nothing about the command
@@ -45,6 +46,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
+| `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -233,6 +235,40 @@ code `comment_not_deleted`.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
+### `events`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta events --duration 600
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json events --duration 600 --surface async --ids-only
+```
+
+Listens through `events()` for `--duration` seconds and prints one line per event as it arrives,
+flushed at once, then one summary line. There is no prompt and nothing is written to the
+account: a poll reads the inbox listing and the pages of threads that gained messages, and never
+opens a thread the way a browser does before marking it seen. The first poll prints nothing
+unless `--since` is given. See [realtime-events.md](realtime-events.md) for what a poll sends.
+
+- `--since MESSAGE_ID` is the last message already handled. The listener catches up from its
+  time in every listed thread, and prints an `events_dropped` line with no count and no thread
+  when it cannot find it.
+- `--interval SECONDS` replaces `Behavior.poll_interval_seconds`, 60 by default, for this run.
+  Every request still passes the pacer.
+- `--surface sync`, the default, drains a `SyncClient` listener with `wait_for_events`, the way
+  the Swift app will. `--surface async` iterates `AsyncClient.events` instead, on one event loop
+  for the whole run.
+- `--ids-only` prints a message's id, thread, sender id, time and content type and never its
+  text, its sender's name or its reactions. Use it whenever the output lands in a log.
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
+The text form is `new_message  SENT_AT  THREAD_FBID  SENDER_FBID  ID  TEXT` per message and
+`events_dropped  count: N|unknown  thread: FBID|any` per gap marker. The JSON form is one object
+per line rather than one document, because the output is a stream: `{"event": "new_message",
+"message": {...}}` with the `thread` command's message keys, or the five `--ids-only` keys, and
+`{"event": "events_dropped", "count": ..., "thread_fbid": ...}`. The last line is the summary,
+`command`, `surface`, `duration_seconds`, `poll_interval_seconds`, `new_messages` and
+`events_dropped`. A failure that ends the listener ends the command with that failure's exit
+code, the blocking listener's final `ListenerStopped` included.
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -277,11 +313,12 @@ that has not been observed.
 
 ## Verification
 
-Thirty-nine gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
+Forty-four gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
 then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate and
 `scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`, and
-`scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
+and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.
@@ -299,3 +336,12 @@ length rather than the cursor, because a timeline is other people's content.
 
 `scripts/verify_feed_gates.py` covers the feed gates in both files: seventeen mutations, each
 seen red then green on 2026-09-21, logged to `logs/mutation-feed-2026-09-21-052446.json`.
+
+The `events` command's reduced live acceptance ran 2026-09-23 through `probes/events_live.py`,
+which calls the same `main` with `--json --ids-only --duration 150 --interval 60` and counts
+every request at the transport. Blocking surface: three listing reads, all 200 and the same
+length, nothing printed, exit 0, log `logs/events-live-sync-2026-09-23-065330.json`. Async
+surface: three listing reads and one thread read, all 200, two unarranged new messages printed
+as ids only, exit 0, log `logs/events-live-async-2026-09-23-065605.json`. Every request held the
+account's pacer slot. The planned run of ten polls with an arranged incoming message is still
+owed.

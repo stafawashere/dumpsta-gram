@@ -32,9 +32,9 @@ listener.stop()
 
 ### As landed, Step 22, 2026-09-23
 
-The whole surface exists and is in `tests/public_surface.txt`, and the transport behind it does
-not yet. Until Step 23 the first poll raises `NotImplementedError`, which ends the async iterator
-by raising it and ends a blocking listener with a final `ListenerStopped` carrying it.
+The whole surface exists and is in `tests/public_surface.txt`. Step 23 put the polling
+transport behind it, described under "As landed, Step 23" below, and changed one thing here:
+`EventsDropped` gained `thread_fbid` and its `count` became optional.
 
 ```python
 async def AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
@@ -50,7 +50,7 @@ class EventListener:              # dumpstagram.listener, built only by SyncClie
 
 class Event                       # dumpstagram.models.events, the base, never delivered itself
 class NewMessage(Event):      message: Message
-class EventsDropped(Event):   count: int
+class EventsDropped(Event):   count: int | None; thread_fbid: str | None = None
 class ListenerStopped(Event): error: Exception
 ```
 
@@ -62,13 +62,13 @@ What each part promises, rulings 9, 14 and 26 in [build-plan.md](build-plan.md) 
   added later is a new snapshot line, not a changed one.
 - **`since`** is the id of the last message the consumer handled. The pump counts it as
   delivered already, and the source is built with it so the transport can catch up from it.
-  How a transport turns a message id into a starting point across threads is Step 23's to
-  settle, since an id alone does not name its thread.
+  Step 23 settled what it means across threads: the time of that message, see below.
 - **Order and duplicates.** Each poll's messages are delivered oldest first by `sent_at`, so
   every thread's messages ascend. An id already delivered is not delivered again, remembered for
   the last 10000 ids.
 - **The buffer** holds 1000 events, HYPOTHESIS for the number. Past that the oldest waiting
-  event is dropped, and the next take starts with one `EventsDropped` saying how many went.
+  event is dropped, and the next take starts with one `EventsDropped` saying how many went,
+  with `thread_fbid` None.
   Both surfaces use it: the async iterator yields out of it, so a slow async consumer sees the
   same marker. A take is at most once.
 - **Handler or buffer.** With `on_event` the listener calls the handler on its own thread,
@@ -94,11 +94,78 @@ What each part promises, rulings 9, 14 and 26 in [build-plan.md](build-plan.md) 
 Where it lives: the models in `dumpstagram/models/events.py`, the listener in
 `dumpstagram/listener.py`, and underneath, in `_core/realtime/`, the buffer (`buffer.py`) and
 the pump with its source protocol (`pump.py`). A source is anything with
-`async def poll(self) -> Sequence[Message]`, built from a `SourceContext` holding the client's
-paced sender, session, behavior, user agent and `since`. It makes one attempt per poll and sends
-only through that sender. Each client carries the factory as `_event_source`, which Step 23
-replaces with the poller and the gates replace with a scripted source. The gates are listed in
-[engineering/gates.md](engineering/gates.md), section "the listener surface and buffer".
+`async def poll(self) -> Sequence[Message | EventsDropped]`, built from a `SourceContext` holding
+the client's paced sender, session, behavior, user agent and `since`. It makes one attempt per
+poll and sends only through that sender. Each client carries the factory as `_event_source`,
+which is `inbox_poller` from Step 23 on and which the gates replace with a scripted source. The
+gates are listed in [engineering/gates.md](engineering/gates.md), sections "the listener surface
+and buffer" and "the polling transport".
+
+### As landed, Step 23, 2026-09-23
+
+The transport is `InboxPoller` in `_core/realtime/poller.py`, on the first row of the Step 21
+table in [build-plan.md](build-plan.md): one inbox listing request per poll, plus the reads of
+each thread that changed.
+
+- **What a poll sends.** `PolarisDirectInboxQuery` once, with one iris device id minted for the
+  listener's lifetime. For each row whose newest message id differs from the previous poll's,
+  `IGDMessageListOffMsysQuery` for the thread's newest page, then older pages by cursor until
+  the message the listener last knew in that thread is reached, at most three pages. Nothing
+  else: no `IGDThreadDetailQuery`, which is how a browser opens a thread, and no mark-read
+  mutation, which the engine has no builder for. So no thread is marked seen, and a gate holds
+  the set of friendly names a poll may send. Polling is a departure from parity under ADR-0013
+  whatever the preset.
+- **What decides a change.** The row's newest message id, not its activity marker. A marker
+  that moves while the newest id stays put reads nothing: no message arrived, whatever moved it,
+  a reaction being the INFERENCE.
+- **Where the messages come from.** Always the thread read. A row carries its five newest
+  messages, but each carries ten keys and lacks the sender object, the reactions,
+  `thread_fbid`, `igd_is_forwarded`, `is_pinned` and `is_ai_generated`, measured on 75 of 75
+  nodes in the inbox captures of `run-2026-09-23-022159` and `run-2026-09-23-045256`. A
+  `Message` built from one would carry defaults nobody sent. The carried messages are used to
+  place a message id in time, which is what `since` needs, and they bound the read: a known id
+  among them means the first page covers the gap.
+- **Where a read back stops.** At the known message, or at the first message older than the
+  thread's previous activity marker, which is how a known message that was deleted still closes
+  the gap, or at the thread's start. A message in the same millisecond as the known one counts
+  as new unless it is that message. A thread that first appears on the listing's first page is
+  read back to the newest activity the previous poll saw.
+- **The first poll** records every row and delivers nothing, unless `since` was given.
+- **`since`, settled.** The watermark is placed in time. The first poll looks for the id among
+  the messages every row carries, and failing that reads the newest page of the first three
+  threads in listing order, three requests at most. Found, its `sent_at` is the point: every
+  listed thread whose activity is newer is read back to it, stopping in the watermark's own
+  thread at the watermark itself and in every other at the first message older than it, and the
+  page the search read is reused. Not found, the poll delivers one `EventsDropped` with `count`
+  None and `thread_fbid` None, and the listener carries on from where the inbox stands. It
+  does not raise: a consumer that was away long enough for its watermark to leave the newest
+  twenty messages of the three busiest threads would otherwise have no way back in but to drop
+  the watermark, and a marker says the same thing without stopping it.
+- **Every gap is reported, none skipped.** `EventsDropped(count=None, thread_fbid=...)` stands
+  before a thread's messages when three pages did not reach its known message, and
+  `EventsDropped(count=None)` when the listing's last row is itself newer than the point being
+  caught up from and more rows exist, since a thread below it may be newer too. `count` is None
+  because the poller cannot know how many it missed. The pump emits a poll's markers before its
+  messages.
+- **One attempt.** A stale token is re-fetched once through `with_one_token_recovery` in
+  `_core/tokens.py`, which has the judgement of `with_token_recovery` and no retry policy,
+  because the pump's `run_with_retries` is already around the whole poll. A poll that fails part
+  of the way through commits nothing, so the retry reads the same rows against the same state.
+- **Cost.** One request a minute on a quiet inbox. A thread that gained up to about twenty
+  messages costs one more, and the poller never costs more than one listing plus three pages
+  per changed thread, all passing the pacer.
+
+Two bounds are HYPOTHESIS: three pages per thread and three threads searched for `since`.
+
+The reduced live acceptance of 2026-09-23 ran `dumpsta events --duration 150 --interval 60
+--json --ids-only` once per surface through `probes/events_live.py`: three polls on each, every
+request holding the account's pacer slot, every answer 200. On the blocking surface the three
+listings were identical in length and nothing was printed. On the async surface the third
+listing changed, one thread read followed, and two new messages in one thread were printed as
+ids only, sent 49 s and 4 s before that poll by two different senders. Neither was arranged, and
+the run did not establish whether either sender was the owner. Logs
+`engine/logs/events-live-sync-2026-09-23-065330.json` and
+`engine/logs/events-live-async-2026-09-23-065605.json`.
 
 ## Transport, now and later
 
@@ -124,7 +191,7 @@ blocking the Swift app.
 ### What the poll reads, as of 2026-09-23
 
 Steps 20 and 21 of [build-plan.md](build-plan.md) replaced the REST assumption with an observed
-GraphQL listing, and the poll will read that instead. The REST route was not called: the
+GraphQL listing, and the poll reads that instead. The REST route was not called: the
 listing lacked nothing the listener needs. Its durability argument above still holds, since the
 listing has a `doc_id` that can rotate, and it stays the fallback to reach for if it does.
 
@@ -148,11 +215,17 @@ listing has a `doc_id` that can rotate, and it stays the fallback to reach for i
   and `iris_inactive_subscription_uq_seq_id` did not move. FACT, one observation. So the listener
   will not emit events for nothing, as far as this shows.
 
-Still unobserved, and blocked on the owner sending one message by hand (ruling 10): whether a
-thread that gains a message moves to the top with its marker and last message id advanced while
-every other row stays put, and whether `newer_than_message_id` returns exactly the new message.
-`probes/inbox_change_feed.py --stage full` runs both. Until it does, the polling design is not
-chosen from the Step 21 table, only the "changes with nothing done" row is ruled out.
+Still unobserved as an arranged experiment, and blocked on the owner sending one message by
+hand (ruling 10): whether a thread that gains a message moves to the top with every other row
+staying put, and whether `newer_than_message_id` returns exactly the new message.
+`probes/inbox_change_feed.py --stage full` runs both. Step 23 chose the first row of the Step 21
+table anyway, because it holds on the evidence there is and it does not use
+`newer_than_message_id` at all: it diffs ids client side, which the third row of the table
+prescribes when the top-up does not filter, and works whether it does or not. The unarranged
+messages of the async acceptance run are one observation that a listing moves when a thread
+gains messages: the third read changed length, and the thread read of the one row whose newest
+id moved returned the two new messages. The run's log keeps ids and counts only, so whether the
+other rows stayed put is not recorded.
 
 ### Incremental fetch makes polling much cheaper
 
@@ -161,8 +234,11 @@ FACT that the capability exists, inherited. The message paging query accepts a
 noted it as directly useful given its reference thread grew by 275 messages in under a day.
 
 For a polling listener this is the difference between re-reading history and fetching only what
-is new. Any polling implementation should use it from the start rather than filtering
-client-side, because the cost difference is a full pagination walk versus one request.
+is new. The Step 23 poller does not use it yet, because it has never been sent with a value and
+its filtering is unobserved. It reads the newest page and diffs ids instead, which costs the same
+one request whenever fewer than twenty messages arrived between two polls, and pages back only
+when more did. Switching to the top-up is a change inside `poller.py` once Step 21 line 5 or
+Step 18 has observed it.
 
 Page size is capped at 20 server side regardless of what is requested, FACT, which makes the
 saving larger still.

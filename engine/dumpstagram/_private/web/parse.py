@@ -69,6 +69,7 @@ __all__ = [
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
    "UNLIKE_ANSWER_ROOT",
+   "InboxMessage",
    "InboxThread",
    "comment_was_deleted",
    "parse_comment",
@@ -76,6 +77,7 @@ __all__ = [
    "parse_created_comment",
    "parse_feed_page",
    "parse_inbox_listing",
+   "parse_inbox_recent_messages",
    "parse_inbox_tray",
    "parse_like_answer",
    "parse_note",
@@ -1193,3 +1195,67 @@ def parse_inbox_listing(payload: Any) -> Page[InboxThread]:
    end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
 
    return Page(items=threads, has_next_page=has_next_page, end_cursor=end_cursor)
+
+
+@dataclass(frozen=True)
+class InboxMessage:
+   """One of the newest messages an inbox row carries, reduced to its id and its time.
+
+   Private, like :class:`InboxThread`. A row's message nodes carry ten keys and lack the
+   sender object, the reactions, ``thread_fbid`` and the three flags a
+   :class:`~dumpstagram.models.Message` holds, so they are never mapped into one. The listener
+   uses them to place a message id in time and reads the messages themselves from the thread.
+   """
+
+   id: str
+   sent_at_ms: int
+
+
+def _inbox_messages(edge: Any, path: str) -> tuple[InboxMessage, ...]:
+   thread_path = f"{path}.node.as_ig_direct_thread"
+   thread = _required(_required(edge, "node", path), "as_ig_direct_thread", f"{path}.node")
+   messages_path = f"{thread_path}.slide_messages"
+   edges = _required(_required(thread, "slide_messages", thread_path), "edges", messages_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{messages_path}.edges is not a list", path=f"{messages_path}.edges")
+
+   carried: list[InboxMessage] = []
+
+   for index, message_edge in enumerate(edges):
+      node_path = f"{messages_path}.edges[{index}].node"
+      node = _required(message_edge, "node", f"{messages_path}.edges[{index}]")
+
+      if not isinstance(node, dict):
+         raise SchemaChanged(f"{node_path} is not an object", path=node_path)
+
+      carried.append(
+         InboxMessage(
+            id=_required_string(node, "id", node_path),
+            sent_at_ms=_milliseconds(node, "timestamp_ms", node_path),
+         )
+      )
+
+   return tuple(carried)
+
+
+def parse_inbox_recent_messages(payload: Any) -> tuple[tuple[InboxMessage, ...], ...]:
+   """The messages each row of one ``PolarisDirectInboxQuery`` payload carries, row by row.
+
+   One tuple per row, in the same order :func:`parse_inbox_listing` returns the rows, and each
+   tuple in the order the row lists its messages, which was newest first on all 75 measured
+   nodes. Five per row, set by the request's provider flag.
+
+   Finding: `direct-inbox-thread-list` in the knowledge base.
+   """
+
+   connection = _object_at(payload, INBOX_LISTING_PATH)
+   connection_path = ".".join(INBOX_LISTING_PATH)
+   edges = _required(connection, "edges", connection_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{connection_path}.edges is not a list", path=f"{connection_path}.edges")
+
+   return tuple(
+      _inbox_messages(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
+   )

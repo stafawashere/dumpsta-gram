@@ -29,8 +29,8 @@ listener.stop()
 ### The listener shape as landed
 
 Added 2026-09-23 as Step 22 of [build-plan.md](build-plan.md), before its transport. The whole
-surface is fixed now so the polling transport of Step 23 and a push transport later need no
-snapshot change:
+surface was fixed then so the polling transport of Step 23 and a push transport later need no
+snapshot change. Step 23 changed one pair of lines, `EventsDropped`, see below:
 
 ```python
 async with aclosing(aclient.events(since=last_seen_id)) as stream:
@@ -54,13 +54,17 @@ The two `events` methods share every parameter except `on_event`, and a listener
 capabilities by coroutine, and an async generator is not one.
 
 `since` is the only parameter, a message id watermark: the id of the last message the consumer
-handled, never delivered again, from which a restarted listener catches up. The poll interval
+handled, never delivered again, from which a restarted listener catches up. The polling
+transport places it in time and delivers what is newer in every listed thread, and says so with
+an `EventsDropped` when it cannot find it. The poll interval
 is `Behavior.poll_interval_seconds`, 60 s by default and never an `events()` parameter, per
 ruling 9. The buffer bound, 1000, is not a parameter either.
 
 The events are frozen dataclasses in `dumpstagram.models.events`, all subclasses of `Event`:
 `NewMessage(message)`, the one kind from the upstream, the viewer's own messages included;
-`EventsDropped(count)`, the marker a full buffer leaves where it dropped the oldest; and
+`EventsDropped(count, thread_fbid=None)`, the marker a full buffer leaves where it dropped the
+oldest, with the count, and the marker the transport leaves for a gap it could not read back,
+with `count` None and the thread when the gap is in one; and
 `ListenerStopped(error)`, the last event a blocking listener delivers when a failure ends it,
 carrying the original exception with a seam note. The async iterator raises that exception
 instead. `CheckpointRequired` and `AuthenticationFailed` end a listener and are never polled
@@ -70,9 +74,12 @@ id arrives twice. With `on_event`, events go to the handler on the listener's ow
 never to the buffer, and `drain()` raises. Every guarantee here is gated offline, see
 [engineering/gates.md](engineering/gates.md).
 
-Until Step 23 lands the poller, the first poll raises `NotImplementedError`, so the async
-iterator raises it and a blocking listener delivers it in a `ListenerStopped`. No request is
-sent. Full behavior in [realtime-events.md](realtime-events.md).
+The transport landed in Step 23: each poll reads the inbox listing, one request, and reads back
+each thread whose newest message moved, one request per page. It never opens a thread or marks
+one seen. `EventsDropped.count` became `int | None` and `thread_fbid` was added in that step,
+because a gap the transport finds has a thread and no knowable count. Neither line is in the
+Phase 3 baseline, so the additive freeze is untouched. Full behavior in
+[realtime-events.md](realtime-events.md).
 
 ## Construction
 
@@ -121,8 +128,8 @@ does not close the pool. Closing the owner stops both.
 `cookie_sync`, `write_spacing`, `write_budget_per_hour`,
 `stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`. The last, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
-zero allowed and a negative a `ValueError`. The listener honours it today and has nothing to poll
-until Step 23, see the listener shape above.
+zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
+above.
 `feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a

@@ -1,10 +1,11 @@
 """Gates on the listener behind ``events()``: the buffer, the pump and both surfaces.
 
-Step 22 of ``docs/build-plan.md`` fixed the surface before the polling transport exists, so
-every gate here drives the listener with a scripted source injected where Step 23 will plug the
-poller in. Nothing here spends a request. The async gates run the pacer on a fake clock, and the
-blocking gates run on the real shared loop thread, because the thread seam is what they are
-about.
+Step 22 of ``docs/build-plan.md`` fixed the surface before the polling transport existed, so
+every gate here drives the listener with a scripted source injected where the client keeps its
+source factory, which is the inbox poller of Step 23 by default and is gated in
+``test_poller.py``. Nothing here spends a request. The async gates run the pacer on a fake
+clock, and the blocking gates run on the real shared loop thread, because the thread seam is
+what they are about.
 
 Each gate names the defect it catches, and ``scripts/verify_events_gates.py`` breaks the source
 once per gate and watches it go red.
@@ -626,17 +627,3 @@ async def test_no_blocking_call_runs_on_the_loop_thread() -> None:
       await watcher
 
    assert longest_stall < 0.1
-
-
-@pytest.mark.asyncio
-async def test_without_a_transport_the_listener_stops_saying_so() -> None:
-   """Catches a listener that polls nothing forever before Step 23, which a caller would read
-   as an inbox where nothing happens."""
-
-   client = AsyncClient(a_session())
-
-   try:
-      with pytest.raises(NotImplementedError):
-         await asyncio.wait_for(take(client, 1), timeout=5.0)
-   finally:
-      await client.aclose()

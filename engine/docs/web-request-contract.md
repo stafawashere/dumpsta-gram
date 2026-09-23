@@ -171,10 +171,14 @@ provider flags, `IGDIsProfessionalAccountGK` false, `IGDPinnedThreadsRenderEnabl
 `IGDMaxUnreadMessagesCount` 5 and `IGDThreadListActionsEnabledGK` true, the values every
 captured inbox load sent for this account. A browser mints the device id per document, and a
 replay with a random one answered, so the caller of `build_inbox_listing_request` passes one it
-keeps for as long as its inbox is notionally open. No public capability sends it yet. The
-Phase 4 listener will, as one request per poll, and a poll is a departure from parity under
-ADR-0013 whatever the preset, because no browser was seen re-reading the listing on a timer, and
-the push socket is the likely reason, INFERENCE.
+keeps for as long as its inbox is notionally open. No capability method sends it. The listener
+behind `events()` does, from Step 23, as one request per poll with one device id for the
+listener's life, followed by `IGDMessageListOffMsysQuery` pages for each thread whose newest
+message moved, the older page builder with a null cursor for the newest page. A poll is a
+departure from parity under ADR-0013 whatever the preset, because no browser was seen
+re-reading the listing on a timer, and the push socket is the likely reason, INFERENCE. It also
+leaves out what a browser sends around a thread it reads, the thread open and the mark-read
+mutation, so a listener marks nothing seen.
 
 The note create and delete are not in the registry. Their `doc_id` values,
 `28592645767037889` and `28419182984337833`, were current in the compiled artifacts on

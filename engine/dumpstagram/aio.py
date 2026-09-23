@@ -28,12 +28,8 @@ from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.realtime.buffer import EventBuffer
-from dumpstagram._core.realtime.pump import (
-   SourceContext,
-   SourceFactory,
-   no_transport_yet,
-   pump_events,
-)
+from dumpstagram._core.realtime.poller import inbox_poller
+from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_events
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
@@ -104,7 +100,7 @@ class AsyncClient:
          self._sender.background(),
          BackgroundSender(self._facebook, self._sender.pacer),
       )
-      self._event_source: SourceFactory = no_transport_yet
+      self._event_source: SourceFactory = inbox_poller
 
    @classmethod
    def from_session_file(
@@ -500,8 +496,11 @@ class AsyncClient:
       they were. Leaving the loop stops the polling. Closing it explicitly, with
       ``contextlib.aclosing``, stops it at once rather than when the iterator is collected.
 
-      The polling transport arrives in Step 23 of the build plan. Until then the first poll
-      raises :class:`NotImplementedError`.
+      Each poll reads the inbox's first page of threads, one request, and reads back each
+      thread whose newest message moved, one request per page of up to 20 messages. The first
+      poll delivers nothing without ``since``, and nothing a poll cannot account for is skipped
+      quietly: a gap it could not read back, or a ``since`` it could not find, arrives as an
+      :class:`~dumpstagram.models.EventsDropped` with ``count`` None. No thread is marked seen.
       """
 
       self._refuse_when_closed()
