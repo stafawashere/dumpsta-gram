@@ -197,6 +197,42 @@ user's next action nor sets the gap before it. A tail departs nothing once
 document load or closing the client cancels it. `Behavior.cookie_sync` set to False sends none
 of it.
 
+## Write pacing, 2026-09-23
+
+Step 13 of [build-plan.md](build-plan.md), before any write capability. Nothing about writes is
+measured: no write rate, no human write timing, no failed write, no action block. So every
+number below is a placeholder chosen to be cautious and derived from nothing, accepted as the
+default in rulings 3 and 4, and each is a `Behavior` setting a caller may change.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `write_spacing` | 30 s floor plus 5 s mean jitter, uniform 30 s to 40 s | The gap before a write, measured from the account's previous write. About ten times the read spacing. A read between two writes leaves at the read spacing, and a write still keeps the read spacing from whatever went before it |
+| `write_budget_per_hour` | 30 | Writes allowed to depart in any rolling hour. The next one raises `RateLimited` with `retry_after` set to when the oldest leaves the window, and sends nothing. None removes the budget, 0 refuses every write |
+| `stop_writes_after_unrecognised_rejection` | True | After a write is rejected with a code nothing recorded explains, every later write raises `UpstreamRejected(code="writes_stopped")` without sending, for the life of the client. Reads carry on |
+
+`PARITY` carries the placeholder spacing because no human write timing exists yet. When Step 12a
+or a later sample measures one, the parity spacing becomes it and the budget stays either way.
+`EXPORT` keeps all three defaults. `FAST` sets the write spacing to zero and keeps the budget and
+the stop, because spacing is what it names.
+
+Writes pass the same pacer and take the same slot as every request, through
+`PacedSender.send_once` and `Pacer.write_slot`. The budget, the stop and the set of departed
+write tokens are the pacer's, so they are per account: a client from `with_behavior` inherits
+what its owner has spent and seen, and a zero spacing or a different budget on it changes only
+how its own writes are judged. A refused write never departed, so it neither holds the account
+nor counts against the budget.
+
+A throttle on a write records an account-wide hold with `Pacer.hold` and raises. It does not
+sleep and resend. The engine never retries a write on its own and no setting makes it, ruling
+13, and `OutcomeUnknown` in [public-api.md](public-api.md) is what a caller sees when the
+connection fails with a write in flight.
+
+The stop's reasoning, ASSUMPTION: an unrecognised rejection of a write is the likeliest form an
+action block takes, and repeating a blocked write makes it worse in other clients. What it costs
+when wrong is one new client. The HTML application shell is excluded, because it means the page
+token was refused, and the write path clears `fb_dtsg` so the caller's next call bootstraps.
+Each write capability passes the codes its own verified finding explains.
+
 ## Defaults
 
 Conservative. Consumers who know what they are doing can widen them, and the widening is

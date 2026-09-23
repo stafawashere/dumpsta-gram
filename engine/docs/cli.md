@@ -177,6 +177,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. No command writes yet |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.

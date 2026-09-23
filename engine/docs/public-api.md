@@ -69,8 +69,9 @@ override keyword and no existing snapshot line changes when a setting is added. 
 does not close the pool. Closing the owner stops both.
 
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
-`feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions` and
-`cookie_sync`.
+`feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions`,
+`cookie_sync`, `write_spacing`, `write_budget_per_hour` and
+`stop_writes_after_unrecognised_rejection`.
 `feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a
@@ -122,6 +123,26 @@ returned to the caller and no failure reaches them. The exchange updates `Sessio
 page's rule. A client closed before the delay sends none of it, which is the usual case for a
 single CLI command. False sends none of it and changes nothing else, and it is the setting for
 a caller who wants no traffic to facebook.com. Every preset keeps True.
+
+The three write settings govern every write the engine sends. No write capability exists yet,
+so on 2026-09-23 they govern the write path in `_core/writing.py` and nothing a caller can
+reach, and they are settings now so that the first write ships under all three.
+`write_spacing` is the gap before a write, measured from the account's previous write,
+`Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)` by default. It does not delay the reads
+between two writes, and a write still keeps `spacing` from whatever went before it.
+`write_budget_per_hour` defaults to 30 writes in any rolling hour, and a write past it raises
+`RateLimited` with `retry_after` set and sends nothing. None removes the budget, and 0 refuses
+every write. `stop_writes_after_unrecognised_rejection` defaults to True: after a write is
+rejected with a code nothing recorded explains, every later write raises `UpstreamRejected`
+with the code `writes_stopped` without sending, and reads carry on. The HTML application shell
+is not such a rejection, since it means the page token was refused and the next call
+bootstraps. All three numbers are placeholders chosen to be cautious and derived from nothing,
+rulings 3 and 4 in [build-plan.md](build-plan.md) section 17.13. `PARITY` carries the
+placeholder spacing too, because no human write timing has been measured, and takes the
+measured timing when one exists. `FAST` sets `write_spacing` to zero and keeps the budget and
+the stop. The budget, the stop and the record of what departed belong to the account's pacer,
+so a client from `with_behavior` shares them with its owner. No setting makes the engine retry
+a write, ruling 13.
 
 Other companion requests and side effects such as marking a thread read become fields with
 parity defaults when the requests behind them are implemented, which is an additive snapshot
@@ -277,7 +298,12 @@ assumed otherwise. See
 | Not found or not permitted | The target does not exist or is not visible to this account. | No |
 | Upstream schema change | The library could not map a response. Loud, because silent degradation is worse. FACT-adjacent: the prior project rated a field rename inside a response node its worst case, because it degrades records silently and is caught only by comparison against a recorded oracle. | No |
 | Transport failure | Network-level. | Yes |
-| Operation cancelled | The awaited work was cancelled. Exists because of the threading model rather than because of Instagram, since `asyncio.CancelledError` is a `BaseException` and would slip past a caller's `except Exception`. | No |
+| Outcome unknown | `OutcomeUnknown`, added 2026-09-23 for writes. The connection failed while a write was in flight, so it may or may not have applied. `operation` names the write, and the network failure is on `__cause__`. The way forward is to read the state the write would have changed. In its first version every `TransportFailure` during a write becomes this, including a connect timeout that probably sent nothing, because that is INFERENCE about `httpx` rather than measured. | Never, structurally: absent from `RETRYABLE` and sharing no base with its members, so not a `TransportFailure` |
+| Operation cancelled | The awaited work was cancelled. Exists because of the threading model rather than because of Instagram, since `asyncio.CancelledError` is a `BaseException` and would slip past a caller's `except Exception`. A write cancelled in flight has an unknown outcome too, and stays this type because ADR-0012 permits one translation. | No |
+
+On a write, `UpstreamRejected` is an answer, read as "not applied", INFERENCE since no failed
+write has been observed, and `SchemaChanged` means the upstream answered without an error and
+only the mapping failed, so the write has probably applied.
 
 Four rules follow, and the first two are inherited from measured behavior.
 
