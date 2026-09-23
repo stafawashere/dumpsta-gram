@@ -240,3 +240,41 @@ def test_extra_cookies_are_copied_from_the_caller() -> None:
    caller_owned["datr"] = "datr-value"
 
    assert session.extra_cookies == {"mid": "mid-value"}
+
+
+VERSION_ONE_FILE = """{
+  "actor_id": "17841400000000000",
+  "app_id": "936619743392459",
+  "bloks_version_id": "bloks-version-value",
+  "bootstrapped_at": "2026-09-23T18:08:38.055060+00:00",
+  "checkpoint_active": false,
+  "csrftoken": "csrftoken-secret-value",
+  "ds_user_id": "1234567890",
+  "extra_cookies": {"mid": "mid-value"},
+  "fb_dtsg": "fb-dtsg-secret-value",
+  "fr": null,
+  "haste_session": "20128.HYP:instagram_web_pkg.2.1...0",
+  "hsi": "7551000000000000000",
+  "lsd": "lsd-secret-value",
+  "proxy": null,
+  "schema_version": 1,
+  "sessionid": "sessionid-secret-value",
+  "spin": {"branch": "main", "revision": "1024", "timestamp": "1758000000"}
+}"""
+
+
+def test_a_version_one_file_written_out_in_full_still_loads(tmp_path: Path) -> None:
+   """Catches a schema bump with no migration, 17.8 item 7. The Swift app keeps session files
+   across upgrades, so a file with ``schema_version`` 1, written here as text rather than by
+   the code under test, has to load under every release until a gated migration exists."""
+
+   destination = tmp_path / "session.json"
+   destination.write_text(VERSION_ONE_FILE, encoding="utf-8")
+
+   loaded = Session.load(destination)
+
+   assert SCHEMA_VERSION == 1
+   assert loaded.sessionid == SESSIONID
+   assert loaded.fb_dtsg == FB_DTSG
+   assert loaded.actor_id == "17841400000000000"
+   assert loaded.bootstrapped_at == datetime(2026, 9, 23, 18, 8, 38, 55060, tzinfo=UTC)

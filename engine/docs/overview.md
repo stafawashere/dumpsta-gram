@@ -1,5 +1,70 @@
 # Overview
 
+Dumpsta-Engine, the `dumpstagram` package, reads and writes Instagram from Python over the same
+web API instagram.com calls, with a blocking client, an awaitable client and a `dumpsta` command.
+
+## Legal and safety notice
+
+Read this before installing. This library talks to an unofficial, undocumented Instagram API.
+Using it is against Instagram's terms of use, and it can get the account you use restricted,
+checkpointed or banned. The API changes without notice, so any method can stop working on any
+day. Use it only with an account you own and can afford to lose.
+
+The engine ships with conservative pacing and you should keep it. By default each request waits
+1.3 s to 5.3 s after the previous one, fitted to a person browsing, every write waits at least
+30 s after the previous write, and no more than 30 writes leave in any rolling hour. A write is
+sent once and never retried by the engine, a checkpoint is never retried under any setting, and
+an unrecognised rejection of a write stops further writes for the life of the client. Faster
+presets exist and nothing has measured how Instagram treats them.
+
+## Install
+
+Python 3.12 or newer. The package is not on a package index. Install it from a release tag of the
+repository with uv:
+
+```bash
+uv add "dumpstagram @ git+https://github.com/stafawashere/dumpsta-gram.git@v1.0.0#subdirectory=engine"
+```
+
+or from a built wheel:
+
+```bash
+uv add ./dumpstagram-1.0.0-py3-none-any.whl
+```
+
+## Quickstart
+
+The engine does not log in. It adopts a session you are already signed into in a browser. Copy
+the `sessionid`, `ds_user_id` and `csrftoken` cookies for `https://www.instagram.com` out of the
+browser's developer tools into a file that only you can read, one `KEY=value` line each:
+
+```
+IG_SESSIONID=...
+IG_DS_USER_ID=...
+IG_CSRFTOKEN=...
+```
+
+Adopt it into a session file. This sends no request. Cookies are read from the file or the
+environment and never from the command line, because a `sessionid` is a full account takeover
+token:
+
+```bash
+uv run dumpsta --session session.json adopt --cookies-file cookies.env
+```
+
+Then read a profile through `SyncClient`:
+
+```python
+from dumpstagram import SyncClient
+
+with SyncClient.from_session_file("session.json") as client:
+   profile = client.profile("instagram")
+   print(profile.username, profile.follower_count)
+```
+
+`uv run dumpsta --help` lists every command. [cli.md](cli.md) documents them, and
+[public-api.md](public-api.md) documents the library.
+
 ## Purpose
 
 Dumpsta-Engine is a Python library that provides high-level access to Instagram. Two
@@ -57,14 +122,12 @@ come before write capabilities in every category.
 
 ### What has actually been reached
 
-Worth stating plainly so the gap between goal and evidence stays visible. A prior JavaScript
-project reached exactly one item on that list: reading direct-message threads, including media
-references, participants, and reactions. Read-only, on the web surface. FACT. See
-[../../docs/knowledge/prior-art-dumpsta-js.md](../../docs/knowledge/prior-art-dumpsta-js.md).
-
-Everything else on the list is unattempted by anyone associated with this project. In
-particular, no write operation has ever been performed, and the surface that would support the
-full list is still an open question.
+As of `1.0.0`, on the web surface: session adoption, profiles, the home feed, one post and its
+comment pages, the notes tray, direct thread pages, and new direct messages through `events()`.
+Writes: like and unlike, comment and delete a comment, set and delete a note, follow and
+unfollow, and send and unsend a direct message. Each was verified live on one account from one
+residential network. Posting is planned for `1.1.0`. Everything else on the list is
+unattempted, and group threads, the mobile API and login are unmeasured.
 
 ## Out of scope
 

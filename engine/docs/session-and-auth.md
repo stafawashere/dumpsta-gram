@@ -223,7 +223,11 @@ plainly. It does not attempt recovery.
 
 UNRESOLVED, inherited. The prior project bootstrapped once per process and reused tokens for the
 whole run. The longest observed run was roughly 16 minutes over 306 requests with no
-token-related failure. Whether `fb_dtsg` expires on a timescale that matters for a long-running
+token-related failure. FACT, 2026-09-23: `probes/reload_and_call.py` against the saved session
+file, whose tokens had been read 10338 s earlier, 2 h 52 min, sent one request and the stored
+`fb_dtsg` was accepted with no re-bootstrap. That raises the lower bound to about three hours on
+one account and one day. It still says nothing about an upper bound, log
+`engine/logs/reload-and-call-2026-09-23-170056.json`. Whether `fb_dtsg` expires on a timescale that matters for a long-running
 client is unknown. If a long session starts failing mid-way, re-bootstrapping is the first thing
 to try.
 

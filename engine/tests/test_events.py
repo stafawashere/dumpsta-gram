@@ -596,6 +596,67 @@ def test_with_a_handler_events_go_to_it_on_its_own_thread_and_not_the_buffer() -
    assert THREAD_NAME not in threads
 
 
+def test_a_worker_thread_drains_and_waits_while_the_loop_thread_is_busy() -> None:
+   """Catches ``drain`` or ``wait_for_events`` reaching through the loop thread, 17.8 item 5.
+
+   Swift calls both from its Python serial queue, a thread that is neither the main thread nor
+   the loop thread, while the loop is busy polling. The whole listener lifecycle runs on such a
+   worker here, and both calls are made while the loop thread is held for two seconds, so a
+   take that waits on the loop answers late. Neither may take a quarter of that.
+   """
+
+   hold_seconds = 2.0
+   answer_bound_seconds = 0.5
+   source = ScriptedSource([[a_message("mid.1")], [a_message("mid.2", second=1)]], pause=0.001)
+   held = threading.Event()
+   outcome: dict[str, object] = {}
+
+   def hold_the_loop() -> None:
+      held.set()
+      time.sleep(hold_seconds)
+
+   def consume(client: SyncClient) -> None:
+      outcome["thread"] = threading.current_thread().name
+      listener = client.events()
+      listener.start()
+
+      try:
+         first = listener.wait_for_events(10.0)
+         loop_thread = _LoopThread.acquire()
+
+         try:
+            assert loop_thread._loop is not None
+            loop_thread._loop.call_soon_threadsafe(hold_the_loop)
+            held.wait(10.0)
+
+            started_at = time.monotonic()
+            listener.drain()
+            outcome["drain_seconds"] = time.monotonic() - started_at
+
+            started_at = time.monotonic()
+            listener.wait_for_events(0.05)
+            outcome["wait_seconds"] = time.monotonic() - started_at
+         finally:
+            loop_thread.release()
+
+         outcome["first"] = ids_of(first)
+      finally:
+         listener.stop()
+
+   with blocking_client(source) as client:
+      worker = threading.Thread(target=consume, args=(client,), name="serial-queue-stand-in")
+      worker.start()
+      worker.join(30.0)
+
+   assert not worker.is_alive()
+   assert outcome["thread"] == "serial-queue-stand-in"
+   assert "mid.1" in outcome["first"]  # type: ignore[operator]
+   assert isinstance(outcome["drain_seconds"], float)
+   assert isinstance(outcome["wait_seconds"], float)
+   assert outcome["drain_seconds"] < answer_bound_seconds
+   assert outcome["wait_seconds"] < answer_bound_seconds
+
+
 @pytest.mark.asyncio
 async def test_no_blocking_call_runs_on_the_loop_thread() -> None:
    """Catches a poll that blocks the loop, which stalls every other request on the account.
