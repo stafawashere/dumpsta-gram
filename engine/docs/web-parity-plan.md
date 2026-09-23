@@ -1,0 +1,308 @@
+# Web parity plan, 1.1.0 to 1.6.0
+
+Written 2026-09-23, after `1.0.0` was cut. Approved the same day: the owner delegated every open
+decision, and the rulings are in the Decisions section below. It plans the engine phases whose
+end state is an engine that can back a site behaving like instagram.com for a signed-in user.
+[roadmap.md](roadmap.md) stays the canonical definition of Phases 1 to 6, and nothing here
+reopens a locked decision.
+
+The phases are named E1 to E6 so they do not collide with the roadmap's Phase 5 (the Swift app)
+and Phase 6 (push transport). E4 absorbs Phase 6. E1 to E5 need only the owner's account and the
+direct message target already named in ruling 30. Everything that needs a second account the
+owner controls waits in E6, which opens once that account exists. Each phase ships as one
+additive minor release under ADR-0011, so the Swift app can be built against `1.0.0` in parallel
+and never sees a removed or changed line.
+
+## Audit of the engine at 1.0.0
+
+Checked in this session, 2026-09-23, from a clean tree at `9b813e6` plus the untracked
+`docs/demo.py`:
+
+| Check | Result |
+|---|---|
+| `uv run pytest` | `682 passed in 10.54s`, log `engine/logs/pytest-2026-09-23-182918.log` |
+| `uv run mypy` | `Success: no issues found in 57 source files` |
+| `uv run ruff check` and `ruff format --check` | `All checks passed!`, `158 files already formatted` |
+| `check_provenance.py` | `provenance: ok, every endpoint literal is backed by a verified finding` |
+
+The mutation harnesses were not rerun in this session. Their last recorded results are in
+[engineering/project-profile.md](engineering/project-profile.md).
+
+**What exists.** FACT. Six reads (`thread_messages`, `profile`, `profile_by_id`, `feed`, `notes`,
+`post`, `comments`, counting the profile pair as one read), ten writes in five reversible pairs
+(like, comment, note, follow, direct text), and `events()` on inbox polling at 60 s. The public
+surface is 397 lines. The knowledge base holds 46 verified findings and 4 hypotheses, about 30 of
+them persisted query documents in `_private/web/documents.py`.
+
+**Coverage against the website.** INFERENCE, from the feature inventory in the phases below. The
+website offers roughly 150 distinct user actions. The engine covers 16, about 10 percent. Nothing
+yet measures the denominator, which is the first thing E1 fixes.
+
+**Findings that shape the plan.**
+
+1. The structure will not scale to fifteen times the capabilities. `_private/web/requests.py` is
+   1244 lines, `_private/web/parse.py` 1468 and `_cli/main.py` 1350, each holding every domain.
+   `aio.py` (817 lines) and `client.py` (408) are hand-kept twins with 24 async methods, held in
+   step by `tests/test_facade_parity.py`. At 150 methods a flat client is hard to read and every
+   capability costs four files of boilerplate.
+2. `doc_id` rotation is the dominant maintenance cost as the count grows. Two rotations were
+   already observed (`PolarisProfilePostsQuery` and the feed pagination query), both while the
+   old id still answered. With 150 operations, rotation becomes weekly work unless it is detected
+   mechanically.
+3. The media model is image only. `MediaImage` carries crops of a single image. There is no video,
+   no carousel child, no audio, and no way to download a rendition. A clone cannot render a reel.
+4. Pacing state is per process. The write budget and the write stop reset with each `dumpsta`
+   invocation, which is a recorded 1.0.0 limitation and a real gap for a long-lived server.
+5. Every write so far runs on the owner's only account. Group threads, blocking, restricting,
+   removing a follower and follow request handling each need a second or third account that the
+   owner controls. Those items are collected in E6, so nothing before it waits on another account.
+6. Seven recorded parity departures, each an action sent alone rather than inside its page load.
+   The inbox load and the post page document are the two missing page models behind most of them.
+7. An unexplained key-shaped comment, `# G9N7E-K9NZE-GTWKC-XQ9TR`, sits at
+   `dumpstagram/_private/web/bootstrap.py:134` and therefore ships in the 1.0.0 wheel. The
+   overnight handoff raised it and it is still there.
+8. Seven gates fail from an unpacked sdist because they read git. Recorded, not blocking.
+
+## What 1:1 with the website can and cannot mean
+
+A site built on the engine can match instagram.com for everything the web client does over HTTP
+and its realtime socket, for a user who supplies their own session. Three limits hold regardless
+of effort:
+
+- Video and audio calls run over WebRTC to Meta's media servers. Out of scope, since the engine
+  would have to be a media stack.
+- Payments, shopping checkout, Meta Verified and the Accounts Center span other Meta properties.
+  Out of scope unless a phase is added for them.
+- A site serving other people runs each person's own session through this engine. Every user of
+  such a site carries the ToS and ban risk in
+  [../../docs/knowledge/risks-and-constraints.md](../../docs/knowledge/risks-and-constraints.md),
+  and the parity defaults are the main protection they have.
+
+
+## Decisions
+
+Ruled 2026-09-23 by the orchestrator on the owner's delegation ("make every decision for me").
+Numbered W1 onward so they do not collide with the build plan's rulings in 17.13.
+
+- **W1. New capabilities go on domain namespaces.** `client.direct`, `client.feed`, `client.media`,
+  `client.profiles`, `client.social`, `client.stories`, `client.search`, `client.notes`,
+  `client.account`, each a small object on both facades. The 24 flat methods stay forever under
+  SemVer and gain namespace aliases in E1, so there is one consistent way to call everything and
+  the flat names are the compatibility path. Reason: at 150 methods a flat client is unreadable,
+  and namespaces are purely additive. `tests/test_facade_parity.py` extends to walk namespaces.
+- **W2. The facades stay hand-written, not generated.** The owner chose the parity gate over a
+  generated facade on 2026-09-22, and nothing since changes that.
+- **W3. Push transport comes before the Swift app in engine order.** No app work is in flight, the
+  `events()` surface does not change, and push returns the poll budget. The app still may start
+  at any time against `1.0.0`.
+- **W4. The `bootstrap.py:134` comment is removed as E1's first commit.** It has no reference
+  anywhere, came in with `ec7b338`, and reads like a product key. It is already in public git
+  history, so if it is a real key the owner should treat it as exposed. Removal is a patch.
+- **W5. Reporting is left out.** A report sent during acceptance harms a real account, and nothing
+  a clone needs depends on it.
+- **W6. Viewing a story marks it seen by default**, because a browser does, with
+  `Behavior.mark_stories_seen` as the named departure. The same rule applies to mark read on a
+  thread the engine opens.
+- **W7. Username change, own-account login and anything that locks the owner out wait for E6** and
+  run on the second account. A changed username can be taken by someone else in the gap, and a
+  login from a new device is the likeliest checkpoint trigger on the only account.
+- **W8. The direct message target named in ruling 30 is the only other person E1 to E5 touch**,
+  and only in the one-to-one thread that already exists. Nothing else visible to another person is
+  run before E6.
+- **W9. Group threads need three participants.** E6 runs them with the owner, the second account
+  and a third account. If no third account exists, groups stay deferred rather than borrowing the
+  ruling 30 target.
+
+## Standing rules for every phase
+
+- Every capability starts with a `reverse-engineer` run and a verified finding, per the
+  provenance gate. Reads are replayed twice before entering the package, writes once per state
+  they can leave.
+- Every write ships with the read that confirms it and, where one exists, its reversal, and its
+  live acceptance restores the starting state (ruling 24).
+- Every new public name is a snapshot diff a human reads. Nothing is removed or changed.
+- Discovery is budgeted. A phase's live request budget is set when it opens, and a night's
+  browser discovery stops at the ruling 23 cap. Counts below are HYPOTHESIS until each run
+  measures them.
+- An item that turns out to need another account during discovery moves to E6 rather than
+  borrowing one.
+
+## E1, 1.1.0: foundations for breadth, then posting
+
+The owner ruled on 2026-09-23 (ruling 8) that posting ships as `1.1.0`. E1 keeps that and puts the
+structural work before it, since posting is the first capability that needs the media model and
+the per-domain layout.
+
+1. **Debt first.** Remove the `bootstrap.py:134` comment (W4). Move the poller onto
+   `newer_than_message_id`, which Step 21 found honoured on a live base.
+2. **Operation census.** Run `driver/scout_operations.py` on each page type the website has (home,
+   explore, reels, profile, post, stories, direct inbox, thread, notifications, search, saved,
+   settings, hashtag, location, audio). It fires nothing and lists every compiled operation with
+   its `doc_id`. The output is `knowledge/census.md`: every operation, the user action it belongs
+   to, its engine status, and whether it needs a second account. This is the denominator for 1:1,
+   and every later phase is scoped from it. Cost is about 15 page loads of browser traffic.
+3. **Per-domain layout.** Split `requests.py`, `parse.py`, `documents.py` and `_cli/main.py` into
+   one module per domain, matching the W1 namespaces. Private only, no surface change. The
+   mutation harness anchors move with the code, and every harness is rerun red then green.
+4. **Namespaces.** The W1 namespace objects on both facades, with aliases for the 24 existing
+   methods, and the parity gate extended to walk them.
+5. **Pagination iterators.** `iter_*` companions over every `Page` read, terminating only on
+   `has_next_page`, paced like any read, with an explicit `limit`.
+6. **Complete media model.** Video renditions, carousel children, audio, dimensions and durations,
+   plus `client.media.download(rendition, path)` over the CDN. CDN fetches may run concurrently
+   under the existing ADR-0001 exception. Needs one feed shape probe that lands on a reel and a
+   carousel.
+7. **Rotation canary.** `dumpsta doctor` replays each verified read finding once, compares the
+   `doc_id` the current bundle compiles against the stored one, and reports drift. Writes are
+   checked by artifact only, never fired. Runs on demand, never in the suite.
+8. **Durable pacing ledger.** The pacer's write budget and write stop persist beside the session
+   file, so separate processes on one account share them. Closes the 1.0.0 limitation.
+9. **Posting.** Photo upload, publish, delete, and carousel, per build plan Step 19 as already
+   written, including the orphaned upload gate. The upload host must pass the provenance host
+   check.
+
+**Stop condition.** The census exists and covers every page type above. A photo and a two item
+carousel are posted, read back, and deleted from `dumpsta` in one run. `dumpsta doctor` reports
+zero drift on a fresh session. Every harness exits 0 after the split. Two `dumpsta` processes on
+one account share one write budget, gated offline. The 24 flat methods and their namespace
+aliases answer identically, gated offline.
+
+## E2, 1.2.0: read everything a signed-in user can see
+
+Reads come before writes in every category, and a read-only clone is the first useful milestone
+for a clone site. All of it runs on the owner's account.
+
+- **Profile tabs:** posts grid, reels, tagged, highlights tray and highlight contents, followers,
+  following, mutual followers, suggested accounts.
+- **Post depth:** likers, comment replies (threaded), carousel children through the E1 model,
+  user tags, location, collaborators.
+- **Stories:** the tray, one account's reel of stories, highlights, marking seen per W6.
+- **Discovery:** explore grid, reels feed, search across accounts, hashtags and places, recent
+  searches, hashtag pages, location pages, audio pages.
+- **Own account:** saved posts and collections, archive, the activity feed and pending follow
+  requests (both hypotheses already in the knowledge base), close friends list, blocked list.
+- **Direct, read side:** the inbox listing made public with its pagination, pending message
+  requests, unread counts and badges.
+- **Page models:** the inbox load and the post page document, which close the notes, post and
+  comment parity departures recorded in `1.0.0-notes.md`.
+
+Estimated at 20 to 25 new read capabilities and about 4 discovery nights. HYPOTHESIS.
+
+**Stop condition.** Every read in the census that belongs to a page listed above is either a
+public capability or has a recorded reason it is not. `dumpsta` can render, as text, each page a
+signed-in user sees on the website: home, explore, reels, a profile with each tab, a post with
+threaded comments, a story, search results, notifications, saved, and the inbox with requests.
+
+## E3, 1.3.0: own-account writes and content management
+
+Only writes whose effect lands on the owner's account or content, each with its reversal.
+
+- **Private to the viewer:** save and unsave, collections create, rename and delete, mute and
+  unmute posts and stories of accounts already followed, hidden words.
+- **On the owner's own posts:** comment reply, comment like, pin a comment, edit caption, archive
+  and unarchive, hide like count, turn comments off and on, alt text, user tags and location on
+  publish.
+- **Reels:** upload with cover frame and audio, read back with its video rendition, download,
+  delete.
+- **Stories:** post a story if the census shows the web client can, delete it. Highlights create,
+  edit and delete from the owner's own archived stories.
+- **Follow a public account and unfollow it,** already shipped, extended with favorites add and
+  remove, which is private to the viewer.
+
+Estimated at 25 to 30 new writes. HYPOTHESIS.
+
+**Stop condition.** Every E3 write has run once live from `dumpsta`, confirmed by an E2 read in the
+same run and reversed where a reversal exists. A reel is published, read back with its video
+rendition, downloaded, and deleted.
+
+## E4, 1.4.0: direct messaging in the existing thread, and push transport
+
+This absorbs roadmap Phase 6 (W3). Every message runs in the ruling 30 one-to-one thread (W8), and
+every event the other side would have to cause is either produced by the owner from another
+device, as Phase 4's arranged send was, or deferred to E6.
+
+- **Messages:** photo, video and voice send, reactions, replies, edit, unsend of media, the like
+  heart, forward, share a post into the thread, message search.
+- **Threads:** mark seen at parity (W6), typing indicator, mute, pin, vanish mode, delete the
+  thread from the owner's inbox only if the census shows it is recoverable, otherwise E6.
+- **Push transport.** Discover the realtime socket the web inbox holds, replace the poller behind
+  `events()`, and keep polling as a named fallback `Behavior` setting.
+- **Event kinds,** additive to the `Event` hierarchy: reaction, unsend, edit, seen, typing, thread
+  update, and the notification kinds from the activity feed. Each is gated offline on recorded
+  frames and seen live from the owner's own second device.
+
+**Stop condition.** Every E4 message kind and reaction is sent and reversed from `dumpsta` in the
+existing thread. `dumpsta events` on push prints each new event kind the owner can cause alone
+within 5 s of the action on both facades, and survives a dropped socket by reconnecting, gated
+offline. The polling fallback still passes the Phase 4 stop condition.
+
+## E5, 1.5.0: settings, login offline, multi-account host offline, parity closure
+
+- **Settings on the owner's account,** each reversible and restored in the same run: name, bio,
+  links, gender, avatar, activity status, story and message controls, notification settings, and
+  read-only account data such as login activity where the web surface exposes it. The private
+  account toggle is included, since it is reversible, and restored within the run.
+- **Login, built and gated offline.** Password, two factor, and a checkpoint surfaced as
+  `CheckpointRequired` with its required action, never solved or retried. Discovery reads the login
+  page's compiled operations with `scout_operations.py`, which fires nothing. The live login runs
+  in E6 on the second account (W7).
+- **Multi-account host, built and gated offline.** Many `Session`s in one process with one pacer
+  per account, a shared loop thread and per-account event fan-out, gated for isolation: no state,
+  cookie or budget crosses accounts. Its live run is in E6.
+- **Parity closure.** Every departure in the release notes is closed or re-recorded with the reason
+  it cannot close. Human timing is resampled on at least three further days.
+- **Coverage report.** `census.md` regenerated against the current bundle, with the share of web
+  actions covered stated as a number, and every remaining gap marked either E6 or excluded.
+
+**Stop condition.** Every E5 setting is changed and restored live from `dumpsta` on the owner's
+account. Login and the multi-account host pass their offline gates against recorded answers. The
+census shows every single-account web action as a capability or a recorded exclusion.
+
+## E6, 1.6.0: everything that needs a second account
+
+Opens when the owner has created a second account, and a third for group threads (W9). Suggested
+setup: a new account on the same residential network, aged a few days with ordinary browsing
+before any engine write, following and followed by the owner.
+
+- **Relationships:** follow a private account and cancel the pending request, accept and deny an
+  incoming follow request, remove a follower, block and unblock, restrict and unrestrict, close
+  friends add and remove, mute a messaged account.
+- **Interaction with another person's content:** like and reply to a comment on another account's
+  post, story like, story reply and reaction, note reply.
+- **Direct:** message requests accepted and declined, a new one-to-one thread created from a
+  profile, thread delete, and the event kinds only the other side can cause (their reaction, their
+  typing, their seen).
+- **Group threads:** create, rename, add and remove members, leave, admin actions, and group
+  events. Needs the third account.
+- **Login live:** the E5 login on the second account, from a fresh process with no cookies,
+  including its two factor path.
+- **Username change** on the second account, and restored.
+- **Multi-account host live:** the owner and the second account run for an hour in one process with
+  events flowing on both and no cross-account request.
+
+**Stop condition.** Every E6 item has run once live from `dumpsta`, confirmed by a read and reversed
+where a reversal exists. The census shows every in-scope web action as a capability or a recorded
+exclusion, with no item left marked E6.
+
+## Order and rough cost
+
+| Phase | Release | New capabilities, HYPOTHESIS | Needs from the owner |
+|---|---|---|---|
+| E1 | 1.1.0 | about 6 plus infrastructure | Nothing |
+| E2 | 1.2.0 | 20 to 25 reads | Nothing |
+| E3 | 1.3.0 | 25 to 30 writes | Nothing |
+| E4 | 1.4.0 | 20 to 25 plus push | Sending from another device during arranged runs |
+| E5 | 1.5.0 | 15 to 20 plus login and host, offline | Nothing |
+| E6 | 1.6.0 | 25 to 30 plus live login and host | A second account, and a third for groups |
+
+## Risks
+
+- Every added operation is one more `doc_id` to rotate. Without the E1 canary, E3 and later
+  become upkeep rather than growth.
+- Putting E1 to E5 on the owner's only account concentrates the checkpoint risk there. W7 moves the
+  riskiest items off it, but posting, reels and settings changes still run on it.
+- The web client changes weekly. A capability verified in E2 may need repair by E4. Repairs are
+  patch releases and do not touch the surface.
+- A new second account may be treated more strictly than an aged one, so E6 results may not carry
+  back to the owner's account. ASSUMPTION.
+- The Swift app and this plan compete for the same live request budget and the same account.
