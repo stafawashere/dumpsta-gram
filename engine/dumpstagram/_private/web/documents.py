@@ -23,6 +23,7 @@ __all__ = [
    "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
+   "INBOX_TRAY",
    "OMNI_PICKER_NULL_STATE",
    "PROFILE_BY_ID",
    "PROFILE_HIGHLIGHTS",
@@ -267,3 +268,19 @@ GET_FR_COOKIE = PersistedQuery(
 )
 """The page-load cookie sync's exchange of the stored ``fr`` for the current one. Sent seconds
 after the document, outside its action, never inside one."""
+
+
+INBOX_TRAY = PersistedQuery(
+   doc_id="29231580869776032",
+   friendly_name="IGDInboxTrayQuery",
+   finding_id="read-the-notes-tray-on-the-direct-inbox",
+)
+"""The notes tray on the direct inbox, one note per author, in one unpaged call.
+
+It takes no variables. An inbox load sends it as one of the ten queries of its direct block,
+within 4 ms of the others, and the viewer's own note is the item authored by ``ds_user_id``.
+
+Verified six times across four runs between 2026-09-21 and 2026-09-23, replays and browser
+loads both. The id was unchanged throughout, and an inbox cold load later on 2026-09-23 sent it
+again.
+"""

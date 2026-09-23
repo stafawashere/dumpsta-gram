@@ -21,6 +21,7 @@ from types import TracebackType
 from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
+from dumpstagram._core.notes import read_notes
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
@@ -28,7 +29,7 @@ from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
-from dumpstagram.models import FeedItem, Message, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -270,6 +271,32 @@ class AsyncClient:
             first_page=self._behavior.feed_first_page,
             companions=self._behavior.page_load_companions,
             cookie_sync=self._cookie_sync_if_on(),
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def notes(self) -> tuple[Note, ...]:
+      """Read the notes tray on the direct inbox, whole, in the tray's order. One live request.
+
+      Each author has at most one note, and the viewer's own is the one whose
+      :attr:`~dumpstagram.models.Note.author_id` equals this session's ``ds_user_id``. It is
+      absent when the viewer has no note.
+
+      The tray is one call with no cursor. If the upstream ever starts paging it, this raises
+      :class:`~dumpstagram.errors.SchemaChanged` rather than returning the first page as the
+      whole tray.
+
+      A browser reads the tray inside an inbox page load, beside nine other queries. This sends
+      the tray query alone under every behavior, a departure recorded in
+      ``docs/web-request-contract.md`` until the inbox load is modelled.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         read_notes(
+            self._sender,
+            self._session,
             user_agent=self._user_agent,
          )
       )

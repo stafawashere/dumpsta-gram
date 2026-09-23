@@ -30,11 +30,12 @@ from typing import Any
 from urllib.parse import urlencode
 
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
+from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents import (
    BADGE_COUNT,
    CHAT_TABS_JEWEL,
    HOME_TIMELINE_FEED,
+   INBOX_TRAY,
    OMNI_PICKER_NULL_STATE,
    PROFILE_BY_ID,
    PROFILE_HIGHLIGHTS,
@@ -63,6 +64,7 @@ __all__ = [
    "build_feed_page_request",
    "build_graphql_request",
    "build_home_page_load_companions",
+   "build_inbox_tray_request",
    "build_profile_page_load_companions",
    "build_profile_page_requests",
    "build_profile_request",
@@ -328,6 +330,28 @@ def build_thread_older_page_request(
       THREAD_OLDER_PAGE,
       _thread_page_variables(thread_fbid, after, newer_than_message_id),
       referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def build_inbox_tray_request(
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The notes tray, asked for the way the inbox asks for it: no variables, the inbox as referer.
+
+   The query goes to ``/api/graphql`` and carries neither path header, as on every captured
+   inbox load.
+
+   Finding: ``read-the-notes-tray-on-the-direct-inbox`` in the knowledge base.
+   """
+
+   return build_graphql_request(
+      session,
+      INBOX_TRAY,
+      {},
+      referer=BOOTSTRAP_URL,
       user_agent=user_agent,
    )
 

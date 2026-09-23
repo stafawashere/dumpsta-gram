@@ -14,6 +14,8 @@ alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
+alias dumpstagram.Note -> dumpstagram.models.notes.Note
+alias dumpstagram.NoteAudience -> dumpstagram.models.notes.NoteAudience
 alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
 alias dumpstagram.OutcomeUnknown -> dumpstagram.errors.OutcomeUnknown
 alias dumpstagram.PARITY -> dumpstagram.behavior.PARITY
@@ -45,6 +47,7 @@ property dumpstagram.aio.AsyncClient.behavior -> Behavior
 property dumpstagram.aio.AsyncClient.closed -> bool
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
+def dumpstagram.aio.AsyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
 def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.aio.AsyncClient.session -> Session
@@ -87,6 +90,7 @@ def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
+def dumpstagram.client.SyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
 def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.client.SyncClient.session -> Session
@@ -117,6 +121,8 @@ alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.models.Note -> dumpstagram.models.notes.Note
+alias dumpstagram.models.NoteAudience -> dumpstagram.models.notes.NoteAudience
 alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
@@ -190,6 +196,19 @@ field dumpstagram.models.messages.MessageSender.name: str | None = None
 class dumpstagram.models.messages.Reaction()
 field dumpstagram.models.messages.Reaction.emoji: str
 field dumpstagram.models.messages.Reaction.sender_fbid: str
+module dumpstagram.models.notes
+class dumpstagram.models.notes.Note()
+field dumpstagram.models.notes.Note.audience: NoteAudience
+field dumpstagram.models.notes.Note.author_id: str
+field dumpstagram.models.notes.Note.author_username: str | None = None
+field dumpstagram.models.notes.Note.created_at: datetime
+field dumpstagram.models.notes.Note.id: str
+field dumpstagram.models.notes.Note.is_emoji_only: bool
+field dumpstagram.models.notes.Note.text: str
+class dumpstagram.models.notes.NoteAudience(enum.IntEnum)
+data dumpstagram.models.notes.NoteAudience.CLOSE_FRIENDS: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>
+data dumpstagram.models.notes.NoteAudience.INTERNAL: NoteAudience = <NoteAudience.INTERNAL: 2>
+data dumpstagram.models.notes.NoteAudience.MUTUAL_FOLLOWS: NoteAudience = <NoteAudience.MUTUAL_FOLLOWS: 0>
 module dumpstagram.models.pagination
 class dumpstagram.models.pagination.Page(typing.Generic)
 def dumpstagram.models.pagination.Page.__iter__(self) -> Iterator[ItemT]

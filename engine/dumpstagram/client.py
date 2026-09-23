@@ -22,7 +22,7 @@ from types import TracebackType
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior
-from dumpstagram.models import FeedItem, Message, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -169,6 +169,18 @@ class SyncClient:
       return self._loop.run(
          self._impl.feed(after=after),
          operation="SyncClient.feed",
+      )
+
+   def notes(self) -> tuple[Note, ...]:
+      """Read the notes tray on the direct inbox. Blocks until it has it.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.notes`, run on the shared loop
+      thread. One live request.
+      """
+
+      return self._loop.run(
+         self._impl.notes(),
+         operation="SyncClient.notes",
       )
 
    def close(self) -> None:

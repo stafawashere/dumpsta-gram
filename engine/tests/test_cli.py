@@ -34,6 +34,8 @@ from dumpstagram.models import (
    FeedItemKind,
    Message,
    MessageSender,
+   Note,
+   NoteAudience,
    Page,
    Post,
    PostAuthor,
@@ -145,6 +147,7 @@ class FakeClient:
       token_harvested: str | None = None,
       profile: Profile | None = None,
       feed_pages: list[Page[FeedItem]] | None = None,
+      notes: tuple[Note, ...] = (),
    ) -> None:
       self.session = session
       self.pages = pages or [a_page(has_next_page=False, end_cursor=None)]
@@ -152,6 +155,7 @@ class FakeClient:
       self.token_harvested = token_harvested
       self.profile_answer = profile if profile is not None else a_profile()
       self.feed_pages = feed_pages or [a_feed_page(has_next_page=False, end_cursor=None)]
+      self.notes_answer = notes
       self.calls: list[dict[str, object]] = []
       self.closed = False
 
@@ -214,6 +218,17 @@ class FakeClient:
          self.session.fb_dtsg = self.token_harvested
 
       return self.profile_answer
+
+   def notes(self) -> tuple[Note, ...]:
+      self.calls.append({"notes": True})
+
+      if self.failure is not None:
+         raise self.failure
+
+      if self.token_harvested is not None:
+         self.session.fb_dtsg = self.token_harvested
+
+      return self.notes_answer
 
    def close(self) -> None:
       self.closed = True
@@ -819,3 +834,34 @@ def test_the_feed_command_closes_its_client_even_when_the_read_fails() -> None:
    run(["--session", "/tmp/session.json", "feed"], client=client)
 
    assert client.closed is True
+
+
+def a_note(note_id: str, author_id: str) -> Note:
+   return Note(
+      id=note_id,
+      author_id=author_id,
+      text="a note body",
+      audience=NoteAudience.CLOSE_FRIENDS,
+      created_at=datetime(2026, 9, 22, 23, 55, 36, tzinfo=UTC),
+      is_emoji_only=False,
+      author_username="an.author",
+   )
+
+
+def test_the_note_list_marks_the_note_authored_by_the_viewer() -> None:
+   """Catches the own note picked by position or by the item id instead of by the author."""
+
+   viewer_id = "17841400000000000"
+   notes = (a_note("18000000000000002", "58435292991"), a_note(viewer_id, "11111111111"))
+   notes = (*notes, a_note("18000000000000001", viewer_id))
+   client = FakeClient(a_session(), notes=notes)
+
+   code, out, _ = run(["--json", "--session", "s.json", "note", "list"], client=client)
+
+   payload = json.loads(out)
+
+   assert code == 0
+   assert payload["note_count"] == 3
+   assert payload["own_note_id"] == "18000000000000001"
+   assert [note["is_own"] for note in payload["notes"]] == [False, False, True]
+   assert payload["notes"][0]["audience"] == "close_friends"

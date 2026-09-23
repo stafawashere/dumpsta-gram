@@ -98,6 +98,22 @@ replaced `useIGDMessageListPaginationQuery` in the browser by 2026-09-23. One re
 way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries,
 and neither marks the thread seen.
 
+`notes()` has no setting. Added 2026-09-23 as the read half of Step 14, it returns
+`tuple[Note, ...]`, the whole notes tray on the direct inbox in the tray's order, from one
+`IGDInboxTrayQuery` request, since the tray is one unpaged call. A cursor appearing beside the
+items raises `SchemaChanged` rather than reporting a first page as the whole tray. `Note`
+carries `id`, the tray item's 17-digit id that a delete will name, `author_id`, the author's
+numeric Instagram id, `text`, empty on a song note, `audience`, `created_at` in UTC,
+`is_emoji_only` and `author_username`. The viewer's own note is the one whose `author_id`
+equals the session's `ds_user_id`, and it is absent when the viewer has none. `NoteAudience`
+is an `IntEnum` holding the web client's own numbers, `MUTUAL_FOLLOWS` 0 ("Followers you follow
+back"), `CLOSE_FRIENDS` 1 and `INTERNAL` 2, read out of the client's `PolarisNotesTypes` module,
+and any other number is a `SchemaChanged`. A browser reads the tray inside an inbox page load
+beside nine other queries, and the engine sends the tray query alone under every behavior until
+the inbox load is modelled, a departure recorded in
+[web-request-contract.md](web-request-contract.md). `set_note(text, *, audience=...)` and
+`delete_note(note_id)` are not implemented yet, see [build-plan.md](build-plan.md) Step 14.
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the two routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity

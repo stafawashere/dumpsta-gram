@@ -30,18 +30,20 @@ from dumpstagram._cli.render import (
    describe_feed_item,
    describe_feed_pages,
    describe_message,
+   describe_note,
    describe_pages,
    describe_profile,
    describe_session,
    render_feed,
    render_messages,
+   render_notes,
    render_profile,
    render_session,
 )
 from dumpstagram._core.redaction import redact
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import DumpstagramError
-from dumpstagram.models import FeedItem, Message, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, Profile
 from dumpstagram.session import Session
 
 __all__ = ["build_parser", "main"]
@@ -77,6 +79,8 @@ class Client(Protocol):
    def profile(self, username: str) -> Profile: ...
 
    def profile_by_id(self, user_id: str) -> Profile: ...
+
+   def notes(self) -> tuple[Note, ...]: ...
 
    def close(self) -> None: ...
 
@@ -228,6 +232,27 @@ def build_parser() -> argparse.ArgumentParser:
       help="override the user agent every request claims to be",
    )
    profile.add_argument(
+      "--no-session-writeback",
+      action="store_true",
+      help="do not save tokens harvested during this run back to the session file",
+   )
+
+   note = commands.add_parser(
+      "note",
+      help="read the notes tray on the direct inbox",
+      description=(
+         "list reads the whole tray, one live request, and marks the viewer's own note. "
+         "Setting and deleting a note are not available yet."
+      ),
+   )
+   note_actions = note.add_subparsers(dest="note_action", required=True)
+   note_list = note_actions.add_parser("list", help="read the whole notes tray, one live request")
+   note_list.add_argument(
+      "--user-agent",
+      metavar="STRING",
+      help="override the user agent every request claims to be",
+   )
+   note_list.add_argument(
       "--no-session-writeback",
       action="store_true",
       help="do not save tokens harvested during this run back to the session file",
@@ -408,6 +433,42 @@ def run_profile(
    return EXIT_OK
 
 
+def run_note_list(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_read = client.session.fb_dtsg
+   viewer_id = client.session.ds_user_id
+
+   try:
+      notes = client.notes()
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   own_notes = [note for note in notes if note.author_id == viewer_id]
+
+   payload = {
+      "command": "note list",
+      "note_count": len(notes),
+      "own_note_id": own_notes[0].id if own_notes else None,
+      "notes": [describe_note(note, viewer_id=viewer_id) for note in notes],
+   }
+
+   emit(payload, render_notes(notes, viewer_id=viewer_id), as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
 def run_thread(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -472,6 +533,9 @@ def main(
 
       if arguments.command == "profile":
          return run_profile(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command == "note":
+         return run_note_list(arguments, chosen_environment, out, client_factory)
 
       return run_thread(arguments, chosen_environment, out, client_factory)
    except DumpstagramError as failure:

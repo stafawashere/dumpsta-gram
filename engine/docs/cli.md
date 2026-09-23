@@ -40,6 +40,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `thread FBID` | 1 per page, plus 1 if the session has no token yet | Reads pages of one direct thread |
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
+| `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -157,6 +158,26 @@ Two identifiers come back on every post and they are different values, which is 
 this surface. `pk` is the media's own number and `id` is `"<pk>_<author id>"`. Both are in the
 JSON form because guessing which one a later capability wants is the mistake this avoids.
 
+### `note`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json note list
+```
+
+`note list` reads the whole notes tray on the direct inbox, one live request, since the tray is
+one unpaged call. The text form prints one line per note, the viewer's own marked `*`, with the
+item id, the author, the audience and the text, then a count. The JSON form carries
+`note_count`, `own_note_id`, null when the viewer has no note, and a `notes` list whose keys are
+`id`, `author_id`, `author_username`, `is_own`, `text`, `audience` (`mutual_follows`,
+`close_friends` or `internal`), `created_at` and `is_emoji_only`. The own note is the one whose
+`author_id` equals the session's `ds_user_id`, never the first item and never an item id.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
+`note set` and `note delete` are not implemented yet. When they land they take the note text
+and the item id as explicit arguments and never prompt, per 13.6 in
+[build-plan.md](build-plan.md).
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -201,9 +222,9 @@ that has not been observed.
 
 ## Verification
 
-Thirty-seven gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
+Thirty-nine gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
-then green. The live acceptance run for the thread command is recorded in
+then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

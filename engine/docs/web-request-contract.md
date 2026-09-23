@@ -105,6 +105,26 @@ place.
 | `PROFILE_BY_ID` | `28036671149327607` | `PolarisProfilePageContentQuery` | `API_GRAPHQL_URL` | `read-a-user-profile` |
 | `USER_ID_BY_USERNAME` | `28821682214127849` | `PolarisProfilePostsQuery` | `API_GRAPHQL_URL` | `resolve-a-username-to-a-user-id` |
 | `HOME_TIMELINE_FEED` | `27932834733065642` | `PolarisFeedRootPaginationCachedQuery_subscribe` | `GRAPHQL_QUERY_URL` | `home-timeline-feed-page` |
+| `INBOX_TRAY` | `29231580869776032` | `IGDInboxTrayQuery` | `API_GRAPHQL_URL` | `read-the-notes-tray-on-the-direct-inbox` |
+
+The table above lists the entries the first capabilities added. `documents.py` is the complete
+list, and its own docstrings carry each later entry's evidence.
+
+**The notes tray is sent alone, a recorded departure.** Added 2026-09-23. `INBOX_TRAY` takes no
+variables and is sent with `https://www.instagram.com/direct/inbox/` as its referer, the shape
+of every captured inbox load. A browser never sends it by itself: an inbox load sends the
+document, then ten queries within 4 ms of each other at about 500 ms, of which the tray is one,
+then fifteen `IGDThreadDetailQuery` prefetches, the common page-load companions and the cookie
+sync tail. The engine does not model the inbox load's direct block yet, so `notes()` sends the
+tray query alone under every behavior. It is not a `Behavior` setting, because a setting chooses
+between routes and there is only one route here. Modelling the inbox load, from findings
+`direct-inbox-thread-list`, `direct-inbox-unread-thread-count`, the six empty-variable direct
+findings and this one, would make it the parity route and add the setting.
+
+The note create and delete are not in the registry. Their `doc_id` values,
+`28592645767037889` and `28419182984337833`, were current in the compiled artifacts on
+2026-09-23, but each finding has one live verification and the provenance gate asks for two,
+so they enter this file with the first approved note write that observes them again.
 
 **The URL is per query, and that was learned the hard way rather than designed.** It was one
 module constant until 2026-09-21, when the feed was added. The feed answers only on
@@ -246,7 +266,8 @@ at runtime is invisible to this gate.
 
 ## What is not implemented here
 
-- No write. Every query here is a read, and the write path is unmeasured on this surface.
+- No write request. Every query here is a read. The write path exists in `_core/writing.py`,
+  and no write request has been built on it yet.
 - No mobile surface. The registry and the builders are web only, per ADR-0007.
 - Nothing inside a post beyond its own fields. A carousel's slides, a video's renditions, the
   comments and the likers all arrive on the feed payload and all stop at the mapper, because no
