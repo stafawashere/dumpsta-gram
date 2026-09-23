@@ -18,9 +18,10 @@ import threading
 import pytest
 
 from dumpstagram._core.loop_thread import THREAD_NAME, _LoopThread
+from dumpstagram._private.transport import Request
 from dumpstagram.aio import AsyncClient
 from dumpstagram.client import SyncClient
-from dumpstagram.errors import AuthenticationFailed
+from dumpstagram.errors import AuthenticationFailed, TransportFailure
 from dumpstagram.session import Session
 
 SESSION_ID = "71234567%3AabcdefGHIJKL%3A17"
@@ -202,3 +203,55 @@ def test_a_missing_session_file_raises_before_the_thread_is_acquired(tmp_path) -
 
    assert loop_threads_running() == before
    assert loop_thread_holders() == holders
+
+
+@pytest.mark.asyncio
+async def test_the_cookie_carrying_transport_refuses_facebook() -> None:
+   """Catches the client building its instagram transport without the host pin.
+
+   The request is refused by the pin before a connection is opened, so nothing leaves the
+   machine. The facebook transport accepting the same host is the positive control.
+   """
+
+   async with AsyncClient(a_session()) as client:
+      instagram_transport = client._sender._sender
+
+      with pytest.raises(TransportFailure) as refused:
+         await instagram_transport.send(Request(method="GET", url="https://www.facebook.com/"))
+
+      assert "www.facebook.com" in str(refused.value)
+      assert client._facebook.allowed_host == "www.facebook.com"
+
+
+@pytest.mark.asyncio
+async def test_the_facebook_transport_is_cookieless_and_pinned() -> None:
+   """Catches the client handing the facebook.com calls a jar holding the account's cookies."""
+
+   async with AsyncClient(a_session()) as client:
+      facebook = client._facebook
+      built = facebook._client.build_request("GET", "https://www.facebook.com/")
+
+      assert facebook.cookieless
+      assert "cookie" not in built.headers
+
+      with pytest.raises(TransportFailure):
+         await facebook.send(Request(method="GET", url="https://www.instagram.com/"))
+
+
+def test_the_cookie_check_is_pointed_at_a_jar_that_holds_the_session() -> None:
+   """Law 4's positive control: the instagram transport's request does carry the sessionid."""
+
+   client = AsyncClient(a_session())
+   built = client._sender._sender._client.build_request("GET", "https://www.instagram.com/")
+
+   assert SESSION_ID in built.headers["cookie"]
+
+
+@pytest.mark.asyncio
+async def test_closing_the_client_closes_the_facebook_pool() -> None:
+   """Catches a second pool the client creates and never releases."""
+
+   client = AsyncClient(a_session())
+   await client.aclose()
+
+   assert client._facebook._client.is_closed

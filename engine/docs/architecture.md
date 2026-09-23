@@ -37,6 +37,7 @@ dumpstagram/
       direct.py           read_thread_messages, the first capability
       pacer.py            Pacer, PacingPolicy, BackoffPolicy, run_with_retries
       requesting.py       PacedSender, the one path a request leaves by
+      page_load.py        send_companions, the page load burst after a document
       tokens.py           the re-bootstrap judgement both readers share
       smoke.py            read_one_thread_page, internal, no model and no public name
       loop_thread.py      _LoopThread, refcounted and shared, the seam and its note
@@ -45,7 +46,7 @@ dumpstagram/
       messages.py         Message, MessageSender, Reaction
       pagination.py       Page[ItemT]
    _private/
-      transport.py        Sender, Request, Response, HttpxTransport, cookies_for
+      transport.py        Sender, Request, Response, HttpxTransport (host pin, cookieless), cookies_for
       web/
          classify.py      classify, classify_checkpoint_only
          bootstrap.py     token harvest from one authenticated page

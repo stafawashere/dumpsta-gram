@@ -69,7 +69,8 @@ override keyword and no existing snapshot line changes when a setting is added. 
 does not close the pool. Closing the owner stops both.
 
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
-`feed_first_page`, `profile_route` and `thread_first_page`. `feed_first_page` decides where `feed()` with no cursor reads from.
+`feed_first_page`, `profile_route`, `thread_first_page` and `page_load_companions`.
+`feed_first_page` decides where `feed()` with no cursor reads from.
 `FeedFirstPage.DOCUMENT`, the parity default, loads `https://www.instagram.com/` as a
 navigation and reads the first page the server preloaded into that document, which is what a
 browser does. It is one request of about 1.2 MB, four measured loads carried 3 or 4 items,
@@ -94,6 +95,19 @@ Every older page and every top-up goes through `IGDMessageListOffMsysQuery` unde
 replaced `useIGDMessageListPaginationQuery` in the browser by 2026-09-23. One request either
 way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries,
 and neither marks the thread seen.
+
+`page_load_companions` decides whether a document load also sends the queries a browser's page
+load sends beside its own. It applies to the two routes that load a document, the home document
+under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity
+default, sends after the home document the badge count, the chat tabs jewel with the omni picker,
+and two quick promotion calls, and after the profile page's six queries the stories tray, the
+jewel with the omni picker, the badge count and the two quick promotion calls, all inside the
+document's own paced action and in the recorded page's order and grouping. None of their answers
+is read, a checkpoint or throttle on one is still raised, and any other failure on one is
+ignored. The badge count and the jewel are keyed on a device id each document carries, and are
+left out when a document carries none. What a browser also sends and these do not: the manifest,
+`fxcal/ig_sso_users`, the profile page's feed prefetch, and the facebook.com cookie sync. False
+leaves the companions out and changes nothing else. Every preset keeps True.
 
 Other companion requests and side effects such as marking a thread read become fields with
 parity defaults when the requests behind them are implemented, which is an additive snapshot

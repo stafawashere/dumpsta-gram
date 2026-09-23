@@ -275,3 +275,140 @@ def test_the_required_cookies_cannot_be_shadowed_by_extras() -> None:
    assert jar["ds_user_id"] == "1234567890"
    assert jar["csrftoken"] == "live-csrf"
    assert jar["mid"] == "mid-value"
+
+
+INSTAGRAM = "www.instagram.com"
+FACEBOOK = "www.facebook.com"
+
+
+@pytest.mark.asyncio
+async def test_a_pinned_transport_refuses_another_host() -> None:
+   """Catches the account's cookies going out to a host a wrong wiring named.
+
+   The request to the pinned host is the positive control: the pin must refuse by host, not
+   refuse everything.
+   """
+   seen_hosts: list[str] = []
+
+   def handler(request: httpx.Request) -> httpx.Response:
+      seen_hosts.append(request.url.host)
+      return httpx.Response(200, text="ok")
+
+   async with make_transport(handler, allowed_host=INSTAGRAM) as transport:
+      await transport.send(Request(method="GET", url=f"https://{INSTAGRAM}/"))
+
+      with pytest.raises(TransportFailure):
+         await transport.send(Request(method="GET", url=f"https://{FACEBOOK}/"))
+
+   assert seen_hosts == [INSTAGRAM]
+
+
+@pytest.mark.asyncio
+async def test_a_pinned_transport_refuses_a_redirect_to_another_host() -> None:
+   """Catches a pin checked only on the first hop, which a redirect walks straight past."""
+   seen_hosts: list[str] = []
+
+   def handler(request: httpx.Request) -> httpx.Response:
+      seen_hosts.append(request.url.host)
+      return httpx.Response(302, headers={"location": f"https://{FACEBOOK}/"})
+
+   async with make_transport(handler, allowed_host=INSTAGRAM) as transport:
+      with pytest.raises(TransportFailure):
+         await transport.send(
+            Request(method="GET", url=f"https://{INSTAGRAM}/", follow_redirects=True)
+         )
+
+   assert seen_hosts == [INSTAGRAM]
+
+
+def cookie_echo_handler(sent_cookies: list[str | None]):
+   def handler(request: httpx.Request) -> httpx.Response:
+      sent_cookies.append(request.headers.get("cookie"))
+      return httpx.Response(
+         200,
+         headers={"set-cookie": "c=v; Domain=.facebook.com; Path=/"},
+         text="ok",
+      )
+
+   return handler
+
+
+@pytest.mark.asyncio
+async def test_a_cookieless_transport_neither_stores_nor_sends_a_cookie() -> None:
+   """Catches a facebook.com response planting a cookie the next facebook.com call returns."""
+   sent_cookies: list[str | None] = []
+
+   async with make_transport(cookie_echo_handler(sent_cookies), cookieless=True) as transport:
+      await transport.send(Request(method="GET", url=f"https://{FACEBOOK}/"))
+      await transport.send(Request(method="GET", url=f"https://{FACEBOOK}/"))
+
+   assert sent_cookies == [None, None]
+
+
+@pytest.mark.asyncio
+async def test_the_cookie_check_can_fire() -> None:
+   """Law 4's positive control: an ordinary transport does return the planted cookie."""
+   sent_cookies: list[str | None] = []
+
+   async with make_transport(cookie_echo_handler(sent_cookies)) as transport:
+      await transport.send(Request(method="GET", url=f"https://{FACEBOOK}/"))
+      await transport.send(Request(method="GET", url=f"https://{FACEBOOK}/"))
+
+   assert sent_cookies == [None, "c=v"]
+
+
+def test_an_owned_cookieless_transport_stores_no_cookie() -> None:
+   """Catches the refusing jar applied only to a caller's client and not to its own."""
+   transport = HttpxTransport(cookieless=True)
+   request = httpx.Request("GET", f"https://{FACEBOOK}/")
+   response = httpx.Response(
+      200,
+      headers={"set-cookie": "c=v; Domain=.facebook.com; Path=/"},
+      request=request,
+   )
+
+   transport._client.cookies.extract_cookies(response)
+
+   assert len(transport._client.cookies.jar) == 0
+
+
+@pytest.mark.asyncio
+async def test_a_cookieless_transport_refuses_a_cookie_header() -> None:
+   """Catches a request builder writing the account's cookies into a facebook.com call."""
+   sent: list[httpx.Request] = []
+
+   def handler(request: httpx.Request) -> httpx.Response:
+      sent.append(request)
+      return httpx.Response(200, text="ok")
+
+   async with make_transport(handler, cookieless=True) as transport:
+      with pytest.raises(ValueError):
+         await transport.send(
+            Request(method="GET", url=f"https://{FACEBOOK}/", headers={"Cookie": "sessionid=S"})
+         )
+
+   assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_a_cookieless_transport_does_not_follow_a_redirect() -> None:
+   """Catches the facebook.com calls chasing a redirect the browser was never seen to follow."""
+   seen_paths: list[str] = []
+
+   def handler(request: httpx.Request) -> httpx.Response:
+      seen_paths.append(request.url.path)
+      return httpx.Response(302, headers={"location": f"https://{FACEBOOK}/next/"})
+
+   async with make_transport(handler, cookieless=True) as transport:
+      response = await transport.send(
+         Request(method="GET", url=f"https://{FACEBOOK}/", follow_redirects=True)
+      )
+
+   assert response.status_code == 302
+   assert seen_paths == ["/"]
+
+
+def test_a_cookieless_transport_refuses_cookies() -> None:
+   """Catches the session's cookie jar being handed to the facebook.com transport."""
+   with pytest.raises(ValueError):
+      HttpxTransport(cookies={"sessionid": "S"}, cookieless=True)

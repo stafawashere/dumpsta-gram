@@ -295,13 +295,16 @@ async def client_over(transport: ScriptedTransport, behavior: Behavior) -> Async
 async def test_the_client_loads_the_page_under_the_default_behavior() -> None:
    """Catches a client that drops the behavior setting and falls back to the queries."""
 
-   transport = ScriptedTransport(the_page_answers())
+   page_load_companions = 4
+   answers = the_page_answers() + [json_response(companion_payload())] * page_load_companions
+   transport = ScriptedTransport(answers)
    client = await client_over(transport, PARITY)
 
    await client.profile(USERNAME)
 
    assert transport.sent[0].url == PAGE_URL
-   assert len(transport.sent) == 7
+   assert [friendly_name(request) for request in transport.sent[1:7]] == PAGE_ORDER
+   assert len(transport.sent) == 7 + page_load_companions
 
 
 @pytest.mark.asyncio

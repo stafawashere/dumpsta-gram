@@ -23,7 +23,7 @@ from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
-from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
+from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
@@ -60,7 +60,16 @@ class AsyncClient:
       self._closed = False
       self._owner: AsyncClient | None = None
 
-      transport = HttpxTransport(cookies=cookies_for(session), proxy=session.proxy)
+      transport = HttpxTransport(
+         cookies=cookies_for(session),
+         proxy=session.proxy,
+         allowed_host=INSTAGRAM_HOST,
+      )
+      self._facebook = HttpxTransport(
+         proxy=session.proxy,
+         allowed_host=FACEBOOK_HOST,
+         cookieless=True,
+      )
 
       self._sender = PacedSender(transport, Pacer(), pacing_for(behavior))
 
@@ -99,6 +108,7 @@ class AsyncClient:
       scoped._behavior = behavior
       scoped._closed = False
       scoped._owner = self._owner or self
+      scoped._facebook = self._facebook
       scoped._sender = self._sender.with_pacing(pacing_for(behavior))
 
       return scoped
@@ -191,6 +201,7 @@ class AsyncClient:
          self._session,
          username,
          route=self._behavior.profile_route,
+         companions=self._behavior.page_load_companions,
          user_agent=self._user_agent,
       )
 
@@ -239,6 +250,7 @@ class AsyncClient:
          self._session,
          after=after,
          first_page=self._behavior.feed_first_page,
+         companions=self._behavior.page_load_companions,
          user_agent=self._user_agent,
       )
 
@@ -259,7 +271,10 @@ class AsyncClient:
 
       owns_the_pool = self._owner is None
       if owns_the_pool:
-         await self._sender.aclose()
+         try:
+            await self._sender.aclose()
+         finally:
+            await self._facebook.aclose()
 
    async def __aenter__(self) -> AsyncClient:
       return self

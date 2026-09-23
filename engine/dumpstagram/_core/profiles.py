@@ -22,9 +22,9 @@ the page's: both measured loads sent all six within 5 ms.
 from __future__ import annotations
 
 from dumpstagram._core.pacer import run_with_retries
+from dumpstagram._core.page_load import raise_only_what_concerns_the_account, send_companions
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
-from dumpstagram._private.transport import Response
 from dumpstagram._private.web.bootstrap import (
    DEFAULT_USER_AGENT,
    apply_tokens,
@@ -34,15 +34,16 @@ from dumpstagram._private.web.bootstrap import (
 )
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse import parse_profile, parse_user_id
-from dumpstagram._private.web.preload import read_profile_id
+from dumpstagram._private.web.preload import read_iris_device_id, read_profile_id
 from dumpstagram._private.web.requests import (
+   build_profile_page_load_companions,
    build_profile_page_requests,
    build_profile_request,
    build_username_resolution_request,
    profile_page_url,
 )
 from dumpstagram.behavior import ProfileRoute
-from dumpstagram.errors import NotFound, SchemaChanged, UpstreamRejected
+from dumpstagram.errors import NotFound
 from dumpstagram.models import Profile
 from dumpstagram.session import Session
 
@@ -123,6 +124,7 @@ async def read_profile(
    username: str,
    *,
    route: ProfileRoute = ProfileRoute.QUERIES,
+   companions: bool = False,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Profile:
@@ -130,13 +132,19 @@ async def read_profile(
 
    Under :attr:`ProfileRoute.QUERIES` that is two live requests, serial because the second
    needs the first one's answer. Under :attr:`ProfileRoute.PAGE` it is the page load
-   :func:`read_profile_from_page` describes. ``QUERIES`` stays the default at this level so
-   callers below the client keep the route they had, and the client passes its behavior down.
+   :func:`read_profile_from_page` describes, and ``companions`` applies only there. ``QUERIES``
+   and no companions stay the defaults at this level so callers below the client keep the
+   requests they had, and the client passes its behavior down.
    """
 
    if route is ProfileRoute.PAGE:
       return await read_profile_from_page(
-         sender, session, username, user_agent=user_agent, deadline=deadline
+         sender,
+         session,
+         username,
+         companions=companions,
+         user_agent=user_agent,
+         deadline=deadline,
       )
 
    user_id = await resolve_username(
@@ -158,12 +166,14 @@ async def read_profile_from_page(
    session: Session,
    username: str,
    *,
+   companions: bool = False,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> Profile:
    """One account's profile, read the way a browser's profile page reads it.
 
-   One action: the profile page document, then its six queries at once. The document needs no
+   One action: the profile page document, then its six queries at once, then with
+   ``companions`` the page load companions ``_core/page_load.py`` sends. The document needs no
    page token and carries fresh ones, which are written onto the session before the queries
    are built, so there is no stale token to recover from.
 
@@ -191,16 +201,19 @@ async def read_profile_from_page(
          requests = build_profile_page_requests(session, user_id, username, user_agent=user_agent)
          profile_response, *companion_responses = await action.send_together(requests)
 
-      for companion in companion_responses:
-         _raise_only_what_concerns_the_account(companion)
+         for companion in companion_responses:
+            raise_only_what_concerns_the_account(companion)
+
+         if companions:
+            groups = build_profile_page_load_companions(
+               session,
+               user_id,
+               username,
+               device_id=read_iris_device_id(document.text),
+               user_agent=user_agent,
+            )
+            await send_companions(action, groups)
 
       return parse_profile(classify(profile_response))
 
    return await run_with_retries(attempt, pacer=sender.pacer, deadline=deadline)
-
-
-def _raise_only_what_concerns_the_account(response: Response) -> None:
-   try:
-      classify(response)
-   except (UpstreamRejected, SchemaChanged):
-      return

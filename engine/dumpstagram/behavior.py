@@ -6,9 +6,10 @@ never global, per ADR-0004. The presets below are ordinary instances, so a prese
 nothing a caller could not set by hand, and ``dataclasses.replace`` derives a variant of one.
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
-feed's first page the second, the profile route the third and a thread's first page the
-fourth. Other companion requests and side effects such as marking a thread read become settings
-when the requests behind them are implemented, as new fields with parity defaults.
+feed's first page the second, the profile route the third, a thread's first page the fourth
+and the page load companions the fifth. Other companion requests and side effects such as
+marking a thread read become settings when the requests behind them are implemented, as new
+fields with parity defaults.
 
 What every departure costs is in ``engine/docs/rate-limiting-and-safety.md``. There is no floor
 on rate: a caller may set spacing to zero, and the engine does not overrule that decision.
@@ -109,12 +110,19 @@ class Behavior:
    The default is :data:`PARITY`. Every field carries its parity value as its default, so a
    ``Behavior`` built with only the fields a caller wants to change departs from parity in
    exactly those fields and nowhere else.
+
+   ``page_load_companions`` sends, after every document the engine loads, the queries a
+   browser's page load sends beside its own: the badge count, the chat tabs jewel, the omni
+   picker, two quick promotion calls, and on a profile page the stories tray. None of their
+   answers is read. Five or six requests inside the document's own action, departing in the
+   page's order and grouping. False leaves them out and changes nothing else.
    """
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
    feed_first_page: FeedFirstPage = FeedFirstPage.DOCUMENT
    profile_route: ProfileRoute = ProfileRoute.PAGE
    thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
+   page_load_companions: bool = True
 
 
 PARITY = Behavior()

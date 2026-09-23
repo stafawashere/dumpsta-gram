@@ -29,6 +29,7 @@ from dumpstagram.errors import SchemaChanged
 __all__ = [
    "FEED_TIMELINE_PRELOADER",
    "HOME_DOCUMENT_URL",
+   "read_iris_device_id",
    "read_preloaded_result",
    "read_profile_id",
 ]
@@ -44,6 +45,8 @@ The suffix changes on every load, so only the prefix identifies the query.
 STREAM_CACHE = "RelayPrefetchedStreamCache"
 
 _PROFILE_ID = re.compile(r'"page_id":"profilePage_(\d+)","profile_id":"(\d+)"')
+
+_IRIS_DEVICE_ID = re.compile(r'\["IGDMqttWebDeviceID",\[\],\{"clientId":"([0-9a-f-]{36})"\}')
 
 _DATA_SCRIPT = re.compile(r"<script type=\"application/json\"[^>]*data-sjs>(.*?)</script>", re.S)
 
@@ -162,3 +165,19 @@ def read_profile_id(html: str) -> str | None:
       raise SchemaChanged("a profile document names more than one account", path="profile_id")
 
    return account_ids.pop() if account_ids else None
+
+
+def read_iris_device_id(html: str) -> str | None:
+   """The ``clientId`` of ``IGDMqttWebDeviceID`` in a page document, or ``None``.
+
+   The badge count and chat tabs queries a page load sends are keyed on it. It is a uuid4 that
+   differed on every captured load, so it belongs to one document and is never stored.
+   ``None`` means the document stopped carrying it, and the caller leaves out the queries that
+   need it rather than sending a value no page issued.
+
+   Findings: ``page-load-direct-badge-count`` and ``page-load-chat-tabs-jewel``.
+   """
+
+   match = _IRIS_DEVICE_ID.search(html)
+
+   return match.group(1) if match is not None else None

@@ -18,12 +18,23 @@ response well enough to know it was malformed.
 
 Every ``httpx`` exception is translated with ``raise ... from``, so the original is still
 reachable from ``__cause__`` while the HTTP client stays an implementation choice.
+
+A transport can be pinned to one host, and then it refuses every other host, redirect hops
+included. The reason is the cookie jar: a jar built from a plain mapping has no domain, so
+``httpx`` sends its ``sessionid`` to whatever host a request names. A pinned transport turns a
+wrong wiring into an error instead of an account token handed to another site.
+
+A cookieless transport keeps no jar in practice: it starts empty, refuses to store what a
+response sets, refuses a request that names a ``cookie`` header itself, and never follows a
+redirect. It exists for the
+facebook.com calls a page load makes, which a browser sends with no cookies.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from http.cookiejar import CookieJar, DefaultCookiePolicy
 from types import TracebackType
 from typing import Protocol, runtime_checkable
 
@@ -131,6 +142,18 @@ class Sender(Protocol):
    async def send(self, request: Request) -> Response: ...
 
 
+def _refusing_jar() -> CookieJar:
+   """A jar whose policy allows no domain, so it stores nothing a response sets.
+
+   Only storing is refused. ``httpx`` copies the jar into a fresh one without this policy when
+   it builds each request, so the jar being empty is what keeps a request cookieless. It is
+   handed over as a bare ``CookieJar`` for the same reason: ``httpx.Cookies`` wrapping it
+   would be copied and the policy lost at construction.
+   """
+
+   return CookieJar(policy=DefaultCookiePolicy(allowed_domains=[]))
+
+
 def _decode(content: bytes, content_type: str) -> str:
    charset = "utf-8"
    for part in content_type.split(";")[1:]:
@@ -150,6 +173,11 @@ class HttpxTransport:
    Owns the client it creates and closes it in :meth:`aclose`. A client passed in belongs to
    the caller and is left open, per the ownership table in
    ``engine/docs/engineering/04-errors-resources-logging.md``.
+
+   ``allowed_host`` pins the transport to one host. ``cookieless`` builds the facebook.com
+   kind described in the module docstring, and it cannot be given cookies. Both apply to a
+   caller's client as well, because the pin is installed as a request hook on whichever
+   client sends.
    """
 
    def __init__(
@@ -160,18 +188,31 @@ class HttpxTransport:
       timeouts: Timeouts = DEFAULT_TIMEOUTS,
       max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
       client: httpx.AsyncClient | None = None,
+      allowed_host: str | None = None,
+      cookieless: bool = False,
    ) -> None:
+      if cookieless and cookies:
+         raise ValueError("a cookieless transport cannot be given cookies")
+
       self._max_response_bytes = max_response_bytes
       self._timeouts = timeouts
       self._owns_client = client is None
+      self._allowed_host = allowed_host
+      self._cookieless = cookieless
 
       if client is not None:
          self._client = client
+         self._pin(client)
+
+         if cookieless:
+            client.cookies = _refusing_jar()
+
          return
 
       verify = proxy.verify_tls if proxy is not None else True
+      jar: CookieJar | dict[str, str] = _refusing_jar() if cookieless else dict(cookies or {})
       self._client = httpx.AsyncClient(
-         cookies=dict(cookies or {}),
+         cookies=jar,
          timeout=httpx.Timeout(
             connect=timeouts.connect,
             read=timeouts.read,
@@ -185,8 +226,45 @@ class HttpxTransport:
          ),
          follow_redirects=False,
       )
+      self._pin(self._client)
+
+   @property
+   def allowed_host(self) -> str | None:
+      """The one host this transport sends to, or ``None`` when it is not pinned."""
+
+      return self._allowed_host
+
+   @property
+   def cookieless(self) -> bool:
+      """Whether this transport refuses to store or send any cookie."""
+
+      return self._cookieless
+
+   def _pin(self, client: httpx.AsyncClient) -> None:
+      if self._allowed_host is None:
+         return
+
+      hooks = client.event_hooks
+      hooks["request"] = [*hooks.get("request", []), self._refuse_other_hosts]
+      client.event_hooks = hooks
+
+   async def _refuse_other_hosts(self, request: httpx.Request) -> None:
+      host = request.url.host
+      is_other_host = host != self._allowed_host
+
+      if is_other_host:
+         raise TransportFailure(
+            f"refused a {request.method} request to {host}, "
+            f"this transport sends only to {self._allowed_host}"
+         )
 
    async def send(self, request: Request) -> Response:
+      names_a_cookie = any(name.lower() == "cookie" for name in request.headers)
+      is_cookie_on_cookieless = self._cookieless and names_a_cookie
+
+      if is_cookie_on_cookieless:
+         raise ValueError("a cookieless transport refuses a request carrying a cookie header")
+
       try:
          built = self._client.build_request(
             request.method,
@@ -198,7 +276,7 @@ class HttpxTransport:
          response = await self._client.send(
             built,
             stream=True,
-            follow_redirects=request.follow_redirects,
+            follow_redirects=request.follow_redirects and not self._cookieless,
          )
       except httpx.HTTPError as exc:
          raise TransportFailure(f"{request.method} request failed at the transport") from exc

@@ -152,7 +152,7 @@ STALE_TOKEN_GATE = (
    "tests/test_direct.py::test_a_stale_token_is_re_bootstrapped_once_for_the_capability_too"
 )
 
-CLOSED_GUARD = """      if self._closed:
+CLOSED_GUARD = """      if self.closed:
          raise RuntimeError("this client is closed, so its connection pool is gone")"""
 
 MUTATIONS = [
@@ -277,7 +277,7 @@ MUTATIONS = [
       "defect": "a read is issued through a connection pool that is already torn down",
       "file": AIO,
       "find": CLOSED_GUARD,
-      "replace": "      if self._closed:\n         pass",
+      "replace": "      if self.closed:\n         pass",
    },
 ]
 

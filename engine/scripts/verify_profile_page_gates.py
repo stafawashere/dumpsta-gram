@@ -25,6 +25,7 @@ LOG_DIR = ENGINE / "logs"
 PRELOAD = "dumpstagram/_private/web/preload.py"
 REQUESTS = "dumpstagram/_private/web/requests.py"
 PROFILES = "dumpstagram/_core/profiles.py"
+PAGE_LOAD = "dumpstagram/_core/page_load.py"
 REQUESTING = "dumpstagram/_core/requesting.py"
 BEHAVIOR = "dumpstagram/behavior.py"
 AIO = "dumpstagram/aio.py"
@@ -117,7 +118,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a rejected companion fails the whole read",
       "edits": [
          (
-            PROFILES,
+            PAGE_LOAD,
             "   except (UpstreamRejected, SchemaChanged):\n      return",
             "   except SchemaChanged:\n      return",
          )
@@ -127,7 +128,11 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": f"{GATES}::test_a_checkpoint_in_a_companion_is_raised",
       "defect": "companion responses are never looked at",
       "edits": [
-         (PROFILES, "         _raise_only_what_concerns_the_account(companion)", "         pass")
+         (
+            PROFILES,
+            "            raise_only_what_concerns_the_account(companion)",
+            "            pass",
+         )
       ],
    },
    {

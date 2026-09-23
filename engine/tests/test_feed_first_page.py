@@ -22,7 +22,7 @@ import pytest
 
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.requesting import PacedSender
-from dumpstagram._private.web.documents import GRAPHQL_QUERY_URL
+from dumpstagram._private.web.documents import API_GRAPHQL_URL, GRAPHQL_QUERY_URL
 from dumpstagram._private.web.preload import (
    FEED_TIMELINE_PRELOADER,
    HOME_DOCUMENT_URL,
@@ -215,12 +215,19 @@ async def client_over(transport: ScriptedTransport, behavior: Behavior) -> Async
 async def test_the_client_sends_the_document_under_the_default_behavior() -> None:
    """Catches a client that drops the behavior setting and falls back to the query."""
 
-   transport = ScriptedTransport([html_response(a_feed_document(), final_url=HOME_DOCUMENT_URL)])
+   page_load_companions = 3
+   companion_answer = json_response({"data": {"companion": {}}})
+   transport = ScriptedTransport(
+      [html_response(a_feed_document(), final_url=HOME_DOCUMENT_URL)]
+      + [companion_answer] * page_load_companions
+   )
    client = await client_over(transport, PARITY)
 
    await client.feed()
 
-   assert [request.url for request in transport.sent] == [HOME_DOCUMENT_URL]
+   assert [request.url for request in transport.sent] == [HOME_DOCUMENT_URL] + [
+      API_GRAPHQL_URL
+   ] * page_load_companions
 
 
 @pytest.mark.asyncio

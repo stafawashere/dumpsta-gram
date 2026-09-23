@@ -33,6 +33,8 @@ __all__ = [
    "BOOTSTRAP_URL",
    "DEFAULT_APP_ID",
    "DEFAULT_USER_AGENT",
+   "FACEBOOK_HOST",
+   "INSTAGRAM_HOST",
    "BootstrapTokens",
    "apply_tokens",
    "bootstrap",
@@ -43,6 +45,16 @@ __all__ = [
 ]
 
 ORIGIN = "https://www.instagram.com"  # provenance: ignore, an origin, not an endpoint
+
+INSTAGRAM_HOST = "www.instagram.com"
+"""The only host the transport carrying the account's cookies may send to."""
+
+FACEBOOK_HOST = "www.facebook.com"
+"""The host of the page-load cookie sync, reached only through a cookieless transport.
+
+Backed by the findings ``facebook-cookie-sync-iframe-document`` and
+``facebook-cookie-sync-fetch``.
+"""
 
 BOOTSTRAP_URL = "https://www.instagram.com/direct/inbox/"
 """The page the tokens are read from.
