@@ -31,4 +31,5 @@ Logs live at `engine/logs/` rather than under `engine/tests/`, moved 2026-09-20 
 | `thread-oracle-capture-<stamp>.json` | One run of `../probes/capture_thread_oracle.py`. Page counts, a content-type census and per-page mapper outcomes, no ids and no text. |
 | `thread-oracle-build-<stamp>.json` | One run of `../scripts/build_thread_oracle.py`. Counts, the capture-versus-ghost diff and the leak scan with its control. |
 | `mutation-parity-<stamp>.json`, `mutation-oracle-<stamp>.json` | One run of the matching `../scripts/verify_*_gates.py`. |
+| `home-load-cookie-sync-<stamp>.json` | One run of `../probes/home_load_cookie_sync.py`. Per request host, name, status, lengths, classification, offsets and Set-Cookie names, and `fr` as presence and length only. |
 | `reload-and-call-<stamp>.json` | One run of `../probes/reload_and_call.py`. The Phase 1 stop condition, including whether the stored tokens were accepted and how old they were. |
