@@ -95,3 +95,21 @@ uv run python probes/inbox_change_feed.py --stage full
 
 Then name `FOLLOW_TARGET` and `DM_TARGET` for Steps 17 and 18. You can also either say the song
 note may go or wait for it to expire, and Step 14's set and delete follow with about 7 requests.
+
+## Continuation, same day, after the owner named the targets
+
+The owner named the follow and direct message target and allowed the note to change, recorded
+as ruling 30. The loop then ran to the end of the checklist. Rulings 31 to 36 cover it.
+
+| Step | Commit | Live requests | Result |
+|---|---|---|---|
+| Step 14 note set and delete | 1423105 | 11 | Close friends, value 1, accepted. No note left up |
+| Step 17 follow and unfollow | a773a1a | 16 | Three follows, each undone. The target ends unfollowed |
+| Step 18 direct send and unsend | 4fe139d | 9 engine, 51 browser | Three messages, each unsent. The browser's Message click created the thread |
+| Phase 3 stop condition from dumpsta, 0.3.0 | a404e15, tag v0.3.0 | 26 | Five writes, each confirmed and reversed |
+| Step 21 full, Step 23 arranged, Phase 4, 0.4.0 | 7880d95, tag v0.4.0 | 37 | Events printed 44.49 s sync and 44.13 s async after the send. Three messages, each unsent |
+| Freeze, Phase 5 entry gates, 1.0.0 | 20d4ab5, tag v1.0.0 | 1 | Additive freeze holds. Prepared, not published |
+
+Still open: 17.8 item 3 waits for the app roadmap. Seven gates need git and fail from an
+unpacked sdist. The write budget and the write stop reset with each `dumpsta` process. Human
+timing rests on one sample, and Intel is unverified.
