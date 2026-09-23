@@ -167,6 +167,17 @@ the run did not establish whether either sender was the owner. Logs
 `engine/logs/events-live-sync-2026-09-23-065330.json` and
 `engine/logs/events-live-async-2026-09-23-065605.json`.
 
+The planned acceptance ran the same day, ruling 30: `probes/events_live.py --send-arranged` ran
+`dumpsta events --duration 600 --interval 60 --json --ids-only` once per surface while a second
+client sent one arranged message into the owner-named target's thread 20 s after the third poll
+and unsent it after the event printed. Each surface spent ten listing reads and one thread read,
+every one holding the pacer slot, plus three write-side requests. The event line came 44.5 s
+after the send left on the drained sync listener and 44.1 s after on the async iterator, from
+the first poll after the send, and nothing else was printed, the unsend included. That meets the
+Phase 4 stop condition, recorded in [build-plan.md](build-plan.md) under Step 23. Logs
+`engine/logs/events-live-sync-arranged-2026-09-23-163709.json` and
+`engine/logs/events-live-async-arranged-2026-09-23-164723.json`.
+
 ## Transport, now and later
 
 **Now, polling.** Originally an ASSUMPTION that a REST inbox endpoint is suitable. Superseded on
@@ -204,7 +215,7 @@ listing has a `doc_id` that can rotate, and it stays the fallback to reach for i
   listed message's `timestamp_ms` on 45 of 45 rows. FACT.
 - **Last message id.** The first of five listed messages, newest first, in the `mid.$` form
   `Message.id` carries, so it can be handed straight to `newer_than_message_id`. FACT for the
-  form. Whether that top-up filters is still untested.
+  form. The top-up filters on a live base, FACT from one read in Step 21.
 - **Thread id.** The row's `thread_fbid`, which is the identifier `thread_messages` takes. The
   row's `thread_key` is a different value on one-to-one threads and is what a browser sends when
   it opens one. FACT.
@@ -215,12 +226,22 @@ listing has a `doc_id` that can rotate, and it stays the fallback to reach for i
   and `iris_inactive_subscription_uq_seq_id` did not move. FACT, one observation. So the listener
   will not emit events for nothing, as far as this shows.
 
-Still unobserved as an arranged experiment, and blocked on the owner sending one message by
-hand (ruling 10): whether a thread that gains a message moves to the top with every other row
-staying put, and whether `newer_than_message_id` returns exactly the new message.
-`probes/inbox_change_feed.py --stage full` runs both. Step 23 chose the first row of the Step 21
-table anyway, because it holds on the evidence there is and it does not use
-`newer_than_message_id` at all: it diffs ids client side, which the third row of the table
+- **A thread with no live message is not listed.** The target's thread, whose every message had
+  been unsent, was absent from the first page, came onto it at position 0 when the arranged
+  message arrived, and left it again when that message was unsent, leaving the page identical
+  row for row to the one before. FACT, one thread, Step 21.
+
+The arranged experiment ran on 2026-09-23, Step 21 with the message sent by the engine under
+ruling 30, through `probes/inbox_change_feed.py --stage full --send-arranged`. The thread that
+gained a message went to position 0, its marker was the message's own time, and every other row
+kept its values one place lower, the fifteenth falling off. The thread came from off the page,
+so a move up from a lower row was not itself observed. `newer_than_message_id` with the
+target's predecessor, an unsent message, returned exactly the new message, and with a live base
+in another thread it returned exactly the one newer message where the newest page held at least
+two. That is the first row of the Step 21 table. Log
+`engine/logs/inbox-change-feed-full-arranged-2026-09-23-161947.json`. Step 23 had already
+chosen the first row of that table before this ran, because it held on the evidence there was
+and it does not use `newer_than_message_id` at all: it diffs ids client side, which the third row of the table
 prescribes when the top-up does not filter, and works whether it does or not. The unarranged
 messages of the async acceptance run are one observation that a listing moves when a thread
 gains messages: the third read changed length, and the thread read of the one row whose newest
@@ -234,15 +255,18 @@ FACT that the capability exists, inherited. The message paging query accepts a
 noted it as directly useful given its reference thread grew by 275 messages in under a day.
 
 For a polling listener this is the difference between re-reading history and fetching only what
-is new. The Step 23 poller does not use it yet, because its filtering is unobserved. Step 18 sent it with
+is new. The Step 23 poller does not use it yet, because it was written before its filtering was
+observed. Step 18 sent it with
 a value once, on 2026-09-23: after a send into a thread whose only other message had been unsent,
 with that unsent message's id as the base, it returned exactly the new message, `has_next_page`
 false, no error. FACT for that one read. The thread listed nothing else, so the answer cannot
 tell a filter from the newest page, and it only shows that an unsent message's id is accepted as
-a base. It reads the newest page and diffs ids instead, which costs the same
+a base. Step 21 then settled it on 2026-09-23: with a live base, the second of the two newest
+messages another thread carried, it returned exactly the newest one, `has_next_page` false,
+where the newest page would have held both. FACT, one read on one thread. The poller reads the
+newest page and diffs ids instead, which costs the same
 one request whenever fewer than twenty messages arrived between two polls, and pages back only
-when more did. Switching to the top-up is a change inside `poller.py` once Step 21 line 5 or
-Step 18 has observed it.
+when more did. Switching to the top-up is a change inside `poller.py`, now open on that one observation.
 
 Page size is capped at 20 server side regardless of what is requested, FACT, which makes the
 saving larger still.
