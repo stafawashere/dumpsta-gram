@@ -17,6 +17,7 @@ __all__ = [
    "DumpstagramError",
    "NotFound",
    "OperationCancelled",
+   "OutcomeUnknown",
    "RateLimited",
    "SchemaChanged",
    "TransportFailure",
@@ -105,6 +106,9 @@ class SchemaChanged(DumpstagramError):
    Loud on purpose. The worst failure this upstream produces is a field rename that degrades
    records silently under a permissive mapper, which is caught only by comparison against a
    recorded capture. ``path`` names where the mapping gave up.
+
+   On a write this does not mean the write failed. The upstream answered without an error
+   envelope and only the mapping of its answer gave up, so the write has probably applied.
    """
 
    def __init__(self, message: str = "", *, path: str | None = None) -> None:
@@ -120,6 +124,28 @@ class TransportFailure(DumpstagramError):
    """
 
 
+class OutcomeUnknown(DumpstagramError):
+   """A write may or may not have applied, and nothing the library saw can say which.
+
+   Raised when the connection failed while a write was in flight. The request may have reached
+   the upstream and been committed before the failure, so reporting it as a network error would
+   invite the caller to send it again, and a repeated comment or message is a duplicate other
+   people see. The failure itself is chained on ``__cause__``.
+
+   Never retried, by this library or by any retry path. It is absent from :data:`RETRYABLE` and
+   shares no base class with any member of it, because a subclass of
+   :class:`TransportFailure` would be retried by inheritance. The way forward is to read the
+   state the write would have changed and decide from that.
+
+   ``operation`` names the write, for example ``set_note``. It carries no identifier of another
+   account and no text the caller supplied.
+   """
+
+   def __init__(self, message: str = "", *, operation: str | None = None) -> None:
+      super().__init__(message)
+      self.operation = operation
+
+
 class OperationCancelled(DumpstagramError):
    """The awaited work was cancelled.
 
@@ -127,6 +153,9 @@ class OperationCancelled(DumpstagramError):
    ``asyncio.CancelledError`` is a ``BaseException`` and would slip past a caller's
    ``except Exception``, so the facade translates it at the loop-thread boundary. That is the
    only translation the facade performs.
+
+   A write cancelled while its request was in flight raises this too, and its outcome is then
+   as unknown as it is for :class:`OutcomeUnknown`.
    """
 
 

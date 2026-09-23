@@ -7,7 +7,9 @@ nothing a caller could not set by hand, and ``dataclasses.replace`` derives a va
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
 feed's first page the second, the profile route the third, a thread's first page the fourth,
-the page load companions the fifth and the cookie sync the sixth. Other companion requests and
+the page load companions the fifth and the cookie sync the sixth. The three write settings came
+with the write path, before any write capability, because a write is only safe with all three in
+place from the first one. Other companion requests and
 side effects such as marking a thread read become settings when the requests behind them are
 implemented, as new fields with parity defaults.
 
@@ -123,6 +125,25 @@ class Behavior:
    after the document, outside any action and without waiting for the next one, and a client
    closed before then sends none of them. False leaves them out, including all traffic to
    facebook.com, and changes nothing else. The page load companions do not govern it.
+
+   ``write_spacing`` is the gap before a write, measured from the account's previous write. It
+   does not delay the reads between two writes, and a write still waits out ``spacing`` from
+   whatever request went before it. The default, a 30 s floor plus 5 s mean jitter, is a
+   placeholder derived from nothing: no human write timing has been measured yet, so the
+   parity preset carries the placeholder too until one is.
+
+   ``write_budget_per_hour`` is how many writes may depart in any rolling hour. A write past it
+   raises :class:`~dumpstagram.errors.RateLimited` with ``retry_after`` set and sends nothing.
+   None removes the budget. The default of 30 is a placeholder like the spacing.
+
+   ``stop_writes_after_unrecognised_rejection`` refuses every later write once a write has been
+   rejected with a code nothing recorded explains, raising
+   :class:`~dumpstagram.errors.UpstreamRejected` without sending. Reads carry on. It lasts for
+   the life of the client and of every client :meth:`~dumpstagram.AsyncClient.with_behavior`
+   derives from it, because an unrecognised rejection of a write is the likeliest form an
+   action block takes. False lets writes continue after one.
+
+   None of the three can make the engine retry a write. Nothing can.
    """
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
@@ -131,6 +152,16 @@ class Behavior:
    thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
    page_load_companions: bool = True
    cookie_sync: bool = True
+   write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
+   write_budget_per_hour: int | None = 30
+   stop_writes_after_unrecognised_rejection: bool = True
+
+   def __post_init__(self) -> None:
+      budget = self.write_budget_per_hour
+      has_negative_budget = budget is not None and budget < 0
+
+      if has_negative_budget:
+         raise ValueError("a write budget cannot be negative, zero refuses every write")
 
 
 PARITY = Behavior()
@@ -148,8 +179,12 @@ EXPORT = Behavior(spacing=Spacing(floor_seconds=2.5, mean_jitter_seconds=0.35))
 with no throttling, measured by the prior project. Machine regular rather than human timing.
 """
 
-FAST = Behavior(spacing=Spacing(floor_seconds=0.0, mean_jitter_seconds=0.0))
-"""No spacing at all. Requests still look like the browser's and still pass the pacer, which
-still holds the whole account when the upstream signals a throttle. No human reaches this rate,
-and nothing has measured how the upstream treats it.
+FAST = Behavior(
+   spacing=Spacing(floor_seconds=0.0, mean_jitter_seconds=0.0),
+   write_spacing=Spacing(floor_seconds=0.0, mean_jitter_seconds=0.0),
+)
+"""No spacing at all, for reads or writes. Requests still look like the browser's and still pass
+the pacer, which still holds the whole account when the upstream signals a throttle. The write
+budget and the write stop stay as they are, since spacing is all this preset names. No human
+reaches this rate, and nothing has measured how the upstream treats it.
 """

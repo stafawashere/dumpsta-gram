@@ -19,6 +19,7 @@ from dumpstagram.errors import (
    DumpstagramError,
    NotFound,
    OperationCancelled,
+   OutcomeUnknown,
    RateLimited,
    SchemaChanged,
    TransportFailure,
@@ -41,6 +42,7 @@ EXIT_BY_ERROR: Mapping[type[DumpstagramError], int] = {
    SchemaChanged: 8,
    TransportFailure: 9,
    OperationCancelled: 10,
+   OutcomeUnknown: 11,
 }
 
 

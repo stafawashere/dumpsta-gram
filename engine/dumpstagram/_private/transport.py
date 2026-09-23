@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from http.cookiejar import CookieJar, DefaultCookiePolicy
 from types import TracebackType
 from typing import Protocol, runtime_checkable
+from uuid import uuid4
 
 import httpx
 
@@ -51,6 +52,7 @@ __all__ = [
    "Response",
    "Sender",
    "Timeouts",
+   "WriteRequest",
    "cookies_for",
 ]
 
@@ -94,6 +96,25 @@ class Request:
    params: Mapping[str, str] = field(default_factory=dict)
    content: bytes | None = None
    follow_redirects: bool = True
+
+
+@dataclass(frozen=True)
+class WriteRequest:
+   """A request that changes something on the account, and may leave the machine only once.
+
+   It is not a :class:`Request`, so nothing that sends reads can be handed one by mistake.
+   ``token`` is drawn fresh for every object, and the paced sender records it on departure and
+   refuses it the second time. A capability that builds a new object for the same write gets a
+   new token, which is why a write is also kept out of every retry helper by the modules it may
+   import.
+
+   ``operation`` names the write for the error raised when its outcome is unknown, and carries
+   no identifier of another account and no text the caller supplied.
+   """
+
+   request: Request
+   operation: str
+   token: str = field(default_factory=lambda: uuid4().hex)
 
 
 @dataclass(frozen=True)

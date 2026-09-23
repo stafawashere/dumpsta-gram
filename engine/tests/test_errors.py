@@ -33,6 +33,17 @@ def test_checkpoint_inherits_from_no_retryable_type() -> None:
       assert not issubclass(errors.CheckpointRequired, retryable)
 
 
+def test_an_unknown_outcome_is_absent_from_the_retryable_set() -> None:
+   """A retried write whose first send may have applied is a duplicate other people see."""
+   assert errors.OutcomeUnknown not in errors.RETRYABLE
+
+
+def test_an_unknown_outcome_inherits_from_no_retryable_type() -> None:
+   """As a TransportFailure it would be retried by inheritance, which is the easy mistake."""
+   for retryable in errors.RETRYABLE:
+      assert not issubclass(errors.OutcomeUnknown, retryable)
+
+
 def test_retryable_set_is_exactly_the_two_decided_types() -> None:
    """Widening the retry surface is an account-safety decision, not a refactor."""
    assert errors.RETRYABLE == (errors.TransportFailure, errors.RateLimited)

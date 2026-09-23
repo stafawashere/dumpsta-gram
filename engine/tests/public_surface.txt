@@ -15,6 +15,7 @@ alias dumpstagram.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
+alias dumpstagram.OutcomeUnknown -> dumpstagram.errors.OutcomeUnknown
 alias dumpstagram.PARITY -> dumpstagram.behavior.PARITY
 alias dumpstagram.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.Post -> dumpstagram.models.feed.Post
@@ -57,7 +58,10 @@ field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagra
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
 field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
+field dumpstagram.behavior.Behavior.stop_writes_after_unrecognised_rejection: bool = True
 field dumpstagram.behavior.Behavior.thread_first_page: ThreadFirstPage = <dumpstagram.behavior.ThreadFirstPage>
+field dumpstagram.behavior.Behavior.write_budget_per_hour: int | None = 30
+field dumpstagram.behavior.Behavior.write_spacing: Spacing = <dumpstagram.behavior.Spacing>
 data dumpstagram.behavior.EXPORT: Behavior = <dumpstagram.behavior.Behavior>
 data dumpstagram.behavior.FAST: Behavior = <dumpstagram.behavior.Behavior>
 class dumpstagram.behavior.FeedFirstPage(enum.Enum)
@@ -96,6 +100,8 @@ def dumpstagram.errors.CheckpointRequired.__init__(self, message: str = '', *, r
 class dumpstagram.errors.DumpstagramError(builtins.Exception)
 class dumpstagram.errors.NotFound(dumpstagram.errors.DumpstagramError)
 class dumpstagram.errors.OperationCancelled(dumpstagram.errors.DumpstagramError)
+class dumpstagram.errors.OutcomeUnknown(dumpstagram.errors.DumpstagramError)
+def dumpstagram.errors.OutcomeUnknown.__init__(self, message: str = '', *, operation: str | None = None) -> None
 data dumpstagram.errors.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
 class dumpstagram.errors.RateLimited(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.RateLimited.__init__(self, message: str = '', *, retry_after: float | None = None) -> None

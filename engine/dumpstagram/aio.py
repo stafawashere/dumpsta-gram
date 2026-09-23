@@ -21,7 +21,7 @@ from types import TracebackType
 from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
-from dumpstagram._core.pacer import Pacer, PacingPolicy
+from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
@@ -74,7 +74,9 @@ class AsyncClient:
          cookieless=True,
       )
 
-      self._sender = PacedSender(transport, Pacer(), pacing_for(behavior))
+      self._sender = PacedSender(
+         transport, Pacer(), pacing_for(behavior), write_policy_for(behavior)
+      )
       self._cookie_sync = CookieSync(
          self._sender.background(),
          BackgroundSender(self._facebook, self._sender.pacer),
@@ -116,7 +118,7 @@ class AsyncClient:
       scoped._closed = False
       scoped._owner = self._owner or self
       scoped._facebook = self._facebook
-      scoped._sender = self._sender.with_pacing(pacing_for(behavior))
+      scoped._sender = self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))
       scoped._cookie_sync = self._cookie_sync
 
       return scoped
@@ -326,4 +328,15 @@ def pacing_for(behavior: Behavior) -> PacingPolicy:
    return PacingPolicy(
       floor_seconds=behavior.spacing.floor_seconds,
       mean_jitter_seconds=behavior.spacing.mean_jitter_seconds,
+   )
+
+
+def write_policy_for(behavior: Behavior) -> WritePolicy:
+   return WritePolicy(
+      spacing=PacingPolicy(
+         floor_seconds=behavior.write_spacing.floor_seconds,
+         mean_jitter_seconds=behavior.write_spacing.mean_jitter_seconds,
+      ),
+      budget_per_hour=behavior.write_budget_per_hour,
+      stop_after_unrecognised_rejection=behavior.stop_writes_after_unrecognised_rejection,
    )

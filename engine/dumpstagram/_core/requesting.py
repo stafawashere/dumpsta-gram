@@ -21,8 +21,8 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from types import TracebackType
 
-from dumpstagram._core.pacer import Pacer, PacingPolicy
-from dumpstagram._private.transport import Request, Response, Sender
+from dumpstagram._core.pacer import DEFAULT_WRITES, Pacer, PacingPolicy, WritePolicy
+from dumpstagram._private.transport import Request, Response, Sender, WriteRequest
 
 __all__ = ["ActionSender", "BackgroundSender", "PacedSender"]
 
@@ -83,19 +83,26 @@ class PacedSender:
    which of the two that is.
    """
 
-   def __init__(self, sender: Sender, pacer: Pacer, pacing: PacingPolicy | None = None) -> None:
+   def __init__(
+      self,
+      sender: Sender,
+      pacer: Pacer,
+      pacing: PacingPolicy | None = None,
+      writes: WritePolicy = DEFAULT_WRITES,
+   ) -> None:
       self._sender = sender
       self.pacer = pacer
       self.pacing = pacing
+      self.writes = writes
 
-   def with_pacing(self, pacing: PacingPolicy) -> PacedSender:
+   def with_pacing(self, pacing: PacingPolicy, writes: WritePolicy | None = None) -> PacedSender:
       """Another paced sender over the same transport and the same account's pacer.
 
-      Only the spacing differs. The transport still belongs to this sender's owner, so the
-      caller of this method must not close the one it gets back.
+      Only the spacing and the write rules differ. The transport still belongs to this
+      sender's owner, so the caller of this method must not close the one it gets back.
       """
 
-      return PacedSender(self._sender, self.pacer, pacing)
+      return PacedSender(self._sender, self.pacer, pacing, writes or self.writes)
 
    async def send(self, request: Request) -> Response:
       """Wait until this account may send again, then send inside the same slot.
@@ -107,6 +114,16 @@ class PacedSender:
 
       async with self.pacer.slot(self.pacing):
          return await self._sender.send(request)
+
+   async def send_once(self, write: WriteRequest) -> Response:
+      """Send a write inside a write slot, refusing an object that has departed before.
+
+      Only ``_core/writing.py`` calls this. The refusal comes from the pacer before the
+      transport sees anything.
+      """
+
+      async with self.pacer.write_slot(write.token, self.writes, self.pacing):
+         return await self._sender.send(write.request)
 
    @asynccontextmanager
    async def action(self) -> AsyncIterator[ActionSender]:
