@@ -111,6 +111,15 @@ unknown keys on read and defaults missing ones, and nothing has been released th
 a file without them. A reloaded session therefore reproduces the observed request exactly,
 rather than sending two empty fields.
 
+### `bloks_version_id`, added 2026-09-23
+
+The `x-bloks-version-id` header value, read from the bootstrap page's `WebBloksVersioningID`
+config and sent on every `/graphql/query` request. Added at `schema_version` 1 for the same
+reason as `hsi`: missing keys load as `None`. A session saved before it existed carries page
+tokens but no bloks id, and the feed bootstraps once to get it rather than failing. Its lifetime
+is unmeasured. INFERENCE: it tracks a web build, so it changes on deploys rather than per
+session.
+
 ## Two inherited bugs worth not repeating
 
 Both had the same shape, and both produced a complete, plausible, entirely wrong result rather

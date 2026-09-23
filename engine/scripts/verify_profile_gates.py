@@ -192,8 +192,8 @@ MUTATIONS = [
       ),
       "defect": "the resolver inherits the web client's twelve and moves 200 kB for one id",
       "file": REQUESTS,
-      "find": '         "count": RESOLUTION_PAGE_SIZE,',
-      "replace": '         "count": 12,',
+      "find": "_profile_posts_variables(username, RESOLUTION_PAGE_SIZE)",
+      "replace": "_profile_posts_variables(username, 12)",
    },
    {
       "gate": (

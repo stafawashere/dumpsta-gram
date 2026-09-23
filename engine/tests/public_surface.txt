@@ -20,6 +20,7 @@ alias dumpstagram.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
+alias dumpstagram.ProfileRoute -> dumpstagram.behavior.ProfileRoute
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
 alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
@@ -51,6 +52,7 @@ def dumpstagram.aio.AsyncClient.with_behavior(self, behavior: Behavior) -> Async
 module dumpstagram.behavior
 class dumpstagram.behavior.Behavior()
 field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
+field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
 data dumpstagram.behavior.EXPORT: Behavior = <dumpstagram.behavior.Behavior>
 data dumpstagram.behavior.FAST: Behavior = <dumpstagram.behavior.Behavior>
@@ -58,6 +60,9 @@ class dumpstagram.behavior.FeedFirstPage(enum.Enum)
 data dumpstagram.behavior.FeedFirstPage.DOCUMENT: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 data dumpstagram.behavior.FeedFirstPage.QUERY: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
 data dumpstagram.behavior.PARITY: Behavior = <dumpstagram.behavior.Behavior>
+class dumpstagram.behavior.ProfileRoute(enum.Enum)
+data dumpstagram.behavior.ProfileRoute.PAGE: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
+data dumpstagram.behavior.ProfileRoute.QUERIES: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 class dumpstagram.behavior.Spacing()
 field dumpstagram.behavior.Spacing.floor_seconds: float
 field dumpstagram.behavior.Spacing.mean_jitter_seconds: float
@@ -218,6 +223,7 @@ field dumpstagram.session.ProxyConfig.verify_tls: bool = True
 data dumpstagram.session.SCHEMA_VERSION: int = 1
 class dumpstagram.session.Session()
 field dumpstagram.session.Session.app_id: str | None = None
+field dumpstagram.session.Session.bloks_version_id: str | None = None
 field dumpstagram.session.Session.bootstrapped_at: datetime | None = None
 field dumpstagram.session.Session.checkpoint_active: bool = False
 field dumpstagram.session.Session.csrftoken: str = ''

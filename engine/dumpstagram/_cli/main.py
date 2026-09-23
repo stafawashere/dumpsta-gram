@@ -206,10 +206,10 @@ def build_parser() -> argparse.ArgumentParser:
 
    profile = commands.add_parser(
       "profile",
-      help="read one account's profile, two live requests by username and one by id",
+      help="read one account's profile, a page load by username and one request by id",
       description=(
-         "The upstream's profile query takes a numeric account id and no username, so "
-         "--by-id spends one live request where a username spends two."
+         "By username the profile page is loaded and its six queries sent together, seven "
+         "live requests in one action, as a browser does. --by-id spends one live request."
       ),
    )
    profile.add_argument(
@@ -220,7 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
    profile.add_argument(
       "--by-id",
       action="store_true",
-      help="treat the argument as a numeric account id and skip the resolution request",
+      help="treat the argument as a numeric account id and read the profile query alone",
    )
    profile.add_argument(
       "--user-agent",

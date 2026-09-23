@@ -102,12 +102,12 @@ every invocation pays a bootstrap request the previous one already paid for.
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json profile some-account
 ```
 
-Reads one account's profile. By default the argument is a username and the command spends two
-live requests, because the upstream's profile query takes a numeric account id and no
-username, so the id has to be resolved first.
+Reads one account's profile. By default the argument is a username and the command loads the
+profile page and sends its six queries together, seven live requests in one paced action, as a
+browser does. The upstream's profile query takes a numeric account id and no username, and the
+page is where the id comes from.
 
-- `--by-id` treats the argument as the numeric account id and spends one request instead of
-  two. That id is what the `id` key of the output carries, and it is not the `fbid` the same
+- `--by-id` treats the argument as the numeric account id and spends one request. That id is what the `id` key of the output carries, and it is not the `fbid` the same
   account carries as a message sender.
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 

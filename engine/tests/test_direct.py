@@ -32,6 +32,7 @@ from tests.test_parse import CURSOR, MESSAGE_ID, THREAD_FBID, node, payload
 
 FB_DTSG = "NAfteQq3example84characterslong"
 LSD = "AVqexample22chars"
+BLOKS_VERSION_ID = "5f" * 32
 
 BOOTSTRAP_PAGE = (
    "<!DOCTYPE html><html><script>"
@@ -44,6 +45,9 @@ BOOTSTRAP_PAGE = (
    + '{"__spin_r":1047996704,"__spin_b":"trunk","__spin_t":1758412345,'
    + '"server_revision":1047996704,"hsi":"7551234567890123456",'
    + '"haste_session":"20128.HYP:instagram_web_pkg.2.1...0"},'
+   + '["WebBloksVersioningID",[],{"versioningID":"'
+   + BLOKS_VERSION_ID
+   + '"},6640],'
    + '{"X-IG-App-ID":"936619743392459"}</script></html>'
 )
 
@@ -102,6 +106,7 @@ def a_bootstrapped_session() -> Session:
    session.lsd = LSD
    session.app_id = "936619743392459"
    session.spin = SpinParameters(revision="1047996704", branch="trunk", timestamp="1758412345")
+   session.bloks_version_id = BLOKS_VERSION_ID
 
    return session
 

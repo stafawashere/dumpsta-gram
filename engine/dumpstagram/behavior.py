@@ -5,10 +5,10 @@ ADR-0013 makes browser parity the default and every departure from it a named se
 never global, per ADR-0004. The presets below are ordinary instances, so a preset changes
 nothing a caller could not set by hand, and ``dataclasses.replace`` derives a variant of one.
 
-Each setting is added here only once the engine can honour it. Spacing was the first and the
-feed's first page the second. Companion requests and side effects such as marking a thread
-read become settings when the requests behind them are implemented, as new fields with parity
-defaults.
+Each setting is added here only once the engine can honour it. Spacing was the first, the
+feed's first page the second and the profile route the third. Other companion requests and
+side effects such as marking a thread read become settings when the requests behind them are
+implemented, as new fields with parity defaults.
 
 What every departure costs is in ``engine/docs/rate-limiting-and-safety.md``. There is no floor
 on rate: a caller may set spacing to zero, and the engine does not overrule that decision.
@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-__all__ = ["EXPORT", "FAST", "PARITY", "Behavior", "FeedFirstPage", "Spacing"]
+__all__ = ["EXPORT", "FAST", "PARITY", "Behavior", "FeedFirstPage", "ProfileRoute", "Spacing"]
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,23 @@ class FeedFirstPage(Enum):
    QUERY = "query"
 
 
+class ProfileRoute(Enum):
+   """How a profile is read from a username.
+
+   ``PAGE`` is what a browser does: it loads the profile page, reads the account id out of it,
+   and sends six queries at once, of which the profile query is one. That is seven requests
+   inside one action, about 0.8 MB of document and up to 1.5 MB of answers, and it refreshes
+   the session's page tokens on the way.
+
+   ``QUERIES`` resolves the username through one post of the account's timeline and then asks
+   the profile query, two requests in series, which no browser was observed to do. An account
+   with no post visible to the session cannot be found this way.
+   """
+
+   PAGE = "page"
+   QUERIES = "queries"
+
+
 @dataclass(frozen=True)
 class Behavior:
    """Everything about a client's traffic that is not the shape of a single request.
@@ -68,6 +85,7 @@ class Behavior:
 
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
    feed_first_page: FeedFirstPage = FeedFirstPage.DOCUMENT
+   profile_route: ProfileRoute = ProfileRoute.PAGE
 
 
 PARITY = Behavior()

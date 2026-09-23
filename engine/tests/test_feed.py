@@ -31,20 +31,29 @@ from typing import Any
 import pytest
 
 from dumpstagram._core.feed import read_feed_page
+from dumpstagram._private.web import documents
 from dumpstagram._private.web.documents import (
    API_GRAPHQL_URL,
    GRAPHQL_QUERY_URL,
    HOME_TIMELINE_FEED,
+   THREAD_MESSAGE_PAGE,
 )
 from dumpstagram._private.web.parse import parse_feed_page
-from dumpstagram._private.web.requests import FEED_PAGE_SIZE, build_feed_page_request
+from dumpstagram._private.web.requests import (
+   FEED_PAGE_SIZE,
+   build_feed_page_request,
+   build_thread_page_request,
+)
 from dumpstagram.aio import AsyncClient
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import FeedItem, FeedItemKind, MediaImage, Page, Post
 from tests.test_direct import (
+   BLOKS_VERSION_ID,
+   BOOTSTRAP_PAGE,
    ScriptedTransport,
    a_bootstrapped_session,
+   html_response,
    json_response,
    make_paced,
    sent_variables,
@@ -224,6 +233,63 @@ def test_the_first_page_is_the_same_query_with_a_null_cursor() -> None:
    assert first.url == later.url
    assert sent_variables(first)["after"] is None
    assert sent_variables(later)["after"] == CURSOR
+
+
+def test_the_feed_request_carries_the_two_headers_its_path_carries() -> None:
+   """Catches the feed request going out without the headers its path always carried."""
+
+   request = build_feed_page_request(a_bootstrapped_session(), after=CURSOR)
+
+   assert request.headers["x-bloks-version-id"] == BLOKS_VERSION_ID
+   assert request.headers["x-root-field-name"] == "xdt_api__v1__feed__timeline__connection"
+
+
+def test_a_query_on_the_other_path_carries_neither_header() -> None:
+   """Catches the two headers leaking onto /api/graphql, where no browser request sent them."""
+
+   request = build_thread_page_request(a_bootstrapped_session(), "340282366841710300")
+
+   assert THREAD_MESSAGE_PAGE.url == API_GRAPHQL_URL
+   assert "x-bloks-version-id" not in request.headers
+   assert "x-root-field-name" not in request.headers
+
+
+def test_every_query_on_the_graphql_query_path_names_its_root_field() -> None:
+   """Catches a new query on that path sending an empty x-root-field-name."""
+
+   queries_on_that_path = [
+      value
+      for value in vars(documents).values()
+      if isinstance(value, documents.PersistedQuery) and value.sends_path_headers
+   ]
+
+   assert HOME_TIMELINE_FEED in queries_on_that_path
+   assert all(query.root_field for query in queries_on_that_path)
+
+
+def test_the_feed_request_refuses_a_session_with_no_bloks_version_id() -> None:
+   """Catches the header going out empty when the page stopped carrying the id."""
+
+   session = a_bootstrapped_session()
+   session.bloks_version_id = None
+
+   with pytest.raises(SchemaChanged):
+      build_feed_page_request(session, after=CURSOR)
+
+
+@pytest.mark.asyncio
+async def test_a_session_saved_before_the_bloks_id_existed_bootstraps_before_the_feed() -> None:
+   """Catches a reloaded session with page tokens but no bloks id failing, not refreshing."""
+
+   session = a_bootstrapped_session()
+   session.bloks_version_id = None
+   transport = ScriptedTransport([html_response(BOOTSTRAP_PAGE), json_response(payload())])
+
+   await read_feed_page(make_paced(transport), session, after=CURSOR)
+
+   assert [request.url for request in transport.sent][-1] == GRAPHQL_QUERY_URL
+   assert len(transport.sent) == 2
+   assert transport.sent[1].headers["x-bloks-version-id"] == BLOKS_VERSION_ID
 
 
 def test_the_mapper_returns_typed_items_and_not_a_payload() -> None:

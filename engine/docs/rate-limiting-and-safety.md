@@ -168,9 +168,19 @@ profile 2.44, 2.98 and 8.69 s. One person on one day, ASSUMPTION beyond that. A 
 cannot produce the long tail, so the 8.7 s gaps are missing from the model. Pooling more samples
 and fitting a distribution per action kind is the next step.
 
-Parity spacing is still per request. Once companion requests exist, the gaps inside a burst are
-milliseconds and the human gap belongs between actions, which is a change to how the pacer is
-asked, not to the presets.
+Parity spacing is per action since 2026-09-23. `PacedSender.action()` takes one pacer slot for
+a whole user action, so the requests inside it depart milliseconds apart as a page's do, and the
+human gap falls between actions. The profile page is the first action built this way: one
+document, then six queries sent together, seven requests in one slot. The pacer's lock is held
+for the action, so nothing else on the account departs inside it, and a throttle still holds the
+whole account. Every other capability is still one request per action. The concurrency inside
+the slot is the carve-out in the 2026-09-23 amendment to ADR-0001.
+
+What the profile page costs, FACT from `probes/profile_page_route.py` on 2026-09-23 against the
+viewer's own account: about 0.78 MB of document and 0.51 MB of answers, 474 kB of which is the
+timeline query the page sends and the engine does not read. Another account measured in a
+browser capture cost 1.51 MB of answers. `ProfileRoute.QUERIES` costs two requests and about
+32 kB.
 
 ## Defaults
 

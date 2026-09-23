@@ -16,12 +16,43 @@ returned untouched, and interpreting it belongs to the surface adapter.
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
 from types import TracebackType
 
 from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._private.transport import Request, Response, Sender
 
-__all__ = ["PacedSender"]
+__all__ = ["ActionSender", "PacedSender"]
+
+
+class ActionSender:
+   """Sends the requests of one user action inside the single slot the action was given.
+
+   A browser page load is one action that sends a document and then several queries at once.
+   Pacing each of those as its own action would space them by seconds where the page spaces
+   them by milliseconds, so the action takes one slot and everything inside it departs as the
+   page's own requests do. It exists only inside :meth:`PacedSender.action`.
+   """
+
+   def __init__(self, sender: Sender) -> None:
+      self._sender = sender
+
+   async def send(self, request: Request) -> Response:
+      return await self._sender.send(request)
+
+   async def send_together(self, requests: Sequence[Request]) -> list[Response]:
+      """Send every request at once and return the responses in the order given.
+
+      A failure cancels the requests still in flight, so an action never leaves a send running
+      behind the error it raised.
+      """
+
+      async with asyncio.TaskGroup() as group:
+         tasks = [group.create_task(self._sender.send(request)) for request in requests]
+
+      return [task.result() for task in tasks]
 
 
 class PacedSender:
@@ -57,6 +88,18 @@ class PacedSender:
 
       async with self.pacer.slot(self.pacing):
          return await self._sender.send(request)
+
+   @asynccontextmanager
+   async def action(self) -> AsyncIterator[ActionSender]:
+      """Take one slot for a whole user action and send its requests inside it.
+
+      The gap before the action is the ordinary one. Nothing else on this account departs
+      until the action ends, because the pacer's lock is held for it, which is also what keeps
+      another action from landing inside a page load.
+      """
+
+      async with self.pacer.slot(self.pacing):
+         yield ActionSender(self._sender)
 
    async def aclose(self) -> None:
       closer = getattr(self._sender, "aclose", None)

@@ -25,6 +25,7 @@ Finding: ``skills/reverse-engineer/knowledge/endpoints/direct-thread-message-pag
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 from urllib.parse import urlencode
 
@@ -33,26 +34,33 @@ from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents import (
    HOME_TIMELINE_FEED,
    PROFILE_BY_ID,
+   PROFILE_HIGHLIGHTS,
+   PROFILE_NOTE_BUBBLE,
+   PROFILE_POSTS,
+   PROFILE_SCHOOL_BADGE,
+   PROFILE_SUGGESTED_USERS,
    THREAD_MESSAGE_PAGE,
-   USER_ID_BY_USERNAME,
    PersistedQuery,
 )
-from dumpstagram.errors import AuthenticationFailed
+from dumpstagram.errors import AuthenticationFailed, NotFound, SchemaChanged
 from dumpstagram.session import Session
 
 __all__ = [
    "FEED_DEVICE_ID",
    "FEED_PAGE_SIZE",
    "PAGE_SIZE",
+   "PROFILE_PAGE_POSTS",
    "RESOLUTION_PAGE_SIZE",
    "VALIDATED_BODY_FIELDS",
    "VALIDATED_HEADERS",
    "build_feed_page_request",
    "build_graphql_request",
+   "build_profile_page_requests",
    "build_profile_request",
    "build_thread_page_request",
    "build_username_resolution_request",
    "jazoest_for",
+   "profile_page_url",
 ]
 
 PAGE_SIZE = 20
@@ -65,6 +73,11 @@ the cost of an operation is a fixed function of how much data it covers.
 RESOLUTION_PAGE_SIZE = 1
 """One post is enough to read the account id off, and asking for twelve the way the web client
 does would move about 200 kB to learn an eleven-digit number."""
+
+PROFILE_PAGE_POSTS = 12
+"""How many posts a profile page asks its timeline for, in both measured loads."""
+
+_USERNAME = re.compile(r"[A-Za-z0-9._]{1,30}")
 
 FEED_PAGE_SIZE = 12
 """What the web client asks the timeline for, and advisory rather than binding.
@@ -116,11 +129,24 @@ def build_graphql_request(
    Raises :class:`~dumpstagram.errors.AuthenticationFailed` when the session carries no
    ``fb_dtsg``, because sending an empty one returns the HTML application shell under HTTP
    200 and the caller would be told the schema changed.
+
+   A query on ``/graphql/query`` also carries ``x-bloks-version-id`` and
+   ``x-root-field-name``, and raises :class:`~dumpstagram.errors.SchemaChanged` when the session
+   has no bloks version id, because the bootstrap page stopped carrying it.
    """
 
    if not session.fb_dtsg:
       raise AuthenticationFailed(
          "session has no fb_dtsg, so it has not been bootstrapped since it was loaded"
+      )
+
+   is_missing_bloks_version = query.sends_path_headers and not session.bloks_version_id
+
+   if is_missing_bloks_version:
+      raise SchemaChanged(
+         "the bootstrap page carried no WebBloksVersioningID, so the x-bloks-version-id "
+         f"header {query.friendly_name} needs cannot be sent",
+         path="WebBloksVersioningID",
       )
 
    spin = session.spin
@@ -169,6 +195,10 @@ def build_graphql_request(
       "accept": "*/*",
       "accept-language": "en-US,en;q=0.9",
    }
+
+   if query.sends_path_headers:
+      headers["x-bloks-version-id"] = session.bloks_version_id or ""
+      headers["x-root-field-name"] = query.root_field or ""
 
    return Request(
       method="POST",
@@ -246,7 +276,7 @@ def build_profile_request(
       "__relay_internal__pv__PolarisCannesGuardianExperienceEnabledrelayprovider": True,
       "__relay_internal__pv__PolarisCASB976ProfileEnabledrelayprovider": False,
       "__relay_internal__pv__PolarisWebSchoolsEnabledrelayprovider": False,
-      "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": False,
+      "__relay_internal__pv__PolarisRepostsConsumptionEnabledrelayprovider": True,
       "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
    }
 
@@ -261,6 +291,22 @@ def build_profile_request(
    )
 
 
+def _profile_posts_variables(username: str, count: int) -> dict[str, Any]:
+   return {
+      "data": {
+         "count": count,
+         "include_reel_media_seen_timestamp": True,
+         "include_relationship_info": True,
+         "latest_besties_reel_media": True,
+         "latest_reel_media": True,
+      },
+      "username": username,
+      "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
+      "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+      "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
+   }
+
+
 def build_username_resolution_request(
    session: Session,
    username: str,
@@ -269,35 +315,76 @@ def build_username_resolution_request(
 ) -> Request:
    """The account id behind a username, asked for as one post of that account's timeline.
 
-   This is the timeline query. It is used here because it is the only call on the profile
-   surface observed to accept a username, and the id comes back on the post's own author
-   stub. ``count`` is one rather than the twelve the web client asks for, because the answer
-   wanted is on every node equally and the rest is transfer.
+   This is the timeline query a profile page sends, used here for its ``username`` argument
+   when a client departs from the page route, and the id comes back on the post's own author
+   stub. ``count`` is one rather than the twelve the page asks for, because the answer wanted
+   is on every node equally and the rest is transfer.
 
    Finding: ``skills/reverse-engineer/knowledge/endpoints/resolve-a-username-to-a-user-id.md``.
    """
 
-   variables = {
-      "data": {
-         "count": RESOLUTION_PAGE_SIZE,
-         "include_reel_media_seen_timestamp": False,
-         "include_relationship_info": True,
-         "latest_besties_reel_media": False,
-         "latest_reel_media": False,
-      },
-      "username": username,
-      "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
-      "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
-      "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
-   }
-
    return build_graphql_request(
       session,
-      USER_ID_BY_USERNAME,
-      variables,
+      PROFILE_POSTS,
+      _profile_posts_variables(username, RESOLUTION_PAGE_SIZE),
       referer=f"{ORIGIN}/{username}/",
       user_agent=user_agent,
    )
+
+
+def profile_page_url(username: str) -> str:
+   """The profile page a browser navigates to for ``username``.
+
+   The username becomes a path segment here, so anything outside the characters an Instagram
+   username can hold is refused before it is sent, as an account that cannot exist.
+   """
+
+   is_a_possible_username = _USERNAME.fullmatch(username) is not None
+
+   if not is_a_possible_username:
+      raise NotFound(f"{username!r} cannot be an Instagram username")
+
+   return f"{ORIGIN}/{username}/"
+
+
+def build_profile_page_requests(
+   session: Session,
+   user_id: str,
+   username: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> list[Request]:
+   """The six queries a profile page sends once its document has loaded, in the page's order.
+
+   Both measured cold loads sent all six within 5 ms of each other, keyed on the account id the
+   document carried, with the profile page as the referer. The profile query comes first, and
+   it is the only one whose answer the capability reads. The other five are sent because the
+   page sends them.
+
+   Findings: ``read-a-user-profile``, ``profile-page-note-bubble``,
+   ``profile-page-story-highlights``, ``profile-page-suggested-users``,
+   ``profile-page-school-badge`` and ``resolve-a-username-to-a-user-id``.
+   """
+
+   referer = profile_page_url(username)
+   profile = build_profile_request(
+      session, user_id, username_for_referer=username, user_agent=user_agent
+   )
+
+   companions: list[tuple[PersistedQuery, dict[str, Any]]] = [
+      (PROFILE_NOTE_BUBBLE, {"user_id": user_id}),
+      (PROFILE_HIGHLIGHTS, {"user_id": user_id}),
+      (PROFILE_SUGGESTED_USERS, {"module": "profile", "target_id": user_id}),
+      (PROFILE_SCHOOL_BADGE, {"igid": user_id}),
+      (PROFILE_POSTS, _profile_posts_variables(username, PROFILE_PAGE_POSTS)),
+   ]
+
+   companion_requests = [
+      build_graphql_request(session, query, variables, referer=referer, user_agent=user_agent)
+      for query, variables in companions
+   ]
+
+   return [profile, *companion_requests]
 
 
 def build_feed_page_request(

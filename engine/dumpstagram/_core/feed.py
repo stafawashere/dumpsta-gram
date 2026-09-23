@@ -71,7 +71,9 @@ async def read_feed_page(
       )
 
    async def attempt() -> Page[FeedItem]:
-      if not session.fb_dtsg:
+      lacks_page_tokens = not session.fb_dtsg or not session.bloks_version_id
+
+      if lacks_page_tokens:
          await bootstrap(sender, session, user_agent=user_agent)
 
       request = build_feed_page_request(session, after=after, user_agent=user_agent)

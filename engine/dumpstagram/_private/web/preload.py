@@ -26,7 +26,12 @@ from typing import Any
 
 from dumpstagram.errors import SchemaChanged
 
-__all__ = ["FEED_TIMELINE_PRELOADER", "HOME_DOCUMENT_URL", "read_preloaded_result"]
+__all__ = [
+   "FEED_TIMELINE_PRELOADER",
+   "HOME_DOCUMENT_URL",
+   "read_preloaded_result",
+   "read_profile_id",
+]
 
 HOME_DOCUMENT_URL = "https://www.instagram.com/"
 
@@ -37,6 +42,8 @@ The suffix changes on every load, so only the prefix identifies the query.
 """
 
 STREAM_CACHE = "RelayPrefetchedStreamCache"
+
+_PROFILE_ID = re.compile(r'"page_id":"profilePage_(\d+)","profile_id":"(\d+)"')
 
 _DATA_SCRIPT = re.compile(r"<script type=\"application/json\"[^>]*data-sjs>(.*?)</script>", re.S)
 
@@ -124,3 +131,34 @@ def read_preloaded_result(html: str, preloader_prefix: str) -> dict[str, Any]:
       raise SchemaChanged(f"{path}.result is not an object", path=f"{path}.result")
 
    return result
+
+
+def read_profile_id(html: str) -> str | None:
+   """The account id a profile page document is about, or ``None`` when it is about no one.
+
+   Both measured profile documents carried it twice as ``"profile_id"``, right after a
+   ``"page_id"`` of ``profilePage_`` and the same digits. The pair is matched rather than the
+   key alone, so an id belonging to some other part of the page cannot be read by accident,
+   and two pairs that disagree raise rather than one being picked.
+
+   A document for a username nobody holds came back on 2026-09-23 as HTTP 200 with page tokens
+   and no pair at all, which is what ``None`` stands for.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/profile-page-document.md``.
+   """
+
+   account_ids = set()
+
+   for page_digits, profile_id in _PROFILE_ID.findall(html):
+      if page_digits != profile_id:
+         raise SchemaChanged(
+            "a profile document names one account in page_id and another in profile_id",
+            path="profile_id",
+         )
+
+      account_ids.add(profile_id)
+
+   if len(account_ids) > 1:
+      raise SchemaChanged("a profile document names more than one account", path="profile_id")
+
+   return account_ids.pop() if account_ids else None

@@ -26,7 +26,7 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._core.profiles import read_profile, read_profile_by_id, resolve_username
-from dumpstagram._private.web.documents import PROFILE_BY_ID, USER_ID_BY_USERNAME
+from dumpstagram._private.web.documents import PROFILE_BY_ID, PROFILE_POSTS
 from dumpstagram._private.web.parse import parse_profile, parse_user_id
 from dumpstagram._private.web.requests import (
    RESOLUTION_PAGE_SIZE,
@@ -288,7 +288,7 @@ def test_the_resolution_request_asks_for_one_post_and_names_the_username() -> No
    request = build_username_resolution_request(a_bootstrapped_session(), USERNAME)
    variables = sent_variables(request.content)
 
-   assert sent_field(request.content, "doc_id") == USER_ID_BY_USERNAME.doc_id
+   assert sent_field(request.content, "doc_id") == PROFILE_POSTS.doc_id
    assert variables["username"] == USERNAME
    assert variables["data"]["count"] == RESOLUTION_PAGE_SIZE
 

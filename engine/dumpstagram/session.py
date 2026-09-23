@@ -84,6 +84,7 @@ class Session:
    spin: SpinParameters | None = None
    hsi: str | None = None
    haste_session: str | None = None
+   bloks_version_id: str | None = None
    bootstrapped_at: datetime | None = None
    proxy: ProxyConfig | None = field(default=None, repr=False)
    checkpoint_active: bool = False
@@ -146,6 +147,7 @@ class Session:
          "spin": spin_payload,
          "hsi": self.hsi,
          "haste_session": self.haste_session,
+         "bloks_version_id": self.bloks_version_id,
          "bootstrapped_at": bootstrapped_at,
          "proxy": proxy_payload,
          "checkpoint_active": self.checkpoint_active,
@@ -211,6 +213,7 @@ class Session:
          spin=spin,
          hsi=payload.get("hsi"),
          haste_session=payload.get("haste_session"),
+         bloks_version_id=payload.get("bloks_version_id"),
          bootstrapped_at=bootstrapped_at,
          proxy=proxy,
          checkpoint_active=bool(payload.get("checkpoint_active", False)),

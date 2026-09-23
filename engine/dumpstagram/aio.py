@@ -162,15 +162,19 @@ class AsyncClient:
       )
 
    async def profile(self, username: str) -> Profile:
-      """Read one account's profile by username. Two live requests.
+      """Read one account's profile by username.
 
-      The upstream's profile query takes an account id and no username, so the username is
-      resolved first and the profile is read second. A caller that already holds the id wants
-      :meth:`profile_by_id`, which spends one request instead of two.
+      Under the default behavior this loads the profile page and sends the page's six queries
+      at once, seven requests in one action, as a browser does. It raises
+      :class:`~dumpstagram.errors.NotFound` when no account has the username.
 
-      Raises :class:`~dumpstagram.errors.NotFound` when the resolution comes back empty. On
-      this route that means the account does not exist, or its posts are not visible to this
-      session, or it has none, and the upstream does not say which.
+      :attr:`~dumpstagram.behavior.Behavior.profile_route` set to
+      :attr:`~dumpstagram.behavior.ProfileRoute.QUERIES` spends two requests instead, resolving
+      the username through the account's timeline and then reading the profile. That route
+      raises :class:`~dumpstagram.errors.NotFound` when the account does not exist, or its
+      posts are not visible to this session, or it has none, and cannot say which.
+
+      A caller that already holds the id wants :meth:`profile_by_id`, one request.
       """
 
       self._refuse_when_closed()
@@ -179,6 +183,7 @@ class AsyncClient:
          self._sender,
          self._session,
          username,
+         route=self._behavior.profile_route,
          user_agent=self._user_agent,
       )
 

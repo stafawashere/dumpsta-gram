@@ -39,10 +39,10 @@ RENDER = "dumpstagram/_cli/render.py"
 
 FEED_HAS_ITS_OWN_PATH = """   finding_id="home-timeline-feed-page",
    url=GRAPHQL_QUERY_URL,
-)"""
+"""
 
 FEED_INHERITS_THE_DEFAULT_PATH = """   finding_id="home-timeline-feed-page",
-)"""
+"""
 
 UNION_DEMANDS_ONE_SLOT = """   if len(filled) != 1:
       raise SchemaChanged(

@@ -144,6 +144,19 @@ Fourteen headers: `content-type`, `sec-fetch-site`, `sec-fetch-mode`, `sec-fetch
 
 The `referer` names the thread being read, which is the page a request like this comes from.
 
+A query that answers on `/graphql/query` adds two more, `x-bloks-version-id` and
+`x-root-field-name`. FACT from every capture of 2026-09-23: each browser request to that path
+carried both, and no request to `/api/graphql` carried either, so `PersistedQuery` decides it
+from its path. The bloks id is the `versioningID` of the `WebBloksVersioningID` config in the
+bootstrap page, 64 hex characters, stored on the session as `bloks_version_id`. The root field
+is the query's own `root_field`. A session with no bloks id is bootstrapped before the feed
+request, and a page that stops carrying the config makes the builder raise `SchemaChanged`
+rather than send an empty header. Neither header has been ablated, so whether the upstream
+checks them is unknown.
+
+Every browser request on both paths also carried `x-ig-max-touch-points`, which the engine does
+not send yet. It belongs with the common page-load burst.
+
 Redirects are not followed on the GraphQL POST. A followed challenge redirect hides itself from
 the URL scan that `classify` performs first.
 

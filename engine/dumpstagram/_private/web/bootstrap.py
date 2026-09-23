@@ -77,6 +77,7 @@ _SERVER_REVISION = re.compile(r'"server_revision":(\d+)')
 _HSI = re.compile(r'"hsi":"(.*?)"')
 _HASTE_SESSION = re.compile(r'"haste_session":"(.*?)"')
 _APP_ID = re.compile(r'"X-IG-App-ID":"(\d+)"')
+_BLOKS_VERSION_ID = re.compile(r'"WebBloksVersioningID",\[\],\{"versioningID":"([0-9a-f]+)"')
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,12 @@ class BootstrapTokens:
    spin: SpinParameters
    hsi: str | None
    haste_session: str | None
+   bloks_version_id: str | None = None
+   """The ``x-bloks-version-id`` a page sends on every ``/graphql/query`` request.
+
+   Optional here because only those requests need it, so a page without it must not stop a
+   thread read. The request builder refuses a query that needs it when it is missing.
+   """
 
 
 # G9N7E-K9NZE-GTWKC-XQ9TR
@@ -176,6 +183,7 @@ def read_tokens(html: str) -> BootstrapTokens:
       ),
       hsi=_first_match(_HSI, html),
       haste_session=_first_match(_HASTE_SESSION, html),
+      bloks_version_id=_first_match(_BLOKS_VERSION_ID, html),
    )
 
 
@@ -208,6 +216,7 @@ def apply_tokens(session: Session, tokens: BootstrapTokens) -> None:
    session.spin = tokens.spin
    session.hsi = tokens.hsi
    session.haste_session = tokens.haste_session
+   session.bloks_version_id = tokens.bloks_version_id
    session.bootstrapped_at = datetime.now(UTC)
 
 

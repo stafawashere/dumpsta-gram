@@ -8,7 +8,15 @@ from logging import NullHandler as _NullHandler
 from logging import getLogger as _getLogger
 
 from dumpstagram.aio import AsyncClient
-from dumpstagram.behavior import EXPORT, FAST, PARITY, Behavior, FeedFirstPage, Spacing
+from dumpstagram.behavior import (
+   EXPORT,
+   FAST,
+   PARITY,
+   Behavior,
+   FeedFirstPage,
+   ProfileRoute,
+   Spacing,
+)
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import (
    RETRYABLE,
@@ -61,6 +69,7 @@ __all__ = [
    "Post",
    "PostAuthor",
    "Profile",
+   "ProfileRoute",
    "RateLimited",
    "ProxyConfig",
    "Reaction",

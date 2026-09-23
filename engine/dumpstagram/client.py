@@ -138,8 +138,8 @@ class SyncClient:
       """Read one account's profile by username. Blocks until it has one.
 
       The same call as :meth:`~dumpstagram.aio.AsyncClient.profile`, with the same arguments
-      and the same result, run on the shared loop thread. Two live requests, because the
-      upstream's profile query takes an account id rather than a username.
+      and the same result, run on the shared loop thread. Seven live requests in one action
+      under the default behavior, two under :attr:`~dumpstagram.behavior.ProfileRoute.QUERIES`.
       """
 
       return self._loop.run(

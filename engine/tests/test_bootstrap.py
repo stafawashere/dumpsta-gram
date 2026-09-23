@@ -23,6 +23,7 @@ from dumpstagram.session import Session
 
 FB_DTSG = "NAfteQq3example84characterslong"
 LSD = "AVqexample22chars"
+BLOKS_VERSION_ID = "62077fc559de123afe03ebeb18194a88ba5d4e6874d9a07873752f3792adb8a0"
 
 PAGE = (
    "<!DOCTYPE html><html><script>"
@@ -36,6 +37,9 @@ PAGE = (
    + '"server_revision":1047996704,"hsi":"7551234567890123456",'
    + '"haste_session":"20128.HYP:instagram_web_pkg.2.1...0"},'
    + '{"X-IG-App-ID":"936619743392459"},'
+   + '["WebBloksVersioningID",[],{"versioningID":"'
+   + BLOKS_VERSION_ID
+   + '"},6640],'
    + '{"USER_ID":"0"},{"USER_ID":"0"}</script></html>'
 )
 
@@ -87,6 +91,17 @@ def test_every_token_is_read_off_the_page() -> None:
    assert tokens.spin.timestamp == "1758412345"
    assert tokens.hsi == "7551234567890123456"
    assert tokens.haste_session == "20128.HYP:instagram_web_pkg.2.1...0"
+   assert tokens.bloks_version_id == BLOKS_VERSION_ID
+
+
+def test_a_page_without_a_bloks_version_id_still_bootstraps() -> None:
+   """Catches a missing bloks id failing the bootstrap, which would break thread reads too."""
+   page_without_bloks = PAGE.replace("WebBloksVersioningID", "SomethingElse")
+
+   tokens = read_tokens(page_without_bloks)
+
+   assert tokens.fb_dtsg == FB_DTSG
+   assert tokens.bloks_version_id is None
 
 
 def test_a_page_without_fb_dtsg_raises_rather_than_yielding_a_null_token() -> None:
@@ -146,6 +161,7 @@ async def test_bootstrap_writes_every_token_onto_the_session() -> None:
    assert session.spin.branch == "trunk"
    assert session.hsi == "7551234567890123456"
    assert session.haste_session == "20128.HYP:instagram_web_pkg.2.1...0"
+   assert session.bloks_version_id == BLOKS_VERSION_ID
    assert session.bootstrapped_at is not None
 
 
