@@ -19,11 +19,12 @@ from types import TracebackType
 
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
-from dumpstagram._core.pacer import Pacer
+from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
+from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
 
@@ -40,20 +41,36 @@ class AsyncClient:
    ``user_agent`` defaults to the string the request builders were measured against. Passing a
    different one changes what every request this client sends claims to be, which is a
    fingerprint decision rather than a cosmetic one.
+
+   ``behavior`` defaults to :data:`~dumpstagram.behavior.PARITY`. It governs this client's
+   traffic across requests, and :meth:`with_behavior` changes it for a stretch of calls
+   without a second pool or a second pacer.
    """
 
-   def __init__(self, session: Session, *, user_agent: str | None = None) -> None:
+   def __init__(
+      self,
+      session: Session,
+      *,
+      user_agent: str | None = None,
+      behavior: Behavior = PARITY,
+   ) -> None:
       self._session = session
       self._user_agent = user_agent or DEFAULT_USER_AGENT
+      self._behavior = behavior
       self._closed = False
+      self._owner: AsyncClient | None = None
 
       transport = HttpxTransport(cookies=cookies_for(session), proxy=session.proxy)
 
-      self._sender = PacedSender(transport, Pacer())
+      self._sender = PacedSender(transport, Pacer(), pacing_for(behavior))
 
    @classmethod
    def from_session_file(
-      cls, path: str | os.PathLike[str], *, user_agent: str | None = None
+      cls,
+      path: str | os.PathLike[str],
+      *,
+      user_agent: str | None = None,
+      behavior: Behavior = PARITY,
    ) -> AsyncClient:
       """Load a saved session from ``path`` and build a client around it.
 
@@ -61,7 +78,30 @@ class AsyncClient:
       pool is created, so a refused file leaves nothing to close.
       """
 
-      return cls(Session.load(path), user_agent=user_agent)
+      return cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+
+   def with_behavior(self, behavior: Behavior) -> AsyncClient:
+      """Another client over the same account that differs only in ``behavior``.
+
+      It shares this client's session, connection pool and pacer. Sharing the pacer is the
+      point: pacing is per account, so a request from either client is spaced from the
+      account's previous request, whichever of the two sent it.
+
+      The returned client does not own the pool. Closing it only stops it, and closing this
+      client stops both.
+      """
+
+      self._refuse_when_closed()
+
+      scoped = object.__new__(AsyncClient)
+      scoped._session = self._session
+      scoped._user_agent = self._user_agent
+      scoped._behavior = behavior
+      scoped._closed = False
+      scoped._owner = self._owner or self
+      scoped._sender = self._sender.with_pacing(pacing_for(behavior))
+
+      return scoped
 
    @property
    def session(self) -> Session:
@@ -76,10 +116,18 @@ class AsyncClient:
       return self._user_agent
 
    @property
-   def closed(self) -> bool:
-      """Whether :meth:`aclose` has run."""
+   def behavior(self) -> Behavior:
+      """The behavior configuration this client's traffic follows."""
 
-      return self._closed
+      return self._behavior
+
+   @property
+   def closed(self) -> bool:
+      """Whether :meth:`aclose` has run, on this client or on the one that owns its pool."""
+
+      owner_closed = self._owner is not None and self._owner.closed
+
+      return self._closed or owner_closed
 
    async def thread_messages(
       self,
@@ -179,18 +227,23 @@ class AsyncClient:
       )
 
    def _refuse_when_closed(self) -> None:
-      if self._closed:
+      if self.closed:
          raise RuntimeError("this client is closed, so its connection pool is gone")
 
    async def aclose(self) -> None:
-      """Close the connection pool this client created. Idempotent."""
+      """Close the connection pool this client created. Idempotent.
+
+      A client from :meth:`with_behavior` created no pool, so closing it only stops it.
+      """
 
       if self._closed:
          return
 
       self._closed = True
 
-      await self._sender.aclose()
+      owns_the_pool = self._owner is None
+      if owns_the_pool:
+         await self._sender.aclose()
 
    async def __aenter__(self) -> AsyncClient:
       return self
@@ -202,3 +255,10 @@ class AsyncClient:
       traceback: TracebackType | None,
    ) -> None:
       await self.aclose()
+
+
+def pacing_for(behavior: Behavior) -> PacingPolicy:
+   return PacingPolicy(
+      floor_seconds=behavior.spacing.floor_seconds,
+      mean_jitter_seconds=behavior.spacing.mean_jitter_seconds,
+   )

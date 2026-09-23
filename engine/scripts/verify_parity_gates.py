@@ -117,6 +117,30 @@ SESSION_IS_A_METHOD = """   def session(self) -> Session:
 
       return self._impl.session"""
 
+WITH_BEHAVIOR_SIGNATURE = """   def with_behavior(self, behavior: Behavior) -> SyncClient:"""
+
+WITH_BEHAVIOR_GROWS_A_PARAMETER = (
+   "   def with_behavior(\n"
+   "      self, behavior: Behavior, *, user_agent: str | None = None\n"
+   "   ) -> SyncClient:"
+)
+
+WITH_BEHAVIOR_ANNOTATED_ASYNC = """   def with_behavior(self, behavior: Behavior) -> AsyncClient:"""
+
+WITH_BEHAVIOR_RETURNS_A_BLOCKING_CLIENT = """      scoped._closed = False
+
+      return scoped
+"""
+
+WITH_BEHAVIOR_RETURNS_THE_ASYNC_CLIENT = """      scoped._closed = False
+
+      return scoped_impl  # type: ignore[return-value]
+"""
+
+SCOPING_GATE = (
+   f"{PARITY}::test_a_scoping_method_takes_the_same_parameters_and_returns_its_own_surface"
+)
+
 MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{PARITY}::test_a_blocking_capability_forwards_every_argument_on_the_loop_thread",
@@ -166,6 +190,23 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (AIO, ASYNC_SURFACE_ENDS_WITH_FEED, ASYNC_SURFACE_GROWS_A_CAPABILITY),
          (SNAPSHOT, SNAPSHOT_WITHOUT_SAVED_POSTS, SNAPSHOT_WITH_SAVED_POSTS),
+      ],
+   },
+   {
+      "gate": SCOPING_GATE,
+      "defect": "the blocking scoping method grows a parameter its async twin does not take",
+      "edits": [(CLIENT, WITH_BEHAVIOR_SIGNATURE, WITH_BEHAVIOR_GROWS_A_PARAMETER)],
+   },
+   {
+      "gate": SCOPING_GATE,
+      "defect": "the blocking scoping method is annotated as returning the async client",
+      "edits": [(CLIENT, WITH_BEHAVIOR_SIGNATURE, WITH_BEHAVIOR_ANNOTATED_ASYNC)],
+   },
+   {
+      "gate": SCOPING_GATE,
+      "defect": "the blocking scoping method hands its caller the async client it wraps",
+      "edits": [
+         (CLIENT, WITH_BEHAVIOR_RETURNS_A_BLOCKING_CLIENT, WITH_BEHAVIOR_RETURNS_THE_ASYNC_CLIENT)
       ],
    },
    {

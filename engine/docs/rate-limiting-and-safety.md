@@ -147,6 +147,31 @@ fetching only what is newer rather than walking history. The prior project never
 and passed the variable as null. For a polling listener it is the difference between a constant
 drip and a full re-read. See [realtime-events.md](realtime-events.md).
 
+## Behavior configuration, 2026-09-23
+
+ADR-0013 moved the default from a safe machine rate to browser parity, and made spacing a
+per-client setting. `dumpstagram/behavior.py` holds `Behavior`, `Spacing` and three presets.
+The pacer stays one per account. What changed is that each departure now names its own gap,
+measured from the account's previous departure whichever client sent it, so a scoped client from
+`with_behavior` shares the account's history rather than starting a second one.
+
+| Preset | Spacing | Mean rate | What it costs |
+|---|---|---|---|
+| `PARITY`, the default | uniform 1.3 s to 5.3 s, mean 3.3 s | 0.30 req/s | Shortest gap is below the old 2.5 s floor, because a person paging a thread goes that fast. Mean rate is below the old default. Fitted to one minute of hand browsing, so provisional |
+| `EXPORT` | uniform 2.5 s to 3.2 s, mean 2.85 s | 0.351 req/s | The rate a real account sustained over about 650 requests. Regular spacing no person produces |
+| `FAST` | none | whatever the transport allows | No human reaches it and nothing has measured how the upstream treats it. Every request is still browser-shaped and still passes the pacer, and a throttle still holds the whole account |
+
+The parity fit, FACT from `run-2026-09-23-005544`: 19 gaps between user actions over 60 s,
+median 2.98 s, mean 3.37 s, shortest 1.33 s outside stories, longest 8.69 s. By action: older
+thread page to next 1.33, 2.65 and 4.37 s; feed page to next 3.75, 4.95 and 5.01 s; profile to
+profile 2.44, 2.98 and 8.69 s. One person on one day, ASSUMPTION beyond that. A uniform draw
+cannot produce the long tail, so the 8.7 s gaps are missing from the model. Pooling more samples
+and fitting a distribution per action kind is the next step.
+
+Parity spacing is still per request. Once companion requests exist, the gaps inside a burst are
+milliseconds and the human gap belongs between actions, which is a change to how the pacer is
+asked, not to the presets.
+
 ## Defaults
 
 Conservative. Consumers who know what they are doing can widen them, and the widening is

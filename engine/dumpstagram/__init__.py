@@ -8,6 +8,7 @@ from logging import NullHandler as _NullHandler
 from logging import getLogger as _getLogger
 
 from dumpstagram.aio import AsyncClient
+from dumpstagram.behavior import EXPORT, FAST, PARITY, Behavior, Spacing
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import (
    RETRYABLE,
@@ -37,10 +38,14 @@ from dumpstagram.models import (
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
 
 __all__ = [
+   "EXPORT",
+   "FAST",
+   "PARITY",
    "RETRYABLE",
    "SCHEMA_VERSION",
    "AsyncClient",
    "AuthenticationFailed",
+   "Behavior",
    "BioLink",
    "CheckpointRequired",
    "DumpstagramError",
@@ -60,6 +65,7 @@ __all__ = [
    "Reaction",
    "SchemaChanged",
    "Session",
+   "Spacing",
    "SpinParameters",
    "SyncClient",
    "TransportFailure",

@@ -126,7 +126,8 @@ class Pacer:
       self._jitter = jitter
 
       self._lock = asyncio.Lock()
-      self._earliest_departure_at = float("-inf")
+      self._last_departure_at = float("-inf")
+      self._held_until = float("-inf")
 
    def now(self) -> float:
       """The pacer's own monotonic instant, which is what a deadline is measured against."""
@@ -134,15 +135,20 @@ class Pacer:
       return self._clock()
 
    @asynccontextmanager
-   async def slot(self) -> AsyncIterator[None]:
+   async def slot(self, pacing: PacingPolicy | None = None) -> AsyncIterator[None]:
       """Wait until this account may send again, then hold the account for the send.
 
       The lock spans the wait and the caller's body together. Releasing it between the two
       is the interleaving this class exists to prevent.
+
+      ``pacing`` is the spacing this departure asks for, measured from the account's previous
+      departure whoever sent it. Two clients sharing one pacer with different behavior still
+      share one account's history, which is why the gap is the departing request's choice
+      and the record is the pacer's.
       """
 
       async with self._lock:
-         await self._wait_until_allowed()
+         await self._wait_until_allowed(pacing or self.pacing)
          yield
 
    def hold(self, seconds: float) -> None:
@@ -157,7 +163,7 @@ class Pacer:
          return
 
       resumes_at = self._clock() + seconds
-      self._earliest_departure_at = max(self._earliest_departure_at, resumes_at)
+      self._held_until = max(self._held_until, resumes_at)
 
    async def hold_for(self, seconds: float) -> None:
       """Record an account-wide hold and wait it out here as well.
@@ -173,20 +179,23 @@ class Pacer:
 
       await self._sleep(seconds)
 
-   async def _wait_until_allowed(self) -> None:
+   async def _wait_until_allowed(self, pacing: PacingPolicy) -> None:
+      gap = self._gap_seconds(pacing)
+
       while True:
-         remaining = self._earliest_departure_at - self._clock()
+         spaced_at = self._last_departure_at + gap
+         remaining = max(spaced_at, self._held_until) - self._clock()
          if remaining <= 0:
             break
 
          await self._sleep(remaining)
 
-      self._earliest_departure_at = self._clock() + self._gap_seconds()
+      self._last_departure_at = self._clock()
 
-   def _gap_seconds(self) -> float:
-      spread = 2.0 * self.pacing.mean_jitter_seconds
+   def _gap_seconds(self, pacing: PacingPolicy) -> float:
+      spread = 2.0 * pacing.mean_jitter_seconds
 
-      return self.pacing.floor_seconds + self._jitter() * spread
+      return pacing.floor_seconds + self._jitter() * spread
 
 
 async def run_with_retries[T](

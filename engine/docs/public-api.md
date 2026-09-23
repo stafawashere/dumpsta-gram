@@ -41,6 +41,39 @@ rewrite. See
 There is deliberately no one-line global login. Convenience was traded for the
 stability goal.
 
+### Behavior
+
+Added 2026-09-23 under
+[ADR-0013](../../docs/decisions/ADR-0013-browser-parity-by-default.md). Both clients take a
+keyword-only `behavior`, a frozen `Behavior` from `dumpstagram.behavior`, defaulting to
+`PARITY`. It governs traffic across requests, never the shape of one request.
+
+```python
+from dataclasses import replace
+from dumpstagram import EXPORT, FAST, Spacing, SyncClient
+
+with SyncClient.from_session_file("account.json") as client:
+   profile = client.profile_by_id("25025320")
+
+   with client.with_behavior(FAST) as scraper:
+      page = scraper.thread_messages("17945046917948992")
+
+   slower = replace(EXPORT, spacing=Spacing(floor_seconds=4.0, mean_jitter_seconds=1.0))
+   export = client.with_behavior(slower)
+```
+
+`with_behavior` is how a single stretch of calls departs from the client's configuration,
+ruling 14 in [build-plan.md](build-plan.md) section 17.13. The client it returns shares the
+session, the pool and the pacer, and differs only in behavior, so no capability grows an
+override keyword and no existing snapshot line changes when a setting is added. Closing it
+does not close the pool. Closing the owner stops both.
+
+`Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`.
+Companion requests and side effects such as marking a thread read become fields with parity
+defaults when the requests behind them are implemented, which is an additive snapshot change.
+The presets are `PARITY`, `EXPORT` and `FAST`, and what each one costs is in
+[rate-limiting-and-safety.md](rate-limiting-and-safety.md).
+
 This shape survives the credential model changing underneath it. Phase 1 builds a `Session`
 by adopting credentials out of an existing browser session, and the deferred login work will
 build one by logging in. The constructor takes a finished `Session` either way, which is
@@ -131,7 +164,7 @@ Semantic versioning, with the snapshot defining a breaking change.
 | Range | Promise |
 |---|---|
 | `0.y.z` | None. Breaking changes land freely, which is the point of making them before the app exists. |
-| `1.0.0` | Cut when the snapshot has been unchanged across the whole of Phase 3 and Phase 4, which is also when Swift work starts. |
+| `1.0.0` | Cut when no line of the snapshot at the Phase 3 baseline has been removed or changed by the close of Phase 4, which is also when Swift work starts. Additive reading since 2026-09-23, see the amendment in ADR-0011. |
 | After `1.0.0` | Removing or changing a snapshot entry is a major bump. Adding one is minor. Everything else, including every `_private` change and every upstream endpoint repair, is a patch. |
 
 Upstream churn does not inflate the version. Instagram breaking an endpoint and the library

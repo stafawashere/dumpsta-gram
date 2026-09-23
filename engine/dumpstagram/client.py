@@ -21,6 +21,7 @@ from types import TracebackType
 
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
+from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.models import FeedItem, Message, Page, Profile
 from dumpstagram.session import Session
 
@@ -35,11 +36,17 @@ class SyncClient:
    is why both a context manager and an explicit `close` exist.
    """
 
-   def __init__(self, session: Session, *, user_agent: str | None = None) -> None:
+   def __init__(
+      self,
+      session: Session,
+      *,
+      user_agent: str | None = None,
+      behavior: Behavior = PARITY,
+   ) -> None:
       self._loop = _LoopThread.acquire()
 
       try:
-         self._impl = AsyncClient(session, user_agent=user_agent)
+         self._impl = AsyncClient(session, user_agent=user_agent, behavior=behavior)
       except BaseException:
          self._loop.release()
 
@@ -49,7 +56,11 @@ class SyncClient:
 
    @classmethod
    def from_session_file(
-      cls, path: str | os.PathLike[str], *, user_agent: str | None = None
+      cls,
+      path: str | os.PathLike[str],
+      *,
+      user_agent: str | None = None,
+      behavior: Behavior = PARITY,
    ) -> SyncClient:
       """Load a saved session from ``path`` and build a client around it.
 
@@ -57,7 +68,24 @@ class SyncClient:
       running and nothing to release.
       """
 
-      return cls(Session.load(path), user_agent=user_agent)
+      return cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+
+   def with_behavior(self, behavior: Behavior) -> SyncClient:
+      """Another client over the same account that differs only in ``behavior``.
+
+      The blocking form of :meth:`~dumpstagram.aio.AsyncClient.with_behavior`. It shares this
+      client's session, pool and pacer, and holds its own reference to the loop thread until
+      it is closed. Closing it does not close the pool, and closing this client stops both.
+      """
+
+      scoped_impl = self._impl.with_behavior(behavior)
+
+      scoped = object.__new__(SyncClient)
+      scoped._loop = _LoopThread.acquire()
+      scoped._impl = scoped_impl
+      scoped._closed = False
+
+      return scoped
 
    @property
    def session(self) -> Session:
@@ -72,10 +100,16 @@ class SyncClient:
       return self._impl.user_agent
 
    @property
-   def closed(self) -> bool:
-      """Whether :meth:`close` has run."""
+   def behavior(self) -> Behavior:
+      """The behavior configuration this client's traffic follows."""
 
-      return self._closed
+      return self._impl.behavior
+
+   @property
+   def closed(self) -> bool:
+      """Whether :meth:`close` has run, on this client or on the one that owns its pool."""
+
+      return self._closed or self._impl.closed
 
    def thread_messages(
       self,

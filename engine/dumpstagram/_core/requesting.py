@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from types import TracebackType
 
-from dumpstagram._core.pacer import Pacer
+from dumpstagram._core.pacer import Pacer, PacingPolicy
 from dumpstagram._private.transport import Request, Response, Sender
 
 __all__ = ["PacedSender"]
@@ -33,9 +33,19 @@ class PacedSender:
    which of the two that is.
    """
 
-   def __init__(self, sender: Sender, pacer: Pacer) -> None:
+   def __init__(self, sender: Sender, pacer: Pacer, pacing: PacingPolicy | None = None) -> None:
       self._sender = sender
       self.pacer = pacer
+      self.pacing = pacing
+
+   def with_pacing(self, pacing: PacingPolicy) -> PacedSender:
+      """Another paced sender over the same transport and the same account's pacer.
+
+      Only the spacing differs. The transport still belongs to this sender's owner, so the
+      caller of this method must not close the one it gets back.
+      """
+
+      return PacedSender(self._sender, self.pacer, pacing)
 
    async def send(self, request: Request) -> Response:
       """Wait until this account may send again, then send inside the same slot.
@@ -45,7 +55,7 @@ class PacedSender:
       doing it here would defeat it from outside.
       """
 
-      async with self.pacer.slot():
+      async with self.pacer.slot(self.pacing):
          return await self._sender.send(request)
 
    async def aclose(self) -> None:

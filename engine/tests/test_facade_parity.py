@@ -35,6 +35,10 @@ BLOCKING_NAME_FOR = {"aclose": "close"}
 
 ASYNC_NAME_FOR = {blocking: awaitable for awaitable, blocking in BLOCKING_NAME_FOR.items()}
 
+SCOPING_METHODS = {"with_behavior"}
+"""Methods that build another client rather than read anything. Each surface returns its own
+type from them, so they cannot share a capability's return type and have a gate of their own."""
+
 
 def public_names(cls: type) -> set[str]:
    return {name for name in vars(cls) if not name.startswith("_")}
@@ -68,8 +72,9 @@ def capabilities_in_the_snapshot() -> set[str]:
 
       name = line[len(prefix) :].split("(", 1)[0]
       is_lifecycle = name.startswith("_") or name in BLOCKING_NAME_FOR
+      is_scoping = name in SCOPING_METHODS
 
-      if not is_lifecycle:
+      if not is_lifecycle and not is_scoping:
          names.add(name)
 
    return names
@@ -150,6 +155,29 @@ def test_the_constructors_take_the_same_parameters() -> None:
    assert parameters_of(SyncClient.from_session_file) == parameters_of(
       AsyncClient.from_session_file
    )
+
+
+@pytest.mark.parametrize("name", sorted(SCOPING_METHODS))
+def test_a_scoping_method_takes_the_same_parameters_and_returns_its_own_surface(
+   name: str,
+) -> None:
+   """Catches a scoping method missing from one surface, taking different parameters there, or
+   handing a blocking caller the async client."""
+
+   blocking = getattr(SyncClient, name)
+   awaitable = getattr(AsyncClient, name)
+
+   assert parameters_of(blocking) == parameters_of(awaitable)
+   assert get_type_hints(blocking)["return"] is SyncClient
+   assert get_type_hints(awaitable)["return"] is AsyncClient
+
+   with SyncClient(a_session()) as client:
+      scoped = getattr(client, name)(client.behavior)
+
+      try:
+         assert type(scoped) is SyncClient
+      finally:
+         scoped.close()
 
 
 @pytest.mark.parametrize("name", CAPABILITIES)
