@@ -32,6 +32,13 @@ tests/
                              plus the captured oracle
 ```
 
+`fixtures/thread_oracle/` exists as of 2026-09-22, is generated, never hand edited, and is
+gitignored because it is the shape of a private conversation with a third party. Without it
+`test_thread_oracle.py` skips with a reason. It comes
+from `../scripts/build_thread_oracle.py`, which reads a raw capture under the gitignored
+`../exports/` and the prior project's `ghost` export, pseudonymises both with one mapping, and
+refuses to write anything its leak scan finds a real value in.
+
 ## Rules
 
 - **A gate is never loosened to reach green.** Strengthening is allowed. Loosening, widening a
