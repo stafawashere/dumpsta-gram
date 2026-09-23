@@ -23,13 +23,15 @@ from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.notes import read_notes
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
+from dumpstagram._core.posts import read_post
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
+from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
-from dumpstagram.models import FeedItem, Message, Note, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -297,6 +299,74 @@ class AsyncClient:
          read_notes(
             self._sender,
             self._session,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def post(self, code: str) -> PostDetail:
+      """Read one post by the shortcode in its web address. One live request.
+
+      The answer carries both of the post's identifiers, and :attr:`PostDetail.pk
+      <dumpstagram.models.PostDetail.pk>` is the one :meth:`like` and :meth:`unlike` take. It
+      carries ``has_liked`` and ``like_count`` for this viewer, which is how a like is
+      confirmed, and how one whose outcome was unknown is reconciled.
+
+      A browser reads a post inside a post page load. This sends the post query alone under
+      every behavior, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         read_post(
+            self._sender,
+            self._session,
+            code,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def like(self, post_pk: str) -> None:
+      """Like the post whose media ``pk`` is ``post_pk``. One write, sent once, never retried.
+
+      ``post_pk`` is :attr:`Post.pk <dumpstagram.models.Post.pk>` or
+      :attr:`PostDetail.pk <dumpstagram.models.PostDetail.pk>`. The ``<pk>_<author id>`` form in
+      their ``id`` raises :class:`ValueError` before anything is sent.
+
+      Liking a post that is already liked succeeds and changes nothing, observed once. The write
+      waits out the behavior's write spacing, counts against its write budget, and raises
+      :class:`~dumpstagram.errors.OutcomeUnknown` if the connection fails while it is in flight.
+      To reconcile that, read the post with :meth:`post` and look at ``has_liked``.
+
+      The request a browser sends around a like has not been recorded, so this sends the like
+      alone, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         like_post(
+            self._sender,
+            self._session,
+            post_pk,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def unlike(self, post_pk: str) -> None:
+      """Unlike the post whose media ``pk`` is ``post_pk``. One write, sent once, never retried.
+
+      The same identifier, rules and reconciliation as :meth:`like`. Unliking a post that is
+      not liked succeeds and changes nothing, observed once.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         unlike_post(
+            self._sender,
+            self._session,
+            post_pk,
             user_agent=self._user_agent,
          )
       )

@@ -24,7 +24,9 @@ __all__ = [
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
    "INBOX_TRAY",
+   "LIKE_MEDIA",
    "OMNI_PICKER_NULL_STATE",
+   "POST_BY_SHORTCODE",
    "PROFILE_BY_ID",
    "PROFILE_HIGHLIGHTS",
    "PROFILE_NOTE_BUBBLE",
@@ -36,6 +38,7 @@ __all__ = [
    "THREAD_DETAIL",
    "THREAD_MESSAGE_PAGE",
    "THREAD_OLDER_PAGE",
+   "UNLIKE_MEDIA",
    "PersistedQuery",
 ]
 
@@ -283,4 +286,45 @@ within 4 ms of the others, and the viewer's own note is the item authored by ``d
 Verified six times across four runs between 2026-09-21 and 2026-09-23, replays and browser
 loads both. The id was unchanged throughout, and an inbox cold load later on 2026-09-23 sent it
 again.
+"""
+
+
+POST_BY_SHORTCODE = PersistedQuery(
+   doc_id="27830990013244856",
+   friendly_name="PolarisPostRootQuery",
+   finding_id="read-a-post-by-shortcode",
+)
+"""One post, keyed on the shortcode in its web address, as the post page reads it.
+
+The item carries both of the post's identifiers, ``pk`` and ``id`` in the ``<pk>_<owner id>``
+form, and ``has_liked`` and ``like_count`` for the viewer. It does not carry ``is_seen``, which
+the timeline's media node does.
+
+Read off the compiled Relay artifact on 2026-09-23 and verified by four engine reads the same
+day, under ruling 23, which allowed no browser load. The post page's own burst is unrecorded.
+"""
+
+
+LIKE_MEDIA = PersistedQuery(
+   doc_id="27182485238052618",
+   friendly_name="usePolarisLikeMediaXIGLikeMutation",
+   finding_id="like-a-post",
+)
+"""Like one post, keyed on the media ``pk``. The like button on a post and in the feed holds it.
+
+The answer echoes the media under its other identifier, ``<pk>_<owner id>``, with
+``has_liked``. Liking a post that is already liked answers the same way and changes nothing,
+observed once on 2026-09-23. Verified by two engine sends that day, under ruling 23.
+"""
+
+
+UNLIKE_MEDIA = PersistedQuery(
+   doc_id="27345296031770102",
+   friendly_name="usePolarisLikeMediaXIGUnlikeMutation",
+   finding_id="unlike-a-post",
+)
+"""Unlike one post, the same input as :data:`LIKE_MEDIA` under its own id and root field.
+
+Unliking a post that is not liked answers ``has_liked`` false and changes nothing, observed
+once on 2026-09-23. Verified by two engine sends that day, under ruling 23.
 """

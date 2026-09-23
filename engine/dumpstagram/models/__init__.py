@@ -9,6 +9,7 @@ from dumpstagram.models.feed import FeedItem, FeedItemKind, MediaImage, Post, Po
 from dumpstagram.models.messages import Message, MessageSender, Reaction
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
+from dumpstagram.models.posts import PostDetail
 from dumpstagram.models.profiles import BioLink, Profile
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
    "Page",
    "Post",
    "PostAuthor",
+   "PostDetail",
    "Profile",
    "Reaction",
 ]

@@ -41,6 +41,8 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
+| `post CODE` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, with its `pk` and the viewer's like state |
+| `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -178,6 +180,28 @@ item id, the author, the audience and the text, then a count. The JSON form carr
 and the item id as explicit arguments and never prompt, per 13.6 in
 [build-plan.md](build-plan.md).
 
+### `post`, `like` and `unlike`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json post CODE
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta like PK
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unlike PK
+```
+
+`post CODE` reads the post whose web address carries `CODE`. The text form prints the code, the
+`pk`, the author and the time, then `has_liked` with the like and comment counts, then the first
+caption line. The JSON form is `{"command": "post", "post": {...}}` with the keys `feed` uses for
+a post, less `is_seen`, which this read does not carry.
+
+`like PK` and `unlike PK` write to the account. The target is the post's `pk`, digits only, and
+an explicit argument: there is no default and no prompt. The `<pk>_<author id>` form is refused
+by the parser with exit code 2 before a client is opened. Each sends one write and never sends
+it again. On exit code 11 the outcome is unknown, and the way to find out is `dumpsta post CODE`
+before deciding to send again. The JSON form is `command`, `pk` and `has_liked`, the state the
+upstream's answer confirmed.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -198,7 +222,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. No command writes yet |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like` and `unlike` are the commands that can end with it |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.
@@ -224,7 +248,8 @@ that has not been observed.
 
 Thirty-nine gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
-then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate. The live acceptance run for the thread command is recorded in
+then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate and
+`scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

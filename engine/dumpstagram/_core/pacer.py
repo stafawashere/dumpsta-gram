@@ -164,6 +164,19 @@ class Pacer:
       self._writes_this_window: deque[float] = deque()
       self._departed_write_tokens: set[str] = set()
       self._writes_stopped = False
+      self._writes_built = 0
+
+   def next_write_number(self) -> int:
+      """One more than the number of writes built on this account so far, starting at 1.
+
+      A browser tab numbers its mutations the same way, and a write sends the number as its
+      ``client_mutation_id``. It counts writes built rather than departed, because the number
+      goes into the request before the pacer decides whether the request may leave.
+      """
+
+      self._writes_built += 1
+
+      return self._writes_built
 
    def now(self) -> float:
       """The pacer's own monotonic instant, which is what a deadline is measured against."""

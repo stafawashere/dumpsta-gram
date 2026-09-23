@@ -121,6 +121,26 @@ between routes and there is only one route here. Modelling the inbox load, from 
 `direct-inbox-thread-list`, `direct-inbox-unread-thread-count`, the six empty-variable direct
 findings and this one, would make it the parity route and add the setting.
 
+**A post read, a like and an unlike are each sent alone, a recorded departure.** Added
+2026-09-23 with Step 15. `POST_BY_SHORTCODE` (`27830990013244856`, `PolarisPostRootQuery`),
+`LIKE_MEDIA` (`27182485238052618`, `usePolarisLikeMediaXIGLikeMutation`) and `UNLIKE_MEDIA`
+(`27345296031770102`, `usePolarisLikeMediaXIGUnlikeMutation`) all answer on `API_GRAPHQL_URL`.
+The post read's variables are the shortcode and the two provider values the profile timeline
+query was captured sending, `PolarisShortDramaEnabled` false and
+`PolarisMultiCaptionCarouselEnabled` true, with the post page as its referer. Both mutations take
+`{"input": {"client_mutation_id", "media_id", "tracking_token"}}`: `media_id` is the media `pk`,
+FACT from six sends, `client_mutation_id` is the account pacer's count of writes built, as a
+browser tab counts its mutations, and `tracking_token` is null. The referer is the home page,
+where a feed like is made. What a browser sends around any of them is unrecorded, because
+ruling 23 in [build-plan.md](build-plan.md) allowed no browser load when the three were verified,
+and every observation is an engine send. So the parity gate for each holds the one request's
+shape, and three details are departures by omission until a browser capture says otherwise:
+the Relay network layer's `actor_id`, absent because the session does not hold it; the feed
+item's `organic_tracking_token`, null because the capability is handed an identifier and not the
+item; and the post page's own document and companions. All six sends succeeded with those
+omissions. The discovery sends carried the post page as referer and the acceptance sends the
+home page, and both answered the same, which is weak evidence the referer is not checked here.
+
 The note create and delete are not in the registry. Their `doc_id` values,
 `28592645767037889` and `28419182984337833`, were current in the compiled artifacts on
 2026-09-23, but each finding has one live verification and the provenance gate asks for two,

@@ -114,6 +114,25 @@ the inbox load is modelled, a departure recorded in
 [web-request-contract.md](web-request-contract.md). `set_note(text, *, audience=...)` and
 `delete_note(note_id)` are not implemented yet, see [build-plan.md](build-plan.md) Step 14.
 
+`post(code)`, `like(post_pk)` and `unlike(post_pk)` have no setting either. Added 2026-09-23 as
+Step 15. `post` reads one post by the shortcode in its web address, one `PolarisPostRootQuery`
+request, and returns `PostDetail`, a model of its own rather than `Post`: the single post item
+carries every field `Post` reads except `is_seen`, and making that field optional would have
+changed a line of the contract. `PostDetail` has `Post`'s fields without `is_seen`, and its
+`has_liked` and `like_count` are what a like is confirmed by. `like` and `unlike` return `None`
+and each is one write through `send_write`, sent once and never retried, under the behavior's
+write spacing, budget and stop. They take the media `pk`, `Post.pk` or `PostDetail.pk`, which is
+what both mutations were observed taking. The `id` form, `<pk>_<author id>`, raises `ValueError`
+before anything is sent, because nothing records what the upstream does with it. Both set a
+state: a second like of a liked post and a second unlike of an unliked one each answered like
+the first and moved `like_count` no further, observed once each on 2026-09-23, so after
+`OutcomeUnknown` a caller reads the post with `post` and decides. An answer without an error
+that names the opposite state raises `UpstreamRejected` with code `has_liked_did_not_follow`,
+never observed. A browser sends a post read inside a post page load and a like beside whatever
+page it is on. Neither burst has been recorded, because ruling 23 allowed no browser load when
+these were verified, so each is sent alone, a departure recorded in
+[web-request-contract.md](web-request-contract.md).
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the two routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity

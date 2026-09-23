@@ -15,7 +15,16 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from dumpstagram.models import FeedItem, FeedItemKind, Message, Note, Page, Post, Profile
+from dumpstagram.models import (
+   FeedItem,
+   FeedItemKind,
+   Message,
+   Note,
+   Page,
+   Post,
+   PostDetail,
+   Profile,
+)
 from dumpstagram.session import Session
 
 __all__ = [
@@ -25,11 +34,13 @@ __all__ = [
    "describe_note",
    "describe_pages",
    "describe_post",
+   "describe_post_detail",
    "describe_profile",
    "render_feed",
    "describe_session",
    "render_messages",
    "render_notes",
+   "render_post_detail",
    "render_profile",
    "render_session",
 ]
@@ -339,3 +350,51 @@ def render_notes(notes: tuple[Note, ...], *, viewer_id: str) -> str:
    lines.append(f"{len(notes)} notes, {own_summary}")
 
    return "\n".join(lines)
+
+
+def describe_post_detail(post: PostDetail) -> dict[str, Any]:
+   """The JSON form of one post read on its own. Every key here is part of the CLI's contract.
+
+   The same keys as :func:`describe_post` without ``is_seen``, which this read does not carry.
+   """
+
+   described = describe_post(
+      Post(
+         id=post.id,
+         pk=post.pk,
+         code=post.code,
+         taken_at=post.taken_at,
+         author=post.author,
+         media_type=post.media_type,
+         product_type=post.product_type,
+         like_count=post.like_count,
+         comment_count=post.comment_count,
+         has_liked=post.has_liked,
+         is_seen=False,
+         caption=post.caption,
+         accessibility_caption=post.accessibility_caption,
+         original_width=post.original_width,
+         original_height=post.original_height,
+         carousel_media_count=post.carousel_media_count,
+         images=post.images,
+         is_paid_partnership=post.is_paid_partnership,
+         like_and_view_counts_disabled=post.like_and_view_counts_disabled,
+      )
+   )
+   del described["is_seen"]
+
+   return described
+
+
+def render_post_detail(post: PostDetail) -> str:
+   """The human form: the post's identifiers, then the viewer's like state and the counts."""
+
+   caption = post.caption.splitlines()[0] if post.caption else ""
+
+   return "\n".join(
+      [
+         f"{post.code}  pk {post.pk}  {post.author.username}  {post.taken_at.isoformat()}",
+         f"has_liked: {post.has_liked}  likes: {post.like_count}  comments: {post.comment_count}",
+         caption,
+      ]
+   ).rstrip("\n")

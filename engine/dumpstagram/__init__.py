@@ -44,6 +44,7 @@ from dumpstagram.models import (
    Page,
    Post,
    PostAuthor,
+   PostDetail,
    Profile,
    Reaction,
 )
@@ -75,6 +76,7 @@ __all__ = [
    "Page",
    "Post",
    "PostAuthor",
+   "PostDetail",
    "Profile",
    "ProfileRoute",
    "RateLimited",

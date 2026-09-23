@@ -47,6 +47,7 @@ from dumpstagram.models import (
    Page,
    Post,
    PostAuthor,
+   PostDetail,
    Profile,
    Reaction,
 )
@@ -54,13 +55,18 @@ from dumpstagram.models import (
 __all__ = [
    "FEED_PAGE_PATH",
    "INBOX_TRAY_PATH",
+   "LIKE_ANSWER_ROOT",
+   "POST_PATH",
    "PROFILE_PATH",
    "THREAD_DETAIL_PATH",
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
+   "UNLIKE_ANSWER_ROOT",
    "parse_feed_page",
    "parse_inbox_tray",
+   "parse_like_answer",
    "parse_note",
+   "parse_post_detail",
    "parse_profile",
    "parse_thread_detail",
    "parse_thread_message_page",
@@ -98,6 +104,15 @@ INBOX_TRAY_PATH = ("data", "response")
 The operation's root field is ``xdt_get_inbox_tray_items``, and the query aliases it, so the
 payload carries it under ``response``.
 """
+
+POST_PATH = ("data", "xdt_api__v1__media__shortcode__web_info")
+"""The path to the item list in a ``PolarisPostRootQuery`` payload, one item for one post."""
+
+LIKE_ANSWER_ROOT = "xig_media_like"
+"""The root field a like answers under, carrying ``media`` with ``id`` and ``has_liked``."""
+
+UNLIKE_ANSWER_ROOT = "xig_media_unlike"
+"""The root field an unlike answers under, the same shape as :data:`LIKE_ANSWER_ROOT`."""
 
 TRAY_PAGINATION_KEYS = frozenset(
    {"page_info", "cursor", "end_cursor", "has_next_page", "next_max_id", "max_id"}
@@ -860,3 +875,66 @@ def parse_inbox_tray(payload: Any) -> tuple[Note, ...]:
    return tuple(
       parse_note(item, f"{tray_path}.inbox_tray_items[{index}]") for index, item in enumerate(items)
    )
+
+
+def parse_post_detail(payload: Any) -> PostDetail:
+   """One ``PolarisPostRootQuery`` payload, mapped into the one post it carries.
+
+   Every measured answer held exactly one item. Zero or several raise
+   :class:`~dumpstagram.errors.SchemaChanged` rather than picking one, because what either
+   would mean is unobserved, and that includes what a shortcode with no post behind it answers.
+
+   The item carries everything :func:`parse_post` reads except ``is_seen``, so it is read here
+   field by field into its own model rather than through that function.
+
+   Finding: `read-a-post-by-shortcode` in the knowledge base.
+   """
+
+   root = _object_at(payload, POST_PATH)
+   root_path = ".".join(POST_PATH)
+   items = _required(root, "items", root_path)
+   is_exactly_one_item = isinstance(items, list) and len(items) == 1
+
+   if not is_exactly_one_item:
+      raise SchemaChanged(
+         f"{root_path}.items is not a list of exactly one post", path=f"{root_path}.items"
+      )
+
+   node = items[0]
+   path = f"{root_path}.items[0]"
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   return PostDetail(
+      id=_required_string(node, "id", path),
+      pk=_required_string(node, "pk", path),
+      code=_required_string(node, "code", path),
+      taken_at=_taken_at(node, path),
+      author=_post_author(node, path),
+      media_type=_required_integer(node, "media_type", path),
+      product_type=_required_string(node, "product_type", path),
+      like_count=_required_integer(node, "like_count", path),
+      comment_count=_required_integer(node, "comment_count", path),
+      has_liked=_required_flag(node, "has_liked", path),
+      caption=_caption_text(node, path),
+      accessibility_caption=_optional_string(node, "accessibility_caption", path),
+      original_width=_optional_integer(node, "original_width", path),
+      original_height=_optional_integer(node, "original_height", path),
+      carousel_media_count=_optional_integer(node, "carousel_media_count", path),
+      images=_images(node, path),
+      is_paid_partnership=_required_flag(node, "is_paid_partnership", path),
+      like_and_view_counts_disabled=_required_flag(node, "like_and_view_counts_disabled", path),
+   )
+
+
+def parse_like_answer(payload: Any, root_field: str) -> bool:
+   """The ``has_liked`` a like or an unlike answered with, from ``data.<root_field>.media``.
+
+   Four sends on 2026-09-23 each answered with the media under that root and no ``errors``
+   array, so a missing media object is a schema change rather than a quiet success.
+   """
+
+   media = _object_at(payload, ("data", root_field, "media"))
+
+   return _required_flag(media, "has_liked", f"data.{root_field}.media")

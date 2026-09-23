@@ -32,18 +32,20 @@ from dumpstagram._cli.render import (
    describe_message,
    describe_note,
    describe_pages,
+   describe_post_detail,
    describe_profile,
    describe_session,
    render_feed,
    render_messages,
    render_notes,
+   render_post_detail,
    render_profile,
    render_session,
 )
 from dumpstagram._core.redaction import redact
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import DumpstagramError
-from dumpstagram.models import FeedItem, Message, Note, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["build_parser", "main"]
@@ -82,6 +84,12 @@ class Client(Protocol):
 
    def notes(self) -> tuple[Note, ...]: ...
 
+   def post(self, code: str) -> PostDetail: ...
+
+   def like(self, post_pk: str) -> None: ...
+
+   def unlike(self, post_pk: str) -> None: ...
+
    def close(self) -> None: ...
 
 
@@ -104,6 +112,17 @@ def page_count(value: str) -> int:
       raise argparse.ArgumentTypeError("a page count is at least 1")
 
    return count
+
+
+def media_pk(value: str) -> str:
+   is_all_digits = value.isascii() and value.isdigit()
+
+   if not is_all_digits:
+      raise argparse.ArgumentTypeError(
+         "a post is named by its pk, digits only, not by the <pk>_<author id> form"
+      )
+
+   return value
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -258,7 +277,44 @@ def build_parser() -> argparse.ArgumentParser:
       help="do not save tokens harvested during this run back to the session file",
    )
 
+   post = commands.add_parser(
+      "post",
+      help="read one post by its shortcode, one live request",
+      description=(
+         "Reads the post whose web address carries CODE and prints its pk, which like and "
+         "unlike take, and whether the viewer likes it."
+      ),
+   )
+   post.add_argument("code", metavar="CODE", help="the shortcode from the post's web address")
+   add_request_options(post)
+
+   for verb, effect in (("like", "like"), ("unlike", "remove the viewer's like from")):
+      write = commands.add_parser(
+         verb,
+         help=f"{effect} one post, one write, sent once and never retried",
+         description=(
+            f"Writes to the account: {effect} the post whose pk is PK. There is no prompt and "
+            "no default target. If the outcome is unknown, read the post with dumpsta post "
+            "before sending again."
+         ),
+      )
+      write.add_argument("pk", metavar="PK", type=media_pk, help="the post's pk, digits only")
+      add_request_options(write)
+
    return parser
+
+
+def add_request_options(command: argparse.ArgumentParser) -> None:
+   command.add_argument(
+      "--user-agent",
+      metavar="STRING",
+      help="override the user agent every request claims to be",
+   )
+   command.add_argument(
+      "--no-session-writeback",
+      action="store_true",
+      help="do not save tokens harvested during this run back to the session file",
+   )
 
 
 def resolve_session_path(chosen: str | None, environment: Mapping[str, str]) -> Path:
@@ -469,6 +525,71 @@ def run_note_list(
    return EXIT_OK
 
 
+def run_post(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_read = client.session.fb_dtsg
+
+   try:
+      post = client.post(arguments.code)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   payload = {"command": "post", "post": describe_post_detail(post)}
+
+   emit(payload, render_post_detail(post), as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
+def run_like_write(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_write = client.session.fb_dtsg
+   is_like = arguments.command == "like"
+
+   try:
+      if is_like:
+         client.like(arguments.pk)
+      else:
+         client.unlike(arguments.pk)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_write
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   payload = {"command": arguments.command, "pk": arguments.pk, "has_liked": is_like}
+
+   emit(
+      payload,
+      f"{arguments.command}d {arguments.pk}  has_liked: {is_like}",
+      as_json=arguments.json,
+      stream=stdout,
+   )
+
+   return EXIT_OK
+
+
 def run_thread(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -536,6 +657,12 @@ def main(
 
       if arguments.command == "note":
          return run_note_list(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command == "post":
+         return run_post(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in ("like", "unlike"):
+         return run_like_write(arguments, chosen_environment, out, client_factory)
 
       return run_thread(arguments, chosen_environment, out, client_factory)
    except DumpstagramError as failure:

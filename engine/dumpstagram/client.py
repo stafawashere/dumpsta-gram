@@ -22,7 +22,7 @@ from types import TracebackType
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior
-from dumpstagram.models import FeedItem, Message, Note, Page, Profile
+from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -181,6 +181,42 @@ class SyncClient:
       return self._loop.run(
          self._impl.notes(),
          operation="SyncClient.notes",
+      )
+
+   def post(self, code: str) -> PostDetail:
+      """Read one post by its shortcode. Blocks until it has it.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.post`, run on the shared loop
+      thread. One live request.
+      """
+
+      return self._loop.run(
+         self._impl.post(code),
+         operation="SyncClient.post",
+      )
+
+   def like(self, post_pk: str) -> None:
+      """Like the post whose media ``pk`` is ``post_pk``. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.like`, run on the shared loop
+      thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.like(post_pk),
+         operation="SyncClient.like",
+      )
+
+   def unlike(self, post_pk: str) -> None:
+      """Unlike the post whose media ``pk`` is ``post_pk``. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.unlike`, run on the shared loop
+      thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.unlike(post_pk),
+         operation="SyncClient.unlike",
       )
 
    def close(self) -> None:
