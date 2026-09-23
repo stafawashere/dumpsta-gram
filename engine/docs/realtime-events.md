@@ -32,7 +32,8 @@ listener.stop()
 
 ## Transport, now and later
 
-**Now, polling.** ASSUMPTION that a REST inbox endpoint is suitable. Partially supported: the
+**Now, polling.** Originally an ASSUMPTION that a REST inbox endpoint is suitable. Superseded on
+2026-09-23 by the GraphQL listing below, see What the poll reads. Partially supported: the
 prior project used `/api/v1/direct_v2/inbox/` successfully as a thread-resolution fallback, so
 the endpoint exists, is reachable, and returns thread rows. FACT. Whether it is a good change
 feed for new messages was never tested.
@@ -49,6 +50,39 @@ reverse-engineering effort relative to REST alone. INFERENCE.
 
 Since the observable surface is identical either way, the expensive half is deferred without
 blocking the Swift app.
+
+### What the poll reads, as of 2026-09-23
+
+Steps 20 and 21 of [build-plan.md](build-plan.md) replaced the REST assumption with an observed
+GraphQL listing, and the poll will read that instead. The REST route was not called: the
+listing lacked nothing the listener needs. Its durability argument above still holds, since the
+listing has a `doc_id` that can rotate, and it stays the fallback to reach for if it does.
+
+- **The listing.** `PolarisDirectInboxQuery`, finding `direct-inbox-thread-list`, verified five
+  times. Built by `build_inbox_listing_request` and mapped by `parse_inbox_listing` into private
+  `InboxThread` rows. One request returns the first 15 threads. FACT.
+- **Ordering.** Newest activity first, pinned threads at their activity position. FACT, three
+  reads.
+- **Activity marker.** `last_activity_timestamp_ms`, epoch milliseconds, equal to the newest
+  listed message's `timestamp_ms` on 45 of 45 rows. FACT.
+- **Last message id.** The first of five listed messages, newest first, in the `mid.$` form
+  `Message.id` carries, so it can be handed straight to `newer_than_message_id`. FACT for the
+  form. Whether that top-up filters is still untested.
+- **Thread id.** The row's `thread_fbid`, which is the identifier `thread_messages` takes. The
+  row's `thread_key` is a different value on one-to-one threads and is what a browser sends when
+  it opens one. FACT.
+- **Pagination.** `page_info` with `end_cursor` and `has_next_page`, but no cursor argument on
+  the query itself. The listener reads the first page only, so a thread that has fallen off it
+  and then gains a message reappears at the top, INFERENCE from the ordering.
+- **No change, no noise.** Two reads 60 s apart with nothing done were identical in every row,
+  and `iris_inactive_subscription_uq_seq_id` did not move. FACT, one observation. So the listener
+  will not emit events for nothing, as far as this shows.
+
+Still unobserved, and blocked on the owner sending one message by hand (ruling 10): whether a
+thread that gains a message moves to the top with its marker and last message id advanced while
+every other row stays put, and whether `newer_than_message_id` returns exactly the new message.
+`probes/inbox_change_feed.py --stage full` runs both. Until it does, the polling design is not
+chosen from the Step 21 table, only the "changes with nothing done" row is ruled out.
 
 ### Incremental fetch makes polling much cheaper
 

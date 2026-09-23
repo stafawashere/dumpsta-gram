@@ -23,6 +23,7 @@ __all__ = [
    "COMMENT_PAGE",
    "CREATE_COMMENT",
    "DELETE_COMMENT",
+   "DIRECT_INBOX",
    "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
@@ -289,6 +290,23 @@ within 4 ms of the others, and the viewer's own note is the item authored by ``d
 Verified six times across four runs between 2026-09-21 and 2026-09-23, replays and browser
 loads both. The id was unchanged throughout, and an inbox cold load later on 2026-09-23 sent it
 again.
+"""
+
+
+DIRECT_INBOX = PersistedQuery(
+   doc_id="28794932076791671",
+   friendly_name="PolarisDirectInboxQuery",
+   finding_id="direct-inbox-thread-list",
+)
+"""The direct inbox's first page of threads, newest activity first, as an inbox load reads it.
+
+Each row carries ``last_activity_timestamp_ms`` and its newest five messages, which is what a
+poll compares. It takes no argument but the document's iris device id, and the next page goes
+through another query whose id has not been observed. The notes tray is not in it.
+
+Verified by two browser loads and a page replay on 2026-09-23, and by two engine reads 60 s
+apart the same night, under ruling 23, which found every row identical with nothing done
+between them. What a new message does to a row has not been observed yet.
 """
 
 

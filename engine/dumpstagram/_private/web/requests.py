@@ -37,6 +37,7 @@ from dumpstagram._private.web.documents import (
    COMMENT_PAGE,
    CREATE_COMMENT,
    DELETE_COMMENT,
+   DIRECT_INBOX,
    HOME_TIMELINE_FEED,
    INBOX_TRAY,
    LIKE_MEDIA,
@@ -63,6 +64,7 @@ __all__ = [
    "COMMENT_PAGE_SIZE",
    "FEED_DEVICE_ID",
    "FEED_PAGE_SIZE",
+   "INBOX_ROW_MESSAGES",
    "PAGE_SIZE",
    "PROFILE_PAGE_POSTS",
    "RESOLUTION_PAGE_SIZE",
@@ -74,6 +76,7 @@ __all__ = [
    "build_feed_page_request",
    "build_graphql_request",
    "build_home_page_load_companions",
+   "build_inbox_listing_request",
    "build_inbox_tray_request",
    "build_like_request",
    "build_post_request",
@@ -121,6 +124,9 @@ COMMENT_PAGE_SIZE = 10
 The value the post page asks for has not been observed, so this is an ASSUMPTION and a
 difference a fingerprint check could read. Four engine reads sent it and were answered.
 """
+
+INBOX_ROW_MESSAGES = 5
+"""How many of its newest messages each inbox row carries, as every captured inbox load asked."""
 
 FEED_PAGE_SIZE = 12
 """What the web client asks the timeline for, and advisory rather than binding.
@@ -380,6 +386,42 @@ def build_inbox_tray_request(
       session,
       INBOX_TRAY,
       {},
+      referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def build_inbox_listing_request(
+   session: Session,
+   *,
+   device_id: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The inbox's first page of threads, asked for the way an inbox load asks for it.
+
+   ``device_id`` is the ``clientId`` of ``IGDMqttWebDeviceID`` in the inbox document, which a
+   browser mints fresh on every load. A replay with a random uuid4 the page never issued
+   answered the same way, so a listener holds one for its lifetime as one open inbox would.
+
+   The four provider flags are the values every captured inbox load sent for this account.
+   ``IGDMaxUnreadMessagesCountrelayprovider`` is what makes each row carry its newest five
+   messages, and so the newest message id a poll compares.
+
+   Finding: ``direct-inbox-thread-list`` in the knowledge base.
+   """
+
+   variables = {
+      "device_id_for_iris_subscription": device_id,
+      "__relay_internal__pv__IGDIsProfessionalAccountGKrelayprovider": False,
+      "__relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider": True,
+      "__relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider": INBOX_ROW_MESSAGES,
+      "__relay_internal__pv__IGDThreadListActionsEnabledGKrelayprovider": True,
+   }
+
+   return build_graphql_request(
+      session,
+      DIRECT_INBOX,
+      variables,
       referer=BOOTSTRAP_URL,
       user_agent=user_agent,
    )

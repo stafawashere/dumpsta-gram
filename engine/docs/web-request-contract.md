@@ -164,6 +164,18 @@ Relay store handle in `connections`, the delete's `actor_id`, and the post page 
 each capability is handed a `pk` and not the shortcode the page address needs. The referer is the
 home page on every send. All fourteen engine sends carried those omissions, seven reads, three creates and four deletes, and every real write applied.
 
+**The inbox listing is private and sent alone.** Added 2026-09-23 with Step 20. `DIRECT_INBOX`
+(`28794932076791671`, `PolarisDirectInboxQuery`) answers on `API_GRAPHQL_URL` with the inbox as
+referer and no path headers. Its variables are `device_id_for_iris_subscription` and four
+provider flags, `IGDIsProfessionalAccountGK` false, `IGDPinnedThreadsRenderEnabledGK` true,
+`IGDMaxUnreadMessagesCount` 5 and `IGDThreadListActionsEnabledGK` true, the values every
+captured inbox load sent for this account. A browser mints the device id per document, and a
+replay with a random one answered, so the caller of `build_inbox_listing_request` passes one it
+keeps for as long as its inbox is notionally open. No public capability sends it yet. The
+Phase 4 listener will, as one request per poll, and a poll is a departure from parity under
+ADR-0013 whatever the preset, because no browser was seen re-reading the listing on a timer, and
+the push socket is the likely reason, INFERENCE.
+
 The note create and delete are not in the registry. Their `doc_id` values,
 `28592645767037889` and `28419182984337833`, were current in the compiled artifacts on
 2026-09-23, but each finding has one live verification and the provenance gate asks for two,

@@ -31,6 +31,7 @@ Finding: `skills/reverse-engineer/knowledge/endpoints/direct-thread-message-page
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -59,6 +60,7 @@ __all__ = [
    "CREATE_COMMENT_ROOT",
    "DELETE_COMMENT_ROOT",
    "FEED_PAGE_PATH",
+   "INBOX_LISTING_PATH",
    "INBOX_TRAY_PATH",
    "LIKE_ANSWER_ROOT",
    "POST_PATH",
@@ -67,11 +69,13 @@ __all__ = [
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
    "UNLIKE_ANSWER_ROOT",
+   "InboxThread",
    "comment_was_deleted",
    "parse_comment",
    "parse_comment_page",
    "parse_created_comment",
    "parse_feed_page",
+   "parse_inbox_listing",
    "parse_inbox_tray",
    "parse_like_answer",
    "parse_note",
@@ -106,6 +110,9 @@ One character away from :data:`TIMELINE_PATH`, which is a different connection o
 query: that one is one account's posts keyed on a username, this one is the signed-in
 account's home feed.
 """
+
+INBOX_LISTING_PATH = ("data", "get_slide_mailbox_for_iris_subscription", "threads_by_folder")
+"""The path to the thread connection in a ``PolarisDirectInboxQuery`` payload."""
 
 INBOX_TRAY_PATH = ("data", "response")
 """The path to the notes tray in an ``IGDInboxTrayQuery`` payload.
@@ -1083,3 +1090,106 @@ def comment_was_deleted(payload: Any) -> bool:
    root = _required(data, DELETE_COMMENT_ROOT, "data")
 
    return isinstance(root, dict)
+
+
+@dataclass(frozen=True)
+class InboxThread:
+   """One row of the inbox listing, reduced to what tells a poll whether the thread moved.
+
+   Private on purpose. The listener reads it and nothing public returns it, so its fields can
+   follow the upstream without a snapshot line changing.
+
+   ``thread_fbid`` is the identifier ``thread_messages`` takes, and equals the row's own ``id``
+   on every measured row. ``thread_key`` is what a browser sends as the ``thread_fbid`` variable
+   when it opens the thread, and differs from ``thread_fbid`` on one-to-one threads.
+   """
+
+   thread_fbid: str
+   thread_key: str
+   last_activity_ms: int
+   last_message_id: str | None
+   is_pinned: bool
+
+
+def _milliseconds(node: dict[str, Any], key: str, path: str) -> int:
+   raw = _required(node, key, path)
+   is_a_digit_string = isinstance(raw, str) and raw.isdigit()
+
+   if not is_a_digit_string:
+      raise SchemaChanged(f"{path}.{key} is not a string of digits", path=f"{path}.{key}")
+
+   return int(raw)
+
+
+def _newest_message_id(thread: dict[str, Any], path: str) -> str | None:
+   """The id of the first message edge, which is the newest.
+
+   Every one of the fifteen rows of the capture of 2026-09-23 listed its messages newest first,
+   and on every one the first message's ``timestamp_ms`` equalled the row's
+   ``last_activity_timestamp_ms``. A thread with no message edges has no newest message.
+   """
+
+   messages_path = f"{path}.slide_messages"
+   messages = _required(thread, "slide_messages", path)
+   edges = _required(messages, "edges", messages_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{messages_path}.edges is not a list", path=f"{messages_path}.edges")
+
+   if not edges:
+      return None
+
+   node = _required(edges[0], "node", f"{messages_path}.edges[0]")
+
+   return _required_string(node, "id", f"{messages_path}.edges[0].node")
+
+
+def _inbox_thread(edge: Any, path: str) -> InboxThread:
+   node = _required(edge, "node", path)
+   thread_path = f"{path}.node.as_ig_direct_thread"
+   thread = _required(node, "as_ig_direct_thread", f"{path}.node")
+
+   if not isinstance(thread, dict):
+      raise SchemaChanged(f"{thread_path} is not an object", path=thread_path)
+
+   return InboxThread(
+      thread_fbid=_required_string(thread, "thread_fbid", thread_path),
+      thread_key=_required_string(thread, "thread_key", thread_path),
+      last_activity_ms=_milliseconds(thread, "last_activity_timestamp_ms", thread_path),
+      last_message_id=_newest_message_id(thread, thread_path),
+      is_pinned=_required_flag(thread, "is_pin", thread_path),
+   )
+
+
+def parse_inbox_listing(payload: Any) -> Page[InboxThread]:
+   """One ``PolarisDirectInboxQuery`` payload, mapped into its rows in the listing's order.
+
+   The order is the upstream's and is kept as sent: newest activity first on every measured
+   read, with pinned threads at their activity position rather than hoisted. The separate
+   ``pinned_threads_v2`` list repeats rows already in the connection and is not read.
+
+   Finding: `direct-inbox-thread-list` in the knowledge base.
+   """
+
+   connection = _object_at(payload, INBOX_LISTING_PATH)
+   connection_path = ".".join(INBOX_LISTING_PATH)
+
+   edges = _required(connection, "edges", connection_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{connection_path}.edges is not a list", path=f"{connection_path}.edges")
+
+   threads = tuple(
+      _inbox_thread(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
+   )
+
+   page_info_path = f"{connection_path}.page_info"
+   page_info = _required(connection, "page_info", connection_path)
+
+   if not isinstance(page_info, dict):
+      raise SchemaChanged(f"{page_info_path} is not an object", path=page_info_path)
+
+   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   return Page(items=threads, has_next_page=has_next_page, end_cursor=end_cursor)
