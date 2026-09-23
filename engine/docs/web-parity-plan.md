@@ -36,7 +36,9 @@ them persisted query documents in `_private/web/documents.py`.
 
 **Coverage against the website.** INFERENCE, from the feature inventory in the phases below. The
 website offers roughly 150 distinct user actions. The engine covers 16, about 10 percent. Nothing
-yet measures the denominator, which is the first thing E1 fixes.
+yet measures the denominator, which is the first thing E1 fixes. Measured since by E1 item 2:
+265 compiled operations, a lower bound, of which 20 back a capability, in
+[coverage.md](coverage.md).
 
 **Findings that shape the plan.**
 
@@ -138,6 +140,33 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   literal text also stood in audit finding 7 above and in the 2026-09-23 overnight handoff,
   which kept it discoverable in the tree, so both now describe it instead of quoting it. The
   history of the finding is otherwise unchanged.
+- **W12. The census stays local, and a committed summary carries its numbers.** Ruled
+  2026-09-23 for E1 item 2. `skills/` is never committed, so the census lives at
+  `skills/reverse-engineer/knowledge/census.md` as this plan says, and
+  [coverage.md](coverage.md) is committed beside this plan with, per page type, the count of
+  operations and the count the engine covers, the per phase counts, and the overall share
+  covered as a number, with no `doc_id` literal in it. That file is the denominator later phases
+  scope from. The unit is a compiled Relay operation with a `doc_id`. An operation counts as
+  covered when it backs a public capability; the ten page load companions the engine sends are
+  shown beside that count, not inside it. An alternate compiled route of an action already
+  shipped is excluded rather than counted as a gap, since a clone needs one route per action.
+- **W13. Logging out moves to E6, and nothing planned for E2 to E5 had to move.** Ruled
+  2026-09-23 from the census. The settings bundle compiles a logout mutation. Ending the
+  session on the only account is the lockout W7 already sends to E6, so it runs on the second
+  account. The census found six more operations that need another account, and each already
+  sits in E6: replying to another account's story, liking and unliking a story, creating a group
+  thread, unrestricting, and approving a restricted account's comment, which goes with restrict.
+  No story create operation was compiled on any load, so whether the web client can post a story
+  (E3) is still open and needs a scout of the composer.
+- **W14. Three page types are read from another load's bundle rather than a load of their
+  own.** Ruled 2026-09-23 to fit fifteen page types into the thirteen load budget without
+  anything visible to another person. Thread is the inbox bundle: a thread load and an inbox
+  load parsed the identical 618 module set in `run-2026-09-23-042538`, and this run's inbox load
+  parsed the same 618, so no thread was opened and nothing was marked seen. Search is the explore
+  and home bundles, which carry the search box and recent search operations; opening the Search
+  control parsed nothing new and no query was typed. Stories is the viewer family compiled into
+  home, because the owner has no live story and the own story URL redirected to home; no other
+  account's story was opened.
 
 ## Standing rules for every phase
 
@@ -170,6 +199,9 @@ the per-domain layout.
    its `doc_id`. The output is `knowledge/census.md`: every operation, the user action it belongs
    to, its engine status, and whether it needs a second account. This is the denominator for 1:1,
    and every later phase is scoped from it. Cost is about 15 page loads of browser traffic.
+   Done 2026-09-23 in `run-2026-09-23-190729`, 13 page loads and 0 engine requests: 265
+   operations, 20 of them backing a capability, 7.5 percent, with the counts in
+   [coverage.md](coverage.md) (W12, W14). Logging out moved to E6 (W13).
 3. **Per-domain layout.** Split `requests.py`, `parse.py`, `documents.py` and `_cli/main.py` into
    one module per domain, matching the W1 namespaces. Private only, no surface change. The
    mutation harness anchors move with the code, and every harness is rerun red then green.
@@ -295,7 +327,7 @@ before any engine write, following and followed by the owner.
 
 - **Relationships:** follow a private account and cancel the pending request, accept and deny an
   incoming follow request, remove a follower, block and unblock, restrict and unrestrict, close
-  friends add and remove, mute a messaged account.
+  friends add and remove, mute a messaged account, approve a restricted account's comment.
 - **Interaction with another person's content:** like and reply to a comment on another account's
   post, story like, story reply and reaction, note reply.
 - **Direct:** message requests accepted and declined, a new one-to-one thread created from a
@@ -306,6 +338,8 @@ before any engine write, following and followed by the owner.
 - **Login live:** the E5 login on the second account, from a fresh process with no cookies,
   including its two factor path.
 - **Username change** on the second account, and restored.
+- **Log out** on the second account, then sign it back in, since ending the only account's
+  session is the lockout W7 keeps off it (W13).
 - **Multi-account host live:** the owner and the second account run for an hour in one process with
   events flowing on both and no cross-account request.
 
