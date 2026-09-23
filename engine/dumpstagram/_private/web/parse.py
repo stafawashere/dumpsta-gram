@@ -42,6 +42,7 @@ from dumpstagram.models import (
    CommentAuthor,
    FeedItem,
    FeedItemKind,
+   FriendshipStatus,
    MediaImage,
    Message,
    MessageSender,
@@ -62,6 +63,7 @@ __all__ = [
    "DELETE_COMMENT_ROOT",
    "DELETE_NOTE_ROOT",
    "FEED_PAGE_PATH",
+   "FOLLOW_ANSWER_ROOT",
    "INBOX_LISTING_PATH",
    "INBOX_TRAY_PATH",
    "LIKE_ANSWER_ROOT",
@@ -70,6 +72,7 @@ __all__ = [
    "THREAD_DETAIL_PATH",
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
+   "UNFOLLOW_ANSWER_ROOT",
    "UNLIKE_ANSWER_ROOT",
    "InboxMessage",
    "InboxThread",
@@ -79,6 +82,7 @@ __all__ = [
    "parse_created_comment",
    "parse_created_note",
    "parse_feed_page",
+   "parse_follow_answer",
    "parse_inbox_listing",
    "parse_inbox_recent_messages",
    "parse_inbox_tray",
@@ -144,6 +148,12 @@ DELETE_COMMENT_ROOT = "xig_comment_delete"
 
 UNLIKE_ANSWER_ROOT = "xig_media_unlike"
 """The root field an unlike answers under, the same shape as :data:`LIKE_ANSWER_ROOT`."""
+
+FOLLOW_ANSWER_ROOT = "xdt_create_friendship"
+"""The root field a follow answers under, carrying ``friendship_status`` and the account ``id``."""
+
+UNFOLLOW_ANSWER_ROOT = "xdt_destroy_friendship"
+"""The root field an unfollow answers under, the same shape as :data:`FOLLOW_ANSWER_ROOT`."""
 
 CREATE_NOTE_ROOT = "xdt_create_inbox_tray_item"
 """The root field a note create answers under, carrying the item as ``inbox_tray_item``."""
@@ -211,6 +221,23 @@ def _required_flag(node: Any, key: str, path: str) -> bool:
 
    if not isinstance(value, bool):
       raise SchemaChanged(f"{path}.{key} is not a boolean", path=f"{path}.{key}")
+
+   return value
+
+
+def _flag_or_default(node: Any, key: str, path: str, default: bool) -> bool:
+   """A flag the upstream sends as null on some accounts, read as ``default`` when it does.
+
+   The key must still be there, and anything but a boolean or null still raises.
+   """
+
+   value = _required(node, key, path)
+
+   if value is None:
+      return default
+
+   if not isinstance(value, bool):
+      raise SchemaChanged(f"{path}.{key} is not a boolean or null", path=f"{path}.{key}")
 
    return value
 
@@ -468,8 +495,7 @@ def parse_profile(payload: Any) -> Profile:
    What the upstream sends and this mapper drops, from the response recorded on 2026-09-21:
 
    - ``pk``, a second name for ``id``.
-   - ``friendship_status`` and ``mutual_followers_count``, both null because the measured read
-     was the viewer reading the viewer. Neither has been observed populated.
+   - ``mutual_followers_count``, null on the viewer's own profile and a number on another's.
    - ``pronouns``, ``account_badges``, ``regulated_news_in_locations``,
      ``profile_pic_genai_tool_info`` and ``biography_with_entities.entities``, all empty
      lists, so their element shape is unmeasured.
@@ -480,6 +506,10 @@ def parse_profile(payload: Any) -> Profile:
      ``transparency_label``, ``transparency_product``, ``ai_agent_type`` and
      ``profile_context_links_with_user_ids``, all null on the measured response.
    - ``data.viewer``, which repeats the viewer id the session already holds.
+
+   Another account's profile, read six times on 2026-09-23, carried ``friendship_status`` as an
+   object of ten flags and ``is_professional_account``, ``has_profile_pic`` and
+   ``has_story_archive`` as null, so those three read null as the model's default.
 
    Finding: `skills/reverse-engineer/knowledge/endpoints/read-a-user-profile.md`.
    """
@@ -506,12 +536,46 @@ def parse_profile(payload: Any) -> Profile:
       category=_optional_string(user, "category", path),
       account_type=_required_integer(user, "account_type", path),
       is_business=_required_flag(user, "is_business", path),
-      is_professional_account=_required_flag(user, "is_professional_account", path),
+      is_professional_account=_flag_or_default(
+         user, "is_professional_account", path, default=False
+      ),
       is_memorialized=_required_flag(user, "is_memorialized", path),
       is_unpublished=_required_flag(user, "is_unpublished", path),
       is_embeds_disabled=_required_flag(user, "is_embeds_disabled", path),
-      has_profile_pic=_required_flag(user, "has_profile_pic", path),
-      has_story_archive=_required_flag(user, "has_story_archive", path),
+      has_profile_pic=_flag_or_default(user, "has_profile_pic", path, default=True),
+      has_story_archive=_flag_or_default(user, "has_story_archive", path, default=False),
+      friendship_status=_friendship_status(user, path),
+   )
+
+
+def _friendship_status(user: dict[str, Any], path: str) -> FriendshipStatus | None:
+   """The viewer's relationship to the account, ``None`` on the viewer's own profile.
+
+   The key must be there either way. Null is the viewer's own profile, and an object is someone
+   else's, whose every flag is read by name.
+   """
+
+   raw = _required(user, "friendship_status", path)
+
+   if raw is None:
+      return None
+
+   status_path = f"{path}.friendship_status"
+
+   if not isinstance(raw, dict):
+      raise SchemaChanged(f"{status_path} is not an object or null", path=status_path)
+
+   return FriendshipStatus(
+      following=_required_flag(raw, "following", status_path),
+      followed_by=_required_flag(raw, "followed_by", status_path),
+      outgoing_request=_required_flag(raw, "outgoing_request", status_path),
+      incoming_request=_required_flag(raw, "incoming_request", status_path),
+      blocking=_required_flag(raw, "blocking", status_path),
+      muting=_required_flag(raw, "muting", status_path),
+      is_muting_reel=_required_flag(raw, "is_muting_reel", status_path),
+      is_restricted=_required_flag(raw, "is_restricted", status_path),
+      is_bestie=_required_flag(raw, "is_bestie", status_path),
+      is_feed_favorite=_required_flag(raw, "is_feed_favorite", status_path),
    )
 
 
@@ -1298,3 +1362,26 @@ def parse_inbox_recent_messages(payload: Any) -> tuple[tuple[InboxMessage, ...],
    return tuple(
       _inbox_messages(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
    )
+
+
+def parse_follow_answer(payload: Any, root_field: str, user_id: str) -> bool:
+   """The ``following`` a follow or an unfollow answered with, from ``data.<root_field>``.
+
+   Four sends on 2026-09-23 each answered with ``friendship_status`` holding only ``following``,
+   and the account's ``id`` echoed, 215 and 217 bytes, no ``errors`` array. An echoed id naming
+   another account is a schema change rather than an answer about this one.
+   """
+
+   root = _object_at(payload, ("data", root_field))
+   root_path = f"data.{root_field}"
+
+   echoed_id = _required_string(root, "id", root_path)
+
+   if echoed_id != user_id:
+      raise SchemaChanged(
+         f"{root_path}.id names another account than the one written to", path=f"{root_path}.id"
+      )
+
+   status = _object_at(payload, ("data", root_field, "friendship_status"))
+
+   return _required_flag(status, "following", f"{root_path}.friendship_status")

@@ -21,6 +21,7 @@ from dumpstagram.models import (
    EventsDropped,
    FeedItem,
    FeedItemKind,
+   FriendshipStatus,
    Message,
    NewMessage,
    Note,
@@ -177,6 +178,27 @@ def describe_profile(profile: Profile) -> dict[str, Any]:
       "is_embeds_disabled": profile.is_embeds_disabled,
       "has_profile_pic": profile.has_profile_pic,
       "has_story_archive": profile.has_story_archive,
+      "friendship_status": describe_friendship_status(profile.friendship_status),
+   }
+
+
+def describe_friendship_status(status: FriendshipStatus | None) -> dict[str, bool] | None:
+   """The viewer's relationship to the account, null on the viewer's own profile."""
+
+   if status is None:
+      return None
+
+   return {
+      "following": status.following,
+      "followed_by": status.followed_by,
+      "outgoing_request": status.outgoing_request,
+      "incoming_request": status.incoming_request,
+      "blocking": status.blocking,
+      "muting": status.muting,
+      "is_muting_reel": status.is_muting_reel,
+      "is_restricted": status.is_restricted,
+      "is_bestie": status.is_bestie,
+      "is_feed_favorite": status.is_feed_favorite,
    }
 
 
@@ -194,6 +216,14 @@ def render_profile(profile: Profile) -> str:
       f"followers: {profile.follower_count}  following: {profile.following_count}  "
       f"posts: {profile.media_count}  clips: {profile.total_clips_count}",
    ]
+
+   status = profile.friendship_status
+
+   if status is not None:
+      lines.append(
+         f"you follow: {status.following}  requested: {status.outgoing_request}  "
+         f"follows you: {status.followed_by}"
+      )
 
    if profile.category:
       lines.append(f"category: {profile.category}")

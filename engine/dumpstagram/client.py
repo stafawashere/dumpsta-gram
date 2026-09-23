@@ -257,6 +257,31 @@ class SyncClient:
          operation="SyncClient.unlike",
       )
 
+   def follow(self, user_id: str) -> None:
+      """Follow the account whose numeric id is ``user_id``. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.follow`, run on the shared loop
+      thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.follow(user_id),
+         operation="SyncClient.follow",
+      )
+
+   def unfollow(self, user_id: str) -> None:
+      """Unfollow the account whose numeric id is ``user_id``. Blocks until the write is
+      answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.unfollow`, run on the shared loop
+      thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.unfollow(user_id),
+         operation="SyncClient.unfollow",
+      )
+
    def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]:
       """Read one page of a post's comments. Blocks until it has it.
 

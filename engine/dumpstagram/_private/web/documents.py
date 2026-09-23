@@ -26,6 +26,7 @@ __all__ = [
    "DELETE_COMMENT",
    "DELETE_NOTE",
    "DIRECT_INBOX",
+   "FOLLOW_USER",
    "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
@@ -44,6 +45,7 @@ __all__ = [
    "THREAD_DETAIL",
    "THREAD_MESSAGE_PAGE",
    "THREAD_OLDER_PAGE",
+   "UNFOLLOW_USER",
    "UNLIKE_MEDIA",
    "PersistedQuery",
 ]
@@ -416,4 +418,32 @@ DELETE_NOTE = PersistedQuery(
 A delete answers its root field null with no error, and that null is the success: two browser
 deletes on 2026-09-21 and one engine delete on 2026-09-23 answered so, and a tray read after
 each found no note by the viewer.
+"""
+
+
+FOLLOW_USER = PersistedQuery(
+   doc_id="27767812149509802",
+   friendly_name="usePolarisFollowUserFollowMutation",
+   finding_id="follow-a-user",
+)
+"""Follow one account, keyed on its numeric account id as ``target_user_id``, the one variable.
+
+The answer carries ``friendship_status`` with ``following`` alone and the account's ``id``. On a
+public account ``following`` came back true, and a profile read after it agreed. What it answers
+for a private account, where the follow becomes a request, is unobserved, and ``outgoing_request``
+is not in what it selects. Verified by two engine sends on 2026-09-23, under ruling 23, each
+undone in the same run.
+"""
+
+
+UNFOLLOW_USER = PersistedQuery(
+   doc_id="25174972798866458",
+   friendly_name="usePolarisFollowUserUnfollowMutation",
+   finding_id="unfollow-a-user",
+)
+"""Unfollow one account, the same variable as :data:`FOLLOW_USER` under its own id and root.
+
+It answered ``following`` false with the id echoed, and a profile read after it found the
+starting relationship back. Whether it withdraws a pending request to a private account is
+unobserved. Verified by two engine sends on 2026-09-23, under ruling 23.
 """

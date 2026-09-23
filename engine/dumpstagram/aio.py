@@ -32,6 +32,7 @@ from dumpstagram._core.realtime.poller import inbox_poller
 from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_events
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._core.writes.comments import create_comment, delete_comment
+from dumpstagram._core.writes.follows import follow_user, unfollow_user
 from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram._private.transport import HttpxTransport, cookies_for
@@ -249,6 +250,9 @@ class AsyncClient:
       ``user_id`` is the account's ``pk``, which is what :attr:`~dumpstagram.models.Profile.id`
       carries. It is not the ``fbid`` the same account carries as a message sender, and the
       two are different numbers for the same person.
+
+      On anyone else's profile, ``friendship_status`` carries the viewer's relationship to the
+      account, which makes this the read that confirms :meth:`follow` and :meth:`unfollow`.
       """
 
       self._refuse_when_closed()
@@ -448,6 +452,57 @@ class AsyncClient:
             self._sender,
             self._session,
             post_pk,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def follow(self, user_id: str) -> None:
+      """Follow the account whose numeric id is ``user_id``. One write, sent once, never retried.
+
+      ``user_id`` is :attr:`Profile.id <dumpstagram.models.Profile.id>`. A username raises
+      :class:`ValueError` before anything is sent, and :meth:`profile` turns one into a
+      :class:`~dumpstagram.models.Profile` carrying the id.
+
+      Returns nothing, because the answer cannot tell a follow from a request. On a private
+      account a follow becomes a follow request, and the answer selects ``following`` alone,
+      which the request leaves false. The account's profile read with :meth:`profile_by_id`
+      says which it was, through ``friendship_status.following`` and
+      ``friendship_status.outgoing_request``, and it is also the read that reconciles
+      :class:`~dumpstagram.errors.OutcomeUnknown`. The account is notified of the follow.
+
+      The write waits out the behavior's write spacing and counts against its write budget. The
+      request a browser sends around a follow has not been recorded, so this sends the follow
+      alone, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         follow_user(
+            self._sender,
+            self._session,
+            user_id,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def unfollow(self, user_id: str) -> None:
+      """Unfollow the account whose numeric id is ``user_id``. One write, sent once, never
+      retried.
+
+      The same identifier, rules and reconciling read as :meth:`follow`. An answer that still
+      reports following raises :class:`~dumpstagram.errors.UpstreamRejected`. Whether it also
+      withdraws a pending follow request to a private account is unobserved, so read
+      ``friendship_status.outgoing_request`` afterwards when that matters.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         unfollow_user(
+            self._sender,
+            self._session,
+            user_id,
             user_agent=self._user_agent,
          )
       )

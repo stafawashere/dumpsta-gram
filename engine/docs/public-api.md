@@ -233,6 +233,29 @@ second delete of a comment already gone is expected to raise it too, INFERENCE. 
 sends around each of the three is unrecorded under ruling 23, so each is sent alone, a departure
 recorded in [web-request-contract.md](web-request-contract.md).
 
+`follow(user_id)` and `unfollow(user_id)` have no setting either, and both return `None`. Added
+2026-09-23 as Step 17. Each sends one write through `send_write`, sent once and never retried,
+under the behavior's write spacing, budget and stop: `usePolarisFollowUserFollowMutation` or
+`usePolarisFollowUserUnfollowMutation`, whose one variable is `target_user_id`, the account's
+numeric id, `Profile.id`. A username raises `ValueError` before anything is sent, and an answer
+echoing another account's id raises `SchemaChanged`. The relationship read is not a new method.
+`profile_by_id` already reads it: `Profile` gained `friendship_status: FriendshipStatus | None =
+None`, None on the viewer's own profile, and `FriendshipStatus` carries ten booleans, among them
+`following`, `followed_by` and `outgoing_request`. That was additive, one field line and a new
+class, per 17.7 in [build-plan.md](build-plan.md). `follow` returns no state because its answer
+selects `following` alone, and a follow of a private account becomes a request that leaves it
+false, so a follow answered false is not raised and the docstring names `profile_by_id` and
+`friendship_status.outgoing_request` as the read that says which it was. That read also
+reconciles `OutcomeUnknown` for both. An unfollow always ends with `following` false, so one
+answered true raises `UpstreamRejected` with code `following_did_not_end`. On a public account the
+follow, the unfollow and each read after them were observed; the private account's request, and
+whether an unfollow withdraws it, were not. The same step made `profile_by_id` read accounts other
+than the viewer's: another account's profile carries `is_professional_account`,
+`has_profile_pic` and `has_story_archive` as null, which the mapper had refused, and a null on
+those three is now read as the field's own default. What a browser sends around a follow is
+unrecorded under ruling 23, so each write is sent alone, a departure recorded in
+[web-request-contract.md](web-request-contract.md).
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the two routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity

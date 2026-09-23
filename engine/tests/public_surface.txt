@@ -15,6 +15,7 @@ alias dumpstagram.FAST -> dumpstagram.behavior.FAST
 alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
 alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
@@ -59,6 +60,7 @@ def dumpstagram.aio.AsyncClient.delete_comment(self, post_pk: str, comment_id: s
 def dumpstagram.aio.AsyncClient.delete_note(self, note_id: str) -> None
 def dumpstagram.aio.AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.aio.AsyncClient.follow(self, user_id: str) -> None
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
 def dumpstagram.aio.AsyncClient.like(self, post_pk: str) -> None
 def dumpstagram.aio.AsyncClient.notes(self) -> tuple[Note, ...]
@@ -68,6 +70,7 @@ def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.aio.AsyncClient.session -> Session
 def dumpstagram.aio.AsyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
+def dumpstagram.aio.AsyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.aio.AsyncClient.unlike(self, post_pk: str) -> None
 property dumpstagram.aio.AsyncClient.user_agent -> str
 def dumpstagram.aio.AsyncClient.with_behavior(self, behavior: Behavior) -> AsyncClient
@@ -112,6 +115,7 @@ def dumpstagram.client.SyncClient.delete_comment(self, post_pk: str, comment_id:
 def dumpstagram.client.SyncClient.delete_note(self, note_id: str) -> None
 def dumpstagram.client.SyncClient.events(self, *, since: str | None = None, on_event: Callable[[Event], None] | None = None) -> EventListener
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.client.SyncClient.follow(self, user_id: str) -> None
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
 def dumpstagram.client.SyncClient.like(self, post_pk: str) -> None
 def dumpstagram.client.SyncClient.notes(self) -> tuple[Note, ...]
@@ -121,6 +125,7 @@ def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.client.SyncClient.session -> Session
 def dumpstagram.client.SyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
+def dumpstagram.client.SyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.client.SyncClient.unlike(self, post_pk: str) -> None
 property dumpstagram.client.SyncClient.user_agent -> str
 def dumpstagram.client.SyncClient.with_behavior(self, behavior: Behavior) -> SyncClient
@@ -158,6 +163,7 @@ alias dumpstagram.models.Event -> dumpstagram.models.events.Event
 alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDropped
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.models.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
 alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
@@ -310,6 +316,17 @@ field dumpstagram.models.profiles.BioLink.link_type: str
 field dumpstagram.models.profiles.BioLink.lynx_url: str
 field dumpstagram.models.profiles.BioLink.title: str
 field dumpstagram.models.profiles.BioLink.url: str
+class dumpstagram.models.profiles.FriendshipStatus()
+field dumpstagram.models.profiles.FriendshipStatus.blocking: bool
+field dumpstagram.models.profiles.FriendshipStatus.followed_by: bool
+field dumpstagram.models.profiles.FriendshipStatus.following: bool
+field dumpstagram.models.profiles.FriendshipStatus.incoming_request: bool
+field dumpstagram.models.profiles.FriendshipStatus.is_bestie: bool
+field dumpstagram.models.profiles.FriendshipStatus.is_feed_favorite: bool
+field dumpstagram.models.profiles.FriendshipStatus.is_muting_reel: bool
+field dumpstagram.models.profiles.FriendshipStatus.is_restricted: bool
+field dumpstagram.models.profiles.FriendshipStatus.muting: bool
+field dumpstagram.models.profiles.FriendshipStatus.outgoing_request: bool
 class dumpstagram.models.profiles.Profile()
 field dumpstagram.models.profiles.Profile.account_type: int | None = None
 field dumpstagram.models.profiles.Profile.bio_links: tuple[BioLink, ...] = ()
@@ -319,6 +336,7 @@ field dumpstagram.models.profiles.Profile.external_lynx_url: str | None = None
 field dumpstagram.models.profiles.Profile.external_url: str | None = None
 field dumpstagram.models.profiles.Profile.follower_count: int
 field dumpstagram.models.profiles.Profile.following_count: int
+field dumpstagram.models.profiles.Profile.friendship_status: FriendshipStatus | None = None
 field dumpstagram.models.profiles.Profile.full_name: str
 field dumpstagram.models.profiles.Profile.has_profile_pic: bool = True
 field dumpstagram.models.profiles.Profile.has_story_archive: bool = False

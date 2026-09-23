@@ -12,7 +12,7 @@ from dumpstagram.models.messages import Message, MessageSender, Reaction
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import PostDetail
-from dumpstagram.models.profiles import BioLink, Profile
+from dumpstagram.models.profiles import BioLink, FriendshipStatus, Profile
 
 __all__ = [
    "BioLink",
@@ -22,6 +22,7 @@ __all__ = [
    "EventsDropped",
    "FeedItem",
    "FeedItemKind",
+   "FriendshipStatus",
    "ListenerStopped",
    "MediaImage",
    "Message",

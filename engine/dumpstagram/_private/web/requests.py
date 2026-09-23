@@ -40,6 +40,7 @@ from dumpstagram._private.web.documents import (
    DELETE_COMMENT,
    DELETE_NOTE,
    DIRECT_INBOX,
+   FOLLOW_USER,
    HOME_TIMELINE_FEED,
    INBOX_TRAY,
    LIKE_MEDIA,
@@ -56,6 +57,7 @@ from dumpstagram._private.web.documents import (
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
+   UNFOLLOW_USER,
    UNLIKE_MEDIA,
    PersistedQuery,
 )
@@ -78,6 +80,7 @@ __all__ = [
    "build_delete_comment_request",
    "build_delete_note_request",
    "build_feed_page_request",
+   "build_follow_request",
    "build_graphql_request",
    "build_home_page_load_companions",
    "build_inbox_listing_request",
@@ -90,11 +93,13 @@ __all__ = [
    "build_thread_detail_request",
    "build_thread_older_page_request",
    "build_thread_page_request",
+   "build_unfollow_request",
    "build_unlike_request",
    "build_username_resolution_request",
    "is_a_comment_id",
    "is_a_media_pk",
    "is_a_note_id",
+   "is_a_user_id",
    "jazoest_for",
    "post_url",
    "profile_page_url",
@@ -124,6 +129,8 @@ _MEDIA_PK = re.compile(r"[0-9]{1,30}")
 _COMMENT_ID = re.compile(r"[0-9]{1,30}")
 
 _NOTE_ID = re.compile(r"[0-9]{1,30}")
+
+_USER_ID = re.compile(r"[0-9]{1,30}")
 
 NOTE_STYLE_TEXT = 0
 """The ``note_style`` of a plain text note, the only style a create has sent."""
@@ -1061,5 +1068,59 @@ def build_delete_note_request(
       DELETE_NOTE,
       {"inbox_tray_item_id": note_id},
       referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def is_a_user_id(value: str) -> bool:
+   """Whether ``value`` has the shape of a numeric account id, digits only.
+
+   A username fails this, which is the mistake it exists to catch: the follow mutations take
+   the id, and what they do with a username is unobserved.
+   """
+
+   return _USER_ID.fullmatch(value) is not None
+
+
+def build_follow_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Follow the account whose numeric id is ``user_id``.
+
+   The one variable is ``target_user_id``, not wrapped in ``input``, so the Relay network layer
+   adds no ``client_mutation_id``. The referer is the home page, where the compiled artifact was
+   read off a suggested account's Follow button, and where both engine sends came from.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/follow-a-user.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      FOLLOW_USER,
+      {"target_user_id": user_id},
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_unfollow_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Unfollow the account whose numeric id is ``user_id``.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/unfollow-a-user.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      UNFOLLOW_USER,
+      {"target_user_id": user_id},
+      referer=f"{ORIGIN}/",
       user_agent=user_agent,
    )

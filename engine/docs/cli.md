@@ -45,6 +45,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
 | `post CODE` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, with its `pk` and the viewer's like state |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
+| `follow USER_ID`, `unfollow USER_ID` | 1 write, plus 1 read if the session has no token yet | Follows or unfollows one account. Writes to the account, and the account is notified of a follow |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
@@ -133,6 +134,32 @@ the session therefore resolves to nothing and the command exits 7, `NotFound`, w
 account does not exist, is private to this viewer, or genuinely has no posts. The upstream
 does not distinguish the three on this route. Such an account is still readable with
 `--by-id`.
+
+The JSON form carries `friendship_status`, the viewer's relationship to the account: null on the
+viewer's own profile, and otherwise the ten flags of `FriendshipStatus`, `following`,
+`followed_by`, `outgoing_request`, `incoming_request`, `blocking`, `muting`, `is_muting_reel`,
+`is_restricted`, `is_bestie` and `is_feed_favorite`. The text form adds one line with the first
+three. It is how `follow` and `unfollow` are confirmed.
+
+### `follow` and `unfollow`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta follow USER_ID
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unfollow USER_ID
+```
+
+Both write to the account, and the account is notified of a follow. The target is the account's
+numeric id, the `id` that `dumpsta profile USERNAME` prints, as an explicit argument with no
+default and no prompt. A username, or anything that is not digits, is refused by the parser with
+exit code 2 before a client is opened. Each sends one write and never sends it again. The JSON
+form is `command` and `user_id`, and it claims no resulting state, because the upstream's answer
+cannot tell a follow from a follow request: a follow of a private account becomes a request, and
+the answer then reports `following` false. Read `dumpsta profile --by-id USER_ID` for
+`following` and `outgoing_request`, which is also what to do on exit code 11 before sending
+again. An unfollow the upstream answers as still following ends with exit code 6,
+`UpstreamRejected`, code `following_did_not_end`.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
 ### `feed`
 
@@ -308,7 +335,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `comment`, `delete-comment`, `note set` and `note delete` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `note set` and `note delete` are the commands that can end with it |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.
@@ -325,10 +352,10 @@ payload and all dropped at the mapper, because no capability reads them yet. Vid
 come back: one was read live on 2026-09-21 with `media_type` 2 and `product_type` `clips`,
 and it mapped without its video-specific fields.
 
-Two fields the upstream sends on a profile are not modelled, because the only live response
-measured was the viewer reading the viewer and both were null on it: `friendship_status` and
-`mutual_followers_count`. Reading someone else's profile is expected to populate them, and
-that has not been observed.
+One field the upstream sends on a profile is not modelled, `mutual_followers_count`. It is null
+on the viewer's own profile and was a number on another account's on 2026-09-23, and nothing yet
+says what it counts against. `friendship_status`, the other field that was null on the viewer's
+own profile, is modelled since Step 17.
 
 ## Verification
 
@@ -337,6 +364,8 @@ with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and r
 then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate and
 for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 `scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`, and
+`scripts/verify_follows_gates.py` for the three `follow`, `unfollow` and profile JSON gates in
+`tests/test_follows.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then

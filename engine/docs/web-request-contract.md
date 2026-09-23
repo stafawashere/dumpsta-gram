@@ -165,6 +165,26 @@ Relay store handle in `connections`, the delete's `actor_id`, and the post page 
 each capability is handed a `pk` and not the shortcode the page address needs. The referer is the
 home page on every send. All fourteen engine sends carried those omissions, seven reads, three creates and four deletes, and every real write applied.
 
+**A follow and an unfollow are each sent alone, a recorded departure.** Added 2026-09-23 with
+Step 17. `FOLLOW_USER` (`27767812149509802`, `usePolarisFollowUserFollowMutation`) and
+`UNFOLLOW_USER` (`25174972798866458`, `usePolarisFollowUserUnfollowMutation`) answer on
+`API_GRAPHQL_URL`, with the home page as referer, where the compiled artifact was read off a
+suggested account's Follow button. Each sends `{"target_user_id": <numeric account id>}` and
+nothing else: the variable is not `input`, so the Relay network layer adds no
+`client_mutation_id` and no `actor_id`, and the follow's `include_follow_friction_check` is a
+literal in the query text rather than a variable. The follow answers `data.xdt_create_friendship`
+and the unfollow `data.xdt_destroy_friendship`, each `{"friendship_status": {"following"},
+"id"}` with the account id echoed. Each finding reached two observations with the discovery run's
+engine sends before either `doc_id` entered `documents.py`, and three with the acceptance run.
+Three other compiled follow artifacts and two unfollow ones, `usePolarisFollowMutation`,
+`usePolarisFollowMutationBypassFrictionMutation`, the `ToggleFollow` pair and
+`usePolarisUnfollowMutation`, take `container_module` and `nav_chain` or media attribution, and
+were not sent. Which one the profile header's button holds is unobserved. Departures by omission
+until a browser capture says otherwise: the page the follow is made from and its load, any
+companion a click sends, and the header's own artifact if it differs. All six engine sends, three
+follows and three unfollows, carried those omissions, and every one applied, confirmed by a
+profile read.
+
 **The inbox listing is private and sent alone.** Added 2026-09-23 with Step 20. `DIRECT_INBOX`
 (`28794932076791671`, `PolarisDirectInboxQuery`) answers on `API_GRAPHQL_URL` with the inbox as
 referer and no path headers. Its variables are `device_id_for_iris_subscription` and four
