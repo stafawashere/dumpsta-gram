@@ -169,8 +169,28 @@ back"), `CLOSE_FRIENDS` 1 and `INTERNAL` 2, read out of the client's `PolarisNot
 and any other number is a `SchemaChanged`. A browser reads the tray inside an inbox page load
 beside nine other queries, and the engine sends the tray query alone under every behavior until
 the inbox load is modelled, a departure recorded in
-[web-request-contract.md](web-request-contract.md). `set_note(text, *, audience=...)` and
-`delete_note(note_id)` are not implemented yet, see [build-plan.md](build-plan.md) Step 14.
+[web-request-contract.md](web-request-contract.md).
+
+`set_note(text, *, audience=NoteAudience.CLOSE_FRIENDS) -> Note` and `delete_note(note_id) ->
+None` have no setting either. Added 2026-09-23 as the write half of Step 14. `set_note` sends
+`usePolarisCreateInboxTrayItemSubmitMutation` once through `send_write` and returns the created
+`Note`, mapped from the answer's `inbox_tray_item`, which has the tray's own shape. It replaces
+any note the viewer already has up, a song note included, which the library cannot make again,
+so the docstring says to read `notes()` first when the old note matters. The `audience` keyword
+exists from the first version, per ruling 7, so its line never changes. Its default is
+`CLOSE_FRIENDS`, the narrower of the two audiences the composer offers, so a caller who does
+not choose publishes to the fewest people. That departs from the composer, whose own default is
+`MUTUAL_FOLLOWS`, and it is a choice about content rather than about traffic, so ADR-0013's
+parity rule does not decide it; the CLI makes the audience a required argument instead. If the
+answer carries another audience than the one asked for, which has not been observed,
+`set_note` raises `UpstreamRejected` with code `note_audience_did_not_follow` and the note it made
+is up. The create names the account by its Facebook-side id, `Session.actor_id`, read from the
+bootstrap page and never substituted with `ds_user_id`; a session without it bootstraps once
+first. `delete_note` sends `usePolarisDeleteInboxTrayItemSubmitMutation` once with the tray item
+id, digits only, and its success is an answer whose root field is null. Both set a state rather
+than append one, so after `OutcomeUnknown` the reconciling read is `notes()`. The browser burst
+around each write is unrecorded under ruling 23, so each is sent alone, a departure recorded in
+[web-request-contract.md](web-request-contract.md).
 
 `post(code)`, `like(post_pk)` and `unlike(post_pk)` have no setting either. Added 2026-09-23 as
 Step 15. `post` reads one post by the shortcode in its web address, one `PolarisPostRootQuery`

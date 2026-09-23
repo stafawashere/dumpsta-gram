@@ -56,6 +56,7 @@ property dumpstagram.aio.AsyncClient.closed -> bool
 def dumpstagram.aio.AsyncClient.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.aio.AsyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.aio.AsyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.aio.AsyncClient.delete_note(self, note_id: str) -> None
 def dumpstagram.aio.AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
@@ -65,6 +66,7 @@ def dumpstagram.aio.AsyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
 def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.aio.AsyncClient.session -> Session
+def dumpstagram.aio.AsyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.aio.AsyncClient.unlike(self, post_pk: str) -> None
 property dumpstagram.aio.AsyncClient.user_agent -> str
@@ -107,6 +109,7 @@ property dumpstagram.client.SyncClient.closed -> bool
 def dumpstagram.client.SyncClient.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.client.SyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.client.SyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.client.SyncClient.delete_note(self, note_id: str) -> None
 def dumpstagram.client.SyncClient.events(self, *, since: str | None = None, on_event: Callable[[Event], None] | None = None) -> EventListener
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
@@ -116,6 +119,7 @@ def dumpstagram.client.SyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
 def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
 property dumpstagram.client.SyncClient.session -> Session
+def dumpstagram.client.SyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.client.SyncClient.unlike(self, post_pk: str) -> None
 property dumpstagram.client.SyncClient.user_agent -> str
@@ -337,6 +341,7 @@ field dumpstagram.session.ProxyConfig.url: str
 field dumpstagram.session.ProxyConfig.verify_tls: bool = True
 data dumpstagram.session.SCHEMA_VERSION: int = 1
 class dumpstagram.session.Session()
+field dumpstagram.session.Session.actor_id: str | None = None
 field dumpstagram.session.Session.app_id: str | None = None
 field dumpstagram.session.Session.bloks_version_id: str | None = None
 field dumpstagram.session.Session.bootstrapped_at: datetime | None = None

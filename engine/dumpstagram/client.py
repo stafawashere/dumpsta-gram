@@ -31,6 +31,7 @@ from dumpstagram.models import (
    FeedItem,
    Message,
    Note,
+   NoteAudience,
    Page,
    PostDetail,
    Profile,
@@ -193,6 +194,31 @@ class SyncClient:
       return self._loop.run(
          self._impl.notes(),
          operation="SyncClient.notes",
+      )
+
+   def set_note(self, text: str, *, audience: NoteAudience = NoteAudience.CLOSE_FRIENDS) -> Note:
+      """Set the viewer's note. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.set_note`, with the same audience
+      default, run on the shared loop thread. One write, sent once, never retried. It replaces
+      any note already up.
+      """
+
+      return self._loop.run(
+         self._impl.set_note(text, audience=audience),
+         operation="SyncClient.set_note",
+      )
+
+   def delete_note(self, note_id: str) -> None:
+      """Delete the viewer's note. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.delete_note`, run on the shared
+      loop thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.delete_note(note_id),
+         operation="SyncClient.delete_note",
       )
 
    def post(self, code: str) -> PostDetail:

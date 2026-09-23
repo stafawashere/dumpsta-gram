@@ -22,7 +22,9 @@ __all__ = [
    "CHAT_TABS_JEWEL",
    "COMMENT_PAGE",
    "CREATE_COMMENT",
+   "CREATE_NOTE",
    "DELETE_COMMENT",
+   "DELETE_NOTE",
    "DIRECT_INBOX",
    "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
@@ -387,4 +389,31 @@ DELETE_COMMENT = PersistedQuery(
 A real delete answers its root field with an object. A delete naming no comment answered it
 null with no error, so a null root is not a delete. Verified by two engine sends on 2026-09-23,
 each confirmed by a comment page read, under ruling 23.
+"""
+
+
+CREATE_NOTE = PersistedQuery(
+   doc_id="28592645767037889",
+   friendly_name="usePolarisCreateInboxTrayItemSubmitMutation",
+   finding_id="set-my-own-note-on-the-direct-inbox",
+)
+"""Set the viewer's note, replacing any note already up. The note composer's Share holds it.
+
+The input names the account by its Facebook-side ``actor_id``, never ``ds_user_id``, and the
+answer carries the created item in the shape the tray lists it. Observed from the composer on
+2026-09-21 with audience 0, and sent by the engine on 2026-09-23 with audience 1, close
+friends, which the answer and the tray both carried back.
+"""
+
+
+DELETE_NOTE = PersistedQuery(
+   doc_id="28419182984337833",
+   friendly_name="usePolarisDeleteInboxTrayItemSubmitMutation",
+   finding_id="delete-my-own-note-on-the-direct-inbox",
+)
+"""Delete the viewer's note, keyed on the tray item id, the one variable it takes.
+
+A delete answers its root field null with no error, and that null is the success: two browser
+deletes on 2026-09-21 and one engine delete on 2026-09-23 answered so, and a tray read after
+each found no note by the viewer.
 """

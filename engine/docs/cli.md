@@ -42,6 +42,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
+| `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
 | `post CODE` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, with its `pk` and the viewer's like state |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
@@ -180,9 +181,27 @@ item id, the author, the audience and the text, then a count. The JSON form carr
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
-`note set` and `note delete` are not implemented yet. When they land they take the note text
-and the item id as explicit arguments and never prompt, per 13.6 in
-[build-plan.md](build-plan.md).
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta note set "TEXT" --audience close-friends
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta note delete NOTE_ID
+```
+
+`note set` and `note delete` write to the account, and take the text, the audience and the item
+id as explicit arguments, with no default and no prompt, per 13.6 in
+[build-plan.md](build-plan.md). `--audience` is required and is `close-friends` or
+`mutual-follows`, the two the web composer offers, so a note set without naming one is refused
+by the parser with exit code 2 before a client is opened, even though the library's `set_note`
+defaults to close friends. A set replaces any note already up, a song note included. The note id
+is the tray item id, digits only, and anything else is refused the same way. Each sends one write
+and never sends it again. On exit code 11 read `dumpsta note list`: a set replaces rather than
+appends, so the viewer has at most one note to find. The JSON form of `note set` is `command` and
+`note`, the created note in the `note list` form, and of `note delete` it is `command`,
+`note_id` and `deleted`. A set the upstream answers with another audience than the one named
+ends with exit code 6, `UpstreamRejected`, code `note_audience_did_not_follow`, and that note is
+up. A session saved before 2026-09-23 has no Facebook-side id, so its first `note set` loads the
+inbox page once to read it and writes it back to the session file.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
 ### `post`, `like` and `unlike`
 
@@ -289,7 +308,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `comment` and `delete-comment` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `comment`, `delete-comment`, `note set` and `note delete` are the commands that can end with it |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.
@@ -316,6 +335,7 @@ that has not been observed.
 Forty-four gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
 then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate and
+for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 `scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`. The live acceptance run for the thread command is recorded in

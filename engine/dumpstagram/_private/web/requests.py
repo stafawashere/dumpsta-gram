@@ -36,7 +36,9 @@ from dumpstagram._private.web.documents import (
    CHAT_TABS_JEWEL,
    COMMENT_PAGE,
    CREATE_COMMENT,
+   CREATE_NOTE,
    DELETE_COMMENT,
+   DELETE_NOTE,
    DIRECT_INBOX,
    HOME_TIMELINE_FEED,
    INBOX_TRAY,
@@ -72,7 +74,9 @@ __all__ = [
    "VALIDATED_HEADERS",
    "build_comment_page_request",
    "build_create_comment_request",
+   "build_create_note_request",
    "build_delete_comment_request",
+   "build_delete_note_request",
    "build_feed_page_request",
    "build_graphql_request",
    "build_home_page_load_companions",
@@ -90,6 +94,7 @@ __all__ = [
    "build_username_resolution_request",
    "is_a_comment_id",
    "is_a_media_pk",
+   "is_a_note_id",
    "jazoest_for",
    "post_url",
    "profile_page_url",
@@ -117,6 +122,11 @@ _SHORTCODE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _MEDIA_PK = re.compile(r"[0-9]{1,30}")
 
 _COMMENT_ID = re.compile(r"[0-9]{1,30}")
+
+_NOTE_ID = re.compile(r"[0-9]{1,30}")
+
+NOTE_STYLE_TEXT = 0
+"""The ``note_style`` of a plain text note, the only style a create has sent."""
 
 COMMENT_PAGE_SIZE = 10
 """How many comments a page asks for, chosen by the engine.
@@ -976,5 +986,80 @@ def build_delete_comment_request(
          }
       },
       referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_create_note_request(
+   session: Session,
+   text: str,
+   audience: int,
+   *,
+   client_mutation_id: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Set the viewer's note to ``text`` for ``audience``, 0 for followers followed back, 1 for
+   close friends.
+
+   ``actor_id`` is the account's Facebook-side id from the bootstrap page, and never
+   ``ds_user_id``, which the finding records as a different number for the same account. A
+   session that has not read it raises :class:`~dumpstagram.errors.SchemaChanged`, because the
+   capability bootstraps before building, so a missing id means the page stopped carrying it.
+   The referer is the inbox, where the composer lives.
+
+   Finding: ``set-my-own-note-on-the-direct-inbox`` in the knowledge base.
+   """
+
+   if not session.actor_id:
+      raise SchemaChanged(
+         "the bootstrap page carried no RelayAPIConfigDefaults actorID, so the actor_id a note "
+         "create needs cannot be sent",
+         path="RelayAPIConfigDefaults.actorID",
+      )
+
+   return build_graphql_request(
+      session,
+      CREATE_NOTE,
+      {
+         "input": {
+            "actor_id": session.actor_id,
+            "additional_params": {
+               "note_create_params": {"note_style": NOTE_STYLE_TEXT, "text": text}
+            },
+            "audience": audience,
+            "client_mutation_id": client_mutation_id,
+            "inbox_tray_item_type": "note",
+         }
+      },
+      referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def is_a_note_id(value: str) -> bool:
+   """Whether ``value`` has the shape of a tray item id, digits only, 17 on every one observed."""
+
+   return _NOTE_ID.fullmatch(value) is not None
+
+
+def build_delete_note_request(
+   session: Session,
+   note_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Delete the note whose tray item id is ``note_id``.
+
+   The one variable is the tray item id, not wrapped in ``input``, so the Relay network layer
+   adds no ``client_mutation_id``.
+
+   Finding: ``delete-my-own-note-on-the-direct-inbox`` in the knowledge base.
+   """
+
+   return build_graphql_request(
+      session,
+      DELETE_NOTE,
+      {"inbox_tray_item_id": note_id},
+      referer=BOOTSTRAP_URL,
       user_agent=user_agent,
    )

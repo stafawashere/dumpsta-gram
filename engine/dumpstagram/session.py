@@ -75,6 +75,10 @@ class Session:
 
    `fr` is not a cookie. It is the value a browser keeps in `localStorage` under that key and
    hands to the page-load cookie sync, `None` when the browser holds none.
+
+   `actor_id` is the account's Facebook-side id, read from a bootstrapped page, and `None`
+   until one has been read. It is a different number from `ds_user_id` and never stands in
+   for it.
    """
 
    sessionid: str = field(repr=False)
@@ -92,6 +96,7 @@ class Session:
    bootstrapped_at: datetime | None = None
    proxy: ProxyConfig | None = field(default=None, repr=False)
    checkpoint_active: bool = False
+   actor_id: str | None = None
 
    def __post_init__(self) -> None:
       required_cookies = {
@@ -153,6 +158,7 @@ class Session:
          "haste_session": self.haste_session,
          "bloks_version_id": self.bloks_version_id,
          "fr": self.fr,
+         "actor_id": self.actor_id,
          "bootstrapped_at": bootstrapped_at,
          "proxy": proxy_payload,
          "checkpoint_active": self.checkpoint_active,
@@ -220,6 +226,7 @@ class Session:
          haste_session=payload.get("haste_session"),
          bloks_version_id=payload.get("bloks_version_id"),
          fr=payload.get("fr"),
+         actor_id=payload.get("actor_id"),
          bootstrapped_at=bootstrapped_at,
          proxy=proxy,
          checkpoint_active=bool(payload.get("checkpoint_active", False)),

@@ -1,11 +1,12 @@
-"""Break the notes tray read, watch each of its gates go red, restore.
+"""Break the notes tray read, set_note and delete_note, watch each gate go red, restore.
 
 Same harness and same rule as ``verify_cookie_sync_gates.py``: one mutation per line below,
 only the gate that should catch it is run, and every file is restored from an in-memory copy in
 a ``finally`` so an interrupted run cannot leave a mutation behind.
 
-The Step 14 table in ``engine/docs/build-plan.md`` also has rows for the note create and delete.
-Those capabilities do not exist yet, so their rows are not here.
+The Step 14 table in ``engine/docs/build-plan.md`` is covered row by row, the tray read's rows
+first and the create and delete rows after them, with the harvest of the Facebook-side id and
+its place in the session file, which the create depends on.
 
 Run from ``engine/`` with ``uv run python scripts/verify_notes_gates.py``. Writes its result to
 ``engine/logs/``.
@@ -31,8 +32,21 @@ NOTES = "dumpstagram/_core/notes.py"
 MODELS = "dumpstagram/models/notes.py"
 CLI = "dumpstagram/_cli/main.py"
 RENDER = "dumpstagram/_cli/render.py"
+WRITES = "dumpstagram/_core/writes/notes.py"
+BOOTSTRAP = "dumpstagram/_private/web/bootstrap.py"
+SESSION = "dumpstagram/session.py"
+FACADE = "dumpstagram/aio.py"
 GATES = "tests/test_notes.py"
 CLI_GATES = "tests/test_cli.py"
+SESSION_GATES = "tests/test_session.py"
+
+SEND_SET = '   payload = await send_write(sender, session, WriteRequest(request, "set_note"))\n'
+SEND_DELETE = (
+   '   payload = await send_write(sender, session, WriteRequest(request, "delete_note"))\n'
+)
+WRITING_IMPORT = "from dumpstagram._core.writing import send_write\n"
+CLASSIFY_IMPORT = "from dumpstagram._private.web.classify import classify\n"
+DELETE_ROOT_READ = '   _required(data, DELETE_NOTE_ROOT, "data")\n'
 
 
 def gate(name: str) -> str:
@@ -175,6 +189,19 @@ MUTATIONS: list[dict[str, object]] = [
    },
    {
       "gate": f"{CLI_GATES}::test_the_note_list_marks_the_note_authored_by_the_viewer",
+      "defect": "the CLI looks for the own note under the Facebook-side actor_id",
+      "edits": [
+         (
+            CLI,
+            "   token_before_the_read = client.session.fb_dtsg\n"
+            "   viewer_id = client.session.ds_user_id\n",
+            "   token_before_the_read = client.session.fb_dtsg\n"
+            '   viewer_id = client.session.actor_id or ""\n',
+         )
+      ],
+   },
+   {
+      "gate": f"{CLI_GATES}::test_the_note_list_marks_the_note_authored_by_the_viewer",
       "defect": "the JSON form marks the own note by the item id",
       "edits": [
          (
@@ -183,6 +210,225 @@ MUTATIONS: list[dict[str, object]] = [
             '"is_own": note.id == viewer_id,',
          )
       ],
+   },
+   {
+      "gate": gate("test_the_created_item_maps_into_note_field_by_field"),
+      "defect": "the created note's text is read from the wrong key",
+      "edits": [
+         (
+            PARSE,
+            'text=_required_string(note, "text", note_path),',
+            'text=_required_string(note, "author_id", note_path),',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_created_item_maps_into_note_field_by_field"),
+      "defect": "the created note is read with the pictured user's id as its author",
+      "edits": [
+         (
+            PARSE,
+            '   author_id = _required_string(note, "author_id", note_path)\n',
+            '   author_id = _required_string(item["pog_info"]["pog_users"][0], "username", "p")\n',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
+      "defect": "the create sends ds_user_id as actor_id",
+      "edits": [
+         (REQUESTS, '"actor_id": session.actor_id,', '"actor_id": session.ds_user_id,'),
+      ],
+   },
+   {
+      "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
+      "defect": "the create ignores the audience it was asked for",
+      "edits": [(REQUESTS, '"audience": audience,', '"audience": 0,')],
+   },
+   {
+      "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
+      "defect": "the create carries the home page as its referer",
+      "edits": [
+         (
+            REQUESTS,
+            "      },\n      referer=BOOTSTRAP_URL,\n      user_agent=user_agent,\n   )\n\n\n"
+            "def is_a_note_id",
+            '      },\n      referer=f"{ORIGIN}/",\n      user_agent=user_agent,\n   )\n\n\n'
+            "def is_a_note_id",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_bootstrap_reads_the_actor_id_and_never_falls_back_to_ds_user_id"),
+      "defect": "a page without the actorID leaves ds_user_id in its place",
+      "edits": [
+         (
+            BOOTSTRAP,
+            "session.actor_id = tokens.actor_id or session.actor_id",
+            "session.actor_id = tokens.actor_id or session.ds_user_id",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_bootstrap_reads_the_actor_id_and_never_falls_back_to_ds_user_id"),
+      "defect": "the bootstrap never reads the actorID",
+      "edits": [(BOOTSTRAP, "actor_id=_first_match(_ACTOR_ID, html),", "actor_id=None,")],
+   },
+   {
+      "gate": gate("test_a_session_without_an_actor_id_bootstraps_before_the_create"),
+      "defect": "a session with page tokens but no actor_id goes straight to the create",
+      "edits": [
+         (
+            WRITES,
+            "lacks_page_tokens = not session.fb_dtsg or not session.actor_id",
+            "lacks_page_tokens = not session.fb_dtsg",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_page_without_the_actor_id_stops_the_create_before_it_is_sent"),
+      "defect": "the create is built without an actor_id rather than refused",
+      "edits": [(REQUESTS, "   if not session.actor_id:\n", "   if False:\n")],
+   },
+   {
+      "gate": gate("test_a_created_note_for_another_audience_raises"),
+      "defect": "a note made for another audience is reported as done",
+      "edits": [(WRITES, "   if created.audience is not wanted:\n", "   if False:\n")],
+   },
+   {
+      "gate": gate("test_a_delete_answered_with_a_null_root_is_a_success"),
+      "defect": "the delete's root field is tested for truthiness",
+      "edits": [
+         (
+            PARSE,
+            DELETE_ROOT_READ,
+            '   if not _required(data, DELETE_NOTE_ROOT, "data"):\n'
+            '      raise SchemaChanged("the delete answered null", path="data")\n',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_delete_answer_without_its_root_field_is_a_schema_change"),
+      "defect": "an answer without the root field is taken as a delete",
+      "edits": [(PARSE, DELETE_ROOT_READ, "   data.get(DELETE_NOTE_ROOT)\n")],
+   },
+   {
+      "gate": gate("test_the_delete_sends_the_item_id"),
+      "defect": "the delete sends the author's id",
+      "edits": [
+         (
+            REQUESTS,
+            '{"inbox_tray_item_id": note_id},',
+            '{"inbox_tray_item_id": session.ds_user_id},',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_delete_sends_the_item_id"),
+      "defect": "the delete wraps its variable in an input object",
+      "edits": [
+         (
+            REQUESTS,
+            '{"inbox_tray_item_id": note_id},',
+            '{"input": {"inbox_tray_item_id": note_id}},',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_both_note_writes_depart_only_through_the_write_slot"),
+      "defect": "the set is sent with sender.send rather than send_write",
+      "edits": [
+         (WRITES, WRITING_IMPORT, WRITING_IMPORT + CLASSIFY_IMPORT),
+         (WRITES, SEND_SET, "   payload = classify(await sender.send(request))\n"),
+      ],
+   },
+   {
+      "gate": gate("test_both_note_writes_depart_only_through_the_write_slot"),
+      "defect": "the delete is sent with sender.send rather than send_write",
+      "edits": [
+         (WRITES, WRITING_IMPORT, WRITING_IMPORT + CLASSIFY_IMPORT),
+         (WRITES, SEND_DELETE, "   payload = classify(await sender.send(request))\n"),
+      ],
+   },
+   {
+      "gate": gate("test_an_error_envelope_on_a_set_raises_and_departs_once"),
+      "defect": "the set is sent again after an error envelope",
+      "edits": [
+         (
+            WRITES,
+            SEND_SET,
+            "   try:\n   " + SEND_SET + "   except UpstreamRejected:\n   " + SEND_SET,
+         )
+      ],
+   },
+   {
+      "gate": gate("test_what_cannot_be_a_note_is_refused_before_anything_is_sent"),
+      "defect": "empty text reaches the upstream",
+      "edits": [(WRITES, "   if not text.strip():\n", "   if False:\n")],
+   },
+   {
+      "gate": gate("test_what_cannot_be_a_note_is_refused_before_anything_is_sent"),
+      "defect": "a note id that is not digits reaches the upstream",
+      "edits": [(WRITES, "   if not is_a_note_id(note_id):\n", "   if False:\n")],
+   },
+   {
+      "gate": gate("test_the_set_note_docstring_names_the_reconciling_read"),
+      "defect": "the set_note docstring stops naming the tray read",
+      "edits": [
+         (FACADE, "Read :meth:`notes` first when the old one matters.", "Read the tray first."),
+         (
+            FACADE,
+            "To reconcile that, read :meth:`notes` and look for the viewer's own note",
+            "To reconcile that, look for the viewer's own note",
+         ),
+      ],
+   },
+   {
+      "gate": gate("test_the_cli_sets_the_named_text_for_the_named_audience"),
+      "defect": "the CLI sets every note for close friends whatever was named",
+      "edits": [
+         (
+            CLI,
+            "audience=NOTE_AUDIENCES[arguments.audience]",
+            "audience=NoteAudience.CLOSE_FRIENDS",
+         ),
+      ],
+   },
+   {
+      "gate": gate("test_the_cli_sets_the_named_text_for_the_named_audience"),
+      "defect": "the CLI sends the audience name as the note text",
+      "edits": [(CLI, "client.set_note(arguments.text,", "client.set_note(arguments.audience,")],
+   },
+   {
+      "gate": gate("test_the_cli_refuses_a_set_without_an_audience_before_opening_a_client"),
+      "defect": "the CLI falls back to close friends when no audience is named",
+      "edits": [
+         (
+            CLI,
+            "      required=True,\n      choices=sorted(NOTE_AUDIENCES),\n",
+            '      default="close-friends",\n      choices=sorted(NOTE_AUDIENCES),\n',
+         )
+      ],
+   },
+   {
+      "gate": gate("test_the_cli_deletes_the_named_note"),
+      "defect": "the CLI deletes by the viewer's id instead of the named note",
+      "edits": [(CLI, "client.delete_note(arguments.note_id)", "client.delete_note(viewer_id)")],
+   },
+   {
+      "gate": gate("test_the_cli_refuses_a_note_id_that_is_not_digits_before_opening_a_client"),
+      "defect": "the CLI accepts any string as a note id",
+      "edits": [(CLI, "type=note_id, ", "")],
+   },
+   {
+      "gate": f"{SESSION_GATES}::test_the_actor_id_survives_a_save_and_load",
+      "defect": "the session file drops the actor_id",
+      "edits": [(SESSION, '         "actor_id": self.actor_id,\n', "")],
+   },
+   {
+      "gate": f"{SESSION_GATES}::test_a_file_saved_before_actor_id_existed_loads_with_none",
+      "defect": "the loader demands the actor_id key",
+      "edits": [(SESSION, 'actor_id=payload.get("actor_id"),', 'actor_id=payload["actor_id"],')],
    },
 ]
 

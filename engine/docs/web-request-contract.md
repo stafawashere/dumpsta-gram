@@ -67,6 +67,7 @@ is the page both measured runs used and because the first target surface is the 
 | `__hsi` | `"hsi":"` | |
 | haste session | `"haste_session":"` | Sent as `__hs` |
 | app id | `"X-IG-App-ID":"` | Falls back to `936619743392459`, which was identical on both days |
+| actor id | `"RelayAPIConfigDefaults",[],{"accessToken":"...","actorID":"` | Added 2026-09-23. The account's Facebook-side id, 17 digits, equal to the page's `NON_FACEBOOK_USER_ID` on every captured inbox and home document and different from `ds_user_id`. Stored as `Session.actor_id` and sent only by the note create. Optional: a page without it bootstraps, and only the create refuses |
 
 ### Three failure behaviours that are deliberate
 
@@ -180,10 +181,22 @@ re-reading the listing on a timer, and the push socket is the likely reason, INF
 leaves out what a browser sends around a thread it reads, the thread open and the mark-read
 mutation, so a listener marks nothing seen.
 
-The note create and delete are not in the registry. Their `doc_id` values,
-`28592645767037889` and `28419182984337833`, were current in the compiled artifacts on
-2026-09-23, but each finding has one live verification and the provenance gate asks for two,
-so they enter this file with the first approved note write that observes them again.
+**A note set and a note delete are each sent alone, a recorded departure.** Added 2026-09-23
+with Step 14. `CREATE_NOTE` (`28592645767037889`, `usePolarisCreateInboxTrayItemSubmitMutation`)
+and `DELETE_NOTE` (`28419182984337833`, `usePolarisDeleteInboxTrayItemSubmitMutation`) answer on
+`API_GRAPHQL_URL`, both with the inbox as referer, where the composer lives. The create sends
+`{"input": {"actor_id", "additional_params": {"note_create_params": {"note_style": 0, "text"}},
+"audience", "client_mutation_id", "inbox_tray_item_type": "note"}}`, where `actor_id` is
+`Session.actor_id` from the bootstrap page and never `ds_user_id`, `audience` is 0 or 1, and
+`client_mutation_id` is the account pacer's write count as for a like. Audience 1, close friends,
+was first sent by the engine on 2026-09-23 and the answer and the tray both carried it back. The
+delete sends `{"inbox_tray_item_id"}`, not wrapped in `input`, so no `client_mutation_id`, and its
+success is a null root field. Each finding reached two observations with the discovery run's
+engine sends, before either `doc_id` entered `documents.py`, and three with the acceptance run.
+Departures by omission until a browser capture says otherwise: the inbox load a browser has
+already made around the composer, and the bootloader requests that opening the composer and the
+own-note popup send. Every engine send carried those omissions, two creates and two deletes, and
+every write applied.
 
 **The URL is per query, and that was learned the hard way rather than designed.** It was one
 module constant until 2026-09-21, when the feed was added. The feed answers only on

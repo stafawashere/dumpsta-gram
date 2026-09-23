@@ -120,6 +120,18 @@ tokens but no bloks id, and the feed bootstraps once to get it rather than faili
 is unmeasured. INFERENCE: it tracks a web build, so it changes on deploys rather than per
 session.
 
+### `actor_id`, added 2026-09-23
+
+The account's Facebook-side id, read from the bootstrap page's `RelayAPIConfigDefaults` config,
+where it is the `actorID`, and sent by the note create as `actor_id`. FACT from captures and one
+live bootstrap: 17 digits, equal to the page's `NON_FACEBOOK_USER_ID`, and a different number from
+`ds_user_id`, which stays the only source of the viewer's Instagram id. Added at
+`schema_version` 1 under the key `"actor_id"` for the same reason as `hsi`: missing keys load as
+`None`. A session saved before it existed carries page tokens but no actor id, and `set_note`
+bootstraps once to get it rather than failing. The bootstrap never fills it with `ds_user_id`.
+It is an identifier of the viewer's own account, not a credential, so it is not redacted, and
+the probes that read it log only its length.
+
 ### `fr`, added 2026-09-23
 
 The page-load cookie sync sends the `fr` value a browser keeps in `localStorage`, and the

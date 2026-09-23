@@ -15,6 +15,12 @@ logged-out placeholder ``"0"`` on both days it was measured, and a client that t
 first match inverts the outgoing flag on every record it exports without erroring once. It
 comes from the ``ds_user_id`` cookie, which is the only place it was ever correct.
 
+The account's Facebook-side id is taken from the page, because no cookie carries it. It is the
+``actorID`` of the page's ``RelayAPIConfigDefaults`` config, 17 digits and a different number
+from ``ds_user_id``, and a note create sends it as ``actor_id``. It is anchored on that config's
+own name, which appears once per page, and it is optional, so a page without it still
+bootstraps and only the write that needs it refuses.
+
 Finding: ``skills/reverse-engineer/knowledge/endpoints/bootstrap-web-tokens.md``.
 """
 
@@ -93,6 +99,7 @@ _HSI = re.compile(r'"hsi":"(.*?)"')
 _HASTE_SESSION = re.compile(r'"haste_session":"(.*?)"')
 _APP_ID = re.compile(r'"X-IG-App-ID":"(\d+)"')
 _BLOKS_VERSION_ID = re.compile(r'"WebBloksVersioningID",\[\],\{"versioningID":"([0-9a-f]+)"')
+_ACTOR_ID = re.compile(r'"RelayAPIConfigDefaults",\[\],\{"accessToken":"[^"]*","actorID":"(\d+)"')
 
 
 @dataclass(frozen=True)
@@ -114,6 +121,13 @@ class BootstrapTokens:
 
    Optional here because only those requests need it, so a page without it must not stop a
    thread read. The request builder refuses a query that needs it when it is missing.
+   """
+
+   actor_id: str | None = None
+   """The account's Facebook-side id, which a note create sends as ``actor_id``.
+
+   Never ``ds_user_id``. On every captured inbox and home document it equalled the page's
+   ``NON_FACEBOOK_USER_ID`` and differed from the cookie.
    """
 
 
@@ -202,6 +216,7 @@ def read_tokens(html: str) -> BootstrapTokens:
       hsi=_first_match(_HSI, html),
       haste_session=_first_match(_HASTE_SESSION, html),
       bloks_version_id=_first_match(_BLOKS_VERSION_ID, html),
+      actor_id=_first_match(_ACTOR_ID, html),
    )
 
 
@@ -263,6 +278,7 @@ def apply_tokens(session: Session, tokens: BootstrapTokens) -> None:
    session.hsi = tokens.hsi
    session.haste_session = tokens.haste_session
    session.bloks_version_id = tokens.bloks_version_id
+   session.actor_id = tokens.actor_id or session.actor_id
    session.bootstrapped_at = datetime.now(UTC)
 
 

@@ -65,6 +65,7 @@ from dumpstagram.models import (
    Message,
    NewMessage,
    Note,
+   NoteAudience,
    Page,
    PostDetail,
    Profile,
@@ -106,6 +107,10 @@ class Client(Protocol):
    def profile_by_id(self, user_id: str) -> Profile: ...
 
    def notes(self) -> tuple[Note, ...]: ...
+
+   def set_note(self, text: str, *, audience: NoteAudience = ...) -> Note: ...
+
+   def delete_note(self, note_id: str) -> None: ...
 
    def post(self, code: str) -> PostDetail: ...
 
@@ -231,6 +236,22 @@ def comment_id(value: str) -> str:
       raise argparse.ArgumentTypeError("a comment is named by its id, digits only")
 
    return value
+
+
+def note_id(value: str) -> str:
+   is_all_digits = value.isascii() and value.isdigit()
+
+   if not is_all_digits:
+      raise argparse.ArgumentTypeError("a note is named by its tray item id, digits only")
+
+   return value
+
+
+NOTE_AUDIENCES = {
+   "close-friends": NoteAudience.CLOSE_FRIENDS,
+   "mutual-follows": NoteAudience.MUTUAL_FOLLOWS,
+}
+"""The audiences the web composer offers, by the name the command line takes."""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -366,10 +387,10 @@ def build_parser() -> argparse.ArgumentParser:
 
    note = commands.add_parser(
       "note",
-      help="read the notes tray on the direct inbox",
+      help="read the notes tray, set the viewer's note, or delete it",
       description=(
-         "list reads the whole tray, one live request, and marks the viewer's own note. "
-         "Setting and deleting a note are not available yet."
+         "list reads the whole tray, one live request, and marks the viewer's own note. set and "
+         "delete write to the account, one write each, sent once and never retried."
       ),
    )
    note_actions = note.add_subparsers(dest="note_action", required=True)
@@ -384,6 +405,37 @@ def build_parser() -> argparse.ArgumentParser:
       action="store_true",
       help="do not save tokens harvested during this run back to the session file",
    )
+
+   note_set = note_actions.add_parser(
+      "set",
+      help="set the viewer's note, one write, sent once and never retried",
+      description=(
+         "Writes to the account: sets the viewer's note to TEXT for the named audience, "
+         "replacing any note already up, a song note included. Prints the new note's id, which "
+         "delete takes. If the outcome is unknown, read dumpsta note list before sending again."
+      ),
+   )
+   note_set.add_argument("text", metavar="TEXT", help="the note, as it should appear")
+   note_set.add_argument(
+      "--audience",
+      required=True,
+      choices=sorted(NOTE_AUDIENCES),
+      help="who sees the note: close-friends, or mutual-follows for followers followed back",
+   )
+   add_request_options(note_set)
+
+   note_delete = note_actions.add_parser(
+      "delete",
+      help="delete the viewer's note, one write, sent once and never retried",
+      description=(
+         "Writes to the account: deletes the note whose tray item id is NOTE_ID. If the outcome "
+         "is unknown, read dumpsta note list: a note no longer listed is gone."
+      ),
+   )
+   note_delete.add_argument(
+      "note_id", metavar="NOTE_ID", type=note_id, help="the note's tray item id, digits only"
+   )
+   add_request_options(note_delete)
 
    post = commands.add_parser(
       "post",
@@ -715,6 +767,46 @@ def run_note_list(
    return EXIT_OK
 
 
+def run_note_write(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_write = client.session.fb_dtsg
+   actor_id_before_the_write = client.session.actor_id
+   viewer_id = client.session.ds_user_id
+
+   try:
+      if arguments.note_action == "set":
+         created = client.set_note(arguments.text, audience=NOTE_AUDIENCES[arguments.audience])
+         payload: dict[str, object] = {
+            "command": "note set",
+            "note": describe_note(created, viewer_id=viewer_id),
+         }
+         text = f"set note {created.id}  [{created.audience.name.lower()}]"
+      else:
+         client.delete_note(arguments.note_id)
+         payload = {"command": "note delete", "note_id": arguments.note_id, "deleted": True}
+         text = f"deleted note {arguments.note_id}"
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_write
+      harvested_the_actor_id = client.session.actor_id != actor_id_before_the_write
+      harvested_anything = harvested_a_new_token or harvested_the_actor_id
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_anything and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   emit(payload, text, as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
 def run_post(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -1040,6 +1132,11 @@ def main(
 
       if arguments.command == "profile":
          return run_profile(arguments, chosen_environment, out, client_factory)
+
+      is_a_note_write = arguments.command == "note" and arguments.note_action != "list"
+
+      if is_a_note_write:
+         return run_note_write(arguments, chosen_environment, out, client_factory)
 
       if arguments.command == "note":
          return run_note_list(arguments, chosen_environment, out, client_factory)

@@ -58,7 +58,9 @@ from dumpstagram.models import (
 __all__ = [
    "COMMENT_PAGE_PATH",
    "CREATE_COMMENT_ROOT",
+   "CREATE_NOTE_ROOT",
    "DELETE_COMMENT_ROOT",
+   "DELETE_NOTE_ROOT",
    "FEED_PAGE_PATH",
    "INBOX_LISTING_PATH",
    "INBOX_TRAY_PATH",
@@ -75,6 +77,7 @@ __all__ = [
    "parse_comment",
    "parse_comment_page",
    "parse_created_comment",
+   "parse_created_note",
    "parse_feed_page",
    "parse_inbox_listing",
    "parse_inbox_recent_messages",
@@ -86,6 +89,7 @@ __all__ = [
    "parse_thread_detail",
    "parse_thread_message_page",
    "parse_user_id",
+   "read_note_delete_answer",
 ]
 
 THREAD_PAGE_PATH = ("data", "fetch__SlideThread", "as_ig_direct_thread", "slide_messages")
@@ -140,6 +144,12 @@ DELETE_COMMENT_ROOT = "xig_comment_delete"
 
 UNLIKE_ANSWER_ROOT = "xig_media_unlike"
 """The root field an unlike answers under, the same shape as :data:`LIKE_ANSWER_ROOT`."""
+
+CREATE_NOTE_ROOT = "xdt_create_inbox_tray_item"
+"""The root field a note create answers under, carrying the item as ``inbox_tray_item``."""
+
+DELETE_NOTE_ROOT = "xdt_delete_inbox_tray_item"
+"""The root field a note delete answers under, null on every observed success."""
 
 TRAY_PAGINATION_KEYS = frozenset(
    {"page_info", "cursor", "end_cursor", "has_next_page", "next_max_id", "max_id"}
@@ -902,6 +912,35 @@ def parse_inbox_tray(payload: Any) -> tuple[Note, ...]:
    return tuple(
       parse_note(item, f"{tray_path}.inbox_tray_items[{index}]") for index, item in enumerate(items)
    )
+
+
+def parse_created_note(payload: Any) -> Note:
+   """The note a create answered with, from ``data.xdt_create_inbox_tray_item.inbox_tray_item``.
+
+   The item has the key set a tray item has, observed on the browser create of 2026-09-21 and
+   the engine create of 2026-09-23, so it maps through :func:`parse_note`. An answer without
+   it and without an ``errors`` array is a schema change rather than a quiet success.
+
+   Finding: `set-my-own-note-on-the-direct-inbox` in the knowledge base.
+   """
+
+   item_path = ("data", CREATE_NOTE_ROOT, "inbox_tray_item")
+
+   return parse_note(_object_at(payload, item_path), ".".join(item_path))
+
+
+def read_note_delete_answer(payload: Any) -> None:
+   """Accept a note delete's answer, whose root field is null on success.
+
+   Three deletes answered ``data.xdt_delete_inbox_tray_item`` null with no error, and a tray
+   read after each found the note gone, so null is the success and must not be tested for
+   truthiness. A payload that lacks the root field altogether is a schema change.
+
+   Finding: `delete-my-own-note-on-the-direct-inbox` in the knowledge base.
+   """
+
+   data = _object_at(payload, ("data",))
+   _required(data, DELETE_NOTE_ROOT, "data")
 
 
 def parse_post_detail(payload: Any) -> PostDetail:

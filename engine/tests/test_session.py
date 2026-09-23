@@ -182,6 +182,7 @@ def test_saved_format_keys_are_the_documented_set(tmp_path: Path) -> None:
       "bootstrapped_at",
       "proxy",
       "checkpoint_active",
+      "actor_id",
    }
 
 
@@ -194,6 +195,29 @@ def test_a_file_saved_before_fr_existed_loads_with_none(tmp_path: Path) -> None:
    destination.write_text(json.dumps(payload), encoding="utf-8")
 
    assert Session.load(destination).fr is None
+
+
+def test_the_actor_id_survives_a_save_and_load(tmp_path: Path) -> None:
+   """Catches the Facebook-side id dropped from the file, which would cost every new process
+   one bootstrap before its first note set."""
+   session = full_session()
+   session.actor_id = "17841400000000001"
+
+   destination = tmp_path / "session.json"
+   session.save(destination)
+
+   assert Session.load(destination).actor_id == "17841400000000001"
+
+
+def test_a_file_saved_before_actor_id_existed_loads_with_none(tmp_path: Path) -> None:
+   """Catches a loader that demands the key, which would refuse every session saved before it."""
+   payload = full_session().to_dict()
+   del payload["actor_id"]
+
+   destination = tmp_path / "session.json"
+   destination.write_text(json.dumps(payload), encoding="utf-8")
+
+   assert Session.load(destination).actor_id is None
 
 
 def test_extra_cookies_default_is_not_shared_between_sessions() -> None:

@@ -33,6 +33,7 @@ from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_e
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
+from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
@@ -44,6 +45,7 @@ from dumpstagram.models import (
    ListenerStopped,
    Message,
    Note,
+   NoteAudience,
    Page,
    PostDetail,
    Profile,
@@ -317,6 +319,67 @@ class AsyncClient:
          read_notes(
             self._sender,
             self._session,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def set_note(
+      self, text: str, *, audience: NoteAudience = NoteAudience.CLOSE_FRIENDS
+   ) -> Note:
+      """Set the viewer's note on the direct inbox to ``text``. One write, sent once.
+
+      Returns the created note, whose ``id`` is what :meth:`delete_note` takes. A set replaces
+      any note the viewer already has up, whatever it was, including a song note, which this
+      library cannot make again. Read :meth:`notes` first when the old one matters. Empty text
+      raises :class:`ValueError`.
+
+      ``audience`` defaults to :attr:`NoteAudience.CLOSE_FRIENDS
+      <dumpstagram.models.NoteAudience.CLOSE_FRIENDS>`, the narrower of the two the web
+      composer offers, so a note set without choosing is seen by the fewest people. Pass
+      :attr:`NoteAudience.MUTUAL_FOLLOWS <dumpstagram.models.NoteAudience.MUTUAL_FOLLOWS>` for
+      the composer's own default, followers the viewer follows back. If the upstream answers
+      without an error but reports another audience, this raises
+      :class:`~dumpstagram.errors.UpstreamRejected` with code ``note_audience_did_not_follow``,
+      and the note it made is up.
+
+      The write waits out the behavior's write spacing, counts against its write budget, and
+      raises :class:`~dumpstagram.errors.OutcomeUnknown` if the connection fails while it is in
+      flight. To reconcile that, read :meth:`notes` and look for the viewer's own note: a set
+      replaces rather than appends, so sending again converges on one note.
+
+      The request a browser sends around a note has not been recorded, so this sends the
+      create alone, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         set_note(
+            self._sender,
+            self._session,
+            text,
+            audience=audience,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def delete_note(self, note_id: str) -> None:
+      """Delete the viewer's note whose tray item id is ``note_id``. One write, sent once.
+
+      ``note_id`` is :attr:`Note.id <dumpstagram.models.Note.id>`, from :meth:`set_note` or
+      from the viewer's own item in :meth:`notes`, digits only, and never the author's id. The
+      upstream answers a delete with nothing, so success is an answer without an error. After
+      :class:`~dumpstagram.errors.OutcomeUnknown`, read :meth:`notes`: a note no longer listed
+      is gone.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         delete_note(
+            self._sender,
+            self._session,
+            note_id,
             user_agent=self._user_agent,
          )
       )
