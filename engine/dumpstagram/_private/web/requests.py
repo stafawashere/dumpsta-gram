@@ -40,6 +40,8 @@ from dumpstagram._private.web.documents import (
    DELETE_COMMENT,
    DELETE_NOTE,
    DIRECT_INBOX,
+   DIRECT_TEXT_SEND,
+   DIRECT_UNSEND,
    FOLLOW_USER,
    HOME_TIMELINE_FEED,
    INBOX_TRAY,
@@ -72,6 +74,7 @@ __all__ = [
    "PAGE_SIZE",
    "PROFILE_PAGE_POSTS",
    "RESOLUTION_PAGE_SIZE",
+   "SEND_ATTRIBUTION",
    "VALIDATED_BODY_FIELDS",
    "VALIDATED_HEADERS",
    "build_comment_page_request",
@@ -79,6 +82,8 @@ __all__ = [
    "build_create_note_request",
    "build_delete_comment_request",
    "build_delete_note_request",
+   "build_direct_text_send_request",
+   "build_direct_unsend_request",
    "build_feed_page_request",
    "build_follow_request",
    "build_graphql_request",
@@ -99,8 +104,10 @@ __all__ = [
    "is_a_comment_id",
    "is_a_media_pk",
    "is_a_note_id",
+   "is_a_thread_fbid",
    "is_a_user_id",
    "jazoest_for",
+   "offline_threading_id",
    "post_url",
    "profile_page_url",
    "thread_url",
@@ -131,6 +138,15 @@ _COMMENT_ID = re.compile(r"[0-9]{1,30}")
 _NOTE_ID = re.compile(r"[0-9]{1,30}")
 
 _USER_ID = re.compile(r"[0-9]{1,30}")
+
+SEND_ATTRIBUTION = "igd_web_chat_tab:in_thread"
+"""What the composer names as the origin of a text send, a literal in its source.
+
+The same string was compiled on a thread page and sent from the chat tab a profile page opens.
+"""
+
+_OFFLINE_THREADING_ID_BITS = 63
+_OFFLINE_THREADING_RANDOM_BITS = 22
 
 NOTE_STYLE_TEXT = 0
 """The ``note_style`` of a plain text note, the only style a create has sent."""
@@ -1072,6 +1088,17 @@ def build_delete_note_request(
    )
 
 
+def is_a_thread_fbid(value: str) -> bool:
+   """Whether ``value`` has the shape of a ``thread_fbid``, digits only, at most 30 of them.
+
+   The two measured were 16 and 17 digits. The thread's 39-digit ``thread_id`` fails this,
+   which is the mix-up it catches, since the unsend takes that id and the send does not. The
+   ``thread_key`` passes, and nothing here can tell it apart by shape.
+   """
+
+   return _USER_ID.fullmatch(value) is not None
+
+
 def is_a_user_id(value: str) -> bool:
    """Whether ``value`` has the shape of a numeric account id, digits only.
 
@@ -1122,5 +1149,96 @@ def build_unfollow_request(
       UNFOLLOW_USER,
       {"target_user_id": user_id},
       referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def offline_threading_id(now_ms: int, random_bits: int) -> str:
+   """The client-generated identifier a text send carries, built as the browser builds it.
+
+   ``IGDOfflineThreadingID.generateOfflineThreadingID`` writes the millisecond clock in binary,
+   appends the low 22 bits of a random 32-bit number, keeps the last 63 binary digits and
+   renders them in decimal. That is the clock shifted left by 22 with the random bits below it,
+   cut to 63 bits. A thread read echoes it on the new message's node, which is what makes a
+   reconciling read exact.
+   """
+
+   random_mask = (1 << _OFFLINE_THREADING_RANDOM_BITS) - 1
+   combined = (now_ms << _OFFLINE_THREADING_RANDOM_BITS) | (random_bits & random_mask)
+
+   return str(combined & ((1 << _OFFLINE_THREADING_ID_BITS) - 1))
+
+
+def build_direct_text_send_request(
+   session: Session,
+   thread_fbid: str,
+   text: str,
+   threading_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Send ``text`` into the thread whose ``thread_fbid`` is ``thread_fbid``.
+
+   The fourteen variables in the order and with the values the browser's composer sent for a
+   plain text message: no reply, no mention, no command, not forwarded. ``recipient_igids`` is
+   what the composer sends in place of ``ig_thread_igid`` when no thread exists, and that shape
+   is not built here because it was never sent. ``sampled`` and ``replied_to_client_context``
+   are never set by the composer and leave as Relay's default null. The text travels wrapped as
+   ``sensitive_string_value``.
+
+   The referer is the thread page. The observed browser send came from the chat tab a profile
+   page opens and carried the profile page, which the engine cannot name from a thread id, a
+   departure recorded in ``docs/web-request-contract.md``.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/send-a-direct-text-message.md``.
+   """
+
+   variables: dict[str, Any] = {
+      "ig_thread_igid": thread_fbid,
+      "offline_threading_id": threading_id,
+      "recipient_igids": None,
+      "replied_to_client_context": None,
+      "replied_to_item_id": None,
+      "reply_to_message_id": None,
+      "sampled": None,
+      "text": {"sensitive_string_value": text},
+      "mentions": [],
+      "mentioned_user_ids": [],
+      "commands": None,
+      "forwarded_from_thread_id": None,
+      "is_forwarded_from_own_message": None,
+      "send_attribution": SEND_ATTRIBUTION,
+   }
+
+   return build_graphql_request(
+      session,
+      DIRECT_TEXT_SEND,
+      variables,
+      referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def build_direct_unsend_request(
+   session: Session,
+   thread_fbid: str,
+   thread_id: str,
+   message_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Unsend the viewer's message ``message_id`` from the thread whose long id is ``thread_id``.
+
+   ``thread_id`` is the thread's 39-digit id, which the unsend takes under ``send_data``, and
+   ``thread_fbid`` only names the referer, the thread page.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/unsend-a-direct-message.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      DIRECT_UNSEND,
+      {"message_id": message_id, "send_data": {"thread_id": thread_id}},
+      referer=thread_url(thread_fbid),
       user_agent=user_agent,
    )

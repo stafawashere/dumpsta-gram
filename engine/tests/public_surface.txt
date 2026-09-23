@@ -39,6 +39,7 @@ alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
 alias dumpstagram.Reaction -> dumpstagram.models.messages.Reaction
 data dumpstagram.SCHEMA_VERSION: int = 1
 alias dumpstagram.SchemaChanged -> dumpstagram.errors.SchemaChanged
+alias dumpstagram.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.Session -> dumpstagram.session.Session
 alias dumpstagram.Spacing -> dumpstagram.behavior.Spacing
 alias dumpstagram.SpinParameters -> dumpstagram.session.SpinParameters
@@ -67,11 +68,13 @@ def dumpstagram.aio.AsyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.aio.AsyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
 def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
+def dumpstagram.aio.AsyncClient.send_message(self, thread_fbid: str, text: str) -> SentMessage
 property dumpstagram.aio.AsyncClient.session -> Session
 def dumpstagram.aio.AsyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.aio.AsyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.aio.AsyncClient.unlike(self, post_pk: str) -> None
+def dumpstagram.aio.AsyncClient.unsend_message(self, thread_fbid: str, message_id: str) -> None
 property dumpstagram.aio.AsyncClient.user_agent -> str
 def dumpstagram.aio.AsyncClient.with_behavior(self, behavior: Behavior) -> AsyncClient
 module dumpstagram.behavior
@@ -122,11 +125,13 @@ def dumpstagram.client.SyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.client.SyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
 def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
+def dumpstagram.client.SyncClient.send_message(self, thread_fbid: str, text: str) -> SentMessage
 property dumpstagram.client.SyncClient.session -> Session
 def dumpstagram.client.SyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.client.SyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.client.SyncClient.unlike(self, post_pk: str) -> None
+def dumpstagram.client.SyncClient.unsend_message(self, thread_fbid: str, message_id: str) -> None
 property dumpstagram.client.SyncClient.user_agent -> str
 def dumpstagram.client.SyncClient.with_behavior(self, behavior: Behavior) -> SyncClient
 module dumpstagram.errors
@@ -177,6 +182,7 @@ alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
+alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
 module dumpstagram.models.comments
 class dumpstagram.models.comments.Comment()
 field dumpstagram.models.comments.Comment.author: CommentAuthor
@@ -256,6 +262,7 @@ field dumpstagram.models.messages.Message.id: str
 field dumpstagram.models.messages.Message.is_ai_generated: bool = False
 field dumpstagram.models.messages.Message.is_forwarded: bool = False
 field dumpstagram.models.messages.Message.is_pinned: bool = False
+field dumpstagram.models.messages.Message.offline_threading_id: str | None = None
 field dumpstagram.models.messages.Message.reactions: tuple[Reaction, ...] = ()
 field dumpstagram.models.messages.Message.replied_to_message_id: str | None = None
 field dumpstagram.models.messages.Message.sender: MessageSender
@@ -269,6 +276,11 @@ field dumpstagram.models.messages.MessageSender.name: str | None = None
 class dumpstagram.models.messages.Reaction()
 field dumpstagram.models.messages.Reaction.emoji: str
 field dumpstagram.models.messages.Reaction.sender_fbid: str
+class dumpstagram.models.messages.SentMessage()
+field dumpstagram.models.messages.SentMessage.id: str
+field dumpstagram.models.messages.SentMessage.offline_threading_id: str
+field dumpstagram.models.messages.SentMessage.sent_at: datetime
+field dumpstagram.models.messages.SentMessage.thread_fbid: str
 module dumpstagram.models.notes
 class dumpstagram.models.notes.Note()
 field dumpstagram.models.notes.Note.audience: NoteAudience

@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-__all__ = ["Message", "MessageSender", "Reaction"]
+__all__ = ["Message", "MessageSender", "Reaction", "SentMessage"]
 
 
 @dataclass(frozen=True)
@@ -60,6 +60,12 @@ class Message:
    ``text`` is ``None`` when the upstream sends no body, which is a different state from an
    empty string, and both are different from the field being absent. Only ``content_type``
    ``TEXT`` has been observed, so ``text`` for any other content type is unmeasured.
+
+   ``offline_threading_id`` is the identifier the sending client generated for the message,
+   which the thread read echoes back. It is how a message sent with
+   :meth:`~dumpstagram.aio.AsyncClient.send_message` is found again exactly, by
+   :attr:`SentMessage.offline_threading_id`. Every live node measured carries it. ``None``
+   when a node carries it as null or not at all.
    """
 
    id: str
@@ -73,3 +79,21 @@ class Message:
    is_forwarded: bool = False
    is_pinned: bool = False
    is_ai_generated: bool = False
+   offline_threading_id: str | None = None
+
+
+@dataclass(frozen=True)
+class SentMessage:
+   """What the upstream answers about a text message just sent.
+
+   The send's answer carries the message's ``id`` and its ``sent_at`` and nothing else, so this
+   is not a :class:`Message`: the sender's ``fbid`` is not in the answer or in the session, and
+   a model that filled it in would be guessing. Reading the thread gives the full
+   :class:`Message`, and ``offline_threading_id`` is the client-generated identifier the send
+   carried, which the read echoes on the same message.
+   """
+
+   id: str
+   thread_fbid: str
+   sent_at: datetime
+   offline_threading_id: str

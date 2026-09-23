@@ -185,6 +185,34 @@ companion a click sends, and the header's own artifact if it differs. All six en
 follows and three unfollows, carried those omissions, and every one applied, confirmed by a
 profile read.
 
+**A direct text send and an unsend are each sent alone, a recorded departure.** Added
+2026-09-23 with Step 18. `DIRECT_TEXT_SEND` (`26911679871773184`, `IGDirectTextSendMutation`)
+answers on `API_GRAPHQL_URL` with fourteen variables in the order the browser's composer sent
+them: `ig_thread_igid` (the `thread_fbid`, not the `thread_key` and not the 39-digit
+`thread_id`), `offline_threading_id`, `recipient_igids` null, `replied_to_client_context` null,
+`replied_to_item_id` null, `reply_to_message_id` null, `sampled` null, `text` as
+`{"sensitive_string_value": <text>}`, `mentions` `[]`, `mentioned_user_ids` `[]`, `commands` null,
+`forwarded_from_thread_id` null, `is_forwarded_from_own_message` null and `send_attribution`
+`"igd_web_chat_tab:in_thread"`. None is `input`, so the Relay network layer adds nothing.
+`offline_threading_id` is the millisecond clock shifted left 22 bits with 22 random bits below it,
+cut to 63 bits, in decimal, read off `IGDOfflineThreadingID` and matched by the browser's own
+send, whose id decodes to the clock its mark read named. The answer is
+`data.xig_direct_text_send_with_slide_messaging_response {message_id, timestamp_ms, id}`, `id`
+equal to `message_id`. `DIRECT_UNSEND` (`26948700068153789`,
+`IGDMessageUnsendDialogOffMsysMutation`) sends `{"message_id", "send_data": {"thread_id"}}` with
+the 39-digit `thread_id` and answers `data.direct_unsend_message` true. The engine reads that id
+from `IGDThreadDetailQuery`'s `as_ig_direct_thread.thread_id` before each unsend. Each finding had
+one browser observation and one engine send before either `doc_id` entered `documents.py`, and a
+third from the acceptance run. Departures until a browser burst is modelled: the referer is the
+thread page, where the observed browser send came from the chat tab a profile page opens and so
+carried the profile page, which the engine cannot name from a thread id; the browser's
+`qpl_active_flow_ids` and `fb_api_analytics_tags` form fields, which name its performance logging
+flows, are not sent; and the requests around a send in the browser, `useIGDMarkThreadAsReadMutation`
+keyed on the `thread_id` with `mid.$` plus the `offline_threading_id`, its validation mutation and
+`IGDSlideAsyncFetchAndInsertIGDViewerThreadQuery`, and around an unsend the menu's
+`IGDUserMessageRowMoreActionsMenuOffMsysQuery`, are not sent. All four engine writes, two sends
+and two unsends, carried those omissions, and every one applied, confirmed by a thread read.
+
 **The inbox listing is private and sent alone.** Added 2026-09-23 with Step 20. `DIRECT_INBOX`
 (`28794932076791671`, `PolarisDirectInboxQuery`) answers on `API_GRAPHQL_URL` with the inbox as
 referer and no path headers. Its variables are `device_id_for_iris_subscription` and four

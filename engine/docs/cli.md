@@ -48,6 +48,8 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `follow USER_ID`, `unfollow USER_ID` | 1 write, plus 1 read if the session has no token yet | Follows or unfollows one account. Writes to the account, and the account is notified of a follow |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
+| `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
+| `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
@@ -106,6 +108,8 @@ other two answer with nothing rather than with an error.
 
 Pagination stops on the page's own `has_next_page` and never on how many messages arrived.
 `more_available` in the JSON form is that boolean, so a caller can continue without guessing.
+Each message in the JSON form carries `offline_threading_id`, the identifier the sending client
+generated, which is how `send-message` output is matched to the message it created.
 
 Tokens harvested during a read are written back to the session file by default. Without it
 every invocation pays a bootstrap request the previous one already paid for.
@@ -158,6 +162,33 @@ the answer then reports `following` false. Read `dumpsta profile --by-id USER_ID
 `following` and `outgoing_request`, which is also what to do on exit code 11 before sending
 again. An unfollow the upstream answers as still following ends with exit code 6,
 `UpstreamRejected`, code `following_did_not_end`.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
+### `send-message` and `unsend-message`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta send-message FBID TEXT
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unsend-message FBID MESSAGE_ID
+```
+
+Both write to the account. `send-message` sends TEXT into the thread whose `thread_fbid` is FBID,
+the value `thread` takes, and the thread's other people are notified and may read it at once. The
+thread must exist. The thread and the text are explicit arguments with no default and no prompt,
+and an FBID that is not digits is refused by the parser with exit code 2 before a client is
+opened. The JSON form is `command`, `thread_fbid` and `message`, which carries the new message's
+`id`, `thread_fbid`, `sent_at` and `offline_threading_id`. `dumpsta thread FBID --json` prints the
+same `offline_threading_id` on the message it created. A send is never sent again. On exit code
+11 read `dumpsta thread FBID` before deciding to send again, because a second send is a second
+message.
+
+`unsend-message` unsends the viewer's own message MESSAGE_ID, the `mid.` string `send-message`
+and `thread` print, and anything else is refused by the parser with exit code 2. It opens the
+thread first, because the unsend names the thread by an identifier only the thread open carries,
+so it spends one read and one write. The JSON form is `command`, `thread_fbid`, `message_id` and
+`unsent` true. An unsend the upstream answers as not applied ends with exit code 6,
+`UpstreamRejected`, code `message_not_unsent`. The recipient may already have read the message.
+Read `dumpsta thread FBID` afterwards: an unsent message is no longer listed.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
@@ -335,7 +366,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `note set` and `note delete` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set` and `note delete` are the commands that can end with it |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.
@@ -365,7 +396,8 @@ then green, and `scripts/verify_notes_gates.py` does the same for the `note list
 for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 `scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`, and
 `scripts/verify_follows_gates.py` for the three `follow`, `unfollow` and profile JSON gates in
-`tests/test_follows.py`, and
+`tests/test_follows.py`, and `scripts/verify_direct_send_gates.py` for the five `send-message`
+and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then

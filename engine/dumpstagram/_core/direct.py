@@ -15,11 +15,17 @@ since a message already seen, goes through the pagination query either way.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import parse_thread_detail, parse_thread_message_page
+from dumpstagram._private.web.parse import (
+   parse_thread_detail,
+   parse_thread_id,
+   parse_thread_message_page,
+)
 from dumpstagram._private.web.requests import (
    build_thread_detail_request,
    build_thread_older_page_request,
@@ -28,7 +34,7 @@ from dumpstagram.behavior import ThreadFirstPage
 from dumpstagram.models import Message, Page
 from dumpstagram.session import Session
 
-__all__ = ["read_thread_messages"]
+__all__ = ["find_sent_message", "read_thread_id", "read_thread_messages"]
 
 
 async def read_thread_messages(
@@ -78,3 +84,45 @@ async def read_thread_messages(
       return parse_thread_message_page(classify(response))
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_thread_id(
+   sender: PacedSender,
+   session: Session,
+   thread_fbid: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> str:
+   """The thread's 39-digit ``thread_id``, which only the thread open carries and only the
+   unsend takes. One live request, the thread open a browser sends, whose page is not returned.
+
+   It is a read, so it recovers a stale token as every read does.
+   """
+
+   async def attempt() -> str:
+      needs_a_token = not session.fb_dtsg
+
+      if needs_a_token:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_thread_detail_request(session, thread_fbid, user_agent=user_agent)
+
+      return parse_thread_id(classify(await sender.send(request)))
+
+   return await with_token_recovery(attempt, sender=sender, session=session)
+
+
+def find_sent_message(messages: Iterable[Message], offline_threading_id: str) -> Message | None:
+   """The message a send created, found by the ``offline_threading_id`` the send carried.
+
+   The thread read echoes the identifier the sending client generated, so this is exact where
+   matching on text and time is not: two sends of the same text are two different ids.
+   """
+
+   for message in messages:
+      is_the_sent_message = message.offline_threading_id == offline_threading_id
+
+      if is_the_sent_message:
+         return message
+
+   return None

@@ -256,6 +256,33 @@ those three is now read as the field's own default. What a browser sends around 
 unrecorded under ruling 23, so each write is sent alone, a departure recorded in
 [web-request-contract.md](web-request-contract.md).
 
+`send_message(thread_fbid, text) -> SentMessage` and `unsend_message(thread_fbid, message_id) ->
+None` have no setting either. Added 2026-09-23 as Step 18. `send_message` sends
+`IGDirectTextSendMutation` once through `send_write` with the fourteen variables the browser's
+composer sent, keyed on the thread's `thread_fbid` as `ig_thread_igid`, the value
+`thread_messages` takes, and carrying an `offline_threading_id` the client generates fresh per
+call exactly as the browser does. It returns `SentMessage`, a new model with `id`,
+`thread_fbid`, `sent_at` and `offline_threading_id`, rather than the `Message` the plan proposed,
+because the answer carries the message id and its timestamp and nothing else: the sender's
+`fbid` on a thread read is the viewer's Facebook-side messaging id, which is neither `ds_user_id`
+nor `Session.actor_id`, so a `Message` built from the answer would have to guess it. `Message`
+gained `offline_threading_id: str | None = None`, which the thread read echoes, so the message a
+returned send created is found exactly. After `OutcomeUnknown` the identifier is not known to the
+caller, and the docstring names the newest page of `thread_messages`, matched on the viewer's
+own message with the same text after the attempt began, ambiguous when the same text went twice.
+Empty text, and a thread id that is not digits or is the 39-digit `thread_id`, raise
+`ValueError` before anything is sent. A send into a thread that does not exist takes
+`recipient_igids` instead and is not built. `unsend_message` sends
+`IGDMessageUnsendDialogOffMsysMutation`, which names the thread by its 39-digit `thread_id`, an
+identifier no message carries. So it opens the thread first with `IGDThreadDetailQuery`, a read
+that may recover a stale token, and then sends the write once: two requests. An answer of false
+raises `UpstreamRejected` with code `message_not_unsent`, and a message id that is not a `mid.`
+string raises `ValueError` before anything is sent. The unsent message was absent from the next
+thread read, with no placeholder. All of it is additive: four method lines, two aliases, one class
+of four fields and one `Message` field line, per 17.7 in [build-plan.md](build-plan.md). What a
+browser sends around a send, a mark read, its validation and a thread refetch, is a recorded
+departure in [web-request-contract.md](web-request-contract.md).
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the two routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity

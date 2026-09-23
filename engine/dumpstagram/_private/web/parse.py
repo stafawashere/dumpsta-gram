@@ -54,6 +54,7 @@ from dumpstagram.models import (
    PostDetail,
    Profile,
    Reaction,
+   SentMessage,
 )
 
 __all__ = [
@@ -62,6 +63,8 @@ __all__ = [
    "CREATE_NOTE_ROOT",
    "DELETE_COMMENT_ROOT",
    "DELETE_NOTE_ROOT",
+   "DIRECT_TEXT_SEND_ROOT",
+   "DIRECT_UNSEND_ROOT",
    "FEED_PAGE_PATH",
    "FOLLOW_ANSWER_ROOT",
    "INBOX_LISTING_PATH",
@@ -70,6 +73,7 @@ __all__ = [
    "POST_PATH",
    "PROFILE_PATH",
    "THREAD_DETAIL_PATH",
+   "THREAD_DETAIL_THREAD_PATH",
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
    "UNFOLLOW_ANSWER_ROOT",
@@ -81,6 +85,8 @@ __all__ = [
    "parse_comment_page",
    "parse_created_comment",
    "parse_created_note",
+   "parse_direct_text_send_answer",
+   "parse_direct_unsend_answer",
    "parse_feed_page",
    "parse_follow_answer",
    "parse_inbox_listing",
@@ -91,6 +97,7 @@ __all__ = [
    "parse_post_detail",
    "parse_profile",
    "parse_thread_detail",
+   "parse_thread_id",
    "parse_thread_message_page",
    "parse_user_id",
    "read_note_delete_answer",
@@ -160,6 +167,14 @@ CREATE_NOTE_ROOT = "xdt_create_inbox_tray_item"
 
 DELETE_NOTE_ROOT = "xdt_delete_inbox_tray_item"
 """The root field a note delete answers under, null on every observed success."""
+
+DIRECT_TEXT_SEND_ROOT = "xig_direct_text_send_with_slide_messaging_response"
+"""The root field a text send answers under, with ``message_id``, ``id`` and ``timestamp_ms``."""
+
+DIRECT_UNSEND_ROOT = "direct_unsend_message"
+"""The root field an unsend answers under, a boolean, true on both observed unsends."""
+
+THREAD_DETAIL_THREAD_PATH = ("data", "get_slide_thread_nullable", "as_ig_direct_thread")
 
 TRAY_PAGINATION_KEYS = frozenset(
    {"page_info", "cursor", "end_cursor", "has_next_page", "next_max_id", "max_id"}
@@ -346,7 +361,21 @@ def parse_message(node: Any, path: str) -> Message:
       is_forwarded=_required_flag(node, "igd_is_forwarded", path),
       is_pinned=_required_flag(node, "is_pinned", path),
       is_ai_generated=_required_flag(node, "is_ai_generated", path),
+      offline_threading_id=_offline_threading_id(node, path),
    )
+
+
+def _offline_threading_id(node: dict[str, Any], path: str) -> str | None:
+   """The client identifier the sending client generated, which every live node carried.
+
+   Absent reads as ``None`` rather than raising, because the pages recorded before this field
+   was mapped do not carry it. Present, it must be a string or null.
+   """
+
+   if "offline_threading_id" not in node:
+      return None
+
+   return _optional_string(node, "offline_threading_id", path)
 
 
 def parse_thread_message_page(payload: Any) -> Page[Message]:
@@ -1385,3 +1414,55 @@ def parse_follow_answer(payload: Any, root_field: str, user_id: str) -> bool:
    status = _object_at(payload, ("data", root_field, "friendship_status"))
 
    return _required_flag(status, "following", f"{root_path}.friendship_status")
+
+
+def parse_direct_text_send_answer(payload: Any, thread_fbid: str, threading_id: str) -> SentMessage:
+   """What a text send answered, under ``data.xig_direct_text_send_with_slide_messaging_response``.
+
+   Both observed answers carried ``message_id`` and ``id`` holding the same ``mid.$`` string and
+   ``timestamp_ms`` as a thirteen-digit string, 310 bytes, no ``errors`` array. An ``id`` that
+   differs from ``message_id`` would mean two identifiers where one was measured, so it raises.
+   """
+
+   root_path = f"data.{DIRECT_TEXT_SEND_ROOT}"
+   root = _object_at(payload, ("data", DIRECT_TEXT_SEND_ROOT))
+
+   message_id = _required_string(root, "message_id", root_path)
+   echoed_id = _required_string(root, "id", root_path)
+   ids_disagree = echoed_id != message_id
+
+   if ids_disagree:
+      raise SchemaChanged(f"{root_path}.id differs from its message_id", path=f"{root_path}.id")
+
+   return SentMessage(
+      id=message_id,
+      thread_fbid=thread_fbid,
+      sent_at=_sent_at(root, root_path),
+      offline_threading_id=threading_id,
+   )
+
+
+def parse_direct_unsend_answer(payload: Any) -> bool:
+   """Whether an unsend applied, from ``data.direct_unsend_message``, true on both observed."""
+
+   data = _object_at(payload, ("data",))
+   answer = _required(data, DIRECT_UNSEND_ROOT, "data")
+
+   if not isinstance(answer, bool):
+      raise SchemaChanged(
+         f"data.{DIRECT_UNSEND_ROOT} is not a boolean", path=f"data.{DIRECT_UNSEND_ROOT}"
+      )
+
+   return answer
+
+
+def parse_thread_id(payload: Any) -> str:
+   """The thread's 39-digit ``thread_id`` from an ``IGDThreadDetailQuery`` payload.
+
+   The unsend takes this id and none other, and the message nodes do not carry it. The thread
+   open does, beside ``thread_fbid`` and ``thread_key``.
+   """
+
+   thread = _object_at(payload, THREAD_DETAIL_THREAD_PATH)
+
+   return _required_string(thread, "thread_id", ".".join(THREAD_DETAIL_THREAD_PATH))

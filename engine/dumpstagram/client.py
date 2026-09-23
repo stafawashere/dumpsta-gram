@@ -35,6 +35,7 @@ from dumpstagram.models import (
    Page,
    PostDetail,
    Profile,
+   SentMessage,
 )
 from dumpstagram.session import Session
 
@@ -292,6 +293,32 @@ class SyncClient:
       return self._loop.run(
          self._impl.comments(post_pk, after=after),
          operation="SyncClient.comments",
+      )
+
+   def send_message(self, thread_fbid: str, text: str) -> SentMessage:
+      """Send a text message into a direct thread. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.send_message`, run on the shared
+      loop thread. One write, sent once, never retried. After
+      :class:`~dumpstagram.errors.OutcomeUnknown`, read :meth:`thread_messages` before sending
+      again, because a second send is a second message the recipient sees.
+      """
+
+      return self._loop.run(
+         self._impl.send_message(thread_fbid, text),
+         operation="SyncClient.send_message",
+      )
+
+   def unsend_message(self, thread_fbid: str, message_id: str) -> None:
+      """Unsend the viewer's own message. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.unsend_message`, run on the shared
+      loop thread. One thread open, then one write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.unsend_message(thread_fbid, message_id),
+         operation="SyncClient.unsend_message",
       )
 
    def comment(self, post_pk: str, text: str) -> Comment:

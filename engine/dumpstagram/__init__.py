@@ -55,6 +55,7 @@ from dumpstagram.models import (
    PostDetail,
    Profile,
    Reaction,
+   SentMessage,
 )
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
 
@@ -99,6 +100,7 @@ __all__ = [
    "ProxyConfig",
    "Reaction",
    "SchemaChanged",
+   "SentMessage",
    "Session",
    "Spacing",
    "SpinParameters",

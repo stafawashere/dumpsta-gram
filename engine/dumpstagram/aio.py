@@ -32,6 +32,7 @@ from dumpstagram._core.realtime.poller import inbox_poller
 from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_events
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._core.writes.comments import create_comment, delete_comment
+from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._core.writes.follows import follow_user, unfollow_user
 from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._core.writes.notes import delete_note, set_note
@@ -50,6 +51,7 @@ from dumpstagram.models import (
    Page,
    PostDetail,
    Profile,
+   SentMessage,
 )
 from dumpstagram.session import Session
 
@@ -503,6 +505,76 @@ class AsyncClient:
             self._sender,
             self._session,
             user_id,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def send_message(self, thread_fbid: str, text: str) -> SentMessage:
+      """Send ``text`` into the direct thread whose ``thread_fbid`` is ``thread_fbid``. One write,
+      sent once, never retried.
+
+      ``thread_fbid`` is the value :meth:`thread_messages` takes. The thread must exist: a send
+      that would start a new thread takes a different shape, which is not built. Empty text
+      raises :class:`ValueError` before anything is sent.
+
+      Returns a :class:`~dumpstagram.models.SentMessage` with the new message's ``id``, which is
+      what :meth:`unsend_message` takes, its ``sent_at``, and the ``offline_threading_id`` this
+      client generated for it. The answer carries nothing else, so the full
+      :class:`~dumpstagram.models.Message` comes from reading the thread.
+
+      A message appends, so it is never sent again, by this library or by any retry path. The
+      recipient is notified and may read it at once. If the connection fails while it is in
+      flight this raises :class:`~dumpstagram.errors.OutcomeUnknown`, and sending again may
+      deliver it twice. To reconcile, read the thread's newest page with
+      :meth:`thread_messages` for the viewer's own message with this text sent since the
+      attempt began before deciding anything. That match is ambiguous when the same text went
+      twice. A send that returned is found exactly instead: the read echoes its
+      ``offline_threading_id`` on :attr:`Message.offline_threading_id
+      <dumpstagram.models.Message.offline_threading_id>`.
+
+      The write waits out the behavior's write spacing and counts against its write budget. A
+      browser marks the thread read and refetches it around a send. This sends the message
+      alone, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         send_message(
+            self._sender,
+            self._session,
+            thread_fbid,
+            text,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def unsend_message(self, thread_fbid: str, message_id: str) -> None:
+      """Unsend the viewer's own message ``message_id`` from the thread ``thread_fbid``. One
+      write, sent once, never retried.
+
+      ``message_id`` is :attr:`SentMessage.id <dumpstagram.models.SentMessage.id>` or
+      :attr:`Message.id <dumpstagram.models.Message.id>`, a ``mid.`` string, and anything else
+      raises :class:`ValueError` before anything is sent.
+
+      The unsend names the thread by a third identifier that no message carries and only the
+      thread open does, so the thread is opened first, as a browser has it open when its menu
+      unsends. Two requests: the open, a read, and the unsend, a write.
+
+      The recipient may already have read the message. An answer saying the unsend did not apply
+      raises :class:`~dumpstagram.errors.UpstreamRejected` with code ``message_not_unsent``. After
+      :class:`~dumpstagram.errors.OutcomeUnknown`, read the thread's newest page: an unsent
+      message is no longer listed, with no placeholder in its place.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         unsend_message(
+            self._sender,
+            self._session,
+            thread_fbid,
+            message_id,
             user_agent=self._user_agent,
          )
       )

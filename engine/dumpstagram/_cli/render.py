@@ -29,6 +29,7 @@ from dumpstagram.models import (
    Post,
    PostDetail,
    Profile,
+   SentMessage,
 )
 from dumpstagram.session import Session
 
@@ -44,6 +45,7 @@ __all__ = [
    "describe_post",
    "describe_post_detail",
    "describe_profile",
+   "describe_sent_message",
    "render_comment_page",
    "render_event",
    "render_feed",
@@ -94,6 +96,19 @@ def describe_message(message: Message) -> dict[str, Any]:
       "is_forwarded": message.is_forwarded,
       "is_pinned": message.is_pinned,
       "is_ai_generated": message.is_ai_generated,
+      "offline_threading_id": message.offline_threading_id,
+   }
+
+
+def describe_sent_message(sent: SentMessage) -> dict[str, Any]:
+   """The JSON form of what a send answered. ``offline_threading_id`` is the one the send
+   carried, and ``dumpsta thread`` prints the same value on the message it created."""
+
+   return {
+      "id": sent.id,
+      "thread_fbid": sent.thread_fbid,
+      "sent_at": sent.sent_at.isoformat(),
+      "offline_threading_id": sent.offline_threading_id,
    }
 
 

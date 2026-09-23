@@ -8,7 +8,7 @@ fields, because an extras bag reopens the boundary this package exists to close.
 from dumpstagram.models.comments import Comment, CommentAuthor
 from dumpstagram.models.events import Event, EventsDropped, ListenerStopped, NewMessage
 from dumpstagram.models.feed import FeedItem, FeedItemKind, MediaImage, Post, PostAuthor
-from dumpstagram.models.messages import Message, MessageSender, Reaction
+from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import PostDetail
@@ -36,4 +36,5 @@ __all__ = [
    "PostDetail",
    "Profile",
    "Reaction",
+   "SentMessage",
 ]

@@ -41,6 +41,7 @@ from dumpstagram._cli.render import (
    describe_pages,
    describe_post_detail,
    describe_profile,
+   describe_sent_message,
    describe_session,
    render_comment_page,
    render_event,
@@ -69,6 +70,7 @@ from dumpstagram.models import (
    Page,
    PostDetail,
    Profile,
+   SentMessage,
 )
 from dumpstagram.session import Session
 
@@ -127,6 +129,10 @@ class Client(Protocol):
    def comment(self, post_pk: str, text: str) -> Comment: ...
 
    def delete_comment(self, post_pk: str, comment_id: str) -> None: ...
+
+   def send_message(self, thread_fbid: str, text: str) -> SentMessage: ...
+
+   def unsend_message(self, thread_fbid: str, message_id: str) -> None: ...
 
    def close(self) -> None: ...
 
@@ -259,6 +265,26 @@ def note_id(value: str) -> str:
 
    if not is_all_digits:
       raise argparse.ArgumentTypeError("a note is named by its tray item id, digits only")
+
+   return value
+
+
+def thread_fbid(value: str) -> str:
+   is_all_digits = value.isascii() and value.isdigit()
+
+   if not is_all_digits:
+      raise argparse.ArgumentTypeError(
+         "a thread is named by its thread_fbid, digits only, the FBID dumpsta thread takes"
+      )
+
+   return value
+
+
+def message_id(value: str) -> str:
+   is_a_mid = value.startswith("mid.")
+
+   if not is_a_mid:
+      raise argparse.ArgumentTypeError("a message is named by its id, a mid. string")
 
    return value
 
@@ -492,6 +518,38 @@ def build_parser() -> argparse.ArgumentParser:
          "user_id", metavar="USER_ID", type=account_id, help="the account's numeric id"
       )
       add_request_options(write)
+
+   send = commands.add_parser(
+      "send-message",
+      help="send one text message into a direct thread, one write, sent once and never retried",
+      description=(
+         "Writes to the account: sends TEXT into the thread whose thread_fbid is FBID. The "
+         "other people in the thread are notified and may read it at once. There is no prompt "
+         "and no default thread. The output carries the message id, which unsend-message "
+         "takes, and its offline_threading_id, which dumpsta thread FBID prints on the same "
+         "message. If the outcome is unknown, read dumpsta thread FBID before sending again, "
+         "because a second send is a second message."
+      ),
+   )
+   send.add_argument("thread_fbid", metavar="FBID", type=thread_fbid, help="the thread's fbid")
+   send.add_argument("text", metavar="TEXT", help="the message, as it should appear")
+   add_request_options(send)
+
+   unsend = commands.add_parser(
+      "unsend-message",
+      help="unsend one of the viewer's messages, one write, sent once and never retried",
+      description=(
+         "Writes to the account: unsends the viewer's message MESSAGE_ID from the thread whose "
+         "thread_fbid is FBID. The thread is opened first to learn the identifier the unsend "
+         "takes, two requests in all. The recipient may already have read the message. Read "
+         "dumpsta thread FBID afterwards: an unsent message is no longer listed."
+      ),
+   )
+   unsend.add_argument("thread_fbid", metavar="FBID", type=thread_fbid, help="the thread's fbid")
+   unsend.add_argument(
+      "message_id", metavar="MESSAGE_ID", type=message_id, help="the message's id, a mid. string"
+   )
+   add_request_options(unsend)
 
    comments = commands.add_parser(
       "comments",
@@ -984,6 +1042,48 @@ def run_comment_command(
    return EXIT_OK
 
 
+def run_direct_write(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_write = client.session.fb_dtsg
+
+   try:
+      if arguments.command == "send-message":
+         sent = client.send_message(arguments.thread_fbid, arguments.text)
+         payload: dict[str, Any] = {
+            "command": "send-message",
+            "thread_fbid": arguments.thread_fbid,
+            "message": describe_sent_message(sent),
+         }
+         text = f"sent {sent.id} into {arguments.thread_fbid}"
+      else:
+         client.unsend_message(arguments.thread_fbid, arguments.message_id)
+         payload = {
+            "command": "unsend-message",
+            "thread_fbid": arguments.thread_fbid,
+            "message_id": arguments.message_id,
+            "unsent": True,
+         }
+         text = f"unsent {arguments.message_id} from {arguments.thread_fbid}"
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_write
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   emit(payload, text, as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
 def listening_behavior(arguments: argparse.Namespace) -> Behavior:
    if arguments.interval is None:
       return PARITY
@@ -1222,6 +1322,9 @@ def main(
 
       if arguments.command in ("comments", "comment", "delete-comment"):
          return run_comment_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in ("send-message", "unsend-message"):
+         return run_direct_write(arguments, chosen_environment, out, client_factory)
 
       if arguments.command == "events":
          return run_events(

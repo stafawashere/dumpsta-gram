@@ -234,8 +234,12 @@ FACT that the capability exists, inherited. The message paging query accepts a
 noted it as directly useful given its reference thread grew by 275 messages in under a day.
 
 For a polling listener this is the difference between re-reading history and fetching only what
-is new. The Step 23 poller does not use it yet, because it has never been sent with a value and
-its filtering is unobserved. It reads the newest page and diffs ids instead, which costs the same
+is new. The Step 23 poller does not use it yet, because its filtering is unobserved. Step 18 sent it with
+a value once, on 2026-09-23: after a send into a thread whose only other message had been unsent,
+with that unsent message's id as the base, it returned exactly the new message, `has_next_page`
+false, no error. FACT for that one read. The thread listed nothing else, so the answer cannot
+tell a filter from the newest page, and it only shows that an unsent message's id is accepted as
+a base. It reads the newest page and diffs ids instead, which costs the same
 one request whenever fewer than twenty messages arrived between two polls, and pages back only
 when more did. Switching to the top-up is a change inside `poller.py` once Step 21 line 5 or
 Step 18 has observed it.
