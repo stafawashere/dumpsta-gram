@@ -32,4 +32,5 @@ Logs live at `engine/logs/` rather than under `engine/tests/`, moved 2026-09-20 
 | `thread-oracle-build-<stamp>.json` | One run of `../scripts/build_thread_oracle.py`. Counts, the capture-versus-ghost diff and the leak scan with its control. |
 | `mutation-parity-<stamp>.json`, `mutation-oracle-<stamp>.json` | One run of the matching `../scripts/verify_*_gates.py`. |
 | `home-load-cookie-sync-<stamp>.json` | One run of `../probes/home_load_cookie_sync.py`. Per request host, name, status, lengths, classification, offsets and Set-Cookie names, and `fr` as presence and length only. |
+| `phase3-cli-acceptance-<stamp>.json` | One run of `../probes/phase3_cli_acceptance.py`. Per `dumpsta` command its exit code, error class, requests by host, friendly name and status, and timings, and per capability the ids, counts and booleans its reads confirmed. `-failed` and `-refused` variants for the other endings. |
 | `reload-and-call-<stamp>.json` | One run of `../probes/reload_and_call.py`. The Phase 1 stop condition, including whether the stored tokens were accepted and how old they were. |
