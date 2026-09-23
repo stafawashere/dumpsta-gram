@@ -4,6 +4,8 @@ alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFaile
 alias dumpstagram.Behavior -> dumpstagram.behavior.Behavior
 alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
+alias dumpstagram.Comment -> dumpstagram.models.comments.Comment
+alias dumpstagram.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
 alias dumpstagram.EXPORT -> dumpstagram.behavior.EXPORT
 alias dumpstagram.FAST -> dumpstagram.behavior.FAST
@@ -46,6 +48,9 @@ def dumpstagram.aio.AsyncClient.__init__(self, session: Session, *, user_agent: 
 def dumpstagram.aio.AsyncClient.aclose(self) -> None
 property dumpstagram.aio.AsyncClient.behavior -> Behavior
 property dumpstagram.aio.AsyncClient.closed -> bool
+def dumpstagram.aio.AsyncClient.comment(self, post_pk: str, text: str) -> Comment
+def dumpstagram.aio.AsyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
+def dumpstagram.aio.AsyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
 def dumpstagram.aio.AsyncClient.like(self, post_pk: str) -> None
@@ -92,6 +97,9 @@ def dumpstagram.client.SyncClient.__init__(self, session: Session, *, user_agent
 property dumpstagram.client.SyncClient.behavior -> Behavior
 def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
+def dumpstagram.client.SyncClient.comment(self, post_pk: str, text: str) -> Comment
+def dumpstagram.client.SyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
+def dumpstagram.client.SyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
 def dumpstagram.client.SyncClient.like(self, post_pk: str) -> None
@@ -123,6 +131,8 @@ class dumpstagram.errors.UpstreamRejected(dumpstagram.errors.DumpstagramError)
 def dumpstagram.errors.UpstreamRejected.__init__(self, message: str = '', *, code: str | None = None) -> None
 module dumpstagram.models
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
+alias dumpstagram.models.Comment -> dumpstagram.models.comments.Comment
+alias dumpstagram.models.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
@@ -136,6 +146,21 @@ alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
+module dumpstagram.models.comments
+class dumpstagram.models.comments.Comment()
+field dumpstagram.models.comments.Comment.author: CommentAuthor
+field dumpstagram.models.comments.Comment.created_at: datetime
+field dumpstagram.models.comments.Comment.has_liked: bool | None = None
+field dumpstagram.models.comments.Comment.id: str
+field dumpstagram.models.comments.Comment.like_count: int | None = None
+field dumpstagram.models.comments.Comment.parent_comment_id: str | None = None
+field dumpstagram.models.comments.Comment.reply_count: int | None = None
+field dumpstagram.models.comments.Comment.text: str
+class dumpstagram.models.comments.CommentAuthor()
+field dumpstagram.models.comments.CommentAuthor.id: str
+field dumpstagram.models.comments.CommentAuthor.is_verified: bool
+field dumpstagram.models.comments.CommentAuthor.profile_pic_url: str
+field dumpstagram.models.comments.CommentAuthor.username: str
 module dumpstagram.models.feed
 class dumpstagram.models.feed.FeedItem()
 field dumpstagram.models.feed.FeedItem.kind: FeedItemKind

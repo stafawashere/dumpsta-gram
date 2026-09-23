@@ -22,7 +22,7 @@ from types import TracebackType
 from dumpstagram._core.loop_thread import _LoopThread
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior
-from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
+from dumpstagram.models import Comment, FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -217,6 +217,44 @@ class SyncClient:
       return self._loop.run(
          self._impl.unlike(post_pk),
          operation="SyncClient.unlike",
+      )
+
+   def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]:
+      """Read one page of a post's comments. Blocks until it has it.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.comments`, run on the shared loop
+      thread. One live request.
+      """
+
+      return self._loop.run(
+         self._impl.comments(post_pk, after=after),
+         operation="SyncClient.comments",
+      )
+
+   def comment(self, post_pk: str, text: str) -> Comment:
+      """Comment on a post. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.comment`, run on the shared loop
+      thread. One write, sent once, never retried. After
+      :class:`~dumpstagram.errors.OutcomeUnknown`, read :meth:`comments` before sending again,
+      because a second send is a second comment.
+      """
+
+      return self._loop.run(
+         self._impl.comment(post_pk, text),
+         operation="SyncClient.comment",
+      )
+
+   def delete_comment(self, post_pk: str, comment_id: str) -> None:
+      """Delete one comment on a post. Blocks until the write is answered.
+
+      The same call as :meth:`~dumpstagram.aio.AsyncClient.delete_comment`, run on the shared
+      loop thread. One write, sent once, never retried.
+      """
+
+      return self._loop.run(
+         self._impl.delete_comment(post_pk, comment_id),
+         operation="SyncClient.delete_comment",
       )
 
    def close(self) -> None:

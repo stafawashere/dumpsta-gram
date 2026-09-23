@@ -141,6 +141,29 @@ item; and the post page's own document and companions. All six sends succeeded w
 omissions. The discovery sends carried the post page as referer and the acceptance sends the
 home page, and both answered the same, which is weak evidence the referer is not checked here.
 
+**A comment page read, a comment and a comment delete are each sent alone, a recorded
+departure.** Added 2026-09-23 with Step 16. `COMMENT_PAGE` (`28169471862682868`,
+`PolarisPostCommentsPaginationQuery`), `CREATE_COMMENT` (`27261905640092552`,
+`PolarisPostCommentInputRevampedMutation`) and `DELETE_COMMENT` (`27034318419564986`,
+`usePolarisPostDeleteCommentMutation`) all answer on `API_GRAPHQL_URL`, every one keyed on the
+media `pk`. The page read sends `after`, `before` null, `first` 10, `last` null, `media_id`,
+`sort_order` "popular" and `PolarisIsLoggedIn` true. The create sends `{"connections": [],
+"data": {"comment_text", "media_id"}}`: its variable is `data`, so no `client_mutation_id`, and
+`connections` is a handle into the browser's Relay store that the engine does not have, sent
+empty and accepted on three sends. The delete sends `{"input": {"client_mutation_id",
+"comment_id", "media_id"}}`, `client_mutation_id` from the account pacer's write count as for a
+like. The delete's input field names are not in its compiled artifact and the bundle holding the
+call site was never loaded, so they were settled by the upstream's own coercion on 2026-09-23: an
+input of only `client_mutation_id` was refused with code 1675012 `noncoercible_variable_value`,
+and `comment_id` "0" with `media_id` was accepted and answered a null root, nothing deleted,
+before any real write was sent. Departures by omission until a browser capture says otherwise:
+the post page's own document and companions, the post page's first comment page query
+`PolarisPostCommentsContainerQuery`, which the engine replaces with the pagination query for every
+page, the browser's page size, which is unobserved and makes `first` 10 an ASSUMPTION, the
+Relay store handle in `connections`, the delete's `actor_id`, and the post page as referer, since
+each capability is handed a `pk` and not the shortcode the page address needs. The referer is the
+home page on every send. All fourteen engine sends carried those omissions, seven reads, three creates and four deletes, and every real write applied.
+
 The note create and delete are not in the registry. Their `doc_id` values,
 `28592645767037889` and `28419182984337833`, were current in the compiled artifacts on
 2026-09-23, but each finding has one live verification and the provenance gate asks for two,

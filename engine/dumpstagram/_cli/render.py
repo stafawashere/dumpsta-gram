@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from dumpstagram.models import (
+   Comment,
    FeedItem,
    FeedItemKind,
    Message,
@@ -28,6 +29,8 @@ from dumpstagram.models import (
 from dumpstagram.session import Session
 
 __all__ = [
+   "describe_comment",
+   "describe_comment_page",
    "describe_feed_item",
    "describe_feed_pages",
    "describe_message",
@@ -36,6 +39,7 @@ __all__ = [
    "describe_post",
    "describe_post_detail",
    "describe_profile",
+   "render_comment_page",
    "render_feed",
    "describe_session",
    "render_messages",
@@ -398,3 +402,54 @@ def render_post_detail(post: PostDetail) -> str:
          caption,
       ]
    ).rstrip("\n")
+
+
+def describe_comment(comment: Comment) -> dict[str, Any]:
+   """The JSON form of one comment. Every key here is part of the CLI's contract.
+
+   The last four keys are null on a comment ``comment`` just created, because the answer to a
+   new comment does not carry them.
+   """
+
+   return {
+      "id": comment.id,
+      "text": comment.text,
+      "created_at": comment.created_at.isoformat(),
+      "author": {
+         "id": comment.author.id,
+         "username": comment.author.username,
+         "is_verified": comment.author.is_verified,
+      },
+      "like_count": comment.like_count,
+      "reply_count": comment.reply_count,
+      "parent_comment_id": comment.parent_comment_id,
+      "has_liked": comment.has_liked,
+   }
+
+
+def describe_comment_page(page: Page[Comment]) -> dict[str, Any]:
+   """One page of comments with its terminator, which is the only thing that says there is more.
+
+   ``more_available`` is the page's own ``has_next_page``, never a guess from how many
+   comments arrived.
+   """
+
+   return {
+      "comment_count": len(page.items),
+      "more_available": page.has_next_page,
+      "end_cursor": page.end_cursor,
+      "comments": [describe_comment(comment) for comment in page.items],
+   }
+
+
+def render_comment_page(page: Page[Comment]) -> str:
+   """The human form: one line per comment in the upstream's order, then the terminator."""
+
+   lines = [
+      f"{comment.created_at.isoformat()}  {comment.id}  {comment.author.username}  {comment.text}"
+      for comment in page.items
+   ]
+   more = f"more after {page.end_cursor}" if page.has_next_page else "no more comments"
+   lines.append(f"{len(page.items)} comments, {more}")
+
+   return "\n".join(lines)

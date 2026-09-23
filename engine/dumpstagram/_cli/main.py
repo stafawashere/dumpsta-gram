@@ -27,6 +27,8 @@ from typing import Any, Protocol, TextIO
 from dumpstagram._cli.cookie_sources import read_cookie_file, session_from
 from dumpstagram._cli.exits import EXIT_OK, EXIT_USAGE, exit_code_for
 from dumpstagram._cli.render import (
+   describe_comment,
+   describe_comment_page,
    describe_feed_item,
    describe_feed_pages,
    describe_message,
@@ -35,6 +37,7 @@ from dumpstagram._cli.render import (
    describe_post_detail,
    describe_profile,
    describe_session,
+   render_comment_page,
    render_feed,
    render_messages,
    render_notes,
@@ -45,7 +48,7 @@ from dumpstagram._cli.render import (
 from dumpstagram._core.redaction import redact
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import DumpstagramError
-from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
+from dumpstagram.models import Comment, FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["build_parser", "main"]
@@ -90,6 +93,12 @@ class Client(Protocol):
 
    def unlike(self, post_pk: str) -> None: ...
 
+   def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]: ...
+
+   def comment(self, post_pk: str, text: str) -> Comment: ...
+
+   def delete_comment(self, post_pk: str, comment_id: str) -> None: ...
+
    def close(self) -> None: ...
 
 
@@ -121,6 +130,15 @@ def media_pk(value: str) -> str:
       raise argparse.ArgumentTypeError(
          "a post is named by its pk, digits only, not by the <pk>_<author id> form"
       )
+
+   return value
+
+
+def comment_id(value: str) -> str:
+   is_all_digits = value.isascii() and value.isdigit()
+
+   if not is_all_digits:
+      raise argparse.ArgumentTypeError("a comment is named by its id, digits only")
 
    return value
 
@@ -300,6 +318,47 @@ def build_parser() -> argparse.ArgumentParser:
       )
       write.add_argument("pk", metavar="PK", type=media_pk, help="the post's pk, digits only")
       add_request_options(write)
+
+   comments = commands.add_parser(
+      "comments",
+      help="read one page of a post's comments, one live request",
+      description=(
+         "Reads one page of the comments on the post whose pk is PK and prints each comment's "
+         "id, which delete-comment takes, and whether more pages exist."
+      ),
+   )
+   comments.add_argument("pk", metavar="PK", type=media_pk, help="the post's pk, digits only")
+   comments.add_argument("--after", metavar="CURSOR", help="an end_cursor from an earlier page")
+   add_request_options(comments)
+
+   comment = commands.add_parser(
+      "comment",
+      help="comment on one post, one write, sent once and never retried",
+      description=(
+         "Writes to the account: posts TEXT as a comment on the post whose pk is PK, where "
+         "everyone who can see the post sees it. There is no prompt and no default target. If "
+         "the outcome is unknown, read dumpsta comments PK before sending again, because a "
+         "second send is a second comment."
+      ),
+   )
+   comment.add_argument("pk", metavar="PK", type=media_pk, help="the post's pk, digits only")
+   comment.add_argument("text", metavar="TEXT", help="the comment, as it should appear")
+   add_request_options(comment)
+
+   delete_comment = commands.add_parser(
+      "delete-comment",
+      help="delete one comment on a post, one write, sent once and never retried",
+      description=(
+         "Writes to the account: deletes the comment COMMENT_ID on the post whose pk is PK. "
+         "There is no prompt and no default target. If the outcome is unknown, read dumpsta "
+         "comments PK: a comment no longer listed is gone."
+      ),
+   )
+   delete_comment.add_argument("pk", metavar="PK", type=media_pk, help="the post's pk, digits only")
+   delete_comment.add_argument(
+      "comment_id", metavar="COMMENT_ID", type=comment_id, help="the comment's id, digits only"
+   )
+   add_request_options(delete_comment)
 
    return parser
 
@@ -590,6 +649,48 @@ def run_like_write(
    return EXIT_OK
 
 
+def run_comment_command(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_call = client.session.fb_dtsg
+
+   try:
+      if arguments.command == "comments":
+         page = client.comments(arguments.pk, after=arguments.after)
+         payload = {"command": "comments", "pk": arguments.pk, **describe_comment_page(page)}
+         text = render_comment_page(page)
+      elif arguments.command == "comment":
+         created = client.comment(arguments.pk, arguments.text)
+         payload = {"command": "comment", "pk": arguments.pk, "comment": describe_comment(created)}
+         text = f"commented {created.id} on {arguments.pk}"
+      else:
+         client.delete_comment(arguments.pk, arguments.comment_id)
+         payload = {
+            "command": "delete-comment",
+            "pk": arguments.pk,
+            "comment_id": arguments.comment_id,
+            "deleted": True,
+         }
+         text = f"deleted {arguments.comment_id} on {arguments.pk}"
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_call
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   emit(payload, text, as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
 def run_thread(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -663,6 +764,9 @@ def main(
 
       if arguments.command in ("like", "unlike"):
          return run_like_write(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in ("comments", "comment", "delete-comment"):
+         return run_comment_command(arguments, chosen_environment, out, client_factory)
 
       return run_thread(arguments, chosen_environment, out, client_factory)
    except DumpstagramError as failure:

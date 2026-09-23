@@ -20,6 +20,9 @@ __all__ = [
    "API_GRAPHQL_URL",
    "BADGE_COUNT",
    "CHAT_TABS_JEWEL",
+   "COMMENT_PAGE",
+   "CREATE_COMMENT",
+   "DELETE_COMMENT",
    "GET_FR_COOKIE",
    "GRAPHQL_QUERY_URL",
    "HOME_TIMELINE_FEED",
@@ -327,4 +330,43 @@ UNLIKE_MEDIA = PersistedQuery(
 
 Unliking a post that is not liked answers ``has_liked`` false and changes nothing, observed
 once on 2026-09-23. Verified by two engine sends that day, under ruling 23.
+"""
+
+
+COMMENT_PAGE = PersistedQuery(
+   doc_id="28169471862682868",
+   friendly_name="PolarisPostCommentsPaginationQuery",
+   finding_id="read-a-post-comment-page",
+)
+"""One page of a post's comments, keyed on the media ``pk``, pages chained by ``end_cursor``.
+
+The post page reads its first page with another query and pages on with this one. The engine
+sends this one for every page, which the four engine reads of 2026-09-23 did, under ruling 23.
+None of them saw a second page, so the ``after`` path has not been observed answering.
+"""
+
+
+CREATE_COMMENT = PersistedQuery(
+   doc_id="27261905640092552",
+   friendly_name="PolarisPostCommentInputRevampedMutation",
+   finding_id="comment-on-a-post",
+)
+"""Add a comment to a post, keyed on the media ``pk``. The comment box on a post page holds it.
+
+The answer carries the created comment under ``comment_dict``, whose ``pk`` is the id the
+comment page lists and the delete takes. Verified by two engine sends on 2026-09-23, under
+ruling 23, each deleted in the same run.
+"""
+
+
+DELETE_COMMENT = PersistedQuery(
+   doc_id="27034318419564986",
+   friendly_name="usePolarisPostDeleteCommentMutation",
+   finding_id="delete-my-own-comment",
+)
+"""Delete one comment, keyed on the comment id and the media ``pk`` together.
+
+A real delete answers its root field with an object. A delete naming no comment answered it
+null with no error, so a null root is not a delete. Verified by two engine sends on 2026-09-23,
+each confirmed by a comment page read, under ruling 23.
 """

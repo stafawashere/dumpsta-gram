@@ -18,6 +18,7 @@ import os
 from collections.abc import Awaitable
 from types import TracebackType
 
+from dumpstagram._core.comments import read_comment_page
 from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.feed import read_feed_page
@@ -26,12 +27,13 @@ from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
+from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
-from dumpstagram.models import FeedItem, Message, Note, Page, PostDetail, Profile
+from dumpstagram.models import Comment, FeedItem, Message, Note, Page, PostDetail, Profile
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -367,6 +369,91 @@ class AsyncClient:
             self._sender,
             self._session,
             post_pk,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]:
+      """Read one page of the comments on the post whose media ``pk`` is ``post_pk``.
+
+      One live request. ``after`` is the previous page's ``end_cursor``, and ``has_next_page``
+      is the only sign that more exist: a short or empty page is not the end. This is the read
+      that confirms :meth:`comment` and :meth:`delete_comment`, and the one that reconciles
+      either after :class:`~dumpstagram.errors.OutcomeUnknown`.
+
+      ``post_pk`` is :attr:`Post.pk <dumpstagram.models.Post.pk>` or
+      :attr:`PostDetail.pk <dumpstagram.models.PostDetail.pk>`, and the ``<pk>_<author id>``
+      form raises :class:`ValueError` before anything is sent.
+
+      A browser reads comments inside a post page load, its first page with a query of its
+      own. This sends the pagination query alone for every page, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         read_comment_page(
+            self._sender,
+            self._session,
+            post_pk,
+            after=after,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def comment(self, post_pk: str, text: str) -> Comment:
+      """Comment ``text`` on the post whose media ``pk`` is ``post_pk``. One write, sent once.
+
+      Returns the created comment, whose ``id`` is what :meth:`delete_comment` takes. Its
+      ``like_count``, ``reply_count``, ``parent_comment_id`` and ``has_liked`` are None, because
+      the answer to a new comment does not carry them. Empty text raises :class:`ValueError`.
+
+      A comment appends, so it is never sent again, by this library or by any retry path. If
+      the connection fails while it is in flight this raises
+      :class:`~dumpstagram.errors.OutcomeUnknown`, and sending again may post it twice where
+      everyone who can see the post sees it. To reconcile, read the post's comments with
+      :meth:`comments` and look for the viewer's own comment with this text created after the
+      attempt began, and only then decide.
+
+      The write waits out the behavior's write spacing and counts against its write budget.
+      The request a browser sends around a comment has not been recorded, so this sends the
+      comment alone, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      self._refuse_when_closed()
+
+      return await self._watch_for_checkpoint(
+         create_comment(
+            self._sender,
+            self._session,
+            post_pk,
+            text,
+            user_agent=self._user_agent,
+         )
+      )
+
+   async def delete_comment(self, post_pk: str, comment_id: str) -> None:
+      """Delete the comment ``comment_id`` on the post whose media ``pk`` is ``post_pk``.
+
+      One write, sent once, never retried. Both identifiers are digits only, and the upstream
+      takes them together. ``comment_id`` is :attr:`Comment.id
+      <dumpstagram.models.Comment.id>`.
+
+      Raises :class:`~dumpstagram.errors.UpstreamRejected` with code ``comment_not_deleted``
+      when the upstream answers that nothing was deleted, which is how it answered a delete
+      naming no existing comment. After :class:`~dumpstagram.errors.OutcomeUnknown`, read the
+      comments with :meth:`comments`: a comment that is no longer listed is gone.
+      """
+
+      self._refuse_when_closed()
+
+      await self._watch_for_checkpoint(
+         delete_comment(
+            self._sender,
+            self._session,
+            post_pk,
+            comment_id,
             user_agent=self._user_agent,
          )
       )

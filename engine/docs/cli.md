@@ -43,6 +43,8 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
 | `post CODE` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, with its `pk` and the viewer's like state |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
+| `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
+| `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -202,6 +204,35 @@ upstream's answer confirmed.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
+### `comments`, `comment` and `delete-comment`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json comments PK
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta comment PK "TEXT"
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta delete-comment PK COMMENT_ID
+```
+
+`comments PK` reads one page of the comments on the post whose `pk` is `PK`, and `--after
+CURSOR` reads the page after an earlier one. The text form prints one line per comment, its time,
+id, author and text, then a count and either the next cursor or `no more comments`. The JSON form
+is `command`, `pk`, `comment_count`, `more_available`, `end_cursor` and `comments`, each comment
+carrying `id`, `text`, `created_at`, `author` with `id`, `username` and `is_verified`, then
+`like_count`, `reply_count`, `parent_comment_id` and `has_liked`. `more_available` is the
+server's `has_next_page` and nothing else.
+
+`comment PK TEXT` and `delete-comment PK COMMENT_ID` write to the account. Both take their target
+and the text as explicit arguments: there is no default and no prompt. The post is its `pk` and
+the comment its id, digits only, and anything else is refused by the parser with exit code 2
+before a client is opened. Each sends one write and never sends it again. A comment appends, so
+on exit code 11 read `dumpsta comments PK` and look for the viewer's own comment before sending
+again, because a second send is a second comment everyone who can see the post sees. The JSON
+form of `comment` is `command`, `pk` and `comment`, the created comment with its four page-only
+keys null. The JSON form of `delete-comment` is `command`, `pk`, `comment_id` and `deleted`. A
+delete the upstream answers as having deleted nothing ends with exit code 6, `UpstreamRejected`,
+code `comment_not_deleted`.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -222,7 +253,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like` and `unlike` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `comment` and `delete-comment` are the commands that can end with it |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.
@@ -249,7 +280,8 @@ that has not been observed.
 Thirty-nine gates in `tests/test_cli.py`, all offline, driven through the `Client` protocol
 with a fake. `scripts/verify_cli_gates.py` breaks the source once per gate and reports red
 then green, and `scripts/verify_notes_gates.py` does the same for the `note list` gate and
-`scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_likes_gates.py` for the two `like` and `unlike` gates in `tests/test_likes.py`, and
+`scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

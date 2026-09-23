@@ -37,6 +37,8 @@ from typing import Any
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
    BioLink,
+   Comment,
+   CommentAuthor,
    FeedItem,
    FeedItemKind,
    MediaImage,
@@ -53,6 +55,9 @@ from dumpstagram.models import (
 )
 
 __all__ = [
+   "COMMENT_PAGE_PATH",
+   "CREATE_COMMENT_ROOT",
+   "DELETE_COMMENT_ROOT",
    "FEED_PAGE_PATH",
    "INBOX_TRAY_PATH",
    "LIKE_ANSWER_ROOT",
@@ -62,6 +67,10 @@ __all__ = [
    "THREAD_PAGE_PATH",
    "TIMELINE_PATH",
    "UNLIKE_ANSWER_ROOT",
+   "comment_was_deleted",
+   "parse_comment",
+   "parse_comment_page",
+   "parse_created_comment",
    "parse_feed_page",
    "parse_inbox_tray",
    "parse_like_answer",
@@ -110,6 +119,15 @@ POST_PATH = ("data", "xdt_api__v1__media__shortcode__web_info")
 
 LIKE_ANSWER_ROOT = "xig_media_like"
 """The root field a like answers under, carrying ``media`` with ``id`` and ``has_liked``."""
+
+COMMENT_PAGE_PATH = ("data", "xdt_api__v1__media__media_id__comments__connection")
+"""The path to the comment connection in a ``PolarisPostCommentsPaginationQuery`` payload."""
+
+CREATE_COMMENT_ROOT = "xig_comment_create"
+"""The root field a new comment answers under, carrying the comment as ``comment_dict``."""
+
+DELETE_COMMENT_ROOT = "xig_comment_delete"
+"""The root field a comment delete answers under, an object on a delete and null otherwise."""
 
 UNLIKE_ANSWER_ROOT = "xig_media_unlike"
 """The root field an unlike answers under, the same shape as :data:`LIKE_ANSWER_ROOT`."""
@@ -938,3 +956,130 @@ def parse_like_answer(payload: Any, root_field: str) -> bool:
    media = _object_at(payload, ("data", root_field, "media"))
 
    return _required_flag(media, "has_liked", f"data.{root_field}.media")
+
+
+def _created_at(node: dict[str, Any], path: str) -> datetime:
+   """Convert a comment's ``created_at`` to timezone-aware UTC.
+
+   Whole seconds since the Unix epoch as a JSON number, like a post's ``taken_at``, on both
+   observed answers. The unit was confirmed against the clock by the Step 16 acceptance run.
+   """
+
+   raw = _required(node, "created_at", path)
+
+   if isinstance(raw, bool) or not isinstance(raw, int):
+      raise SchemaChanged(f"{path}.created_at is not an integer", path=f"{path}.created_at")
+
+   return datetime.fromtimestamp(raw, tz=UTC)
+
+
+def _comment_author(node: dict[str, Any], path: str) -> CommentAuthor:
+   user_path = f"{path}.user"
+   user = _required(node, "user", path)
+
+   if not isinstance(user, dict):
+      raise SchemaChanged(f"{user_path} is not an object", path=user_path)
+
+   return CommentAuthor(
+      id=_required_string(user, "pk", user_path),
+      username=_required_string(user, "username", user_path),
+      is_verified=_required_flag(user, "is_verified", user_path),
+      profile_pic_url=_required_string(user, "profile_pic_url", user_path),
+   )
+
+
+def parse_comment(node: Any, path: str) -> Comment:
+   """One node of the comment page, mapped field by field.
+
+   The node also carries ``fallback_user_info``, ``giphy_media_info``, ``has_translation``,
+   ``is_covered``, ``is_edited`` and ``restricted_status``, which are dropped: all were empty or
+   false on the one node read, so there is nothing measured to model.
+   """
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   return Comment(
+      id=_required_string(node, "pk", path),
+      text=_required_string(node, "text", path),
+      created_at=_created_at(node, path),
+      author=_comment_author(node, path),
+      like_count=_required_integer(node, "comment_like_count", path),
+      reply_count=_required_integer(node, "child_comment_count", path),
+      parent_comment_id=_optional_string(node, "parent_comment_id", path),
+      has_liked=_required_flag(node, "has_liked_comment", path),
+   )
+
+
+def parse_comment_page(payload: Any) -> Page[Comment]:
+   """One ``PolarisPostCommentsPaginationQuery`` payload, mapped into comments.
+
+   ``page_info.has_next_page`` is the only terminator. A page shorter than was asked for, or
+   empty, says nothing about whether more exist, and is passed on with the flag as sent.
+
+   Finding: `read-a-post-comment-page` in the knowledge base.
+   """
+
+   connection = _object_at(payload, COMMENT_PAGE_PATH)
+   connection_path = ".".join(COMMENT_PAGE_PATH)
+
+   edges = _required(connection, "edges", connection_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{connection_path}.edges is not a list", path=f"{connection_path}.edges")
+
+   comments = tuple(
+      parse_comment(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
+   )
+
+   page_info_path = f"{connection_path}.page_info"
+   page_info = _required(connection, "page_info", connection_path)
+
+   if not isinstance(page_info, dict):
+      raise SchemaChanged(f"{page_info_path} is not an object", path=page_info_path)
+
+   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   return Page(items=comments, has_next_page=has_next_page, end_cursor=end_cursor)
+
+
+def parse_created_comment(payload: Any) -> Comment:
+   """The comment a create answered with, from ``data.xig_comment_create.comment_dict``.
+
+   That object carries the id, the text, the time and the author, and none of the counts the
+   comment page adds, so those stay None. Both observed answers carried it with no ``errors``
+   array, so its absence is a schema change rather than a quiet success.
+
+   Finding: `comment-on-a-post` in the knowledge base.
+   """
+
+   path = f"data.{CREATE_COMMENT_ROOT}.comment_dict"
+   node = _object_at(payload, ("data", CREATE_COMMENT_ROOT, "comment_dict"))
+
+   return Comment(
+      id=_required_string(node, "pk", path),
+      text=_required_string(node, "text", path),
+      created_at=_created_at(node, path),
+      author=_comment_author(node, path),
+   )
+
+
+def comment_was_deleted(payload: Any) -> bool:
+   """Whether a delete's answer says a comment was deleted.
+
+   Two real deletes answered ``data.xig_comment_delete`` with an object, and a delete naming
+   no comment answered it null with no error, so only an object is a delete. A payload without
+   the root field at all is a schema change.
+
+   Finding: `delete-my-own-comment` in the knowledge base.
+   """
+
+   data = _object_at(payload, ("data",))
+   root = _required(data, DELETE_COMMENT_ROOT, "data")
+
+   return isinstance(root, dict)

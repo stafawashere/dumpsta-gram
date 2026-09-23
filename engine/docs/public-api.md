@@ -133,6 +133,28 @@ page it is on. Neither burst has been recorded, because ruling 23 allowed no bro
 these were verified, so each is sent alone, a departure recorded in
 [web-request-contract.md](web-request-contract.md).
 
+`comments(post_pk, *, after=None)`, `comment(post_pk, text)` and `delete_comment(post_pk,
+comment_id)` have no setting either. Added 2026-09-23 as Step 16. `comments` reads one page of a
+post's comments, one `PolarisPostCommentsPaginationQuery` request, and returns `Page[Comment]`,
+whose `has_next_page` is the only terminator: a short or empty page is not the end. `comment`
+returns the created `Comment`, mapped from the answer's `comment_dict`, and `delete_comment`
+returns `None`. Each write is one request through `send_write`, sent once and never retried,
+under the behavior's write spacing, budget and stop. All three take the media `pk` and refuse the
+`<pk>_<author id>` form with `ValueError` before anything is sent, and `delete_comment` takes the
+comment's id, digits only, beside it, because the two deletes that worked sent both. `Comment`
+carries `id`, `text`, `created_at` in UTC, `author` as `CommentAuthor` with `id`, `username`,
+`is_verified` and `profile_pic_url`, and four fields only the page read fills, `like_count`,
+`reply_count`, `parent_comment_id` and `has_liked`, which are None on a comment `comment` just
+created because its answer does not carry them. A comment appends, per 13.3 in
+[build-plan.md](build-plan.md): after `OutcomeUnknown`, a second send may be a duplicate everyone
+who can see the post sees, so the docstring names `comments` as the read that reconciles it, look
+for the viewer's own comment made after the attempt began, and a gate holds that sentence in
+place. A delete sets a state. A delete answered with a null root field raises `UpstreamRejected`
+with code `comment_not_deleted`, because a delete naming no comment was answered that way, so a
+second delete of a comment already gone is expected to raise it too, INFERENCE. What a browser
+sends around each of the three is unrecorded under ruling 23, so each is sent alone, a departure
+recorded in [web-request-contract.md](web-request-contract.md).
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the two routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity

@@ -34,6 +34,8 @@ from dumpstagram.errors import (
 )
 from dumpstagram.models import (
    BioLink,
+   Comment,
+   CommentAuthor,
    FeedItem,
    FeedItemKind,
    MediaImage,
@@ -61,6 +63,8 @@ __all__ = [
    "Behavior",
    "BioLink",
    "CheckpointRequired",
+   "Comment",
+   "CommentAuthor",
    "DumpstagramError",
    "FeedFirstPage",
    "FeedItem",
