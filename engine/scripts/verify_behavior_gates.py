@@ -57,8 +57,10 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             AIO,
-            "scoped._sender = self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))",
-            "scoped._sender = PacedSender(\n         self._sender._sender, Pacer(), pacing_for(behavior), write_policy_for(behavior)\n      )",
+            "self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))",
+            "PacedSender(\n"
+            "         self._sender._sender, Pacer(), pacing_for(behavior), write_policy_for(behavior)\n"
+            "      )",
          )
       ],
    },
