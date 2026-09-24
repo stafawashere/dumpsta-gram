@@ -42,8 +42,8 @@ from dumpstagram._core.direct import find_sent_message
 from dumpstagram._core.pacer import PacingPolicy, WritePolicy
 from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.parse import parse_message
-from dumpstagram._private.web.requests import offline_threading_id
+from dumpstagram._private.web.parse.direct import parse_message
+from dumpstagram._private.web.requests.direct import offline_threading_id
 from dumpstagram.errors import SchemaChanged, UpstreamRejected
 from dumpstagram.models import Message, SentMessage
 from dumpstagram.session import Session

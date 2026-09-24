@@ -67,13 +67,13 @@ from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._private.transport import HttpxTransport, Request, Response, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.direct import (
    InboxMessage,
    InboxThread,
    parse_inbox_listing,
    parse_inbox_recent_messages,
 )
-from dumpstagram._private.web.requests import build_inbox_listing_request
+from dumpstagram._private.web.requests.direct import build_inbox_listing_request
 from dumpstagram.errors import CheckpointRequired, DumpstagramError
 from dumpstagram.models import Page
 from dumpstagram.session import Session

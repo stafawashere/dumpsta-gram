@@ -53,8 +53,8 @@ from dumpstagram._private.transport import (
    cookies_for,
 )
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.documents import PersistedQuery
-from dumpstagram._private.web.requests import build_graphql_request
+from dumpstagram._private.web.documents.common import PersistedQuery
+from dumpstagram._private.web.requests.common import build_graphql_request
 from dumpstagram.errors import DumpstagramError
 from dumpstagram.models import Note
 from dumpstagram.session import Session

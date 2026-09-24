@@ -44,7 +44,7 @@ from dumpstagram._core.notes import find_own_note, read_notes
 from dumpstagram._core.pacer import PacingPolicy, WritePolicy
 from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram._private.web.bootstrap import bootstrap
-from dumpstagram._private.web.parse import parse_created_note, parse_inbox_tray
+from dumpstagram._private.web.parse.notes import parse_created_note, parse_inbox_tray
 from dumpstagram.aio import AsyncClient
 from dumpstagram.errors import SchemaChanged, UpstreamRejected
 from dumpstagram.models import Note, NoteAudience

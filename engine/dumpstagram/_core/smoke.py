@@ -23,7 +23,7 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import HTML_APP_SHELL, with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.requests import build_thread_page_request
+from dumpstagram._private.web.requests.direct import build_thread_page_request
 from dumpstagram.session import Session
 
 __all__ = ["HTML_APP_SHELL", "read_one_thread_page"]

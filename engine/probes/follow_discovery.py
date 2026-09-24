@@ -71,14 +71,11 @@ from dumpstagram._private.web.bootstrap import (
    build_document_request,
 )
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.documents import PersistedQuery
-from dumpstagram._private.web.parse import parse_profile
+from dumpstagram._private.web.documents.common import PersistedQuery
+from dumpstagram._private.web.parse.profiles import parse_profile
 from dumpstagram._private.web.preload import read_profile_id
-from dumpstagram._private.web.requests import (
-   build_graphql_request,
-   build_profile_request,
-   profile_page_url,
-)
+from dumpstagram._private.web.requests.common import build_graphql_request
+from dumpstagram._private.web.requests.profiles import build_profile_request, profile_page_url
 from dumpstagram.errors import DumpstagramError, NotFound
 from dumpstagram.session import Session
 

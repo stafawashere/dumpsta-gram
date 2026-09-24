@@ -7,9 +7,9 @@ profile added what the upstream fills only for someone else, the viewer's relati
 account, which :class:`FriendshipStatus` carries.
 
 Fields the upstream sends and this model does not carry are named in
-`dumpstagram/_private/web/parse.py` beside the mapping that drops them.
+`dumpstagram/_private/web/parse/profiles.py` beside the mapping that drops them.
 
-Nothing here parses. Construction is done by the mapper in `_private/web/parse.py`, which
+Nothing here parses. Construction is done by the mapper in `_private/web/parse/profiles.py`, which
 reads named keys and raises rather than filling a default, so an upstream rename is loud.
 """
 

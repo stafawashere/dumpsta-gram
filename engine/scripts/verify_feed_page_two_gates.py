@@ -23,8 +23,9 @@ LOG_DIR = ENGINE / "logs"
 
 
 BOOTSTRAP = "dumpstagram/_private/web/bootstrap.py"
-DOCUMENTS = "dumpstagram/_private/web/documents.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+DOCUMENTS_COMMON = "dumpstagram/_private/web/documents/common.py"
+DOCUMENTS_FEED = "dumpstagram/_private/web/documents/feed.py"
+REQUESTS_COMMON = "dumpstagram/_private/web/requests/common.py"
 FEED = "dumpstagram/_core/feed.py"
 SESSION = "dumpstagram/session.py"
 FEED_GATES = "tests/test_feed.py"
@@ -35,19 +36,19 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{FEED_GATES}::test_the_feed_request_carries_the_two_headers_its_path_carries",
       "defect": "the feed request goes out without the path headers",
-      "edits": [(REQUESTS, "   if query.sends_path_headers:\n", "   if False:\n")],
+      "edits": [(REQUESTS_COMMON, "   if query.sends_path_headers:\n", "   if False:\n")],
    },
    {
       "gate": f"{FEED_GATES}::test_a_query_on_the_other_path_carries_neither_header",
       "defect": "every query carries the path headers whatever path it answers on",
-      "edits": [(DOCUMENTS, "return self.url == GRAPHQL_QUERY_URL", "return True")],
+      "edits": [(DOCUMENTS_COMMON, "return self.url == GRAPHQL_QUERY_URL", "return True")],
    },
    {
       "gate": f"{FEED_GATES}::test_every_query_on_the_graphql_query_path_names_its_root_field",
       "defect": "a query on /graphql/query is registered without a root field",
       "edits": [
          (
-            DOCUMENTS,
+            DOCUMENTS_FEED,
             '   root_field="xdt_api__v1__feed__timeline__connection",\n',
             "",
          )
@@ -58,7 +59,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a missing bloks id goes out as an empty header",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_COMMON,
             "is_missing_bloks_version = query.sends_path_headers and not session.bloks_version_id",
             "is_missing_bloks_version = False",
          )

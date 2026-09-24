@@ -16,8 +16,8 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.writing import send_write
 from dumpstagram._private.transport import WriteRequest
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.parse import parse_created_note, read_note_delete_answer
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.parse.notes import parse_created_note, read_note_delete_answer
+from dumpstagram._private.web.requests.notes import (
    build_create_note_request,
    build_delete_note_request,
    is_a_note_id,

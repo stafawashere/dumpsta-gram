@@ -26,8 +26,9 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_MEDIA = "dumpstagram/_cli/commands/media.py"
+PARSE_MEDIA = "dumpstagram/_private/web/parse/media.py"
+REQUESTS_MEDIA = "dumpstagram/_private/web/requests/media.py"
 LIKES = "dumpstagram/_core/writes/likes.py"
 CLI = "dumpstagram/_cli/main.py"
 GATES = "tests/test_likes.py"
@@ -48,7 +49,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the write names the post by the id form instead of the pk",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '"media_id": post_pk,\n         "tracking_token": None,',
             '"media_id": f"{post_pk}_0",\n         "tracking_token": None,',
          )
@@ -59,7 +60,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "unlike is pointed at the like document",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             "      UNLIKE_MEDIA,\n      _like_variables",
             "      LIKE_MEDIA,\n      _like_variables",
          )
@@ -70,7 +71,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the write carries a variable no observed send carried",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '         "tracking_token": None,\n      }',
             '         "tracking_token": None,\n         "actor_id": "0",\n      }',
          )
@@ -101,7 +102,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "has_liked on the single post read defaults to false",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             'has_liked=_required_flag(node, "has_liked", path),\n      caption=',
             "has_liked=False,\n      caption=",
          )
@@ -112,7 +113,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "like_count on the single post read is taken from comment_count",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             'like_count=_required_integer(node, "like_count", path),\n'
             '      comment_count=_required_integer(node, "comment_count", path),\n'
             '      has_liked=_required_flag(node, "has_liked", path),\n      caption=',
@@ -127,7 +128,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "any list of items is accepted and the first one taken",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             "is_exactly_one_item = isinstance(items, list) and len(items) == 1",
             "is_exactly_one_item = isinstance(items, list)",
          )
@@ -138,7 +139,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the post read drops a provider variable the replays carried",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '         "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,\n',
             "",
          )
@@ -181,7 +182,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI crosses like and unlike",
       "edits": [
          (
-            CLI,
+            COMMANDS_MEDIA,
             "      if is_like:\n         client.like(arguments.pk)",
             "      if not is_like:\n         client.like(arguments.pk)",
          )
@@ -192,7 +193,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI accepts any string as a pk",
       "edits": [
          (
-            CLI,
+            COMMANDS_MEDIA,
             'write.add_argument("pk", metavar="PK", type=media_pk, ',
             'write.add_argument("pk", metavar="PK", ',
          )

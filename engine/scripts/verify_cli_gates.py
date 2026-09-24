@@ -27,9 +27,13 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 MAIN = "dumpstagram/_cli/main.py"
+COMMANDS_COMMON = "dumpstagram/_cli/commands/common.py"
+COMMANDS_DIRECT = "dumpstagram/_cli/commands/direct.py"
+COMMANDS_SESSION = "dumpstagram/_cli/commands/session.py"
 EXITS = "dumpstagram/_cli/exits.py"
 COOKIE_SOURCES = "dumpstagram/_cli/cookie_sources.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_DIRECT = "dumpstagram/_cli/render/direct.py"
+RENDER_SESSION = "dumpstagram/_cli/render/session.py"
 
 WRITEBACK_UNDER_A_TRY = """   try:
       pages = read_pages(client, arguments)
@@ -113,7 +117,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_no_option_takes_cookie_material",
       "defect": "cookie material on the command line, readable by `ps` and kept in history",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_OPTIONS,
       "replace": THREAD_OPTIONS_PLUS_A_COOKIE,
    },
@@ -158,21 +162,21 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_pagination_stops_on_the_servers_own_signal",
       "defect": "pagination terminated on a heuristic, so a full last page costs a spare request",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_PAGE_LOOP_TAIL,
       "replace": THREAD_PAGE_LOOP_TAIL.replace("if not page.has_next_page", "if not page.items"),
    },
    {
       "gate": "tests/test_cli.py::test_each_page_after_the_first_carries_the_previous_cursor",
       "defect": "every page after the first re-reads the same page",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_PAGE_LOOP_TAIL,
       "replace": THREAD_PAGE_LOOP_TAIL.replace("page.end_cursor", "arguments.after"),
    },
    {
       "gate": "tests/test_cli.py::test_the_top_up_marker_is_sent_on_the_first_page_only",
       "defect": "a cursor and a top-up marker sent together, a combination nobody has measured",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": "      cursor = page.end_cursor\n      newer_than = None",
       "replace": "      cursor = page.end_cursor",
    },
@@ -181,14 +185,14 @@ MUTATIONS = [
          "tests/test_cli.py::test_json_reports_more_available_from_the_page_not_the_message_count"
       ),
       "defect": "the terminator reported from how many messages arrived",
-      "file": RENDER,
+      "file": RENDER_DIRECT,
       "find": THREAD_MORE_AVAILABLE,
       "replace": THREAD_MORE_AVAILABLE.replace("last.has_next_page", "bool(last.items)"),
    },
    {
       "gate": "tests/test_cli.py::test_json_carries_the_documented_message_fields",
       "defect": "the machine-readable timestamp changed shape under whatever scripts it",
-      "file": RENDER,
+      "file": RENDER_DIRECT,
       "find": THREAD_SENT_AT,
       "replace": THREAD_SENT_AT.replace(
          "message.sent_at.isoformat()", "str(message.sent_at.timestamp())"
@@ -197,14 +201,14 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_the_client_is_closed_even_when_the_read_fails",
       "defect": "a failed read leaves the loop thread running, so the command hangs",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": WRITEBACK_UNDER_A_TRY,
       "replace": WRITEBACK_WITHOUT_ONE,
    },
    {
       "gate": "tests/test_cli.py::test_a_token_harvested_during_a_read_is_written_back",
       "defect": "every invocation pays a bootstrap request the previous one already paid",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_WRITEBACK,
       "replace": THREAD_WRITEBACK.replace(
          "if harvested_a_new_token and may_write_back",
@@ -214,7 +218,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_an_unchanged_token_is_not_written_back",
       "defect": "a credential file rewritten on every run for no reason",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_WRITEBACK,
       "replace": THREAD_WRITEBACK.replace(
          "harvested_a_new_token = client.session.fb_dtsg != token_before_the_read",
@@ -224,7 +228,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_write_back_can_be_refused",
       "defect": "the refusal flag is accepted and ignored",
-      "file": MAIN,
+      "file": COMMANDS_DIRECT,
       "find": THREAD_WRITEBACK,
       "replace": THREAD_WRITEBACK.replace(
          "may_write_back = not arguments.no_session_writeback", "may_write_back = True"
@@ -236,7 +240,7 @@ MUTATIONS = [
          "test_adopt_writes_a_reloadable_owner_only_session_and_spends_no_request"
       ),
       "defect": "adoption reports success and writes nothing, so the next command has no file",
-      "file": MAIN,
+      "file": COMMANDS_SESSION,
       "find": "   session.save(path)\n\n   summary = describe_session(session, path)",
       "replace": "   summary = describe_session(session, path)",
    },
@@ -251,21 +255,21 @@ MUTATIONS = [
       "gate": "tests/test_cli.py::test_a_cookie_file_answers_instead_of_the_environment",
       "defect": "the file is accepted and the environment is read anyway, adopting one account "
       "while reporting another",
-      "file": MAIN,
+      "file": COMMANDS_SESSION,
       "find": COOKIE_FILE_WINS,
       "replace": COOKIE_FILE_IGNORED,
    },
    {
       "gate": "tests/test_cli.py::test_the_session_command_prints_no_credential",
       "defect": "the summary prints the session token to stdout",
-      "file": RENDER,
+      "file": RENDER_SESSION,
       "find": '      "ds_user_id": session.ds_user_id,',
       "replace": '      "ds_user_id": session.ds_user_id,\n      "sessionid": session.sessionid,',
    },
    {
       "gate": "tests/test_cli.py::test_a_missing_session_path_is_a_usage_error",
       "defect": "a guessed path writes an account token somewhere its owner did not choose",
-      "file": MAIN,
+      "file": COMMANDS_COMMON,
       "find": "   path = chosen or environment.get(SESSION_PATH_ENV)",
       "replace": '   path = chosen or environment.get(SESSION_PATH_ENV) or "state/session.json"',
    },
@@ -274,7 +278,7 @@ MUTATIONS = [
          "tests/test_cli.py::test_the_session_path_comes_from_the_environment_when_no_flag_is_given"
       ),
       "defect": "the environment variable is documented and never read",
-      "file": MAIN,
+      "file": COMMANDS_COMMON,
       "find": "   path = chosen or environment.get(SESSION_PATH_ENV)",
       "replace": "   path = chosen",
    },
@@ -288,7 +292,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_a_page_count_below_one_is_refused_before_a_request",
       "defect": "a nonsense page count is accepted and reads nothing while reporting success",
-      "file": MAIN,
+      "file": COMMANDS_COMMON,
       "find": "   if count < 1:",
       "replace": "   if count < 0:",
    },

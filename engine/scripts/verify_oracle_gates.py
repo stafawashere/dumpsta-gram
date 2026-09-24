@@ -27,7 +27,7 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
-PARSE = "dumpstagram/_private/web/parse.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
 PAGES = "tests/fixtures/thread_oracle/pages.json.gz"
 INDEPENDENT = "tests/fixtures/thread_oracle/independent_export.json"
 ORACLE = "tests/test_thread_oracle.py"
@@ -113,13 +113,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{ORACLE}::test_the_read_follows_every_recorded_cursor_and_stops_on_the_terminator",
       "defect": "the next page is requested with a cursor the upstream did not hand out",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "transform": replace_text(THREAD_CURSOR_FROM_END, THREAD_CURSOR_FROM_START),
    },
    {
       "gate": f"{ORACLE}::test_no_message_is_read_twice",
       "defect": "a page carries a message twice",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "transform": replace_text(THREAD_PAGE_AS_SENT, THREAD_PAGE_REPEATS_ITS_LAST),
    },
    {
@@ -127,19 +127,19 @@ MUTATIONS: list[dict[str, object]] = [
          f"{ORACLE}::test_the_window_holds_exactly_the_messages_the_independent_export_holds"
       ),
       "defect": "the mapper silently skips every content type it was not written against",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "transform": replace_text(EVERY_EDGE_MAPPED, ONLY_TEXT_MAPPED),
    },
    {
       "gate": f"{ORACLE}::test_every_message_in_the_window_agrees_with_the_independent_export",
       "defect": "the sender is read from the Instagram-side id rather than the fbid",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "transform": replace_text(SENDER_FROM_FBID, SENDER_FROM_IGID),
    },
    {
       "gate": f"{ORACLE}::test_every_message_in_the_window_agrees_with_the_independent_export",
       "defect": "the timestamp loses its milliseconds",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "transform": replace_text(SENT_AT_KEEPS_MILLISECONDS, SENT_AT_DROPS_MILLISECONDS),
    },
    {

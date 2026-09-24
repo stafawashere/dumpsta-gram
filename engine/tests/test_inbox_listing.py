@@ -23,13 +23,13 @@ from urllib.parse import parse_qs
 
 import pytest
 
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.direct import (
    InboxMessage,
    InboxThread,
    parse_inbox_listing,
    parse_inbox_recent_messages,
 )
-from dumpstagram._private.web.requests import build_inbox_listing_request
+from dumpstagram._private.web.requests.direct import build_inbox_listing_request
 from dumpstagram.errors import SchemaChanged
 from tests.test_direct import a_bootstrapped_session, sent_variables
 

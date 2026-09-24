@@ -24,8 +24,8 @@ LOG_DIR = ENGINE / "logs"
 
 AIO = "dumpstagram/aio.py"
 DIRECT = "dumpstagram/_core/direct.py"
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
+REQUESTS_DIRECT = "dumpstagram/_private/web/requests/direct.py"
 GATES = "tests/test_thread_route.py"
 
 MUTATIONS: list[dict[str, object]] = [
@@ -39,7 +39,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the chat themes flag goes out as the replay template's true",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '"__relay_internal__pv__IGDEnableOffMsysChatThemesQErelayprovider": False,',
             '"__relay_internal__pv__IGDEnableOffMsysChatThemesQErelayprovider": True,',
          )
@@ -50,7 +50,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "older pages stay on the retired pagination doc_id",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             "      THREAD_OLDER_PAGE,\n      _thread_page_variables",
             "      THREAD_MESSAGE_PAGE,\n      _thread_page_variables",
          )
@@ -94,7 +94,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the detail mapper reads the pagination query's root field",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   return _message_page(payload, THREAD_DETAIL_PATH)",
             "   return _message_page(payload, THREAD_PAGE_PATH)",
          )
@@ -105,7 +105,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a null thread is mapped to an empty page",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   return _message_page(payload, THREAD_DETAIL_PATH)",
             '   if payload["data"]["get_slide_thread_nullable"] is None:\n'
             "      return Page(items=(), has_next_page=False)\n\n"

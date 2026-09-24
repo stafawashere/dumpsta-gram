@@ -15,12 +15,12 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.writing import send_write
 from dumpstagram._private.transport import WriteRequest
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.media import (
    LIKE_ANSWER_ROOT,
    UNLIKE_ANSWER_ROOT,
    parse_like_answer,
 )
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.requests.media import (
    build_like_request,
    build_unlike_request,
    is_a_media_pk,

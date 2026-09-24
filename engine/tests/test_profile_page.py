@@ -23,7 +23,7 @@ from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.profiles import read_profile, read_profile_from_page
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import Request, Response
-from dumpstagram._private.web.documents import (
+from dumpstagram._private.web.documents.profiles import (
    PROFILE_BY_ID,
    PROFILE_HIGHLIGHTS,
    PROFILE_NOTE_BUBBLE,

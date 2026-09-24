@@ -25,6 +25,8 @@ Every response is canned. Nothing in this file touches the network.
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from datetime import UTC, datetime
 from typing import Any
 
@@ -32,18 +34,16 @@ import pytest
 
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._private.web import documents
-from dumpstagram._private.web.documents import (
+from dumpstagram._private.web.documents.common import (
    API_GRAPHQL_URL,
    GRAPHQL_QUERY_URL,
-   HOME_TIMELINE_FEED,
-   THREAD_MESSAGE_PAGE,
+   PersistedQuery,
 )
-from dumpstagram._private.web.parse import parse_feed_page
-from dumpstagram._private.web.requests import (
-   FEED_PAGE_SIZE,
-   build_feed_page_request,
-   build_thread_page_request,
-)
+from dumpstagram._private.web.documents.direct import THREAD_MESSAGE_PAGE
+from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
+from dumpstagram._private.web.parse.feed import parse_feed_page
+from dumpstagram._private.web.requests.direct import build_thread_page_request
+from dumpstagram._private.web.requests.feed import FEED_PAGE_SIZE, build_feed_page_request
 from dumpstagram.aio import AsyncClient
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import SchemaChanged
@@ -257,10 +257,15 @@ def test_a_query_on_the_other_path_carries_neither_header() -> None:
 def test_every_query_on_the_graphql_query_path_names_its_root_field() -> None:
    """Catches a new query on that path sending an empty x-root-field-name."""
 
+   registry = [
+      importlib.import_module(f"{documents.__name__}.{module.name}")
+      for module in pkgutil.iter_modules(documents.__path__)
+   ]
    queries_on_that_path = [
       value
-      for value in vars(documents).values()
-      if isinstance(value, documents.PersistedQuery) and value.sends_path_headers
+      for module in registry
+      for value in vars(module).values()
+      if isinstance(value, PersistedQuery) and value.sends_path_headers
    ]
 
    assert HOME_TIMELINE_FEED in queries_on_that_path

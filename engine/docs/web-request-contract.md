@@ -20,8 +20,9 @@ dumpstagram/_private/
    web/
       classify.py         the only place a response becomes a success or a failure
       bootstrap.py        one authenticated page load, tokens out of the HTML
-      documents.py        the persisted GraphQL query registry
-      requests.py         the body and header set, built from a Session
+      documents/          the persisted GraphQL query registry, one module per domain
+      requests/           the body and header set in common.py, built from a Session,
+                          and each domain's requests in a module beside it
 ```
 
 `_core` never imports any of it directly and never sees a URL. It passes an intent plus typed
@@ -94,9 +95,10 @@ a value that was correct twice, not to a guess.
 
 ## The persisted query registry
 
-`documents.py` holds one `PersistedQuery` per query, each carrying its `doc_id`, its
+The `documents/` package holds one `PersistedQuery` per query, each carrying its `doc_id`, its
 `friendly_name`, the id of the finding it came from, and the URL it answers on. One name, one
-place.
+place: each query is defined once, in the module of its domain, and `PersistedQuery` with the
+two path constants is in `documents/common.py`.
 
 | Name | `doc_id` | Friendly name | URL | Finding |
 |---|---|---|---|---|
@@ -108,8 +110,8 @@ place.
 | `HOME_TIMELINE_FEED` | `27932834733065642` | `PolarisFeedRootPaginationCachedQuery_subscribe` | `GRAPHQL_QUERY_URL` | `home-timeline-feed-page` |
 | `INBOX_TRAY` | `29231580869776032` | `IGDInboxTrayQuery` | `API_GRAPHQL_URL` | `read-the-notes-tray-on-the-direct-inbox` |
 
-The table above lists the entries the first capabilities added. `documents.py` is the complete
-list, and its own docstrings carry each later entry's evidence.
+The table above lists the entries the first capabilities added. The `documents/` package is the
+complete list, and its own docstrings carry each later entry's evidence.
 
 **The notes tray is sent alone, a recorded departure.** Added 2026-09-23. `INBOX_TRAY` takes no
 variables and is sent with `https://www.instagram.com/direct/inbox/` as its referer, the shape
@@ -381,7 +383,9 @@ which is the mechanism the gate documents for exactly this case.
 A related trap is worth naming. `BOOTSTRAP_URL` and the GraphQL URL were originally f-strings
 over `ORIGIN`, which meant the scanner never saw either endpoint and reported a clean tree that
 proved nothing about them. They are written as full literals so the gate can actually check them,
-and `API_GRAPHQL_URL` and `GRAPHQL_QUERY_URL` in `documents.py` keep that form. Any URL assembled
+and `API_GRAPHQL_URL` and `GRAPHQL_QUERY_URL` in `documents/common.py` keep that form. A query
+in a domain module names its path through the constant it imports from there, which the gate
+resolves across the import since 2026-09-23. Any URL assembled
 at runtime is invisible to this gate.
 
 ## What is not implemented here

@@ -15,8 +15,8 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.writing import send_write
 from dumpstagram._private.transport import WriteRequest
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.parse import comment_was_deleted, parse_created_comment
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.parse.media import comment_was_deleted, parse_created_comment
+from dumpstagram._private.web.requests.media import (
    build_create_comment_request,
    build_delete_comment_request,
    is_a_comment_id,

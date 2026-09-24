@@ -32,17 +32,15 @@ from dumpstagram._private.web.bootstrap import (
    tokens_from,
 )
 from dumpstagram._private.web.classify import classify, classify_preloaded
-from dumpstagram._private.web.parse import parse_feed_page
+from dumpstagram._private.web.parse.feed import parse_feed_page
 from dumpstagram._private.web.preload import (
    FEED_TIMELINE_PRELOADER,
    HOME_DOCUMENT_URL,
    read_iris_device_id,
    read_preloaded_result,
 )
-from dumpstagram._private.web.requests import (
-   build_feed_page_request,
-   build_home_page_load_companions,
-)
+from dumpstagram._private.web.requests.feed import build_feed_page_request
+from dumpstagram._private.web.requests.page_load import build_home_page_load_companions
 from dumpstagram.behavior import FeedFirstPage
 from dumpstagram.models import FeedItem, Page
 from dumpstagram.session import Session

@@ -42,7 +42,7 @@ from dumpstagram._core.comments import read_comment_page
 from dumpstagram._core.pacer import PacingPolicy, WritePolicy
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.parse import parse_comment_page, parse_created_comment
+from dumpstagram._private.web.parse.media import parse_comment_page, parse_created_comment
 from dumpstagram.aio import AsyncClient
 from dumpstagram.errors import UpstreamRejected
 from dumpstagram.models import Comment, CommentAuthor, Page

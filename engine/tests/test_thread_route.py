@@ -25,8 +25,8 @@ import pytest
 
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.parse import parse_thread_detail
-from dumpstagram._private.web.requests import build_thread_detail_request
+from dumpstagram._private.web.parse.direct import parse_thread_detail
+from dumpstagram._private.web.requests.direct import build_thread_detail_request
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import Behavior, ThreadFirstPage
 from dumpstagram.errors import SchemaChanged

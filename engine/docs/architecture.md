@@ -51,10 +51,10 @@ dumpstagram/
       web/
          classify.py      classify, classify_checkpoint_only
          bootstrap.py     token harvest from one authenticated page
-         documents.py     the persisted GraphQL query registry
+         documents/       the persisted GraphQL query registry, one module per domain
          cookie_sync.py   the four cookie sync requests and how their answers are read
-         requests.py      the body and header set
-         parse.py         the payload mapped into typed models
+         requests/        the body and header set in common.py, each domain's requests beside it
+         parse/           the payload mapped into typed models, one module per domain
 ```
 
 No `_core/realtime/`, and one capability: `thread_messages` on both facades, which reads one
@@ -86,6 +86,25 @@ hydration fan-out, and the pacer live.
 client identity construction,
 the HTTP transport, and response parsing into raw structures. Free to change in any
 release. Nothing outside `_core` may import it.
+
+## Per-domain modules
+
+Since 2026-09-23 (E1 item 3 of [web-parity-plan.md](web-parity-plan.md)) the three surface
+adapter packages under `_private/web/`, `documents/`, `requests/` and `parse/`, and the
+command packages `_cli/commands/` and `_cli/render/`, hold one module per domain, named for the W1 namespaces that
+have code: `direct`, `feed`, `media`, `profiles`, `social` and `notes`. A domain module that has
+no code yet is not created. What several domains share sits in a `common.py` in the same
+package, and it imports no domain module. Two further modules are named for what they are
+rather than for a domain, because neither belongs to one: `page_load.py` in `documents/` and
+`requests/`, the companions a page load sends and the cookie sync's `fr` exchange, mirroring
+`_core/page_load.py`, and in `_cli/commands/` and `_cli/render/`, `session.py` for `adopt` and
+`session` and `events.py` for the listener. `_cli/main.py` keeps `build_parser`, which calls each domain's
+registrar in the order the commands have always been listed, and `main`, the dispatch.
+
+Every importer names the domain module it uses, and no package `__init__.py` re-exports
+anything. The import edges `tests/test_import_boundary.py` reads therefore name the module a
+name is defined in, so a `_core` capability's dependence on one domain of `_private` is visible
+in the edge list rather than collapsed onto the package. Ruled as W15 in the plan.
 
 ## The public and private split is the stability mechanism
 

@@ -22,7 +22,7 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-REQUESTS = "dumpstagram/_private/web/requests.py"
+REQUESTS_PAGE_LOAD = "dumpstagram/_private/web/requests/page_load.py"
 PRELOAD = "dumpstagram/_private/web/preload.py"
 PAGE_LOAD = "dumpstagram/_core/page_load.py"
 FEED = "dumpstagram/_core/feed.py"
@@ -36,7 +36,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the home badge count goes out after the jewel group",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PAGE_LOAD,
             "      _badge_group(session, device_id, referer, user_agent),\n"
             "      _jewel_group(session, device_id, referer, user_agent),\n"
             "      [_companion(session, QUICK_PROMOTION, page_surfaces, referer, user_agent)],\n",
@@ -51,7 +51,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile page's two quick promotion calls go out as two groups",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PAGE_LOAD,
             "         _companion(session, QUICK_PROMOTION, page_surfaces, referer, user_agent),\n"
             "         _companion(session, QUICK_PROMOTION, login_surface, referer, user_agent),\n"
             "      ],\n",
@@ -105,7 +105,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the chat tabs jewel carries a device id the document never issued",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PAGE_LOAD,
             'iris = {"device_id_for_iris_subscription": device_id}\n   jewel = ',
             'iris = {"device_id_for_iris_subscription": "00000000-0000-4000-8000-000000000000"}\n'
             "   jewel = ",
@@ -117,7 +117,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile page's quick promotion call loses its trigger context",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PAGE_LOAD,
             "_quick_promotion_variables(PAGE_SURFACES, profile_trigger)",
             "_quick_promotion_variables(PAGE_SURFACES, None)",
          )
@@ -128,7 +128,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile page's companions claim the home page as referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PAGE_LOAD,
             "   referer = profile_page_url(username)\n   stories_tray_variables",
             '   referer = f"{ORIGIN}/"\n   stories_tray_variables',
          )

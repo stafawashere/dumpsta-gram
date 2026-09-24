@@ -36,11 +36,11 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._cli.main import main
-from dumpstagram._cli.render import describe_profile
+from dumpstagram._cli.render.profiles import describe_profile
 from dumpstagram._core.pacer import PacingPolicy, WritePolicy
 from dumpstagram._core.writes.follows import follow_user, unfollow_user
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.parse import parse_profile
+from dumpstagram._private.web.parse.profiles import parse_profile
 from dumpstagram.errors import SchemaChanged, UpstreamRejected
 from dumpstagram.models import FriendshipStatus
 from dumpstagram.session import Session

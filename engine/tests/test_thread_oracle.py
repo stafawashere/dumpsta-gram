@@ -43,7 +43,7 @@ import pytest
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import Request, Response
-from dumpstagram._private.web.documents import API_GRAPHQL_URL
+from dumpstagram._private.web.documents.common import API_GRAPHQL_URL
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import Behavior, ThreadFirstPage
 from dumpstagram.models import Message

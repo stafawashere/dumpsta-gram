@@ -24,11 +24,11 @@ LOG_DIR = ENGINE / "logs"
 GATE_TIMEOUT_SECONDS = 300
 
 AIO = "dumpstagram/aio.py"
-CLI = "dumpstagram/_cli/main.py"
-PARSE = "dumpstagram/_private/web/parse.py"
+COMMANDS_EVENTS = "dumpstagram/_cli/commands/events.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
 POLLER = "dumpstagram/_core/realtime/poller.py"
 PUMP = "dumpstagram/_core/realtime/pump.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_EVENTS = "dumpstagram/_cli/render/events.py"
 POLLER_GATES = "tests/test_poller.py"
 INBOX_GATES = "tests/test_inbox_listing.py"
 CLI_GATES = "tests/test_cli.py"
@@ -298,7 +298,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a row's carried messages come out reversed",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   return tuple(carried)\n",
             "   return tuple(reversed(carried))\n",
          )
@@ -309,7 +309,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "--json is ignored for the event stream",
       "edits": [
          (
-            CLI,
+            COMMANDS_EVENTS,
             "      if arguments.json:\n"
             "         line = json.dumps(describe_event(event, ids_only=arguments.ids_only))\n",
             "      if False:\n"
@@ -322,7 +322,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "--ids-only still prints the message in the JSON form",
       "edits": [
          (
-            RENDER,
+            RENDER_EVENTS,
             "      if not ids_only:\n"
             '         return {"event": "new_message", "message": describe_message(message)}\n',
             "      if True:\n"
@@ -335,7 +335,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "--ids-only still prints the message in the text form",
       "edits": [
          (
-            RENDER,
+            RENDER_EVENTS,
             "      if ids_only:\n         return line\n",
             "      if False:\n         return line\n",
          )
@@ -346,7 +346,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the command returns with its listener still running",
       "edits": [
          (
-            CLI,
+            COMMANDS_EVENTS,
             "   finally:\n      listener.stop()\n",
             "   finally:\n      pass\n",
          )
@@ -359,7 +359,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the listener's final event is printed and ignored",
       "edits": [
          (
-            CLI,
+            COMMANDS_EVENTS,
             "      if isinstance(event, ListenerStopped):\n         raise event.error\n",
             "      if isinstance(event, ListenerStopped):\n         return\n",
          )
@@ -368,14 +368,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_events_on_the_async_surface_reads_the_async_iterator", CLI_GATES),
       "defect": "--surface async runs the blocking listener",
-      "edits": [(CLI, '   if arguments.surface == "async":\n', "   if False:\n")],
+      "edits": [(COMMANDS_EVENTS, '   if arguments.surface == "async":\n', "   if False:\n")],
    },
    {
       "gate": gate("test_events_on_the_async_surface_reads_the_async_iterator", CLI_GATES),
       "defect": "--interval never reaches the client's behavior",
       "edits": [
          (
-            CLI,
+            COMMANDS_EVENTS,
             "   return replace(PARITY, poll_interval_seconds=arguments.interval)\n",
             "   return PARITY\n",
          )

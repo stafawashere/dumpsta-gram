@@ -25,8 +25,8 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
+REQUESTS_DIRECT = "dumpstagram/_private/web/requests/direct.py"
 GATES = "tests/test_inbox_listing.py"
 
 
@@ -40,7 +40,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "thread_fbid is read from thread_key",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             'thread_fbid=_required_string(thread, "thread_fbid", thread_path),',
             'thread_fbid=_required_string(thread, "thread_key", thread_path),',
          )
@@ -51,7 +51,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the newest message id is taken from the last listed message",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             'node = _required(edges[0], "node", f"{messages_path}.edges[0]")',
             'node = _required(edges[-1], "node", f"{messages_path}.edges[0]")',
          )
@@ -62,7 +62,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the pin flag is read from is_muted",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             'is_pinned=_required_flag(thread, "is_pin", thread_path),',
             'is_pinned=_required_flag(thread, "is_muted", thread_path),',
          )
@@ -73,7 +73,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the rows are sorted by thread id on the way out",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   return Page(items=threads, has_next_page",
             "   return Page(items=tuple(sorted(threads, key=lambda row: row.thread_fbid)), "
             "has_next_page",
@@ -85,7 +85,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a thread with no messages is read as if it had one",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   if not edges:\n      return None\n\n   node = _required(edges[0]",
             "   node = _required(edges[0]",
          )
@@ -96,7 +96,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a missing activity marker defaults to zero",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "   raw = _required(node, key, path)\n   is_a_digit_string",
             '   raw = node.get(key) or "0"\n   is_a_digit_string',
          )
@@ -107,7 +107,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "has_next_page is inferred from the cursor",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "\n\n   return Page(items=threads,",
             "\n   has_next_page = end_cursor is not None\n\n   return Page(items=threads,",
          )
@@ -118,7 +118,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the listing carries the home page as its referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             "      DIRECT_INBOX,\n      variables,\n      referer=BOOTSTRAP_URL,\n",
             '      DIRECT_INBOX,\n      variables,\n      referer=f"{ORIGIN}/",\n',
          )
@@ -129,10 +129,16 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the caller's device id is replaced by a fixed one",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '      "device_id_for_iris_subscription": device_id,\n',
             '      "device_id_for_iris_subscription": FEED_DEVICE_ID,\n',
-         )
+         ),
+         (
+            REQUESTS_DIRECT,
+            "from dumpstagram._private.web.requests.common import ",
+            "from dumpstagram._private.web.requests.feed import FEED_DEVICE_ID\n"
+            "from dumpstagram._private.web.requests.common import ",
+         ),
       ],
    },
    {
@@ -140,7 +146,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "each row asks for a page of messages instead of five",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '"__relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider": INBOX_ROW_MESSAGES,',
             '"__relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider": PAGE_SIZE,',
          )

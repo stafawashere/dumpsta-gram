@@ -31,7 +31,7 @@ LOG_DIR = ENGINE / "logs"
 
 
 PYPROJECT = "pyproject.toml"
-PARSE = "dumpstagram/_private/web/parse.py"
+PARSE_COMMON = "dumpstagram/_private/web/parse/common.py"
 EXITS = "dumpstagram/_cli/exits.py"
 CLIENT = "dumpstagram/client.py"
 LISTENER = "dumpstagram/listener.py"
@@ -61,7 +61,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the response mapper reaches up into _core",
       "edits": [
          (
-            PARSE,
+            PARSE_COMMON,
             "from __future__ import annotations\n",
             "from __future__ import annotations\n\n"
             "from dumpstagram._core.redaction import redact\n",

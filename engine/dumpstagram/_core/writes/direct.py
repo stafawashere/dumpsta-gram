@@ -24,11 +24,11 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.writing import send_write
 from dumpstagram._private.transport import WriteRequest
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.direct import (
    parse_direct_text_send_answer,
    parse_direct_unsend_answer,
 )
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.requests.direct import (
    build_direct_text_send_request,
    build_direct_unsend_request,
    is_a_thread_fbid,

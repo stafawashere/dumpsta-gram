@@ -3,9 +3,9 @@
 Every field below was observed on all twenty nodes of a live page on 2026-09-21, recorded in
 `engine/logs/message-node-shape-2026-09-21-022957.json`. Fields the upstream sends and this
 model does not carry were null on all twenty, or are duplicates, and each omission is named in
-`dumpstagram/_private/web/parse.py` beside the mapping that drops it.
+`dumpstagram/_private/web/parse/direct.py` beside the mapping that drops it.
 
-Nothing here parses. Construction is done by the mapper in `_private/web/parse.py`, which
+Nothing here parses. Construction is done by the mapper in `_private/web/parse/direct.py`, which
 reads named keys and raises rather than filling a default, so an upstream rename is loud.
 """
 

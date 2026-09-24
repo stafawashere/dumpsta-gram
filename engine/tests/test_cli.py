@@ -1,8 +1,8 @@
 """Gates for the `dumpsta` command, which is the acceptance harness for Phase 2.
 
 Nothing here touches the network. Every read command is driven with a fake client, which is
-what the `Client` protocol in `dumpstagram/_cli/main.py` exists for, so the whole file costs
-zero live requests.
+what the `Client` protocol in `dumpstagram/_cli/commands/common.py` exists for, so the whole
+file costs zero live requests.
 
 The properties gated here are the ones a CLI gets wrong in ways nobody notices: cookie
 material creeping onto the command line, a failure arriving as a generic exit code, a
@@ -307,7 +307,7 @@ def test_the_cli_reaches_no_capability_module_directly() -> None:
 
    imports = [
       line
-      for source in sorted(CLI_DIRECTORY.glob("*.py"))
+      for source in sorted(CLI_DIRECTORY.rglob("*.py"))
       for line in source.read_text(encoding="utf-8").splitlines()
       if line.startswith("from dumpstagram.") or line.startswith("import dumpstagram.")
    ]

@@ -62,10 +62,10 @@ from dumpstagram._private.transport import (
 )
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.documents import PersistedQuery
-from dumpstagram._private.web.parse import THREAD_PAGE_PATH
-from dumpstagram._private.web.requests import (
-   build_graphql_request,
+from dumpstagram._private.web.documents.common import PersistedQuery
+from dumpstagram._private.web.parse.direct import THREAD_PAGE_PATH
+from dumpstagram._private.web.requests.common import build_graphql_request
+from dumpstagram._private.web.requests.direct import (
    build_inbox_listing_request,
    build_thread_older_page_request,
    thread_url,

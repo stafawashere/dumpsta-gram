@@ -23,7 +23,7 @@ LOG_DIR = ENGINE / "logs"
 
 
 PRELOAD = "dumpstagram/_private/web/preload.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+REQUESTS_PROFILES = "dumpstagram/_private/web/requests/profiles.py"
 PROFILES = "dumpstagram/_core/profiles.py"
 PAGE_LOAD = "dumpstagram/_core/page_load.py"
 REQUESTING = "dumpstagram/_core/requesting.py"
@@ -51,21 +51,21 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{GATES}::test_a_username_that_cannot_exist_is_refused_before_any_request",
       "defect": "any string is sent as the profile page path",
-      "edits": [(REQUESTS, "   if not is_a_possible_username:", "   if False:")],
+      "edits": [(REQUESTS_PROFILES, "   if not is_a_possible_username:", "   if False:")],
    },
    {
       "gate": (
          f"{GATES}::test_the_page_route_loads_the_page_then_sends_the_six_queries_in_page_order"
       ),
       "defect": "a companion is dropped from the burst",
-      "edits": [(REQUESTS, '      (PROFILE_SCHOOL_BADGE, {"igid": user_id}),\n', "")],
+      "edits": [(REQUESTS_PROFILES, '      (PROFILE_SCHOOL_BADGE, {"igid": user_id}),\n', "")],
    },
    {
       "gate": f"{GATES}::test_every_query_is_keyed_on_the_id_the_page_carried",
       "defect": "a companion is keyed on the username instead of the id",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_PROFILES,
             '(PROFILE_NOTE_BUBBLE, {"user_id": user_id})',
             '(PROFILE_NOTE_BUBBLE, {"user_id": username})',
          )

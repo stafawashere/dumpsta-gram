@@ -22,7 +22,7 @@ import pytest
 
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.requesting import PacedSender
-from dumpstagram._private.web.documents import API_GRAPHQL_URL, GRAPHQL_QUERY_URL
+from dumpstagram._private.web.documents.common import API_GRAPHQL_URL, GRAPHQL_QUERY_URL
 from dumpstagram._private.web.preload import (
    FEED_TIMELINE_PRELOADER,
    HOME_DOCUMENT_URL,

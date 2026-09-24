@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from dumpstagram._private.web.parse import parse_thread_message_page
+from dumpstagram._private.web.parse.direct import parse_thread_message_page
 from dumpstagram.errors import SchemaChanged
 
 THREAD_FBID = "17945046917948992"

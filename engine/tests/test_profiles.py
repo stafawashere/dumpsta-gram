@@ -26,9 +26,9 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._core.profiles import read_profile, read_profile_by_id, resolve_username
-from dumpstagram._private.web.documents import PROFILE_BY_ID, PROFILE_POSTS
-from dumpstagram._private.web.parse import parse_profile, parse_user_id
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.documents.profiles import PROFILE_BY_ID, PROFILE_POSTS
+from dumpstagram._private.web.parse.profiles import parse_profile, parse_user_id
+from dumpstagram._private.web.requests.profiles import (
    RESOLUTION_PAGE_SIZE,
    build_profile_request,
    build_username_resolution_request,

@@ -21,7 +21,7 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.smoke import read_one_thread_page
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL
-from dumpstagram._private.web.documents import API_GRAPHQL_URL
+from dumpstagram._private.web.documents.common import API_GRAPHQL_URL
 from dumpstagram.errors import CheckpointRequired, UpstreamRejected
 from dumpstagram.session import Session, SpinParameters
 

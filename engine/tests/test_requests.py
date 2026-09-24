@@ -16,14 +16,14 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.documents import API_GRAPHQL_URL, THREAD_MESSAGE_PAGE
-from dumpstagram._private.web.requests import (
-   PAGE_SIZE,
+from dumpstagram._private.web.documents.common import API_GRAPHQL_URL
+from dumpstagram._private.web.documents.direct import THREAD_MESSAGE_PAGE
+from dumpstagram._private.web.requests.common import (
    VALIDATED_BODY_FIELDS,
    VALIDATED_HEADERS,
-   build_thread_page_request,
    jazoest_for,
 )
+from dumpstagram._private.web.requests.direct import PAGE_SIZE, build_thread_page_request
 from dumpstagram.errors import AuthenticationFailed
 from dumpstagram.session import Session, SpinParameters
 

@@ -168,6 +168,58 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   home, because the owner has no live story and the own story URL redirected to home; no other
   account's story was opened.
 
+- **W15. Every importer names the domain module, and no package `__init__.py` re-exports.**
+  Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1 item 3. The step allowed
+  either re-exporting packages or updating every importer, and asked for whichever keeps
+  `tests/test_import_boundary.py` meaningful. That gate reads import edges from source. With
+  direct imports each edge names the module a name is defined in, so which domain of `_private`
+  a `_core` capability depends on stays readable from the edges, and a later rule such as "a
+  domain module imports only `common`" can be written against them. Re-exports would collapse
+  every edge onto the package and make each `__init__.py` a second list of names to keep in
+  step. The cost was mechanical: 40 importers across `dumpstagram/`, `tests/` and `probes/`, and
+  one gate, `test_every_query_on_the_graphql_query_path_names_its_root_field`, which walked
+  `vars(documents)` and now walks every module of the `documents` package with
+  `pkgutil.iter_modules`, the same set of queries as before.
+- **W16. What goes where, where no W1 namespace fits.** Ruled 2026-09-23 for E1 item 3. Likes and
+  comments are `media`, since they act on a post, and follows are `social`. Modules exist only for
+  domains with code today, so there is no `stories`, `search` or `account` module yet. Shared
+  helpers are `common.py` in each package: `build_graphql_request` and the id patterns two
+  domains share in `requests/`, the required and optional readers in `parse/`, `PersistedQuery`
+  and both paths in `documents/`, and in `_cli/commands/` the `Client` protocol, the session path
+  and the request options. Three modules are named for what they are because they belong to no
+  domain: `page_load.py` in `documents/` and `requests/` for the page load companions and the
+  cookie sync's `fr` exchange, mirroring `_core/page_load.py`, and `session.py` and `events.py`
+  in `_cli/commands/` and `_cli/render/`. `build_parser` stays in `_cli/main.py` and calls one
+  registrar per command group in the order the commands were always added, so `dumpsta --help`
+  lists them as before, and `main` keeps the dispatch.
+- **W17. Gates changed only to follow the move, each one checked.** Ruled 2026-09-23 for E1
+  item 3. Every harness anchor that pointed into a split file now names the new file, 186
+  mutations in 17 harnesses, each found exactly once there, the replacement text unchanged but for what follows. Five
+  replacements named something their old module had in scope and their new one does not, which
+  would have turned the gate red through a `NameError` rather than through the defect, so each
+  gained what brings the name back, an import edit beside it in `verify_notes_gates.py` (three)
+  and `verify_inbox_gates.py` (one), and a local import inside the replacement in
+  `verify_feed_gates.py`, whose harness takes one edit per mutation. A check that applied every
+  moved mutation to its old and new file found the same undefined names before and after, none
+  added. `tests/test_cli.py::test_the_cli_reaches_no_capability_module_directly` read `_cli/`
+  with a flat glob, which the commands moving into `_cli/commands/` would have silently escaped:
+  a `_private` import planted in `_cli/commands/media.py` passed under the flat glob and failed
+  under the recursive one, which it now uses. `check_provenance.py` compared a query's `url`
+  only against constants of its own module, so `HOME_TIMELINE_FEED` and `PROFILE_POSTS` naming
+  `GRAPHQL_QUERY_URL` from `documents/common.py` reported `mismatch on url`. It now also resolves
+  a constant imported by name from another scanned module, one level, with an import fixture in
+  its positive control, two scanner mutations and one injection in
+  `verify_provenance_controls.py`, which also now refuses an injection into a file that does
+  not exist, since two of its injections named `parse.py` and would otherwise have created it.
+  One weakness predates the split and is left for the owner: `verify_feed_gates.py`'s
+  length-heuristic mutation names `FEED_PAGE_SIZE_GUESS`, which no module defines, so its gate
+  goes red on a `NameError`, before the split as after.
+- **W18. `aio.py` stays whole until item 4.** Ruled 2026-09-23 for E1 item 3. The step named four
+  files, and `_cli/render.py` at 561 lines was split with them because the stop condition allows
+  no module over about 500 lines where a domain split is possible. `aio.py` at 817 lines is the
+  one left: it is the public facade, and item 4's namespace objects are where its per-domain
+  split belongs, so doing it here would be done twice.
+
 ## Standing rules for every phase
 
 - Every capability starts with a `reverse-engineer` run and a verified finding, per the
@@ -205,6 +257,13 @@ the per-domain layout.
 3. **Per-domain layout.** Split `requests.py`, `parse.py`, `documents.py` and `_cli/main.py` into
    one module per domain, matching the W1 namespaces. Private only, no surface change. The
    mutation harness anchors move with the code, and every harness is rerun red then green.
+   Done 2026-09-23, 0 live requests: `_private/web/documents/`, `requests/` and `parse/`,
+   `_cli/commands/` and `_cli/render/` are packages of `direct`, `feed`, `media`, `profiles`,
+   `social` and `notes` modules plus a `common.py`, with `page_load`, `session` and `events` where
+   W16 says, and no module over 483 lines outside `aio.py` (W18). Every importer names the domain
+   module (W15). `tests/public_surface.txt` is unchanged, the suite is still 685 passed, and all
+   28 harnesses exit 0 with 464 of 464 mutations red then green, 186 of them on anchors that
+   moved (W17). Log `engine/logs/harness-sweep-2026-09-23-194421.txt`.
 4. **Namespaces.** The W1 namespace objects on both facades, with aliases for the 24 existing
    methods, and the parity gate extended to walk them.
 5. **Pagination iterators.** `iter_*` companions over every `Page` read, terminating only on

@@ -26,8 +26,9 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_MEDIA = "dumpstagram/_cli/commands/media.py"
+PARSE_MEDIA = "dumpstagram/_private/web/parse/media.py"
+REQUESTS_MEDIA = "dumpstagram/_private/web/requests/media.py"
 READ = "dumpstagram/_core/comments.py"
 WRITES = "dumpstagram/_core/writes/comments.py"
 FACADE = "dumpstagram/aio.py"
@@ -57,7 +58,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the page is taken as the last one when it comes back short",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             PAGE_TERMINATOR,
             PAGE_TERMINATOR.replace(
                "page_info_path)\n   end_cursor",
@@ -71,7 +72,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the like count is read from the reply count",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             'like_count=_required_integer(node, "comment_like_count", path)',
             'like_count=_required_integer(node, "child_comment_count", path)',
          )
@@ -81,7 +82,11 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": gate("test_a_page_node_maps_into_a_comment_field_by_field"),
       "defect": "the viewer's like on a comment defaults to false",
       "edits": [
-         (PARSE, 'has_liked=_required_flag(node, "has_liked_comment", path)', "has_liked=False")
+         (
+            PARSE_MEDIA,
+            'has_liked=_required_flag(node, "has_liked_comment", path)',
+            "has_liked=False",
+         )
       ],
    },
    {
@@ -89,7 +94,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the author is read from fbid_v2, another identifier",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             'id=_required_string(user, "pk", user_path)',
             'id=_required_string(user, "fbid_v2", user_path)',
          )
@@ -100,7 +105,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "created_at is read as milliseconds",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             'path=f"{path}.created_at")\n\n   return datetime.fromtimestamp(raw, tz=UTC)',
             'path=f"{path}.created_at")\n\n   return datetime.fromtimestamp(raw / 1000, tz=UTC)',
          )
@@ -111,7 +116,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the created comment is given a like count its answer does not carry",
       "edits": [
          (
-            PARSE,
+            PARSE_MEDIA,
             "      author=_comment_author(node, path),\n   )\n",
             "      author=_comment_author(node, path),\n      like_count=0,\n   )\n",
          )
@@ -120,19 +125,19 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_page_read_sends_the_request_the_engine_replayed"),
       "defect": "the page read drops the sort order the replays carried",
-      "edits": [(REQUESTS, '         "sort_order": "popular",\n', "")],
+      "edits": [(REQUESTS_MEDIA, '         "sort_order": "popular",\n', "")],
    },
    {
       "gate": gate("test_the_page_read_sends_the_request_the_engine_replayed"),
       "defect": "the cursor is not passed on",
-      "edits": [(REQUESTS, '         "after": after,\n', '         "after": None,\n')],
+      "edits": [(REQUESTS_MEDIA, '         "after": after,\n', '         "after": None,\n')],
    },
    {
       "gate": gate("test_the_comment_sends_the_request_the_engine_replayed"),
       "defect": "the comment names the post by the id form",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '{"comment_text": text, "media_id": post_pk}',
             '{"comment_text": text, "media_id": f"{post_pk}_0"}',
          )
@@ -143,7 +148,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the comment is wrapped in input as the like mutations are",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '{"connections": [], "data": {"comment_text": text, "media_id": post_pk}}',
             '{"input": {"comment_text": text, "media_id": post_pk}}',
          )
@@ -169,7 +174,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the delete drops the post identifier",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '            "comment_id": comment_id,\n            "media_id": post_pk,\n',
             '            "comment_id": comment_id,\n',
          )
@@ -180,7 +185,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the delete sends the post pk as the comment id",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_MEDIA,
             '            "comment_id": comment_id,\n',
             '            "comment_id": post_pk,\n',
          )
@@ -189,7 +194,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_delete_answered_with_a_null_root_is_not_a_delete"),
       "defect": "a null root field is taken as a delete",
-      "edits": [(PARSE, "   return isinstance(root, dict)\n", "   return True\n")],
+      "edits": [(PARSE_MEDIA, "   return isinstance(root, dict)\n", "   return True\n")],
    },
    {
       "gate": gate("test_the_id_form_is_refused_before_anything_is_sent"),
@@ -245,7 +250,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI drops the cursor",
       "edits": [
          (
-            CLI,
+            COMMANDS_MEDIA,
             "client.comments(arguments.pk, after=arguments.after)",
             "client.comments(arguments.pk)",
          )
@@ -256,7 +261,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI comments on the post with the pk as its text",
       "edits": [
          (
-            CLI,
+            COMMANDS_MEDIA,
             "client.comment(arguments.pk, arguments.text)",
             "client.comment(arguments.pk, arguments.pk)",
          )
@@ -267,7 +272,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI swaps the post and the comment",
       "edits": [
          (
-            CLI,
+            COMMANDS_MEDIA,
             "client.delete_comment(arguments.pk, arguments.comment_id)",
             "client.delete_comment(arguments.comment_id, arguments.pk)",
          )
@@ -276,7 +281,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_cli_refuses_a_comment_id_that_is_not_digits_before_opening_a_client"),
       "defect": "the CLI accepts any string as a comment id",
-      "edits": [(CLI, "type=comment_id, ", "")],
+      "edits": [(COMMANDS_MEDIA, "type=comment_id, ", "")],
    },
 ]
 

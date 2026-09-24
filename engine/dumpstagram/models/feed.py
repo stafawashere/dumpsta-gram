@@ -8,10 +8,12 @@ across one page, plus three ads and six explore stories, so the counts below say
 evidence is as well as what it showed.
 
 Fields the upstream sends and these models do not carry are named in
-`dumpstagram/_private/web/parse.py` beside the mapping that drops them.
+`dumpstagram/_private/web/parse/feed.py` and `parse/media.py` beside the mapping that drops
+them.
 
-Nothing here parses. Construction is done by the mapper in `_private/web/parse.py`, which
-reads named keys and raises rather than filling a default, so an upstream rename is loud.
+Nothing here parses. Construction is done by the mappers in `_private/web/parse/feed.py` and
+`parse/media.py`, which read named keys and raise rather than filling a default, so an upstream
+rename is loud.
 """
 
 from __future__ import annotations

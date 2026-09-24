@@ -42,7 +42,7 @@ from dumpstagram._core.realtime.pump import Found, SourceContext
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT
-from dumpstagram._private.web.documents import API_GRAPHQL_URL
+from dumpstagram._private.web.documents.common import API_GRAPHQL_URL
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY, Behavior, Spacing
 from dumpstagram.client import SyncClient

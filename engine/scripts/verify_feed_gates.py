@@ -30,12 +30,15 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
-DOCUMENTS = "dumpstagram/_private/web/documents.py"
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_FEED = "dumpstagram/_cli/commands/feed.py"
+DOCUMENTS_FEED = "dumpstagram/_private/web/documents/feed.py"
+PARSE_FEED = "dumpstagram/_private/web/parse/feed.py"
+PARSE_MEDIA = "dumpstagram/_private/web/parse/media.py"
+REQUESTS_FEED = "dumpstagram/_private/web/requests/feed.py"
 CAPABILITY = "dumpstagram/_core/feed.py"
 MAIN = "dumpstagram/_cli/main.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_FEED = "dumpstagram/_cli/render/feed.py"
+RENDER_MEDIA = "dumpstagram/_cli/render/media.py"
 
 FEED_HAS_ITS_OWN_PATH = """   finding_id="home-timeline-feed-page",
    url=GRAPHQL_QUERY_URL,
@@ -76,6 +79,8 @@ TAKEN_AT_IS_SECONDS = """   raw = _required(node, "taken_at", path)
    return datetime.fromtimestamp(raw, tz=UTC)"""
 
 TAKEN_AT_IS_MILLISECONDS = """   raw = _required(node, "taken_at", path)
+
+   from dumpstagram._private.web.parse.common import MILLISECONDS_PER_SECOND
 
    return datetime.fromtimestamp(int(raw) / MILLISECONDS_PER_SECOND, tz=UTC)"""
 
@@ -185,7 +190,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_feed.py::test_the_feed_request_goes_to_the_path_this_query_answers_on",
       "defect": "the feed is posted to the other path, which answers 200 with an empty feed",
-      "file": DOCUMENTS,
+      "file": DOCUMENTS_FEED,
       "find": FEED_HAS_ITS_OWN_PATH,
       "replace": FEED_INHERITS_THE_DEFAULT_PATH,
    },
@@ -194,7 +199,7 @@ MUTATIONS = [
          "tests/test_feed.py::test_the_feed_request_carries_its_document_and_the_cursor_it_was_given"
       ),
       "defect": "the cursor never reaches the wire, so every page is the first page",
-      "file": REQUESTS,
+      "file": REQUESTS_FEED,
       "find": FEED_SENDS_THE_CURSOR,
       "replace": FEED_DROPS_THE_CURSOR,
    },
@@ -203,28 +208,28 @@ MUTATIONS = [
          "tests/test_feed.py::test_an_item_with_no_filled_slot_raises_rather_than_being_skipped"
       ),
       "defect": "a union that stopped being a union is mapped as an empty post",
-      "file": PARSE,
+      "file": PARSE_FEED,
       "find": UNION_DEMANDS_ONE_SLOT,
       "replace": UNION_TAKES_WHATEVER_IS_THERE,
    },
    {
       "gate": "tests/test_feed.py::test_a_union_slot_this_version_does_not_know_raises",
       "defect": "a tenth slot arrives and is reported as a post that has no media",
-      "file": PARSE,
+      "file": PARSE_FEED,
       "find": UNKNOWN_SLOT_RAISES,
       "replace": UNKNOWN_SLOT_IS_A_POST,
    },
    {
       "gate": "tests/test_feed.py::test_taken_at_is_read_as_whole_seconds_and_not_as_milliseconds",
       "defect": "the unit is borrowed from a direct message, dating every post to 1970",
-      "file": PARSE,
+      "file": PARSE_MEDIA,
       "find": TAKEN_AT_IS_SECONDS,
       "replace": TAKEN_AT_IS_MILLISECONDS,
    },
    {
       "gate": "tests/test_feed.py::test_the_post_carries_both_identifiers_because_they_differ_here",
       "defect": "pk and id are treated as one value, which they are not on a media node",
-      "file": PARSE,
+      "file": PARSE_MEDIA,
       "find": POST_READS_BOTH_IDENTIFIERS,
       "replace": POST_TREATS_THEM_AS_ONE,
    },
@@ -233,21 +238,21 @@ MUTATIONS = [
          "tests/test_feed.py::test_the_author_comes_from_the_user_object_and_not_from_owner_id"
       ),
       "defect": "the author is read off owner_id, which is an object rather than the number",
-      "file": PARSE,
+      "file": PARSE_MEDIA,
       "find": AUTHOR_COMES_FROM_USER,
       "replace": AUTHOR_COMES_FROM_OWNER_ID,
    },
    {
       "gate": "tests/test_feed.py::test_every_image_rendition_is_kept_in_the_order_it_arrived",
       "defect": "one crop is picked here, making every other aspect ratio unreachable",
-      "file": PARSE,
+      "file": PARSE_MEDIA,
       "find": IMAGES_KEEP_EVERY_CANDIDATE,
       "replace": IMAGES_KEEP_THE_FIRST,
    },
    {
       "gate": "tests/test_feed.py::test_the_cursor_comes_from_page_info_and_never_from_an_edge",
       "defect": "the terminator is derived from a page length rather than from the server",
-      "file": PARSE,
+      "file": PARSE_FEED,
       "find": CURSOR_COMES_FROM_PAGE_INFO,
       "replace": CURSOR_COMES_FROM_A_LENGTH,
    },
@@ -263,35 +268,35 @@ MUTATIONS = [
          "tests/test_cli.py::test_the_feed_command_stops_on_the_terminator_and_not_on_a_page_length"
       ),
       "defect": "the command stops on a short page, which every measured page was",
-      "file": MAIN,
+      "file": COMMANDS_FEED,
       "find": CLI_STOPS_ON_THE_TERMINATOR,
       "replace": CLI_STOPS_ON_A_LENGTH,
    },
    {
       "gate": "tests/test_cli.py::test_the_feed_command_passes_a_given_cursor_to_the_first_request",
       "defect": "--after parses and is then ignored, so resuming silently restarts",
-      "file": MAIN,
+      "file": COMMANDS_FEED,
       "find": CLI_SENDS_THE_CURSOR,
       "replace": CLI_IGNORES_THE_CURSOR,
    },
    {
       "gate": "tests/test_cli.py::test_the_feed_json_form_separates_items_from_posts",
       "defect": "items and posts are conflated, and they differed on every measured page",
-      "file": RENDER,
+      "file": RENDER_FEED,
       "find": CLI_COUNTS_BOTH,
       "replace": CLI_COUNTS_ITEMS_TWICE,
    },
    {
       "gate": "tests/test_cli.py::test_posts_only_hides_the_other_items_but_still_counts_them",
       "defect": "the filter also filters the trailer, so a page looks shorter than it was",
-      "file": MAIN,
+      "file": COMMANDS_FEED,
       "find": CLI_TRAILER_SEES_EVERY_ITEM,
       "replace": CLI_TRAILER_SEES_THE_FILTERED_LIST,
    },
    {
       "gate": "tests/test_cli.py::test_the_feed_json_form_carries_the_post_identity_and_its_author",
       "defect": "a contract key is renamed under whatever scripts the command",
-      "file": RENDER,
+      "file": RENDER_MEDIA,
       "find": '      "like_count": post.like_count,',
       "replace": '      "likes": post.like_count,',
    },
@@ -305,7 +310,7 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_the_feed_command_closes_its_client_even_when_the_read_fails",
       "defect": "a failed read leaves the loop thread running, so the command hangs",
-      "file": MAIN,
+      "file": COMMANDS_FEED,
       "find": FEED_CLOSES_UNDER_A_TRY,
       "replace": FEED_CLOSES_WITHOUT_ONE,
    },

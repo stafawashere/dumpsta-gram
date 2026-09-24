@@ -28,12 +28,13 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_DIRECT = "dumpstagram/_cli/commands/direct.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
+REQUESTS_DIRECT = "dumpstagram/_private/web/requests/direct.py"
 DIRECT_WRITES = "dumpstagram/_core/writes/direct.py"
 DIRECT_READS = "dumpstagram/_core/direct.py"
 CLI = "dumpstagram/_cli/main.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_DIRECT = "dumpstagram/_cli/render/direct.py"
 GATES = "tests/test_direct_send.py"
 
 SEND = '   payload = await send_write(sender, session, WriteRequest(request, "send_message"))\n'
@@ -59,7 +60,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the random bits go above the clock instead of below it",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             "(now_ms << _OFFLINE_THREADING_RANDOM_BITS) | (random_bits & random_mask)\n",
             "((random_bits & random_mask) << 41) | now_ms\n",
          )
@@ -70,7 +71,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the whole random number is written in, over the clock bits",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             "| (random_bits & random_mask)\n",
             "| random_bits\n",
          )
@@ -81,7 +82,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the identifier is not cut to 63 bits",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             "   return str(combined & ((1 << _OFFLINE_THREADING_ID_BITS) - 1))\n",
             "   return str(combined)\n",
          )
@@ -115,7 +116,11 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": gate("test_a_send_is_the_one_request_the_browser_sent"),
       "defect": "the thread is left unnamed, the shape of a send without a thread",
       "edits": [
-         (REQUESTS, '      "ig_thread_igid": thread_fbid,\n', '      "ig_thread_igid": None,\n')
+         (
+            REQUESTS_DIRECT,
+            '      "ig_thread_igid": thread_fbid,\n',
+            '      "ig_thread_igid": None,\n',
+         )
       ],
    },
    {
@@ -123,7 +128,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "send_attribution is not the composer's",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '      "send_attribution": SEND_ATTRIBUTION,\n',
             '      "send_attribution": None,\n',
          )
@@ -132,14 +137,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_send_is_the_one_request_the_browser_sent"),
       "defect": "sampled, which the composer sends as null, is left out",
-      "edits": [(REQUESTS, '      "sampled": None,\n', "")],
+      "edits": [(REQUESTS_DIRECT, '      "sampled": None,\n', "")],
    },
    {
       "gate": gate("test_a_send_is_the_one_request_the_browser_sent"),
       "defect": "the text goes out bare, not wrapped as sensitive_string_value",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '      "text": {"sensitive_string_value": text},\n',
             '      "text": text,\n',
          )
@@ -150,7 +155,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "two variables go out in another order than the composer's",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             '      "mentions": [],\n      "mentioned_user_ids": [],\n',
             '      "mentioned_user_ids": [],\n      "mentions": [],\n',
          )
@@ -161,7 +166,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the send carries the home page as referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             DIRECT_SEND_REFERER,
             '      DIRECT_TEXT_SEND,\n      variables,\n      referer=f"{ORIGIN}/",\n',
          )
@@ -172,7 +177,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "sent_at is taken from the local clock",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "      sent_at=_sent_at(root, root_path),\n",
             "      sent_at=datetime.now(tz=UTC),\n",
          )
@@ -182,7 +187,7 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": gate("test_an_answer_whose_id_is_not_its_message_id_is_a_schema_change"),
       "defect": "an id that differs from the message_id is accepted",
       "edits": [
-         (PARSE, "   ids_disagree = echoed_id != message_id\n", "   ids_disagree = False\n")
+         (PARSE_DIRECT, "   ids_disagree = echoed_id != message_id\n", "   ids_disagree = False\n")
       ],
    },
    {
@@ -225,7 +230,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the read leaves offline_threading_id unmapped",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             "      offline_threading_id=_offline_threading_id(node, path),\n",
             "      offline_threading_id=None,\n",
          )
@@ -234,7 +239,9 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_node_without_the_identifier_reads_as_none"),
       "defect": "a node without the key is refused",
-      "edits": [(PARSE, '   if "offline_threading_id" not in node:\n      return None\n\n', "")],
+      "edits": [
+         (PARSE_DIRECT, '   if "offline_threading_id" not in node:\n      return None\n\n', "")
+      ],
    },
    {
       "gate": gate("test_the_reconciling_read_matches_the_identifier_and_not_the_text"),
@@ -274,7 +281,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the unsend carries the home page as referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_DIRECT,
             UNSEND_REFERER,
             '      {"message_id": message_id, "send_data": {"thread_id": thread_id}},\n'
             '      referer=f"{ORIGIN}/",\n',
@@ -289,7 +296,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_an_unsend_answer_that_is_not_a_boolean_is_a_schema_change"),
       "defect": "a changed answer is read as truthy",
-      "edits": [(PARSE, "   if not isinstance(answer, bool):\n", "   if answer is None:\n")],
+      "edits": [(PARSE_DIRECT, "   if not isinstance(answer, bool):\n", "   if answer is None:\n")],
    },
    {
       "gate": gate("test_the_unsend_departs_only_through_the_write_slot"),
@@ -304,7 +311,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a missing thread_id becomes an empty one and the unsend goes",
       "edits": [
          (
-            PARSE,
+            PARSE_DIRECT,
             '_required_string(thread, "thread_id", ".".join(THREAD_DETAIL_THREAD_PATH))',
             'str(thread.get("thread_id", ""))',
          )
@@ -326,7 +333,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI crosses the thread and the text",
       "edits": [
          (
-            CLI,
+            COMMANDS_DIRECT,
             "         sent = client.send_message(arguments.thread_fbid, arguments.text)\n",
             "         sent = client.send_message(arguments.text, arguments.thread_fbid)\n",
          )
@@ -335,14 +342,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_cli_sends_the_text_into_the_named_thread"),
       "defect": "the CLI output drops the identifier",
-      "edits": [(RENDER, '      "offline_threading_id": sent.offline_threading_id,\n', "")],
+      "edits": [(RENDER_DIRECT, '      "offline_threading_id": sent.offline_threading_id,\n', "")],
    },
    {
       "gate": gate("test_the_cli_unsends_the_named_message"),
       "defect": "the CLI crosses the thread and the message id",
       "edits": [
          (
-            CLI,
+            COMMANDS_DIRECT,
             "         client.unsend_message(arguments.thread_fbid, arguments.message_id)\n",
             "         client.unsend_message(arguments.message_id, arguments.thread_fbid)\n",
          )
@@ -353,7 +360,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI takes any message id",
       "edits": [
          (
-            CLI,
+            COMMANDS_DIRECT,
             '"message_id", metavar="MESSAGE_ID", type=message_id, help=',
             '"message_id", metavar="MESSAGE_ID", help=',
          )
@@ -364,7 +371,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI takes any thread id for a send",
       "edits": [
          (
-            CLI,
+            COMMANDS_DIRECT,
             '   send.add_argument("thread_fbid", metavar="FBID", type=thread_fbid, help=',
             '   send.add_argument("thread_fbid", metavar="FBID", help=',
          )

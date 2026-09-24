@@ -34,10 +34,10 @@ from dumpstagram._private.web.bootstrap import (
    tokens_from,
 )
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import parse_profile, parse_user_id
+from dumpstagram._private.web.parse.profiles import parse_profile, parse_user_id
 from dumpstagram._private.web.preload import read_iris_device_id, read_profile_id
-from dumpstagram._private.web.requests import (
-   build_profile_page_load_companions,
+from dumpstagram._private.web.requests.page_load import build_profile_page_load_companions
+from dumpstagram._private.web.requests.profiles import (
    build_profile_page_requests,
    build_profile_request,
    build_username_resolution_request,

@@ -30,11 +30,13 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
 CAPABILITY = "dumpstagram/_core/profiles.py"
 MAIN = "dumpstagram/_cli/main.py"
-RENDER = "dumpstagram/_cli/render.py"
+COMMANDS_PROFILES = "dumpstagram/_cli/commands/profiles.py"
+PARSE_COMMON = "dumpstagram/_private/web/parse/common.py"
+PARSE_PROFILES = "dumpstagram/_private/web/parse/profiles.py"
+REQUESTS_PROFILES = "dumpstagram/_private/web/requests/profiles.py"
+RENDER_PROFILES = "dumpstagram/_cli/render/profiles.py"
 
 REQUIRED_RAISES = """def _required(node: Any, key: str, path: str) -> Any:
    if not isinstance(node, dict) or key not in node:
@@ -138,35 +140,35 @@ MUTATIONS = [
    {
       "gate": "tests/test_profiles.py::test_a_renamed_field_raises_rather_than_defaulting",
       "defect": "an upstream rename degrades every record instead of failing loudly",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": REQUIRED_RAISES,
       "replace": REQUIRED_DEFAULTS,
    },
    {
       "gate": "tests/test_profiles.py::test_a_count_that_stops_being_a_number_raises",
       "defect": "a count sent as a string is coerced, so a schema change looks like data",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": INTEGER_IS_CHECKED,
       "replace": INTEGER_IS_COERCED,
    },
    {
       "gate": "tests/test_profiles.py::test_a_boolean_sent_as_a_number_raises",
       "defect": "truthiness stands in for a boolean, so 0 reads as a real False",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": FLAG_IS_CHECKED,
       "replace": FLAG_IS_COERCED,
    },
    {
       "gate": "tests/test_profiles.py::test_an_hd_picture_wrapper_of_the_wrong_shape_raises",
       "defect": "an upstream shape change is reported as an account with no picture",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": HD_WRAPPER_IS_CHECKED,
       "replace": HD_WRAPPER_IS_SHRUGGED_AT,
    },
    {
       "gate": "tests/test_profiles.py::test_a_renamed_bio_link_field_raises",
       "defect": "the link tray degrades silently while the rest of the profile still maps",
-      "file": PARSE,
+      "file": PARSE_PROFILES,
       "find": '            lynx_url=_required_string(entry, "lynx_url", entry_path),',
       "replace": '            lynx_url=entry.get("lynx_url", ""),',
    },
@@ -176,7 +178,7 @@ MUTATIONS = [
          "test_an_empty_timeline_resolves_to_nothing_rather_than_to_a_wrong_id"
       ),
       "defect": "an account with nothing visible resolves to an invented id",
-      "file": PARSE,
+      "file": PARSE_PROFILES,
       "find": EMPTY_TIMELINE_IS_NOTHING,
       "replace": EMPTY_TIMELINE_IS_ZERO,
    },
@@ -185,7 +187,7 @@ MUTATIONS = [
          "tests/test_profiles.py::test_the_profile_request_carries_the_account_id_and_its_document"
       ),
       "defect": "the profile query is sent with a rotated or mistyped document id",
-      "file": REQUESTS,
+      "file": REQUESTS_PROFILES,
       "find": '      "id": user_id,',
       "replace": '      "id": user_id[::-1],',
    },
@@ -195,7 +197,7 @@ MUTATIONS = [
          "test_the_resolution_request_asks_for_one_post_and_names_the_username"
       ),
       "defect": "the resolver inherits the web client's twelve and moves 200 kB for one id",
-      "file": REQUESTS,
+      "file": REQUESTS_PROFILES,
       "find": "_profile_posts_variables(username, RESOLUTION_PAGE_SIZE)",
       "replace": "_profile_posts_variables(username, 12)",
    },
@@ -229,21 +231,21 @@ MUTATIONS = [
    {
       "gate": "tests/test_cli.py::test_the_profile_command_reads_by_username_by_default",
       "defect": "every argument is treated as an id, so a username is never resolved",
-      "file": MAIN,
+      "file": COMMANDS_PROFILES,
       "find": CLI_PICKS_A_ROUTE,
       "replace": CLI_ALWAYS_USES_THE_ID,
    },
    {
       "gate": "tests/test_cli.py::test_the_profile_command_reports_two_requests_when_it_resolves",
       "defect": "the reported cost stops matching the route that ran",
-      "file": MAIN,
+      "file": COMMANDS_PROFILES,
       "find": '      "requests_spent": 1 if arguments.by_id else 2,',
       "replace": '      "requests_spent": 1,',
    },
    {
       "gate": "tests/test_cli.py::test_the_profile_json_form_carries_the_identity_and_the_counts",
       "defect": "a contract key is renamed under whatever scripts the command",
-      "file": RENDER,
+      "file": RENDER_PROFILES,
       "find": '      "follower_count": profile.follower_count,',
       "replace": '      "followers": profile.follower_count,',
    },
@@ -261,7 +263,7 @@ MUTATIONS = [
          "tests/test_cli.py::test_the_profile_command_closes_its_client_even_when_the_read_fails"
       ),
       "defect": "a failed read leaves the loop thread running, so the command hangs",
-      "file": MAIN,
+      "file": COMMANDS_PROFILES,
       "find": PROFILE_CLOSES_UNDER_A_TRY,
       "replace": PROFILE_CLOSES_WITHOUT_ONE,
    },

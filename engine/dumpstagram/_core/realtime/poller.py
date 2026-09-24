@@ -49,14 +49,14 @@ from dumpstagram._core.tokens import with_one_token_recovery
 from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.direct import (
    InboxMessage,
    InboxThread,
    parse_inbox_listing,
    parse_inbox_recent_messages,
    parse_thread_message_page,
 )
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.requests.direct import (
    build_inbox_listing_request,
    build_thread_older_page_request,
 )

@@ -32,8 +32,8 @@ from dumpstagram._private.web.bootstrap import (
    read_page_parameters,
 )
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.documents import GET_FR_COOKIE
-from dumpstagram._private.web.requests import build_graphql_request, jazoest_for
+from dumpstagram._private.web.documents.page_load import GET_FR_COOKIE
+from dumpstagram._private.web.requests.common import build_graphql_request, jazoest_for
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.session import Session
 

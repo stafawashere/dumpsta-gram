@@ -27,11 +27,13 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_SOCIAL = "dumpstagram/_cli/commands/social.py"
+PARSE_PROFILES = "dumpstagram/_private/web/parse/profiles.py"
+PARSE_SOCIAL = "dumpstagram/_private/web/parse/social.py"
+REQUESTS_SOCIAL = "dumpstagram/_private/web/requests/social.py"
 FOLLOWS = "dumpstagram/_core/writes/follows.py"
 CLI = "dumpstagram/_cli/main.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_PROFILES = "dumpstagram/_cli/render/profiles.py"
 GATES = "tests/test_follows.py"
 
 SEND_FOLLOW = '   payload = await send_write(sender, session, WriteRequest(request, "follow"))\n'
@@ -52,7 +54,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a requested follow is collapsed into not following",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             'outgoing_request=_required_flag(raw, "outgoing_request", status_path),',
             "outgoing_request=False,",
          )
@@ -63,7 +65,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "following is read from followed_by",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             'following=_required_flag(raw, "following", status_path),',
             'following=_required_flag(raw, "followed_by", status_path),',
          )
@@ -74,7 +76,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the relationship is never mapped onto the profile",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             "      friendship_status=_friendship_status(user, path),\n",
             "",
          )
@@ -85,7 +87,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the viewer's own null is read as a relationship of all false flags",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             "   if raw is None:\n      return None\n\n   status_path",
             "   if raw is None:\n"
             "      raw = dict.fromkeys(FriendshipStatus.__dataclass_fields__, False)\n\n"
@@ -98,7 +100,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "has_profile_pic is required to be a boolean again",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             'has_profile_pic=_flag_or_default(user, "has_profile_pic", path, default=True),',
             'has_profile_pic=_required_flag(user, "has_profile_pic", path),',
          )
@@ -109,7 +111,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a null has_profile_pic is read as false",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             'has_profile_pic=_flag_or_default(user, "has_profile_pic", path, default=True),',
             'has_profile_pic=_flag_or_default(user, "has_profile_pic", path, default=False),',
          )
@@ -120,7 +122,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the null allowance accepts any value",
       "edits": [
          (
-            PARSE,
+            PARSE_PROFILES,
             "   if value is None:\n      return default\n\n   if not isinstance(value, bool):\n"
             '      raise SchemaChanged(f"{path}.{key} is not a boolean or null"',
             "   if not isinstance(value, bool):\n      return default\n\n   if False:\n"
@@ -133,7 +135,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "unfollow is pointed at the follow document",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_SOCIAL,
             '      UNFOLLOW_USER,\n      {"target_user_id": user_id},',
             '      FOLLOW_USER,\n      {"target_user_id": user_id},',
          )
@@ -144,7 +146,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the follow carries a variable no observed send carried",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_SOCIAL,
             '      FOLLOW_USER,\n      {"target_user_id": user_id},',
             '      FOLLOW_USER,\n      {"target_user_id": user_id, "container_module": "profile"},',
          )
@@ -155,7 +157,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the follow is sent from the account's profile page instead of the home page",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_SOCIAL,
             '      FOLLOW_USER,\n      {"target_user_id": user_id},\n      referer=f"{ORIGIN}/",',
             '      FOLLOW_USER,\n      {"target_user_id": user_id},\n'
             '      referer=f"{ORIGIN}/{user_id}/",',
@@ -229,14 +231,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_an_answer_about_another_account_is_a_schema_change"),
       "defect": "the echoed account id is not compared",
-      "edits": [(PARSE, "   if echoed_id != user_id:\n", "   if False:\n")],
+      "edits": [(PARSE_SOCIAL, "   if echoed_id != user_id:\n", "   if False:\n")],
    },
    {
       "gate": gate("test_the_cli_sends_the_named_account_to_the_named_write"),
       "defect": "the CLI crosses follow and unfollow",
       "edits": [
          (
-            CLI,
+            COMMANDS_SOCIAL,
             "      if is_follow:\n         client.follow(arguments.user_id)",
             "      if not is_follow:\n         client.follow(arguments.user_id)",
          )
@@ -247,7 +249,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI accepts any string as an account id",
       "edits": [
          (
-            CLI,
+            COMMANDS_SOCIAL,
             '"user_id", metavar="USER_ID", type=account_id, ',
             '"user_id", metavar="USER_ID", ',
          )
@@ -258,7 +260,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile JSON leaves the relationship out",
       "edits": [
          (
-            RENDER,
+            RENDER_PROFILES,
             '      "friendship_status": describe_friendship_status(profile.friendship_status),\n',
             "",
          )
@@ -269,7 +271,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile JSON reports a request as not requested",
       "edits": [
          (
-            RENDER,
+            RENDER_PROFILES,
             '      "outgoing_request": status.outgoing_request,\n',
             '      "outgoing_request": status.following,\n',
          )

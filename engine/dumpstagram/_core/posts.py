@@ -16,8 +16,8 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import parse_post_detail
-from dumpstagram._private.web.requests import build_post_request
+from dumpstagram._private.web.parse.media import parse_post_detail
+from dumpstagram._private.web.requests.media import build_post_request
 from dumpstagram.models import PostDetail
 from dumpstagram.session import Session
 

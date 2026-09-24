@@ -36,7 +36,7 @@ from dumpstagram._core.pacer import PacingPolicy, WritePolicy
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.parse import parse_post_detail
+from dumpstagram._private.web.parse.media import parse_post_detail
 from dumpstagram.errors import SchemaChanged, UpstreamRejected
 from dumpstagram.models import MediaImage, PostAuthor, PostDetail
 from dumpstagram.session import Session

@@ -18,12 +18,12 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.writing import send_write
 from dumpstagram._private.transport import WriteRequest
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.social import (
    FOLLOW_ANSWER_ROOT,
    UNFOLLOW_ANSWER_ROOT,
    parse_follow_answer,
 )
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.requests.social import (
    build_follow_request,
    build_unfollow_request,
    is_a_user_id,

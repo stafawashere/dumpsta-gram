@@ -29,18 +29,20 @@ from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.profiles import read_profile_from_page
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import Request, Response
-from dumpstagram._private.web.documents import (
+from dumpstagram._private.web.documents.page_load import (
    BADGE_COUNT,
    CHAT_TABS_JEWEL,
    OMNI_PICKER_NULL_STATE,
+   QUICK_PROMOTION,
+   STORIES_TRAY,
+)
+from dumpstagram._private.web.documents.profiles import (
    PROFILE_BY_ID,
    PROFILE_HIGHLIGHTS,
    PROFILE_NOTE_BUBBLE,
    PROFILE_POSTS,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
-   QUICK_PROMOTION,
-   STORIES_TRAY,
 )
 from dumpstagram._private.web.preload import HOME_DOCUMENT_URL, read_iris_device_id
 from dumpstagram.aio import AsyncClient

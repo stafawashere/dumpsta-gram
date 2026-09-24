@@ -26,12 +26,13 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-PARSE = "dumpstagram/_private/web/parse.py"
-REQUESTS = "dumpstagram/_private/web/requests.py"
+COMMANDS_NOTES = "dumpstagram/_cli/commands/notes.py"
+PARSE_NOTES = "dumpstagram/_private/web/parse/notes.py"
+REQUESTS_NOTES = "dumpstagram/_private/web/requests/notes.py"
 NOTES = "dumpstagram/_core/notes.py"
 MODELS = "dumpstagram/models/notes.py"
 CLI = "dumpstagram/_cli/main.py"
-RENDER = "dumpstagram/_cli/render.py"
+RENDER_NOTES = "dumpstagram/_cli/render/notes.py"
 WRITES = "dumpstagram/_core/writes/notes.py"
 BOOTSTRAP = "dumpstagram/_private/web/bootstrap.py"
 SESSION = "dumpstagram/session.py"
@@ -48,6 +49,14 @@ WRITING_IMPORT = "from dumpstagram._core.writing import send_write\n"
 CLASSIFY_IMPORT = "from dumpstagram._private.web.classify import classify\n"
 DELETE_ROOT_READ = '   _required(data, DELETE_NOTE_ROOT, "data")\n'
 
+PARSE_COMMON_IMPORT = "from dumpstagram._private.web.parse.common import (\n"
+BOOTSTRAP_IMPORT = (
+   "from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT\n"
+)
+BOOTSTRAP_IMPORT_WITH_ORIGIN = (
+   "from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT, ORIGIN\n"
+)
+
 
 def gate(name: str) -> str:
    return f"{GATES}::{name}"
@@ -59,7 +68,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the text is read from the wrong key",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             'text=_required_string(note, "text", note_path),',
             'text=_required_string(note, "author_id", note_path),',
          )
@@ -70,10 +79,11 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "created_at is read as milliseconds",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             "created_at=datetime.fromtimestamp(created_at, tz=UTC),",
             "created_at=datetime.fromtimestamp(created_at / MILLISECONDS_PER_SECOND, tz=UTC),",
-         )
+         ),
+         (PARSE_NOTES, PARSE_COMMON_IMPORT, PARSE_COMMON_IMPORT + "   MILLISECONDS_PER_SECOND,\n"),
       ],
    },
    {
@@ -92,7 +102,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "an undeclared audience falls back to the default one",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             "      return NoteAudience(raw)\n",
             "      return NoteAudience(raw) if raw in (0, 1, 2) else NoteAudience.MUTUAL_FOLLOWS\n",
          )
@@ -103,7 +113,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "a pagination key beside the items is ignored",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             "   pagination_keys = sorted(TRAY_PAGINATION_KEYS & tray.keys())\n",
             "   pagination_keys: list[str] = []\n",
          )
@@ -112,14 +122,16 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_tray_item_that_is_not_a_note_is_a_schema_change"),
       "defect": "an item of another kind is mapped as a note",
-      "edits": [(PARSE, "   if item_type != NOTE_ITEM_TYPE:\n", "   if item_type is None:\n")],
+      "edits": [
+         (PARSE_NOTES, "   if item_type != NOTE_ITEM_TYPE:\n", "   if item_type is None:\n")
+      ],
    },
    {
       "gate": gate("test_the_author_username_is_only_taken_from_the_author"),
       "defect": "the first pictured user is taken as the author",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             'is_the_author = _required_string(pog_user, "id", user_path) == author_id',
             "is_the_author = True",
          )
@@ -152,17 +164,22 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the tray query carries the home page as its referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_NOTES,
             "      {},\n      referer=BOOTSTRAP_URL,\n",
             '      {},\n      referer=f"{ORIGIN}/",\n',
-         )
+         ),
+         (REQUESTS_NOTES, BOOTSTRAP_IMPORT, BOOTSTRAP_IMPORT_WITH_ORIGIN),
       ],
    },
    {
       "gate": gate("test_the_tray_read_sends_the_request_the_inbox_sends"),
       "defect": "the tray query carries a variable the inbox never sends",
       "edits": [
-         (REQUESTS, "      INBOX_TRAY,\n      {},\n", '      INBOX_TRAY,\n      {"first": 20},\n')
+         (
+            REQUESTS_NOTES,
+            "      INBOX_TRAY,\n      {},\n",
+            '      INBOX_TRAY,\n      {"first": 20},\n',
+         )
       ],
    },
    {
@@ -181,7 +198,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI names the own note by the item id",
       "edits": [
          (
-            CLI,
+            COMMANDS_NOTES,
             "own_notes = [note for note in notes if note.author_id == viewer_id]",
             "own_notes = [note for note in notes if note.id == viewer_id]",
          )
@@ -192,7 +209,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI looks for the own note under the Facebook-side actor_id",
       "edits": [
          (
-            CLI,
+            COMMANDS_NOTES,
             "   token_before_the_read = client.session.fb_dtsg\n"
             "   viewer_id = client.session.ds_user_id\n",
             "   token_before_the_read = client.session.fb_dtsg\n"
@@ -205,7 +222,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the JSON form marks the own note by the item id",
       "edits": [
          (
-            RENDER,
+            RENDER_NOTES,
             '"is_own": note.author_id == viewer_id,',
             '"is_own": note.id == viewer_id,',
          )
@@ -216,7 +233,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the created note's text is read from the wrong key",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             'text=_required_string(note, "text", note_path),',
             'text=_required_string(note, "author_id", note_path),',
          )
@@ -227,7 +244,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the created note is read with the pictured user's id as its author",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             '   author_id = _required_string(note, "author_id", note_path)\n',
             '   author_id = _required_string(item["pog_info"]["pog_users"][0], "username", "p")\n',
          )
@@ -237,25 +254,26 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
       "defect": "the create sends ds_user_id as actor_id",
       "edits": [
-         (REQUESTS, '"actor_id": session.actor_id,', '"actor_id": session.ds_user_id,'),
+         (REQUESTS_NOTES, '"actor_id": session.actor_id,', '"actor_id": session.ds_user_id,'),
       ],
    },
    {
       "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
       "defect": "the create ignores the audience it was asked for",
-      "edits": [(REQUESTS, '"audience": audience,', '"audience": 0,')],
+      "edits": [(REQUESTS_NOTES, '"audience": audience,', '"audience": 0,')],
    },
    {
       "gate": gate("test_the_create_sends_actor_id_never_ds_user_id"),
       "defect": "the create carries the home page as its referer",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_NOTES,
             "      },\n      referer=BOOTSTRAP_URL,\n      user_agent=user_agent,\n   )\n\n\n"
             "def is_a_note_id",
             '      },\n      referer=f"{ORIGIN}/",\n      user_agent=user_agent,\n   )\n\n\n'
             "def is_a_note_id",
-         )
+         ),
+         (REQUESTS_NOTES, BOOTSTRAP_IMPORT, BOOTSTRAP_IMPORT_WITH_ORIGIN),
       ],
    },
    {
@@ -288,7 +306,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_page_without_the_actor_id_stops_the_create_before_it_is_sent"),
       "defect": "the create is built without an actor_id rather than refused",
-      "edits": [(REQUESTS, "   if not session.actor_id:\n", "   if False:\n")],
+      "edits": [(REQUESTS_NOTES, "   if not session.actor_id:\n", "   if False:\n")],
    },
    {
       "gate": gate("test_a_created_note_for_another_audience_raises"),
@@ -300,7 +318,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the delete's root field is tested for truthiness",
       "edits": [
          (
-            PARSE,
+            PARSE_NOTES,
             DELETE_ROOT_READ,
             '   if not _required(data, DELETE_NOTE_ROOT, "data"):\n'
             '      raise SchemaChanged("the delete answered null", path="data")\n',
@@ -310,14 +328,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_a_delete_answer_without_its_root_field_is_a_schema_change"),
       "defect": "an answer without the root field is taken as a delete",
-      "edits": [(PARSE, DELETE_ROOT_READ, "   data.get(DELETE_NOTE_ROOT)\n")],
+      "edits": [(PARSE_NOTES, DELETE_ROOT_READ, "   data.get(DELETE_NOTE_ROOT)\n")],
    },
    {
       "gate": gate("test_the_delete_sends_the_item_id"),
       "defect": "the delete sends the author's id",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_NOTES,
             '{"inbox_tray_item_id": note_id},',
             '{"inbox_tray_item_id": session.ds_user_id},',
          )
@@ -328,7 +346,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the delete wraps its variable in an input object",
       "edits": [
          (
-            REQUESTS,
+            REQUESTS_NOTES,
             '{"inbox_tray_item_id": note_id},',
             '{"input": {"inbox_tray_item_id": note_id}},',
          )
@@ -388,7 +406,7 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the CLI sets every note for close friends whatever was named",
       "edits": [
          (
-            CLI,
+            COMMANDS_NOTES,
             "audience=NOTE_AUDIENCES[arguments.audience]",
             "audience=NoteAudience.CLOSE_FRIENDS",
          ),
@@ -397,14 +415,16 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_cli_sets_the_named_text_for_the_named_audience"),
       "defect": "the CLI sends the audience name as the note text",
-      "edits": [(CLI, "client.set_note(arguments.text,", "client.set_note(arguments.audience,")],
+      "edits": [
+         (COMMANDS_NOTES, "client.set_note(arguments.text,", "client.set_note(arguments.audience,")
+      ],
    },
    {
       "gate": gate("test_the_cli_refuses_a_set_without_an_audience_before_opening_a_client"),
       "defect": "the CLI falls back to close friends when no audience is named",
       "edits": [
          (
-            CLI,
+            COMMANDS_NOTES,
             "      required=True,\n      choices=sorted(NOTE_AUDIENCES),\n",
             '      default="close-friends",\n      choices=sorted(NOTE_AUDIENCES),\n',
          )
@@ -413,12 +433,14 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_cli_deletes_the_named_note"),
       "defect": "the CLI deletes by the viewer's id instead of the named note",
-      "edits": [(CLI, "client.delete_note(arguments.note_id)", "client.delete_note(viewer_id)")],
+      "edits": [
+         (COMMANDS_NOTES, "client.delete_note(arguments.note_id)", "client.delete_note(viewer_id)")
+      ],
    },
    {
       "gate": gate("test_the_cli_refuses_a_note_id_that_is_not_digits_before_opening_a_client"),
       "defect": "the CLI accepts any string as a note id",
-      "edits": [(CLI, "type=note_id, ", "")],
+      "edits": [(COMMANDS_NOTES, "type=note_id, ", "")],
    },
    {
       "gate": f"{SESSION_GATES}::test_the_actor_id_survives_a_save_and_load",

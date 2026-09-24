@@ -86,7 +86,7 @@ class Request:
    """One outbound request, described without naming the HTTP client.
 
    ``content`` is the encoded body. Form encoding belongs to the adapter in
-   ``_private/web/requests.py``, because the body shape is surface knowledge and this module
+   ``_private/web/requests/``, because the body shape is surface knowledge and this module
    is surface agnostic.
    """
 

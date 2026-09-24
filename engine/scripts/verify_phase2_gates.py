@@ -22,7 +22,8 @@ from pathlib import Path
 ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
-PARSE = "dumpstagram/_private/web/parse.py"
+PARSE_COMMON = "dumpstagram/_private/web/parse/common.py"
+PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
 DIRECT = "dumpstagram/_core/direct.py"
 TOKENS = "dumpstagram/_core/tokens.py"
 AIO = "dumpstagram/aio.py"
@@ -166,35 +167,35 @@ MUTATIONS = [
    {
       "gate": "tests/test_parse.py::test_the_identifier_comes_from_id_and_not_from_message_id",
       "defect": "the mapper reads the duplicate identifier instead of the one it documents",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": '   return Message(\n      id=_required_string(node, "id", path),',
       "replace": '   return Message(\n      id=_required_string(node, "message_id", path),',
    },
    {
       "gate": "tests/test_parse.py::test_reactions_come_from_reactions_and_not_from_msg_reactions",
       "defect": "reactions read from the member of the pair that carries no emoji",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": '   raw = _required(node, "reactions", path)',
       "replace": '   raw = _required(node, "msg_reactions", path)',
    },
    {
       "gate": "tests/test_parse.py::test_a_missing_required_key_raises_rather_than_defaulting",
       "defect": "a renamed upstream field becomes an empty value instead of an error",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": REQUIRED_RAISES,
       "replace": REQUIRED_DEFAULTS,
    },
    {
       "gate": "tests/test_parse.py::test_the_timestamp_becomes_aware_utc_at_the_right_instant",
       "defect": "milliseconds read as seconds, which dates every message to 1970",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": "   return datetime.fromtimestamp(milliseconds / MILLISECONDS_PER_SECOND, tz=UTC)",
       "replace": "   return datetime.fromtimestamp(milliseconds, tz=UTC)",
    },
    {
       "gate": "tests/test_parse.py::test_a_null_text_body_stays_none_rather_than_becoming_empty",
       "defect": "null and empty collapsed into one state",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": OPTIONAL_STRING_KEEPS_NULL,
       "replace": OPTIONAL_STRING_KEEPS_NULL.replace("return None", 'return ""'),
    },
@@ -203,7 +204,7 @@ MUTATIONS = [
          "tests/test_parse.py::test_another_page_with_no_cursor_to_reach_it_is_reported_as_sent"
       ),
       "defect": "the mapper rules on a shape nobody has observed instead of passing it on",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": CURSOR_REPORTED_AS_SENT,
       "replace": CURSOR_CONTRADICTION_RULED_ON,
    },
@@ -212,21 +213,21 @@ MUTATIONS = [
          "tests/test_parse.py::test_an_unresolved_thread_stops_the_walk_where_it_stopped_resolving"
       ),
       "defect": "an unreachable path is given an invented meaning instead of being reported",
-      "file": PARSE,
+      "file": PARSE_COMMON,
       "find": UNREACHABLE_PATH_RAISES,
       "replace": UNREACHABLE_PATH_INVENTS_AN_EMPTY_PAGE,
    },
    {
       "gate": "tests/test_parse.py::test_edges_keep_the_order_the_upstream_sent_them_in",
       "defect": "the mapper reorders the page, hiding whether upstream order ever changes",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": MESSAGES_IN_UPSTREAM_ORDER,
       "replace": MESSAGES_SORTED,
    },
    {
       "gate": "tests/test_parse.py::test_an_unknown_upstream_key_is_ignored",
       "defect": "a new upstream field breaks every page instead of being ignored",
-      "file": PARSE,
+      "file": PARSE_DIRECT,
       "find": MESSAGE_CONSTRUCTION,
       "replace": MESSAGE_STRICT_ON_UNKNOWN_KEYS,
    },

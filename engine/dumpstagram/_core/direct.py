@@ -21,12 +21,12 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse import (
+from dumpstagram._private.web.parse.direct import (
    parse_thread_detail,
    parse_thread_id,
    parse_thread_message_page,
 )
-from dumpstagram._private.web.requests import (
+from dumpstagram._private.web.requests.direct import (
    build_thread_detail_request,
    build_thread_older_page_request,
 )
