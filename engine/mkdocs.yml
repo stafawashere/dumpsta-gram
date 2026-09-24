@@ -27,6 +27,8 @@ exclude_docs: |
   !releases/*.md
   !reference/
   !reference/*.md
+  !assets/
+  !assets/**
 
 nav:
   - Home: index.md
