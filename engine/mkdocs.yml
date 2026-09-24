@@ -1,0 +1,111 @@
+site_name: Dumpsta-Engine
+site_description: A high-level Python library for interacting with Instagram
+repo_url: https://github.com/stafawashere/dumpsta-gram
+repo_name: stafawashere/dumpsta-gram
+edit_uri: ""
+docs_dir: docs
+site_dir: site
+
+# Allow list. Everything under docs/ is excluded, then each published page is named. Much of
+# docs/ is agent-facing and gitignored (README.md, build-plan.md, conventions.md, roadmap.md,
+# engineering/, CLAUDE.md), and the untracked docs/demo/ belongs to the owner, so none of it may
+# reach the site by default. web-parity-plan.md, e2-execution.md, coverage.md and the overnight
+# handoffs are tracked but are internal planning, so they are left excluded on purpose.
+exclude_docs: |
+  *
+  !index.md
+  !legal-and-safety.md
+  !overview.md
+  !public-api.md
+  !cli.md
+  !session-and-auth.md
+  !rate-limiting-and-safety.md
+  !realtime-events.md
+  !architecture.md
+  !web-request-contract.md
+  !releases/
+  !releases/*.md
+  !reference/
+  !reference/*.md
+
+nav:
+  - Home: index.md
+  - Legal and safety: legal-and-safety.md
+  - Guide:
+      - Overview: overview.md
+      - Public API: public-api.md
+      - Command line: cli.md
+      - Session and authentication: session-and-auth.md
+      - Rate limiting and safety: rate-limiting-and-safety.md
+      - Realtime events: realtime-events.md
+  - Internals:
+      - Architecture: architecture.md
+      - Web request contract: web-request-contract.md
+  - API reference:
+      - Clients: reference/clients.md
+      - Namespaces: reference/namespaces.md
+      - Session: reference/session.md
+      - Behavior: reference/behavior.md
+      - Models: reference/models.md
+      - Errors: reference/errors.md
+      - Event listener: reference/listener.md
+  - Releases:
+      - 1.1.0 notes: releases/1.1.0-notes.md
+      - 1.1.0 record: releases/1.1.0.md
+      - 1.0.0 notes: releases/1.0.0-notes.md
+      - 1.0.0 record: releases/1.0.0.md
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+hooks:
+  - docs_hooks.py
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: sphinx
+            extensions:
+              - docs_hooks.py:SphinxRolesAsCode
+            filters: ["!^_"]
+            show_source: false
+            show_if_no_docstring: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            heading_level: 2
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

@@ -9,3 +9,6 @@ dist/
 # Run logs are build products and can carry account-linked ids. The README stays.
 logs/*
 !logs/README.md
+
+# The documentation site mkdocs builds from mkdocs.yml.
+site/
