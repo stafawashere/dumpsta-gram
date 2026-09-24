@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.notes import read_notes
+from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram.models import Message, Note, NoteAudience, Page, SentMessage
@@ -236,6 +238,41 @@ class AsyncDirect:
          )
       )
 
+   def iter_messages(
+      self,
+      thread_fbid: str,
+      *,
+      limit: int | None,
+      after: str | None = None,
+      newer_than_message_id: str | None = None,
+   ) -> AsyncIterator[Message]:
+      """Walk one direct thread message by message, newest first, reading a page with
+      :meth:`messages` each time the one before it is used up. Use it with ``async for``, and
+      do not await it.
+
+      ``limit`` is required and counts messages. The walk stops once that many have been
+      yielded, without reading a page it would not use, and ``limit=None`` walks to the start
+      of the thread, one read per page. ``after`` starts the walk from a cursor instead of the
+      newest page, and ``newer_than_message_id`` is sent with every page, so the walk ends
+      where the upstream says nothing newer than that message remains.
+
+      Each page is one read with everything :meth:`messages` sends for it, paced as any read
+      is, and never read ahead of the caller. An empty page that says more exist is followed,
+      and a page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`. A negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.messages(
+            thread_fbid, after=cursor, newer_than_message_id=newer_than_message_id
+         ),
+         limit=limit,
+         after=after,
+      )
+
 
 class SyncDirect:
    """Direct threads and the inbox's notes tray, as ``client.direct`` on
@@ -338,3 +375,34 @@ class SyncDirect:
          self._client._impl.direct.delete_note(note_id),
          operation="SyncClient.direct.delete_note",
       )
+
+   def iter_messages(
+      self,
+      thread_fbid: str,
+      *,
+      limit: int | None,
+      after: str | None = None,
+      newer_than_message_id: str | None = None,
+   ) -> Iterator[Message]:
+      """Walk one direct thread message by message. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncDirect.iter_messages`, with the same ``limit``, each page
+      read on the shared loop thread. Exceptions cross back as themselves, with a note naming
+      this method. Closing the iterator early leaves nothing running, because no page is read
+      ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Message]:
+         return client._loop.run(
+            client._impl.direct.messages(
+               thread_fbid,
+               after=cursor,
+               newer_than_message_id=newer_than_message_id,
+            ),
+            operation="SyncClient.direct.iter_messages",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)

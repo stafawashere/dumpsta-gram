@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.comments import read_comment_page
+from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
@@ -134,6 +136,30 @@ class AsyncMedia:
          )
       )
 
+   def iter_comments(
+      self, post_pk: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[Comment]:
+      """Walk the comments on one post comment by comment, reading a page with
+      :meth:`comments` each time the one before it is used up. Use it with ``async for``, and
+      do not await it.
+
+      ``limit`` is required and counts comments. The walk stops once that many have been
+      yielded, without reading a page it would not use, and ``limit=None`` walks until
+      ``has_next_page`` is false, one read per page. ``after`` starts the walk from a cursor
+      instead of the first page.
+
+      Each page is one read, paced as any read is, and never read ahead of the caller. An
+      empty page that says more exist is followed, and a page that says more exist with no
+      cursor raises :class:`~dumpstagram.errors.SchemaChanged`. A negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.comments(post_pk, after=cursor), limit=limit, after=after
+      )
+
    async def comment(self, post_pk: str, text: str) -> Comment:
       """Comment ``text`` on the post whose media ``pk`` is ``post_pk``. One write, sent once.
 
@@ -257,6 +283,28 @@ class SyncMedia:
          self._client._impl.media.comments(post_pk, after=after),
          operation="SyncClient.media.comments",
       )
+
+   def iter_comments(
+      self, post_pk: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[Comment]:
+      """Walk the comments on one post comment by comment. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncMedia.iter_comments`, with the same ``limit``, each page
+      read on the shared loop thread. Exceptions cross back as themselves, with a note naming
+      this method. Closing the iterator early leaves nothing running, because no page is read
+      ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Comment]:
+         return client._loop.run(
+            client._impl.media.comments(post_pk, after=cursor),
+            operation="SyncClient.media.iter_comments",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)
 
    def comment(self, post_pk: str, text: str) -> Comment:
       """Comment on a post. Blocks until the write is answered.

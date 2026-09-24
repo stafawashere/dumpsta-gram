@@ -435,6 +435,42 @@ the additive freeze holds, so the timelines became `feeds` and the notes joined 
 A blocking namespace method names itself in the seam note, for example
 `SyncClient.direct.messages`, so an exception says which of the two routes the caller took.
 
+### Pagination iterators
+
+Landed 2026-09-23, E1 item 5, rulings W23 to W25 of [web-parity-plan.md](web-parity-plan.md).
+Every namespace read that returns a `Page` has an `iter_` companion on the same namespace, and
+only there, with no flat twin:
+
+| Page read | Iterator | Yields |
+|---|---|---|
+| `direct.messages(thread_fbid, *, after, newer_than_message_id)` | `direct.iter_messages(thread_fbid, *, limit, after=None, newer_than_message_id=None)` | `Message`, newest first |
+| `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
+| `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
+
+```python
+for message in client.direct.iter_messages(thread_fbid, limit=200):
+   ...
+
+async for item in aclient.feeds.iter_home(limit=50):      # no await on the call
+   ...
+```
+
+`limit` is keyword-only and required, and counts items. The walk ends when that many have been
+yielded or when a page says `has_next_page` is false, whichever comes first, and it never reads a
+page it would not use, so `limit=0` sends nothing. `limit=None` reads to the end, which on the
+home timeline may be never. A negative `limit` raises `ValueError` and a non-integer one
+`TypeError`, at the call. An empty or short page that says more exist is followed, and one that
+says more exist with no cursor raises `SchemaChanged`.
+
+Each page is read by the namespace's own page method, so it is paced and sent exactly as a single
+read, and one page at a time: nothing is read ahead of the caller and nothing runs concurrently.
+`after` starts the walk from a cursor, and `iter_messages` sends `newer_than_message_id` on every
+page. The awaitable iterator is a plain method returning an `AsyncIterator`, so `async for` takes
+it directly. The blocking one reads each page on the shared loop thread, raises what the read
+raised with a seam note naming the iterator, such as `SyncClient.feeds.iter_home`, and can be
+closed or abandoned at any point without leaving a request in flight, because no page is read
+until the caller asks for an item from it.
+
 ## Stability contract
 
 **Covered by the promise.** Everything importable from `dumpstagram` without a leading
@@ -533,7 +569,12 @@ anything read off the code: every flat method and its alias, each on a fresh cli
 recording transport, send the same requests and end the same way on both surfaces, and every
 namespace method reaches the `_core` function its table row names, which the first gate cannot
 see because a flat method answers through its alias. `verify_parity_gates.py` now breaks the
-facades 26 ways. See
+facades 26 ways. Since E1 item 5 the coroutine rules hold the namespace methods whose names do
+not start with `iter_`, and five iterator gates hold the rest against `PAGE_METHOD_FOR_ITERATOR`:
+the table matches what is discovered, every paged read has an iterator, both iterators take the
+read's parameters plus a required `limit` and yield the read's item type, both forward every
+argument and yield the same items from the same pages, and the blocking one raises under its own
+name. `scripts/verify_iterator_gates.py` breaks them. See
 [../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md](../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md).
 
 ## Errors as part of the API

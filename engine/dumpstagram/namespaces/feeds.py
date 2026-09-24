@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.feed import read_feed_page
+from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram.models import FeedItem, Page
 
 if TYPE_CHECKING:
@@ -65,6 +67,26 @@ class AsyncFeeds:
          )
       )
 
+   def iter_home(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[FeedItem]:
+      """Walk the home timeline item by item, reading a page with :meth:`home` each time the
+      one before it is used up. Use it with ``async for``, and do not await it.
+
+      ``limit`` is required and counts items. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks until
+      ``has_next_page`` is false, which on a home timeline may be never. ``after`` starts the
+      walk from a cursor instead of the first page.
+
+      Each page is one read with everything :meth:`home` sends for it, paced as any read is,
+      and never read ahead of the caller. An empty page that says more exist is followed, and
+      a page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`. A negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(lambda cursor: self.home(after=cursor), limit=limit, after=after)
+
 
 class SyncFeeds:
    """The timelines, as ``client.feeds`` on :class:`~dumpstagram.client.SyncClient`. Each
@@ -93,3 +115,23 @@ class SyncFeeds:
          self._client._impl.feeds.home(after=after),
          operation="SyncClient.feeds.home",
       )
+
+   def iter_home(self, *, limit: int | None, after: str | None = None) -> Iterator[FeedItem]:
+      """Walk the home timeline item by item. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncFeeds.iter_home`, with the same ``limit``, each page read on
+      the shared loop thread. Exceptions cross back as themselves, with a note naming this
+      method. Closing the iterator early leaves nothing running, because no page is read
+      ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[FeedItem]:
+         return client._loop.run(
+            client._impl.feeds.home(after=cursor),
+            operation="SyncClient.feeds.iter_home",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)

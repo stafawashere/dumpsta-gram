@@ -27,10 +27,11 @@ from __future__ import annotations
 import inspect
 import sys
 import threading
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, get_type_hints
+from typing import Any, get_args, get_origin, get_type_hints
 
 import pytest
 
@@ -43,7 +44,7 @@ from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY
 from dumpstagram.client import SyncClient
 from dumpstagram.listener import EventListener
-from dumpstagram.models import NoteAudience
+from dumpstagram.models import NoteAudience, Page
 from dumpstagram.session import Session
 from tests.test_direct import FakeClock, a_bootstrapped_session
 
@@ -401,11 +402,27 @@ def namespace_methods(cls: type) -> set[str]:
 ASYNC_NAMESPACES = namespaces_on(AsyncClient)
 SYNC_NAMESPACES = namespaces_on(SyncClient)
 
-NAMESPACE_METHODS = sorted(
+ITERATOR_PREFIX = "iter_"
+"""The prefix of a namespace method that walks a paged read, E1 item 5. Those are held by the
+iterator gates at the end of this file, and every other namespace method by the coroutine gates."""
+
+ALL_NAMESPACE_METHODS = sorted(
    f"{namespace}.{method}"
    for namespace, cls in ASYNC_NAMESPACES.items()
    for method in namespace_methods(cls)
 )
+
+NAMESPACE_METHODS = [
+   qualified
+   for qualified in ALL_NAMESPACE_METHODS
+   if not qualified.split(".")[1].startswith(ITERATOR_PREFIX)
+]
+
+ITERATOR_METHODS = [
+   qualified
+   for qualified in ALL_NAMESPACE_METHODS
+   if qualified.split(".")[1].startswith(ITERATOR_PREFIX)
+]
 
 
 def namespace_methods_in_the_snapshot() -> set[str]:
@@ -445,7 +462,9 @@ def test_namespace_discovery_finds_every_namespace_method_the_snapshot_lists() -
    gate below vacuous."""
 
    assert NAMESPACE_METHODS
-   assert set(NAMESPACE_METHODS) == namespace_methods_in_the_snapshot()
+   assert ITERATOR_METHODS
+   assert set(ALL_NAMESPACE_METHODS) == namespace_methods_in_the_snapshot()
+   assert set(NAMESPACE_METHODS) | set(ITERATOR_METHODS) == set(ALL_NAMESPACE_METHODS)
 
 
 def test_both_surfaces_carry_the_same_namespaces_with_the_same_methods() -> None:
@@ -789,3 +808,204 @@ async def test_a_namespace_method_reaches_the_core_capability_the_table_names(
          await getattr(getattr(client, namespace), method)(*positional, **keyword)
 
    assert reached == [CORE_FUNCTION_FOR_ALIAS[qualified]]
+
+
+PAGE_METHOD_FOR_ITERATOR = {
+   "direct.iter_messages": "direct.messages",
+   "feeds.iter_home": "feeds.home",
+   "media.iter_comments": "media.comments",
+}
+"""Every iterator and the page read it walks, E1 item 5 and ruling W23. Written out rather than
+read off the source, because it is what the iterator gates hold the code to."""
+
+
+def a_scripted_walk() -> list[Page[object]]:
+   """Two pages with an empty one between them, so a walk that forwards the wrong cursor or
+   stops on the empty page yields something else."""
+
+   return [
+      Page(items=(object(), object()), has_next_page=True, end_cursor="cursor-1"),
+      Page(items=(), has_next_page=True, end_cursor="cursor-2"),
+      Page(items=(object(),), has_next_page=False, end_cursor=None),
+   ]
+
+
+def returned_item_type(function: Any) -> Any:
+   return get_args(get_type_hints(function)["return"])[0]
+
+
+def test_iterator_discovery_finds_exactly_the_iterators_the_table_names() -> None:
+   """Catches an iterator added, renamed or dropped without the table saying which read it walks,
+   and a table naming a page read that is not a namespace method."""
+
+   assert ITERATOR_METHODS
+   assert set(ITERATOR_METHODS) == set(PAGE_METHOD_FOR_ITERATOR)
+   assert set(PAGE_METHOD_FOR_ITERATOR.values()) <= set(NAMESPACE_METHODS)
+
+
+def test_every_paged_read_has_an_iterator() -> None:
+   """Catches a namespace read returning a Page that ships without its iter_ companion."""
+
+   paged_reads = {
+      qualified
+      for qualified in NAMESPACE_METHODS
+      if get_origin(
+         get_type_hints(getattr(ASYNC_NAMESPACES[split(qualified)[0]], split(qualified)[1]))[
+            "return"
+         ]
+      )
+      is Page
+   }
+
+   assert paged_reads
+   assert paged_reads == set(PAGE_METHOD_FOR_ITERATOR.values())
+
+
+@pytest.mark.parametrize("qualified", sorted(PAGE_METHOD_FOR_ITERATOR))
+def test_an_iterator_takes_its_reads_parameters_plus_a_required_limit_on_both_surfaces(
+   qualified: str,
+) -> None:
+   """Catches a parameter added, dropped or re-defaulted on one surface's iterator, a limit that
+   became optional, an iterator yielding another type than its read's page holds, and an async
+   iterator declared async, which hands its caller a coroutine that ``async for`` refuses."""
+
+   namespace, method = split(qualified)
+   page_namespace, page_method = split(PAGE_METHOD_FOR_ITERATOR[qualified])
+   blocking = getattr(SYNC_NAMESPACES[namespace], method)
+   awaitable = getattr(ASYNC_NAMESPACES[namespace], method)
+   read = getattr(ASYNC_NAMESPACES[page_namespace], page_method)
+
+   limit = ("limit", inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.empty, int | None)
+   read_parameters = parameters_of(read)
+   first_keyword = next(
+      index
+      for index, parameter in enumerate(read_parameters)
+      if parameter[1] is inspect.Parameter.KEYWORD_ONLY
+   )
+   expected = [*read_parameters[:first_keyword], limit, *read_parameters[first_keyword:]]
+
+   assert parameters_of(awaitable) == expected
+   assert parameters_of(blocking) == expected
+
+   item_type = returned_item_type(read)
+
+   assert get_type_hints(awaitable)["return"] == AsyncIterator[item_type]
+   assert get_type_hints(blocking)["return"] == Iterator[item_type]
+
+   for function in (awaitable, blocking):
+      assert not inspect.iscoroutinefunction(function)
+      assert not inspect.isasyncgenfunction(function)
+
+
+def spy_on_the_read(
+   monkeypatch: pytest.MonkeyPatch, qualified: str, pages: list[Page[object]]
+) -> list[tuple[dict[str, Any], str]]:
+   page_namespace, page_method = split(PAGE_METHOD_FOR_ITERATOR[qualified])
+   read_class = ASYNC_NAMESPACES[page_namespace]
+   read_signature = inspect.signature(getattr(read_class, page_method))
+   script = list(pages)
+   calls: list[tuple[dict[str, Any], str]] = []
+
+   async def spy(self: object, *args: object, **kwargs: object) -> Page[object]:
+      bound = read_signature.bind(self, *args, **kwargs)
+      bound.apply_defaults()
+      received = dict(bound.arguments)
+      del received["self"]
+      calls.append((received, threading.current_thread().name))
+
+      if not script:
+         raise AssertionError(f"{qualified} asked for a page nobody scripted")
+
+      return script.pop(0)
+
+   monkeypatch.setattr(read_class, page_method, spy)
+
+   return calls
+
+
+def iterator_arguments(function: Any) -> tuple[list[object], dict[str, object]]:
+   positional, keyword = distinct_arguments_for(function)
+   keyword["limit"] = None
+
+   return positional, keyword
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("qualified", sorted(PAGE_METHOD_FOR_ITERATOR))
+async def test_both_iterators_forward_every_argument_and_yield_the_same_items(
+   qualified: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+   """Catches an argument dropped, swapped or defaulted on the way to the read on either
+   surface, a cursor other than the previous page's end cursor, the two surfaces yielding
+   different items from the same pages, and a blocking walk reading anywhere but the loop
+   thread."""
+
+   namespace, method = split(qualified)
+   pages = a_scripted_walk()
+   scripted_items = [item for page in pages for item in page.items]
+   positional, keyword = iterator_arguments(getattr(SYNC_NAMESPACES[namespace], method))
+   forwarded = {name: argument for name, argument in keyword.items() if name != "limit"}
+
+   blocking_calls = spy_on_the_read(monkeypatch, qualified, pages)
+
+   with SyncClient(a_session()) as blocking_client:
+      blocking_items = list(
+         getattr(getattr(blocking_client, namespace), method)(*positional, **keyword)
+      )
+
+   monkeypatch.undo()
+   async_calls = spy_on_the_read(monkeypatch, qualified, pages)
+
+   async with AsyncClient(a_session()) as async_client:
+      iterator = getattr(getattr(async_client, namespace), method)(*positional, **keyword)
+      async_items = [item async for item in iterator]
+
+   assert [id(item) for item in blocking_items] == [id(item) for item in scripted_items]
+   assert [id(item) for item in async_items] == [id(item) for item in scripted_items]
+
+   for calls in (blocking_calls, async_calls):
+      assert [received["after"] for received, _ in calls] == [
+         forwarded["after"],
+         "cursor-1",
+         "cursor-2",
+      ]
+
+      for received, _ in calls:
+         held = [value for name, value in received.items() if name != "after"]
+         given = [
+            argument
+            for argument in [*positional, *forwarded.values()]
+            if argument is not forwarded["after"]
+         ]
+
+         assert [id(value) for value in held] == [id(argument) for argument in given]
+
+   assert {thread_name for _, thread_name in blocking_calls} == {THREAD_NAME}
+
+
+@pytest.mark.parametrize("qualified", sorted(PAGE_METHOD_FOR_ITERATOR))
+def test_a_blocking_iterator_raises_the_async_exception_under_its_own_name(
+   qualified: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+   """Catches a wrapped exception, and a seam note naming the page read or a neighbour rather
+   than the iterator the caller walked."""
+
+   namespace, method = split(qualified)
+   page_namespace, page_method = split(PAGE_METHOD_FOR_ITERATOR[qualified])
+   raised = LookupError("raised by the async side")
+
+   async def spy(self: object, *args: object, **kwargs: object) -> object:
+      raise raised
+
+   monkeypatch.setattr(ASYNC_NAMESPACES[page_namespace], page_method, spy)
+
+   positional, keyword = iterator_arguments(getattr(SYNC_NAMESPACES[namespace], method))
+
+   with SyncClient(a_session()) as client:
+      iterator = getattr(getattr(client, namespace), method)(*positional, **keyword)
+
+      with pytest.raises(LookupError) as caught:
+         next(iterator)
+
+   assert caught.value is raised
+   assert seam_note(f"SyncClient.{namespace}.{method}") in getattr(caught.value, "__notes__", [])

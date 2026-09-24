@@ -380,6 +380,7 @@ module dumpstagram.namespaces.direct
 class dumpstagram.namespaces.direct.AsyncDirect()
 def dumpstagram.namespaces.direct.AsyncDirect.__init__(self) -> None
 def dumpstagram.namespaces.direct.AsyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.AsyncDirect.iter_messages(self, thread_fbid: str, *, limit: int | None, after: str | None = None, newer_than_message_id: str | None = None) -> AsyncIterator[Message]
 def dumpstagram.namespaces.direct.AsyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.namespaces.direct.AsyncDirect.notes(self) -> tuple[Note, ...]
 def dumpstagram.namespaces.direct.AsyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
@@ -388,6 +389,7 @@ def dumpstagram.namespaces.direct.AsyncDirect.unsend(self, thread_fbid: str, mes
 class dumpstagram.namespaces.direct.SyncDirect()
 def dumpstagram.namespaces.direct.SyncDirect.__init__(self) -> None
 def dumpstagram.namespaces.direct.SyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.SyncDirect.iter_messages(self, thread_fbid: str, *, limit: int | None, after: str | None = None, newer_than_message_id: str | None = None) -> Iterator[Message]
 def dumpstagram.namespaces.direct.SyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.namespaces.direct.SyncDirect.notes(self) -> tuple[Note, ...]
 def dumpstagram.namespaces.direct.SyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
@@ -397,9 +399,11 @@ module dumpstagram.namespaces.feeds
 class dumpstagram.namespaces.feeds.AsyncFeeds()
 def dumpstagram.namespaces.feeds.AsyncFeeds.__init__(self) -> None
 def dumpstagram.namespaces.feeds.AsyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.namespaces.feeds.AsyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[FeedItem]
 class dumpstagram.namespaces.feeds.SyncFeeds()
 def dumpstagram.namespaces.feeds.SyncFeeds.__init__(self) -> None
 def dumpstagram.namespaces.feeds.SyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.namespaces.feeds.SyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> Iterator[FeedItem]
 module dumpstagram.namespaces.media
 class dumpstagram.namespaces.media.AsyncMedia()
 def dumpstagram.namespaces.media.AsyncMedia.__init__(self) -> None
@@ -407,6 +411,7 @@ def dumpstagram.namespaces.media.AsyncMedia.by_code(self, code: str) -> PostDeta
 def dumpstagram.namespaces.media.AsyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.AsyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.like(self, post_pk: str) -> None
 def dumpstagram.namespaces.media.AsyncMedia.unlike(self, post_pk: str) -> None
 class dumpstagram.namespaces.media.SyncMedia()
@@ -415,6 +420,7 @@ def dumpstagram.namespaces.media.SyncMedia.by_code(self, code: str) -> PostDetai
 def dumpstagram.namespaces.media.SyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.SyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.SyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> Iterator[Comment]
 def dumpstagram.namespaces.media.SyncMedia.like(self, post_pk: str) -> None
 def dumpstagram.namespaces.media.SyncMedia.unlike(self, post_pk: str) -> None
 module dumpstagram.namespaces.profiles

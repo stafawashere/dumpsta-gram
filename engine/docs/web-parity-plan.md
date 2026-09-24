@@ -294,6 +294,49 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   and turned its gate red on a `NameError`. It now compares against a literal 12, and the gate
   goes red on `AssertionError: assert False is True` for `has_next_page`, seen before and after
   the fix.
+- **W23. An iterator's `limit` is required, counts items, and `None` is the explicit way to read
+  to the end.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1 item 5.
+  Every `iter_*` takes `limit: int | None` keyword-only with no default. A default of `None`
+  would make the home timeline, which has never been seen to end, a request loop by omission,
+  and a default number would truncate silently, the defect the pagination invariant exists to
+  prevent, so the caller writes the choice down. It counts items, not pages, because a page's
+  length is the upstream's decision (feed pages of 14, 12 and 5 for the same request) and a
+  page count would hand back an unpredictable number of items. Counting items also bounds the
+  cost: the walk stops as soon as the limit-th item is yielded and never reads a page it would
+  not use, so `limit=0` reads nothing. A caller who thinks in pages has the page method.
+  A negative limit raises `ValueError` and a non-integer `TypeError`, both when the iterator is
+  made rather than on the first item. Each iterator also takes its read's other parameters with
+  the same defaults, so `after` starts a walk from a cursor and `iter_messages` sends
+  `newer_than_message_id` on every page, as the poller does under W10. A page that says more
+  exist with no cursor raises `SchemaChanged` rather than ending the walk or asking for the
+  first page again. Not guarded: a cursor the upstream repeats while `has_next_page` stays true
+  would be followed until the limit, and a `None` limit would not stop it. It has not been
+  observed, and guarding it would be a terminator other than `has_next_page`.
+- **W24. The iterators live on the namespaces only, one per paged read.** Ruled 2026-09-23 for
+  E1 item 5. W1 puts new capabilities on the namespaces, and a flat `iter_thread_messages` beside
+  `client.direct.iter_messages` would be two new names for one thing, each a frozen snapshot
+  line, so no flat `iter_*` ships and one can be added later without removing anything. The
+  three paged reads are `direct.messages`, `feeds.home` and `media.comments`, found by a gate
+  that lists every namespace read returning a `Page`, so the companions are
+  `direct.iter_messages`, `feeds.iter_home` and `media.iter_comments`. `notes` is a tuple and not
+  a `Page`. The awaitable iterator is a plain method returning an `AsyncIterator`, not a
+  coroutine and not an async generator function, so `async for` takes it without `await` and the
+  limit is checked at the call. The blocking one is a generator that runs each page read on the
+  loop thread with a seam note naming the iterator, and reads nothing ahead, so closing it early
+  leaves no task on the loop and nothing to cancel. The walk itself is `PageWalk` in
+  `_core/paging.py`, shared by both surfaces, and each page goes through the namespace's own
+  page read, so it is paced, bootstrapped, checkpoint-watched and companion-carrying exactly as a
+  single read is. No CLI flag was added, because `--pages` already walks a read from the command
+  line.
+- **W25. The parity gates split on the `iter_` prefix, and the discovery control grew.** Ruled
+  2026-09-23 for E1 item 5. `tests/test_facade_parity.py` held every namespace method to being a
+  coroutine, which an iterator is not. The coroutine gates now walk the namespace methods whose
+  name does not start with `iter_`, so a page read that stopped being a coroutine still fails,
+  and new gates hold the rest against `PAGE_METHOD_FOR_ITERATOR`. The discovery control now
+  compares every namespace method against the snapshot, iterators included, demands at least one
+  iterator, and demands the two sets cover the whole, so it checks strictly more than before.
+  No existing gate was loosened, and the iterator mutations live in the new
+  `scripts/verify_iterator_gates.py`.
 
 ## Standing rules for every phase
 
@@ -350,6 +393,15 @@ the per-domain layout.
    function; `verify_parity_gates.py` grew from 13 mutations to 26, all red then green (W22).
 5. **Pagination iterators.** `iter_*` companions over every `Page` read, terminating only on
    `has_next_page`, paced like any read, with an explicit `limit`.
+   Done 2026-09-23: `client.direct.iter_messages`, `client.feeds.iter_home` and
+   `client.media.iter_comments` on both clients, with a required item `limit` (W23), on the
+   namespaces only (W24). The snapshot grew from 467 lines to 473, 6 added and none removed or
+   changed. `tests/test_iterators.py` and five new gates in `tests/test_facade_parity.py` (W25)
+   were each seen red under the 20 mutations of `scripts/verify_iterator_gates.py`, then green.
+   Live check `probes/iter_home_two_pages.py`, 2 engine requests and 0 page loads: `limit=16`
+   read a first page of 15 items and a second page by a 1188 character cursor 3.7 s later, and
+   stopped at the sixteenth item without a third read. Log
+   `engine/logs/iter-home-two-pages-2026-09-23-210259.json`.
 6. **Complete media model.** Video renditions, carousel children, audio, dimensions and durations,
    plus `client.media.download(rendition, path)` over the CDN. CDN fetches may run concurrently
    under the existing ADR-0001 exception. Needs one feed shape probe that lands on a reel and a
