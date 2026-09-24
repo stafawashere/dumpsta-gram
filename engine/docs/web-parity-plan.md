@@ -723,9 +723,11 @@ the per-domain layout.
    1 and 12, each resolving the viewer. Log `engine/logs/doctor-drift-replay-2026-09-24-002208.json`.
    Findings `home-timeline-feed-page` and `resolve-a-username-to-a-user-id` verified twice on
    the new ids. None of the 14 `missing` operations had its artifact seen
-   in the first 150 bundles either; which of them the default cap of 1000 finds is unknown. The stop
-   condition's zero drift is not yet shown: it needs `dumpsta doctor --live` again after the
-   move, 12 more requests carrying the session.
+   in the first 150 bundles either; which of them the default cap of 1000 finds is unknown. After
+   the move, `dumpsta --json doctor --live --bundle-limit 150` ran again on the existing session
+   file, 12 requests carrying the session and 150 cookieless bundle fetches: drift 0,
+   replay_failed 0, all 10 reads replayed ok, 14 `missing` as before, and both moved reads `ok` on
+   their new ids. Output `engine/logs/doctor-live-2026-09-24-003205.json`, landed with `f6ae9c5`.
 8. **Durable pacing ledger.** The pacer's write budget and write stop persist beside the session
    file, so separate processes on one account share them. Closes the 1.0.0 limitation.
    Done 2026-09-23, 0 live requests: `from_session_file` keeps both in `<path>.ledger` under a
@@ -759,6 +761,17 @@ carousel are posted, read back, and deleted from `dumpsta` in one run. `dumpsta 
 zero drift on a fresh session. Every harness exits 0 after the split. Two `dumpsta` processes on
 one account share one write budget, gated offline. The 24 flat methods and their namespace
 aliases answer identically, gated offline.
+
+**Done 2026-09-24, released as `1.1.0`, prepared and not published.** Each part, with its evidence,
+is in [releases/1.1.0.md](releases/1.1.0.md) and the notes in
+[releases/1.1.0-notes.md](releases/1.1.0-notes.md). The census covers all fifteen page types as a
+lower bound (`e683c29`). One `dumpsta` run posted, read back and deleted a photo and a two item
+carousel with `media_count` 8 before and after (`44faf04`). `dumpsta doctor --live` reported drift
+0 and replay_failed 0 with 14 `missing` (`f6ae9c5`), on the existing session file rather than a
+freshly adopted one. All 33 harnesses exit 0, 622 mutations red then green, rerun for the release.
+The ledger's cross-process gates and the facade parity gates pass offline. The 24 counted every
+`async def` in `aio.py`, and the flat capabilities are 17, each with its alias (W21). The public
+surface grew from 397 lines at `v1.0.0` to 536, all additions.
 
 ## E2, 1.2.0: read everything a signed-in user can see
 

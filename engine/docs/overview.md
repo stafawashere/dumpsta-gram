@@ -25,13 +25,13 @@ Python 3.12 or newer. The package is not on a package index. Install it from a r
 repository with uv:
 
 ```bash
-uv add "dumpstagram @ git+https://github.com/stafawashere/dumpsta-gram.git@v1.0.0#subdirectory=engine"
+uv add "dumpstagram @ git+https://github.com/stafawashere/dumpsta-gram.git@v1.1.0#subdirectory=engine"
 ```
 
 or from a built wheel:
 
 ```bash
-uv add ./dumpstagram-1.0.0-py3-none-any.whl
+uv add ./dumpstagram-1.1.0-py3-none-any.whl
 ```
 
 ## Quickstart
@@ -124,12 +124,15 @@ come before write capabilities in every category.
 
 ### What has actually been reached
 
-As of `1.0.0`, on the web surface: session adoption, profiles, the home feed, one post and its
+As of `1.1.0`, on the web surface: session adoption, profiles, the home feed, one post and its
 comment pages, the notes tray, direct thread pages, and new direct messages through `events()`.
-Writes: like and unlike, comment and delete a comment, set and delete a note, follow and
-unfollow, and send and unsend a direct message. Each was verified live on one account from one
-residential network. Posting is planned for `1.1.0`. Everything else on the list is
-unattempted, and group threads, the mobile API and login are unmeasured.
+Posts carry video renditions, carousel slides and audio, and a rendition can be downloaded from
+the CDN. The three paged reads have paced iterators. Writes: like and unlike, comment and delete
+a comment, set and delete a note, follow and unfollow, send and unsend a direct message, and,
+since `1.1.0`, publish a JPEG photo or carousel and delete one's own post. Each was verified live
+on one account from one residential network. `dumpsta doctor` checks the stored query ids against
+the ones the website currently compiles. Everything else on the list is unattempted, and group
+threads, the mobile API and login are unmeasured.
 
 ## Out of scope
 

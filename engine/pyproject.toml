@@ -1,6 +1,6 @@
 [project]
 name = "dumpstagram"
-version = "1.0.0"
+version = "1.1.0"
 description = "A high-level Python library for interacting with Instagram"
 readme = "docs/overview.md"
 requires-python = ">=3.12"
