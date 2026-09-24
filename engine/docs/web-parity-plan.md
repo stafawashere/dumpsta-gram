@@ -432,7 +432,8 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   nothing drifted but a replay failed, and 0 otherwise. The host literal is backed by the finding
   `static-js-bundle-fetch`, verified twice from the two recorded browser captures of 2026-09-23 as
   browser observations, not replays, the precedent the cookie sync findings set;
-  `probes/doctor_bundle_host.py` is the first engine fetch and has not run. The module shape rests
+  `probes/doctor_bundle_host.py` made the first engine fetch on 2026-09-24, verifying the finding a
+  third time. The module shape rests
   on one id module recorded whole and two artifacts, recorded as the pattern
   `a-bundle-exports-each-operation-s-doc-id-from-its-own-module`. `skills/` is local, so neither is
   in the repository.
@@ -705,10 +706,26 @@ the per-domain layout.
    `static.cdninstagram.com` for each operation's `doc_id`, replays the ten capability reads once,
    and checks the ten companions and ten writes by artifact only (W31 to W33). Exit 12 on drift,
    13 on a failed replay. `tests/test_doctor.py`, 17 gates, every one but a positive control red
-   under the 24 mutations of `scripts/verify_doctor_gates.py`, then green. Not yet run live: the
-   stop condition's zero drift on a fresh session needs `probes/doctor_bundle_host.py` (3
-   requests) and then `dumpsta doctor --live` (2 documents, at most 10 reads, and the bundle
-   fetches).
+   under the 24 mutations of `scripts/verify_doctor_gates.py`, then green.
+   Run live 2026-09-24, 18 requests carrying the session, 152 cookieless bundle fetches and 0 page
+   loads. `probes/doctor_bundle_host.py`, 1 document and 2 bundles: the home document named 556
+   bundles, both fetched 200 with no cookie sent and none set, and the finding
+   `static-js-bundle-fetch` gained its first engine verification. Log
+   `engine/logs/doctor-bundle-host-2026-09-24-001812.json`. Then `dumpsta --json doctor --live
+   --bundle-limit 150`, exit 12: 2 documents, 682 bundles named, 150 fetched and 0 failed, all 10
+   reads replayed ok. Of 30 operations 14 read `ok`, 14 `missing` and 2 `drift`, both reads:
+   `PolarisFeedRootPaginationCachedQuery_subscribe` and `PolarisProfilePostsQuery` compiled new
+   ids while the stored ones still answered, and E2 preparation's bundle read at 23:14 the night
+   before had still compiled the stored ones. Output
+   `engine/logs/doctor-live-2026-09-24-001836.json`. Both reads moved to the compiled ids after two
+   engine replays each through their own builders and mappers, `probes/doctor_drift_replay.py`,
+   5 requests, the feed on a first page and the page after it, the profile posts query at count
+   1 and 12, each resolving the viewer. Log `engine/logs/doctor-drift-replay-2026-09-24-002208.json`.
+   Findings `home-timeline-feed-page` and `resolve-a-username-to-a-user-id` verified twice on
+   the new ids. None of the 14 `missing` operations had its artifact seen
+   in the first 150 bundles either; which of them the default cap of 1000 finds is unknown. The stop
+   condition's zero drift is not yet shown: it needs `dumpsta doctor --live` again after the
+   move, 12 more requests carrying the session.
 8. **Durable pacing ledger.** The pacer's write budget and write stop persist beside the session
    file, so separate processes on one account share them. Closes the 1.0.0 limitation.
    Done 2026-09-23, 0 live requests: `from_session_file` keeps both in `<path>.ledger` under a

@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 HOME_TIMELINE_FEED = PersistedQuery(
-   doc_id="28639462595647642",
+   doc_id="38576618445314797",
    friendly_name="PolarisFeedRootPaginationCachedQuery_subscribe",
    finding_id="home-timeline-feed-page",
    url=GRAPHQL_QUERY_URL,
@@ -24,5 +24,7 @@ of it.
 
 Observed live on 2026-09-21. On 2026-09-23 a browser's page two scroll sent a new id and the
 engine moved to it. The old id still answered that day, so a rotation does not announce itself
-and a passing request is no evidence that the id is current.
+and a passing request is no evidence that the id is current. On 2026-09-24 `dumpsta doctor`
+found the bundles compiling another id while the old one still answered, and the engine moved
+to it after two engine replays.
 """

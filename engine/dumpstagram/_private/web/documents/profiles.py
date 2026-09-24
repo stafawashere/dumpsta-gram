@@ -30,7 +30,7 @@ Observed live on 2026-09-21.
 """
 
 PROFILE_POSTS = PersistedQuery(
-   doc_id="29015124851429106",
+   doc_id="28379418928391013",
    friendly_name="PolarisProfilePostsQuery",
    finding_id="resolve-a-username-to-a-user-id",
    url=GRAPHQL_QUERY_URL,
@@ -48,7 +48,10 @@ The obvious alternative, ``GET /api/v1/users/web_profile_info/?username=``, answ
 an HTML body on its first and only attempt on 2026-09-21, so it is not used.
 
 Observed live on 2026-09-21 on the other path under an older id. On 2026-09-23 both profile
-cold loads sent this id to :data:`~dumpstagram._private.web.documents.common.GRAPHQL_QUERY_URL`.
+cold loads sent the id before this one to
+:data:`~dumpstagram._private.web.documents.common.GRAPHQL_QUERY_URL`. On 2026-09-24
+`dumpsta doctor` found the bundles compiling this one while the old one still answered, and
+the engine moved to it after two engine replays.
 """
 
 PROFILE_NOTE_BUBBLE = PersistedQuery(
