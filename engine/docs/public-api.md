@@ -381,6 +381,60 @@ The reference is held from construction until `close`, so both surfaces carry a 
 `aclose()`, and both are idempotent. A client that is never closed keeps the shared thread
 alive for the lifetime of the process.
 
+## Domain namespaces
+
+Landed 2026-09-23, E1 item 4 of [web-parity-plan.md](web-parity-plan.md), rulings W1, W19, W20
+and W21. Both clients carry five namespace properties, and every capability from here on is
+added to one of them rather than to the client:
+
+```python
+page = client.direct.messages(thread_fbid)                 # sync, returns Page[Message]
+page = await aclient.direct.messages(thread_fbid)          # async, same result
+profile = client.profiles.by_username("someone")
+client.media.like(post.pk)
+```
+
+| Property | Awaitable class | Blocking class | Covers |
+|---|---|---|---|
+| `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, and the notes tray on the inbox |
+| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
+| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes and its comments |
+| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles |
+| `social` | `AsyncSocial` | `SyncSocial` | Follows |
+
+The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
+namespace holding both twins, and are not re-exported. A namespace is reached through its
+client and is not built directly: its `__init__` raises `TypeError`. `stories`, `search` and
+`account` appear with their first capability, not before (W20). `events` stays on the client.
+
+The seventeen flat methods of `1.0.0` stay for good. Each answers through its alias, with the
+same parameters, the same defaults and the same return type:
+
+| Flat method | Alias |
+|---|---|
+| `thread_messages` | `direct.messages` |
+| `send_message` | `direct.send` |
+| `unsend_message` | `direct.unsend` |
+| `notes` | `direct.notes` |
+| `set_note` | `direct.set_note` |
+| `delete_note` | `direct.delete_note` |
+| `feed` | `feeds.home` |
+| `post` | `media.by_code` |
+| `like` | `media.like` |
+| `unlike` | `media.unlike` |
+| `comments` | `media.comments` |
+| `comment` | `media.comment` |
+| `delete_comment` | `media.delete_comment` |
+| `profile` | `profiles.by_username` |
+| `profile_by_id` | `profiles.by_id` |
+| `follow` | `social.follow` |
+| `unfollow` | `social.unfollow` |
+
+W1 named the timelines `feed` and the notes `notes`. Both were already flat methods whose lines
+the additive freeze holds, so the timelines became `feeds` and the notes joined `direct` (W19).
+A blocking namespace method names itself in the seam note, for example
+`SyncClient.direct.messages`, so an exception says which of the two routes the caller took.
+
 ## Stability contract
 
 **Covered by the promise.** Everything importable from `dumpstagram` without a leading
@@ -467,7 +521,19 @@ breaks the facades ten ways and watches each gate go red, including a capability
 async surface with the snapshot updated to match. Since Step 22, `LISTENER_METHODS` in the suite
 keeps `events` out of the snapshot control, the way `SCOPING_METHODS` keeps `with_behavior` out,
 and the listener parity gate plus a gate that each excluded name is in the snapshot on both
-surfaces hold it instead. See
+surfaces hold it instead.
+
+Since E1 item 4 the suite walks the domain namespaces too. It discovers them as the public
+properties whose type is a class in `dumpstagram.namespaces`, controls the discovery against
+the snapshot, and holds each blocking namespace method to the same rules as a blocking
+capability: same parameters and return type, not a coroutine, every argument forwarded on the
+loop thread, and the seam note under its own dotted name. Each surface must hand out its own
+namespace class. Two gates name capabilities, through tables that are the oracle rather than
+anything read off the code: every flat method and its alias, each on a fresh client over a
+recording transport, send the same requests and end the same way on both surfaces, and every
+namespace method reaches the `_core` function its table row names, which the first gate cannot
+see because a flat method answers through its alias. `verify_parity_gates.py` now breaks the
+facades 26 ways. See
 [../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md](../../docs/decisions/ADR-0011-api-surface-snapshot-and-versioning.md).
 
 ## Errors as part of the API

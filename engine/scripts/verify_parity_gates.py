@@ -9,6 +9,11 @@ Two of the mutations are the drifts the parity file exists for: a capability add
 facade method that grows a parameter its async twin does not take. The gates name no
 capability, so neither mutation touches anything they were written against.
 
+Since E1 item 4 the harness also breaks the domain namespaces: an alias missing from the
+blocking namespace, one with another signature or declared async, one that drops an argument or
+keeps its flat twin's seam label, a blocking client handing out the async namespace, an alias
+or a flat method reaching the wrong capability, and the two discovery controls.
+
 Run from ``engine/`` with ``uv run python scripts/verify_parity_gates.py``. Writes its result
 to ``engine/logs/``.
 """
@@ -30,6 +35,9 @@ CLIENT = "dumpstagram/client.py"
 AIO = "dumpstagram/aio.py"
 SNAPSHOT = "tests/public_surface.txt"
 PARITY = "tests/test_facade_parity.py"
+DIRECT_NAMESPACE = "dumpstagram/namespaces/direct.py"
+FEEDS_NAMESPACE = "dumpstagram/namespaces/feeds.py"
+MEDIA_NAMESPACE = "dumpstagram/namespaces/media.py"
 
 FORWARDS_THE_CURSOR = """         self._impl.thread_messages(
             thread_fbid,
@@ -141,6 +149,78 @@ SCOPING_GATE = (
    f"{PARITY}::test_a_scoping_method_takes_the_same_parameters_and_returns_its_own_surface"
 )
 
+SYNC_UNLIKE_IS_PUBLIC = "   def unlike(self, post_pk: str) -> None:"
+
+SYNC_UNLIKE_IS_GONE = "   def _unlike(self, post_pk: str) -> None:"
+
+SYNC_MESSAGES_SIGNATURE = "   def messages(\n      self,\n      thread_fbid: str,\n"
+
+SYNC_MESSAGES_GROWS_A_PARAMETER = (
+   "   def messages(\n      self,\n      thread_fbid: str,\n      limit: int = 20,\n"
+)
+
+SYNC_HOME_IS_BLOCKING = "   def home(self, *, after: str | None = None) -> Page[FeedItem]:"
+
+SYNC_HOME_IS_A_COROUTINE = "   async def home(self, *, after: str | None = None) -> Page[FeedItem]:"
+
+SYNC_COMMENTS_FORWARDS_THE_CURSOR = (
+   "         self._client._impl.media.comments(post_pk, after=after),"
+)
+
+SYNC_COMMENTS_DROPS_THE_CURSOR = "         self._client._impl.media.comments(post_pk),"
+
+SYNC_SEND_NAMES_ITSELF = 'operation="SyncClient.direct.send",'
+
+SYNC_SEND_NAMES_ITS_FLAT_TWIN = 'operation="SyncClient.send_message",'
+
+SYNC_MEDIA_IS_ITS_OWN = "      return SyncMedia._of(self)\n"
+
+SYNC_MEDIA_IS_THE_ASYNC_ONE = "      return self._impl.media  # type: ignore[return-value]\n"
+
+UNLIKE_ALIAS_REACHES_UNLIKE = "         unlike_post(\n"
+
+UNLIKE_ALIAS_REACHES_LIKE = "         like_post(\n"
+
+FLAT_UNLIKE_ANSWERS_THROUGH_UNLIKE = "      await self.media.unlike(post_pk)\n"
+
+FLAT_UNLIKE_ANSWERS_THROUGH_LIKE = "      await self.media.like(post_pk)\n"
+
+FLAT_COMMENTS_FORWARDS_THE_CURSOR = "      return await self.media.comments(post_pk, after=after)\n"
+
+FLAT_COMMENTS_DROPS_THE_CURSOR = "      return await self.media.comments(post_pk)\n"
+
+SYNC_SET_NOTE_FORWARDS_THE_AUDIENCE = (
+   "         self._client._impl.direct.set_note(text, audience=audience),"
+)
+
+SYNC_SET_NOTE_DROPS_THE_AUDIENCE = "         self._client._impl.direct.set_note(text),"
+
+NAMESPACE_DISCOVERY_READS_THE_PACKAGE = (
+   '      is_a_namespace = is_a_class and returns.__module__.startswith(f"{NAMESPACE_PACKAGE}.")'
+)
+
+NAMESPACE_DISCOVERY_FINDS_NOTHING = (
+   '      is_a_namespace = is_a_class and returns.__module__.startswith("dumpstagram.nowhere.")'
+)
+
+NAMESPACE_SIGNATURE_GATE = (
+   f"{PARITY}::test_a_namespace_method_takes_the_same_parameters_and_returns_the_same_type"
+)
+
+ASYNC_ALIAS_GATE = (
+   f"{PARITY}::test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_async"
+)
+
+CORE_REACH_GATE = f"{PARITY}::test_a_namespace_method_reaches_the_core_capability_the_table_names"
+
+UNFOLLOW_IS_IN_THE_CORE_TABLE = (
+   '   "social.unfollow": "dumpstagram._core.writes.follows.unfollow_user",\n'
+)
+
+BLOCKING_ALIAS_GATE = (
+   f"{PARITY}::test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_blocking"
+)
+
 MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{PARITY}::test_a_blocking_capability_forwards_every_argument_on_the_loop_thread",
@@ -213,6 +293,82 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": f"{PARITY}::test_discovery_finds_every_capability_the_snapshot_lists",
       "defect": "the discovery rule finds nothing, so every parametrised gate runs zero cases",
       "edits": [(PARITY, DISCOVERY_READS_COROUTINES, DISCOVERY_FINDS_NOTHING)],
+   },
+   {
+      "gate": f"{PARITY}::test_both_surfaces_carry_the_same_namespaces_with_the_same_methods",
+      "defect": "an alias exists on the async namespace and is missing from the blocking one",
+      "edits": [(MEDIA_NAMESPACE, SYNC_UNLIKE_IS_PUBLIC, SYNC_UNLIKE_IS_GONE)],
+   },
+   {
+      "gate": NAMESPACE_SIGNATURE_GATE,
+      "defect": "a blocking alias grows a parameter its async twin does not take",
+      "edits": [(DIRECT_NAMESPACE, SYNC_MESSAGES_SIGNATURE, SYNC_MESSAGES_GROWS_A_PARAMETER)],
+   },
+   {
+      "gate": NAMESPACE_SIGNATURE_GATE,
+      "defect": "a blocking alias is declared async and hands a sync caller a coroutine",
+      "edits": [(FEEDS_NAMESPACE, SYNC_HOME_IS_BLOCKING, SYNC_HOME_IS_A_COROUTINE)],
+   },
+   {
+      "gate": (
+         f"{PARITY}::test_a_blocking_namespace_method_forwards_every_argument_on_the_loop_thread"
+      ),
+      "defect": "a blocking alias accepts a cursor and never passes it on",
+      "edits": [
+         (MEDIA_NAMESPACE, SYNC_COMMENTS_FORWARDS_THE_CURSOR, SYNC_COMMENTS_DROPS_THE_CURSOR)
+      ],
+   },
+   {
+      "gate": (
+         f"{PARITY}::test_a_blocking_namespace_method_raises_the_async_exception_under_its_own_name"
+      ),
+      "defect": "a blocking alias keeps the seam label of the flat method it was copied from",
+      "edits": [(DIRECT_NAMESPACE, SYNC_SEND_NAMES_ITSELF, SYNC_SEND_NAMES_ITS_FLAT_TWIN)],
+   },
+   {
+      "gate": f"{PARITY}::test_each_surface_hands_out_its_own_namespaces",
+      "defect": "the blocking client hands its caller the async namespace it wraps",
+      "edits": [(CLIENT, SYNC_MEDIA_IS_ITS_OWN, SYNC_MEDIA_IS_THE_ASYNC_ONE)],
+   },
+   {
+      "gate": CORE_REACH_GATE,
+      "defect": "an alias delegates to another capability's core function",
+      "edits": [(MEDIA_NAMESPACE, UNLIKE_ALIAS_REACHES_UNLIKE, UNLIKE_ALIAS_REACHES_LIKE)],
+   },
+   {
+      "gate": f"{PARITY}::test_every_namespace_method_names_the_core_capability_it_reaches",
+      "defect": "a namespace method is left out of the core capability table",
+      "edits": [(PARITY, UNFOLLOW_IS_IN_THE_CORE_TABLE, "")],
+   },
+   {
+      "gate": ASYNC_ALIAS_GATE,
+      "defect": "a flat method answers through the wrong alias",
+      "edits": [(AIO, FLAT_UNLIKE_ANSWERS_THROUGH_UNLIKE, FLAT_UNLIKE_ANSWERS_THROUGH_LIKE)],
+   },
+   {
+      "gate": ASYNC_ALIAS_GATE,
+      "defect": "a flat method drops an argument on the way to its alias",
+      "edits": [(AIO, FLAT_COMMENTS_FORWARDS_THE_CURSOR, FLAT_COMMENTS_DROPS_THE_CURSOR)],
+   },
+   {
+      "gate": BLOCKING_ALIAS_GATE,
+      "defect": "a blocking alias drops a keyword and the default goes out in its place",
+      "edits": [
+         (DIRECT_NAMESPACE, SYNC_SET_NOTE_FORWARDS_THE_AUDIENCE, SYNC_SET_NOTE_DROPS_THE_AUDIENCE)
+      ],
+   },
+   {
+      "gate": f"{PARITY}::test_namespace_discovery_finds_every_namespace_method_the_snapshot_lists",
+      "defect": "namespace discovery finds nothing, so every namespace gate runs zero cases",
+      "edits": [(PARITY, NAMESPACE_DISCOVERY_READS_THE_PACKAGE, NAMESPACE_DISCOVERY_FINDS_NOTHING)],
+   },
+   {
+      "gate": f"{PARITY}::test_every_flat_capability_has_exactly_one_namespace_alias",
+      "defect": "a flat capability lands with no namespace alias, snapshot updated",
+      "edits": [
+         (AIO, ASYNC_SURFACE_ENDS_WITH_FEED, ASYNC_SURFACE_GROWS_A_CAPABILITY),
+         (SNAPSHOT, SNAPSHOT_WITHOUT_SAVED_POSTS, SNAPSHOT_WITH_SAVED_POSTS),
+      ],
    },
 ]
 

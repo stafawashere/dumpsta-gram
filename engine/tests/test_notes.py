@@ -48,6 +48,7 @@ from dumpstagram._private.web.parse.notes import parse_created_note, parse_inbox
 from dumpstagram.aio import AsyncClient
 from dumpstagram.errors import SchemaChanged, UpstreamRejected
 from dumpstagram.models import Note, NoteAudience
+from dumpstagram.namespaces.direct import AsyncDirect
 from dumpstagram.session import Session
 from tests.test_direct import (
    BOOTSTRAP_PAGE,
@@ -514,11 +515,13 @@ async def test_what_cannot_be_a_note_is_refused_before_anything_is_sent(operatio
    assert transport.sent == []
 
 
-def test_the_set_note_docstring_names_the_reconciling_read() -> None:
-   """Catches the public ``set_note`` losing the instruction to read the tray after an unknown
-   outcome, and the warning that a set replaces the note already up."""
+@pytest.mark.parametrize("public_set_note", [AsyncClient.set_note, AsyncDirect.set_note])
+def test_the_set_note_docstring_names_the_reconciling_read(public_set_note: Any) -> None:
+   """Catches the public ``set_note``, flat or on ``client.direct``, losing the instruction to
+   read the tray after an unknown outcome, and the warning that a set replaces the note already
+   up."""
 
-   documented = AsyncClient.set_note.__doc__ or ""
+   documented = public_set_note.__doc__ or ""
 
    assert "OutcomeUnknown" in documented
    assert ":meth:`notes`" in documented

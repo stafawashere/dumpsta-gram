@@ -93,6 +93,7 @@ Numbered W1 onward so they do not collide with the build plan's rulings in 17.13
   SemVer and gain namespace aliases in E1, so there is one consistent way to call everything and
   the flat names are the compatibility path. Reason: at 150 methods a flat client is unreadable,
   and namespaces are purely additive. `tests/test_facade_parity.py` extends to walk namespaces.
+  The names `feed` and `notes` were taken by flat methods, see W19.
 - **W2. The facades stay hand-written, not generated.** The owner chose the parity gate over a
   generated facade on 2026-09-22, and nothing since changes that.
 - **W3. Push transport comes before the Swift app in engine order.** No app work is in flight, the
@@ -219,6 +220,80 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   no module over about 500 lines where a domain split is possible. `aio.py` at 817 lines is the
   one left: it is the public facade, and item 4's namespace objects are where its per-domain
   split belongs, so doing it here would be done twice.
+- **W19. Two W1 names were taken, so the timelines are `client.feeds` and the notes live on
+  `client.direct`.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1
+  item 4. `feed` and `notes` are flat methods of `1.0.0`, and their lines
+  `def dumpstagram.aio.AsyncClient.feed(...)` and `...notes(...)` are in the Phase 3 baseline, so
+  a namespace property under either name would change a frozen line, which ADR-0011 forbids.
+  The timelines take the plural, `client.feeds`, the way `profiles` already is. The notes join
+  `client.direct` rather than take a second invented name, because the web client shows the tray
+  on the direct inbox and a reply to a note arrives as a direct message. The shipped namespaces
+  are therefore `direct`, `feeds`, `media`, `profiles` and `social`. Inside a namespace a name
+  drops the word the namespace already says (`direct.send`, not `direct.send_message`), keeps the
+  object where it is not the domain (`media.delete_comment`, `direct.set_note`), and a read keyed
+  on a lookup value is `by_<key>`. `post` became `media.by_code`, because `media.post` reads as
+  publishing, which E1 item 9 adds. Every alias takes exactly its flat twin's parameters, same
+  names, order, kinds and defaults, and returns the same type. The whole table:
+
+  | Flat method, both clients | Namespace alias |
+  |---|---|
+  | `thread_messages(thread_fbid, *, after, newer_than_message_id)` | `direct.messages` |
+  | `send_message(thread_fbid, text)` | `direct.send` |
+  | `unsend_message(thread_fbid, message_id)` | `direct.unsend` |
+  | `notes()` | `direct.notes` |
+  | `set_note(text, *, audience)` | `direct.set_note` |
+  | `delete_note(note_id)` | `direct.delete_note` |
+  | `feed(*, after)` | `feeds.home` |
+  | `post(code)` | `media.by_code` |
+  | `like(post_pk)` | `media.like` |
+  | `unlike(post_pk)` | `media.unlike` |
+  | `comments(post_pk, *, after)` | `media.comments` |
+  | `comment(post_pk, text)` | `media.comment` |
+  | `delete_comment(post_pk, comment_id)` | `media.delete_comment` |
+  | `profile(username)` | `profiles.by_username` |
+  | `profile_by_id(user_id)` | `profiles.by_id` |
+  | `follow(user_id)` | `social.follow` |
+  | `unfollow(user_id)` | `social.unfollow` |
+
+- **W20. No empty namespace ships, and `events` stays on the client.** Ruled 2026-09-23 for E1
+  item 4. `stories`, `search` and `account` have no capability yet, and each arrives with its
+  first method. An empty public class is a snapshot line whose shape, and whose name, nothing
+  has tested yet: W13 already found that a planned account action belongs to a second account,
+  and a renamed namespace after it shipped would be a removal. `events` gets no alias. It is the
+  account's one event stream under ADR-0006, whose kinds are expected to grow past direct
+  messages when push arrives, and a listener is a lifetime rather than a read of one domain.
+- **W21. The namespace is where a capability lives, and the flat method answers through it.**
+  Ruled 2026-09-23 for E1 item 4. The plan's 24 counted every `async def` in `aio.py`, which
+  includes `aclose`, `__aenter__`, `__aexit__`, `events` and two private helpers. The flat
+  capabilities are 17, and each has one alias. Each namespace method holds the full docstring
+  and the one `_core` call, and each flat method is a one-line delegation to its alias with a
+  short docstring naming it. The two flat docstrings a gate holds, `set_note` and `comment`, keep
+  the reconciling read and `OutcomeUnknown`. `aio.py` went from 817 lines to 479, which closes
+  W18. The classes live in `dumpstagram/namespaces/<domain>.py`, the awaitable one beside its
+  blocking twin, and are built by a private `_of` with an `__init__` that raises, as
+  `EventListener` is. Each property builds a fresh namespace object on access, which holds only
+  its client, so a client from `with_behavior` needs nothing copied. Nothing is re-exported from
+  `dumpstagram.namespaces` or the root, and a root export can be added later without removing
+  anything. One consequence shaped the gates. Since a flat method answers through its alias, an
+  alias that reaches the wrong `_core` function makes both answer the same wrong way, and the
+  flat-against-alias gate cannot see it. So `tests/test_facade_parity.py` also holds each
+  namespace method to the `_core` function a table in the file names.
+- **W22. Gates followed the move, and two were strengthened.** Ruled 2026-09-23 for E1 item 4.
+  Twelve anchors in eight harnesses pointed at `aio.py` text that moved to a namespace module,
+  and each now names that module, found exactly once, with the replacement text changed only
+  from `self.` to `client.` where the moved code changed it: `verify_cookie_sync_gates.py` (1),
+  `verify_feed_first_page_gates.py` (2), `verify_page_load_gates.py` (2),
+  `verify_profile_page_gates.py` (1), `verify_thread_route_gates.py` (1),
+  `verify_phase2_gates.py` (1, lengthened by one line, because the shorter text now occurs twice
+  in `namespaces/direct.py`), `verify_notes_gates.py` (2) and `verify_comments_gates.py` (2).
+  `tests/test_direct.py` spied on `aio.read_thread_messages` in three gates, and now spies on
+  `dumpstagram.namespaces.direct.read_thread_messages`, the one module that calls it. The
+  `set_note` and `comment` docstring gates now hold the flat method and the alias both, each
+  with a new mutation on the flat docstring. The length-heuristic mutation in
+  `verify_feed_gates.py` that W17 left named `FEED_PAGE_SIZE_GUESS`, which no module defines,
+  and turned its gate red on a `NameError`. It now compares against a literal 12, and the gate
+  goes red on `AssertionError: assert False is True` for `has_next_page`, seen before and after
+  the fix.
 
 ## Standing rules for every phase
 
@@ -266,6 +341,13 @@ the per-domain layout.
    moved (W17). Log `engine/logs/harness-sweep-2026-09-23-194421.txt`.
 4. **Namespaces.** The W1 namespace objects on both facades, with aliases for the 24 existing
    methods, and the parity gate extended to walk them.
+   Done 2026-09-23, 0 live requests and 0 page loads: `client.direct`, `client.feeds`,
+   `client.media`, `client.profiles` and `client.social` on both clients, with an alias for each
+   of the 17 flat capabilities (W19, W20, W21), from `dumpstagram/namespaces/`. The snapshot grew
+   from 397 lines to 467, 70 added and none removed or changed. `tests/test_facade_parity.py`
+   walks the namespaces and holds every flat method and its alias to the same requests and the
+   same outcome on a recording transport, on both surfaces, and each alias to its `_core`
+   function; `verify_parity_gates.py` grew from 13 mutations to 26, all red then green (W22).
 5. **Pagination iterators.** `iter_*` companions over every `Page` read, terminating only on
    `has_next_page`, paced like any read, with an explicit `limit`.
 6. **Complete media model.** Video renditions, carousel children, audio, dimensions and durations,

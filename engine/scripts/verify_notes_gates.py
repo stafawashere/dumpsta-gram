@@ -37,6 +37,7 @@ WRITES = "dumpstagram/_core/writes/notes.py"
 BOOTSTRAP = "dumpstagram/_private/web/bootstrap.py"
 SESSION = "dumpstagram/session.py"
 FACADE = "dumpstagram/aio.py"
+DIRECT_NAMESPACE = "dumpstagram/namespaces/direct.py"
 GATES = "tests/test_notes.py"
 CLI_GATES = "tests/test_cli.py"
 SESSION_GATES = "tests/test_session.py"
@@ -391,13 +392,28 @@ MUTATIONS: list[dict[str, object]] = [
    },
    {
       "gate": gate("test_the_set_note_docstring_names_the_reconciling_read"),
-      "defect": "the set_note docstring stops naming the tray read",
+      "defect": "the set_note docstring on client.direct stops naming the tray read",
       "edits": [
-         (FACADE, "Read :meth:`notes` first when the old one matters.", "Read the tray first."),
          (
-            FACADE,
+            DIRECT_NAMESPACE,
+            "Read :meth:`notes` first when the old one matters.",
+            "Read the tray first.",
+         ),
+         (
+            DIRECT_NAMESPACE,
             "To reconcile that, read :meth:`notes` and look for the viewer's own note",
             "To reconcile that, look for the viewer's own note",
+         ),
+      ],
+   },
+   {
+      "gate": gate("test_the_set_note_docstring_names_the_reconciling_read"),
+      "defect": "the flat set_note docstring stops naming the tray read",
+      "edits": [
+         (
+            FACADE,
+            "      read :meth:`notes` and look for the viewer's own note before deciding anything.",
+            "      look for the viewer's own note before deciding anything.",
          ),
       ],
    },

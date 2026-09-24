@@ -115,7 +115,7 @@ CURSOR_COMES_FROM_PAGE_INFO = (
    "   return Page(items=items, has_next_page=has_next_page, end_cursor=end_cursor)"
 )
 
-CURSOR_COMES_FROM_A_LENGTH = """   has_next_page = len(items) >= FEED_PAGE_SIZE_GUESS
+CURSOR_COMES_FROM_A_LENGTH = """   has_next_page = len(items) >= 12
    end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
 
    return Page(items=items, has_next_page=has_next_page, end_cursor=end_cursor)"""

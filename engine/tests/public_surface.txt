@@ -59,18 +59,23 @@ def dumpstagram.aio.AsyncClient.comment(self, post_pk: str, text: str) -> Commen
 def dumpstagram.aio.AsyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.aio.AsyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.aio.AsyncClient.delete_note(self, note_id: str) -> None
+property dumpstagram.aio.AsyncClient.direct -> AsyncDirect
 def dumpstagram.aio.AsyncClient.events(self, *, since: str | None = None) -> AsyncIterator[Event]
 def dumpstagram.aio.AsyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
+property dumpstagram.aio.AsyncClient.feeds -> AsyncFeeds
 def dumpstagram.aio.AsyncClient.follow(self, user_id: str) -> None
 classmethod dumpstagram.aio.AsyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> AsyncClient
 def dumpstagram.aio.AsyncClient.like(self, post_pk: str) -> None
+property dumpstagram.aio.AsyncClient.media -> AsyncMedia
 def dumpstagram.aio.AsyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.aio.AsyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.aio.AsyncClient.profile(self, username: str) -> Profile
 def dumpstagram.aio.AsyncClient.profile_by_id(self, user_id: str) -> Profile
+property dumpstagram.aio.AsyncClient.profiles -> AsyncProfiles
 def dumpstagram.aio.AsyncClient.send_message(self, thread_fbid: str, text: str) -> SentMessage
 property dumpstagram.aio.AsyncClient.session -> Session
 def dumpstagram.aio.AsyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+property dumpstagram.aio.AsyncClient.social -> AsyncSocial
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.aio.AsyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.aio.AsyncClient.unlike(self, post_pk: str) -> None
@@ -116,18 +121,23 @@ def dumpstagram.client.SyncClient.comment(self, post_pk: str, text: str) -> Comm
 def dumpstagram.client.SyncClient.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.client.SyncClient.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.client.SyncClient.delete_note(self, note_id: str) -> None
+property dumpstagram.client.SyncClient.direct -> SyncDirect
 def dumpstagram.client.SyncClient.events(self, *, since: str | None = None, on_event: Callable[[Event], None] | None = None) -> EventListener
 def dumpstagram.client.SyncClient.feed(self, *, after: str | None = None) -> Page[FeedItem]
+property dumpstagram.client.SyncClient.feeds -> SyncFeeds
 def dumpstagram.client.SyncClient.follow(self, user_id: str) -> None
 classmethod dumpstagram.client.SyncClient.from_session_file(cls, path: str | os.PathLike[str], *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> SyncClient
 def dumpstagram.client.SyncClient.like(self, post_pk: str) -> None
+property dumpstagram.client.SyncClient.media -> SyncMedia
 def dumpstagram.client.SyncClient.notes(self) -> tuple[Note, ...]
 def dumpstagram.client.SyncClient.post(self, code: str) -> PostDetail
 def dumpstagram.client.SyncClient.profile(self, username: str) -> Profile
 def dumpstagram.client.SyncClient.profile_by_id(self, user_id: str) -> Profile
+property dumpstagram.client.SyncClient.profiles -> SyncProfiles
 def dumpstagram.client.SyncClient.send_message(self, thread_fbid: str, text: str) -> SentMessage
 property dumpstagram.client.SyncClient.session -> Session
 def dumpstagram.client.SyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+property dumpstagram.client.SyncClient.social -> SyncSocial
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.client.SyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.client.SyncClient.unlike(self, post_pk: str) -> None
@@ -365,6 +375,66 @@ field dumpstagram.models.profiles.Profile.media_count: int
 field dumpstagram.models.profiles.Profile.profile_pic_url: str
 field dumpstagram.models.profiles.Profile.total_clips_count: int
 field dumpstagram.models.profiles.Profile.username: str
+module dumpstagram.namespaces
+module dumpstagram.namespaces.direct
+class dumpstagram.namespaces.direct.AsyncDirect()
+def dumpstagram.namespaces.direct.AsyncDirect.__init__(self) -> None
+def dumpstagram.namespaces.direct.AsyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.AsyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
+def dumpstagram.namespaces.direct.AsyncDirect.notes(self) -> tuple[Note, ...]
+def dumpstagram.namespaces.direct.AsyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
+def dumpstagram.namespaces.direct.AsyncDirect.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+def dumpstagram.namespaces.direct.AsyncDirect.unsend(self, thread_fbid: str, message_id: str) -> None
+class dumpstagram.namespaces.direct.SyncDirect()
+def dumpstagram.namespaces.direct.SyncDirect.__init__(self) -> None
+def dumpstagram.namespaces.direct.SyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.SyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
+def dumpstagram.namespaces.direct.SyncDirect.notes(self) -> tuple[Note, ...]
+def dumpstagram.namespaces.direct.SyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
+def dumpstagram.namespaces.direct.SyncDirect.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+def dumpstagram.namespaces.direct.SyncDirect.unsend(self, thread_fbid: str, message_id: str) -> None
+module dumpstagram.namespaces.feeds
+class dumpstagram.namespaces.feeds.AsyncFeeds()
+def dumpstagram.namespaces.feeds.AsyncFeeds.__init__(self) -> None
+def dumpstagram.namespaces.feeds.AsyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+class dumpstagram.namespaces.feeds.SyncFeeds()
+def dumpstagram.namespaces.feeds.SyncFeeds.__init__(self) -> None
+def dumpstagram.namespaces.feeds.SyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+module dumpstagram.namespaces.media
+class dumpstagram.namespaces.media.AsyncMedia()
+def dumpstagram.namespaces.media.AsyncMedia.__init__(self) -> None
+def dumpstagram.namespaces.media.AsyncMedia.by_code(self, code: str) -> PostDetail
+def dumpstagram.namespaces.media.AsyncMedia.comment(self, post_pk: str, text: str) -> Comment
+def dumpstagram.namespaces.media.AsyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
+def dumpstagram.namespaces.media.AsyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.unlike(self, post_pk: str) -> None
+class dumpstagram.namespaces.media.SyncMedia()
+def dumpstagram.namespaces.media.SyncMedia.__init__(self) -> None
+def dumpstagram.namespaces.media.SyncMedia.by_code(self, code: str) -> PostDetail
+def dumpstagram.namespaces.media.SyncMedia.comment(self, post_pk: str, text: str) -> Comment
+def dumpstagram.namespaces.media.SyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
+def dumpstagram.namespaces.media.SyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.unlike(self, post_pk: str) -> None
+module dumpstagram.namespaces.profiles
+class dumpstagram.namespaces.profiles.AsyncProfiles()
+def dumpstagram.namespaces.profiles.AsyncProfiles.__init__(self) -> None
+def dumpstagram.namespaces.profiles.AsyncProfiles.by_id(self, user_id: str) -> Profile
+def dumpstagram.namespaces.profiles.AsyncProfiles.by_username(self, username: str) -> Profile
+class dumpstagram.namespaces.profiles.SyncProfiles()
+def dumpstagram.namespaces.profiles.SyncProfiles.__init__(self) -> None
+def dumpstagram.namespaces.profiles.SyncProfiles.by_id(self, user_id: str) -> Profile
+def dumpstagram.namespaces.profiles.SyncProfiles.by_username(self, username: str) -> Profile
+module dumpstagram.namespaces.social
+class dumpstagram.namespaces.social.AsyncSocial()
+def dumpstagram.namespaces.social.AsyncSocial.__init__(self) -> None
+def dumpstagram.namespaces.social.AsyncSocial.follow(self, user_id: str) -> None
+def dumpstagram.namespaces.social.AsyncSocial.unfollow(self, user_id: str) -> None
+class dumpstagram.namespaces.social.SyncSocial()
+def dumpstagram.namespaces.social.SyncSocial.__init__(self) -> None
+def dumpstagram.namespaces.social.SyncSocial.follow(self, user_id: str) -> None
+def dumpstagram.namespaces.social.SyncSocial.unfollow(self, user_id: str) -> None
 module dumpstagram.session
 class dumpstagram.session.ProxyConfig()
 field dumpstagram.session.ProxyConfig.url: str

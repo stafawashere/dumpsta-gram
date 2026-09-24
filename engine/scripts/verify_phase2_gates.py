@@ -27,6 +27,7 @@ PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
 DIRECT = "dumpstagram/_core/direct.py"
 TOKENS = "dumpstagram/_core/tokens.py"
 AIO = "dumpstagram/aio.py"
+DIRECT_NAMESPACE = "dumpstagram/namespaces/direct.py"
 CLIENT = "dumpstagram/client.py"
 
 REQUIRED_RAISES = """   if not isinstance(node, dict) or key not in node:
@@ -269,9 +270,9 @@ MUTATIONS = [
    {
       "gate": "tests/test_direct.py::test_the_async_facade_forwards_every_argument",
       "defect": "the async surface accepts a cursor and never passes it on",
-      "file": AIO,
-      "find": "            thread_fbid,\n            after=after,",
-      "replace": "            thread_fbid,\n            after=None,",
+      "file": DIRECT_NAMESPACE,
+      "find": "            client._session,\n            thread_fbid,\n            after=after,",
+      "replace": "            client._session,\n            thread_fbid,\n            after=None,",
    },
    {
       "gate": "tests/test_direct.py::test_the_sync_facade_forwards_every_argument",

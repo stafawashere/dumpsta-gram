@@ -10,24 +10,42 @@ The capability list is read off the class, and the positive control reads it a s
 the committed snapshot, so a discovery that quietly finds nothing cannot leave every
 parametrised gate green by running none of them.
 
+Since E1 item 4 the same gates walk the domain namespaces, ``client.direct`` and the rest, which
+are discovered as the public properties whose type is a class in ``dumpstagram.namespaces`` and
+controlled against the snapshot the same way. The one place a capability is named is
+``FLAT_ALIASES``, the table of ruling W19, which is the oracle the alias gates hold the code to:
+a flat method and its alias, each on a fresh client over a recording transport, must send the
+same requests and end the same way.
+
 Nothing here spends a request. The capability on the async side is replaced by a spy for the
-duration of each test, which is the boundary this file is about.
+duration of each test, which is the boundary this file is about, and the alias gates answer
+every request from the recording transport.
 """
 
 from __future__ import annotations
 
 import inspect
+import sys
 import threading
+from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, get_type_hints
 
 import pytest
 
 from dumpstagram._core.loop_thread import THREAD_NAME, seam_note
+from dumpstagram._core.pacer import Pacer
+from dumpstagram._core.requesting import PacedSender
+from dumpstagram._core.writes import direct as writes_direct
+from dumpstagram._private.transport import Request, Response
 from dumpstagram.aio import AsyncClient
+from dumpstagram.behavior import PARITY
 from dumpstagram.client import SyncClient
 from dumpstagram.listener import EventListener
+from dumpstagram.models import NoteAudience
 from dumpstagram.session import Session
+from tests.test_direct import FakeClock, a_bootstrapped_session
 
 SNAPSHOT = Path(__file__).resolve().parent / "public_surface.txt"
 
@@ -306,3 +324,468 @@ def test_both_listener_methods_share_every_parameter_except_the_handler(name: st
    assert not inspect.iscoroutinefunction(blocking)
    assert not inspect.isasyncgenfunction(blocking)
    assert get_type_hints(blocking)["return"] is EventListener
+
+
+NAMESPACE_PACKAGE = "dumpstagram.namespaces"
+
+FLAT_ALIASES = {
+   "comment": "media.comment",
+   "comments": "media.comments",
+   "delete_comment": "media.delete_comment",
+   "delete_note": "direct.delete_note",
+   "feed": "feeds.home",
+   "follow": "social.follow",
+   "like": "media.like",
+   "notes": "direct.notes",
+   "post": "media.by_code",
+   "profile": "profiles.by_username",
+   "profile_by_id": "profiles.by_id",
+   "send_message": "direct.send",
+   "set_note": "direct.set_note",
+   "thread_messages": "direct.messages",
+   "unfollow": "social.unfollow",
+   "unlike": "media.unlike",
+   "unsend_message": "direct.unsend",
+}
+"""Every flat capability and the namespace method that answers for it, ruling W19. Written out
+rather than read off the source, because it is the thing the alias gates below hold the code
+to."""
+
+ARGUMENT_FOR_PARAMETER: dict[str, object] = {
+   "after": "a-cursor",
+   "audience": NoteAudience.MUTUAL_FOLLOWS,
+   "code": "Cxxxxxxxxxx",
+   "comment_id": "17890123456789012",
+   "message_id": "mid.$abcdefghijklmnop",
+   "newer_than_message_id": "mid.$olderthanthatone",
+   "note_id": "17901234567890123",
+   "post_pk": "3456789012345678901",
+   "text": "a text",
+   "thread_fbid": "1234567890123456",
+   "user_id": "71234567",
+   "username": "someone",
+}
+"""One well-formed value per parameter name, each passing the checks a capability runs before it
+sends, and a keyword default overridden so a dropped keyword changes what is sent."""
+
+
+def namespaces_on(cls: type) -> dict[str, type]:
+   """Every public property of a client whose annotated type is a namespace class."""
+
+   found: dict[str, type] = {}
+
+   for name, member in vars(cls).items():
+      is_public_property = not name.startswith("_") and isinstance(member, property)
+
+      if not is_public_property:
+         continue
+
+      returns = get_type_hints(member.fget).get("return")
+      is_a_class = isinstance(returns, type)
+      is_a_namespace = is_a_class and returns.__module__.startswith(f"{NAMESPACE_PACKAGE}.")
+
+      if is_a_namespace:
+         found[name] = returns
+
+   return found
+
+
+def namespace_methods(cls: type) -> set[str]:
+   return {
+      name
+      for name, member in vars(cls).items()
+      if not name.startswith("_") and inspect.isfunction(member)
+   }
+
+
+ASYNC_NAMESPACES = namespaces_on(AsyncClient)
+SYNC_NAMESPACES = namespaces_on(SyncClient)
+
+NAMESPACE_METHODS = sorted(
+   f"{namespace}.{method}"
+   for namespace, cls in ASYNC_NAMESPACES.items()
+   for method in namespace_methods(cls)
+)
+
+
+def namespace_methods_in_the_snapshot() -> set[str]:
+   property_prefix = "property dumpstagram.aio.AsyncClient."
+   method_prefix = f"def {NAMESPACE_PACKAGE}."
+   lines = SNAPSHOT.read_text(encoding="utf-8").splitlines()
+   namespace_of_class: dict[str, str] = {}
+   found: set[str] = set()
+
+   for line in lines:
+      if line.startswith(property_prefix):
+         name, _, returns = line[len(property_prefix) :].partition(" -> ")
+         namespace_of_class[returns] = name
+
+   for line in lines:
+      if not line.startswith(method_prefix):
+         continue
+
+      class_name, method = line[len("def ") :].split("(", 1)[0].split(".")[-2:]
+      is_public = not method.startswith("_")
+      is_on_the_async_client = class_name in namespace_of_class
+
+      if is_public and is_on_the_async_client:
+         found.add(f"{namespace_of_class[class_name]}.{method}")
+
+   return found
+
+
+def split(qualified: str) -> tuple[str, str]:
+   namespace, method = qualified.split(".")
+
+   return namespace, method
+
+
+def test_namespace_discovery_finds_every_namespace_method_the_snapshot_lists() -> None:
+   """Catches a namespace discovery rule that finds nothing, which would leave every namespace
+   gate below vacuous."""
+
+   assert NAMESPACE_METHODS
+   assert set(NAMESPACE_METHODS) == namespace_methods_in_the_snapshot()
+
+
+def test_both_surfaces_carry_the_same_namespaces_with_the_same_methods() -> None:
+   """Catches a namespace, or a method on one, that exists on one surface only."""
+
+   assert ASYNC_NAMESPACES.keys() == SYNC_NAMESPACES.keys()
+
+   for namespace, async_class in ASYNC_NAMESPACES.items():
+      sync_class = SYNC_NAMESPACES[namespace]
+
+      assert sync_class is not async_class, namespace
+      assert namespace_methods(sync_class) == namespace_methods(async_class), namespace
+
+
+@pytest.mark.asyncio
+async def test_each_surface_hands_out_its_own_namespaces() -> None:
+   """Catches a blocking client handing its caller the async namespace it wraps, whose methods
+   return coroutines a blocking caller never awaits."""
+
+   async with AsyncClient(a_session()) as async_client:
+      for namespace, async_class in ASYNC_NAMESPACES.items():
+         assert type(getattr(async_client, namespace)) is async_class, namespace
+
+   with SyncClient(a_session()) as blocking_client:
+      for namespace, sync_class in SYNC_NAMESPACES.items():
+         assert type(getattr(blocking_client, namespace)) is sync_class, namespace
+
+
+@pytest.mark.parametrize("qualified", NAMESPACE_METHODS)
+def test_a_namespace_method_takes_the_same_parameters_and_returns_the_same_type(
+   qualified: str,
+) -> None:
+   """Catches a namespace method whose parameters or return type differ between surfaces, an
+   async one that is not a coroutine, and a blocking one that is."""
+
+   namespace, method = split(qualified)
+   blocking = getattr(SYNC_NAMESPACES[namespace], method)
+   awaitable = getattr(ASYNC_NAMESPACES[namespace], method)
+
+   assert parameters_of(blocking) == parameters_of(awaitable)
+   assert get_type_hints(blocking)["return"] == get_type_hints(awaitable)["return"]
+   assert inspect.iscoroutinefunction(awaitable)
+   assert not inspect.iscoroutinefunction(blocking)
+
+
+@pytest.mark.parametrize("qualified", NAMESPACE_METHODS)
+def test_a_blocking_namespace_method_forwards_every_argument_on_the_loop_thread(
+   qualified: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+   """Catches an argument dropped, swapped or defaulted on the way down a blocking namespace
+   method, and one that runs its coroutine anywhere but the shared loop thread."""
+
+   namespace, method = split(qualified)
+   async_class = ASYNC_NAMESPACES[namespace]
+   original_signature = inspect.signature(getattr(async_class, method))
+   result = object()
+   calls: list[tuple[dict[str, Any], str]] = []
+
+   async def spy(self: object, *args: object, **kwargs: object) -> object:
+      bound = original_signature.bind(self, *args, **kwargs)
+      bound.apply_defaults()
+      received = dict(bound.arguments)
+      del received["self"]
+      calls.append((received, threading.current_thread().name))
+
+      return result
+
+   monkeypatch.setattr(async_class, method, spy)
+
+   positional, keyword = distinct_arguments_for(getattr(SYNC_NAMESPACES[namespace], method))
+   expected = original_signature.bind(None, *positional, **keyword).arguments
+   del expected["self"]
+
+   with SyncClient(a_session()) as client:
+      returned = getattr(getattr(client, namespace), method)(*positional, **keyword)
+
+   assert len(calls) == 1
+
+   received, thread_name = calls[0]
+
+   assert received.keys() == expected.keys()
+
+   for parameter_name, argument in expected.items():
+      assert received[parameter_name] is argument, parameter_name
+
+   assert thread_name == THREAD_NAME
+   assert returned is result
+
+
+@pytest.mark.parametrize("qualified", NAMESPACE_METHODS)
+def test_a_blocking_namespace_method_raises_the_async_exception_under_its_own_name(
+   qualified: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+   """Catches a wrapped exception, and a seam note naming the flat twin or a neighbour rather
+   than the namespace method the caller called."""
+
+   namespace, method = split(qualified)
+   raised = LookupError("raised by the async side")
+
+   async def spy(self: object, *args: object, **kwargs: object) -> object:
+      raise raised
+
+   monkeypatch.setattr(ASYNC_NAMESPACES[namespace], method, spy)
+
+   positional, keyword = distinct_arguments_for(getattr(SYNC_NAMESPACES[namespace], method))
+
+   with SyncClient(a_session()) as client:
+      with pytest.raises(LookupError) as caught:
+         getattr(getattr(client, namespace), method)(*positional, **keyword)
+
+   assert caught.value is raised
+   assert seam_note(f"SyncClient.{namespace}.{method}") in getattr(caught.value, "__notes__", [])
+
+
+def test_every_flat_capability_has_exactly_one_namespace_alias() -> None:
+   """Catches a flat capability added with no namespace method answering for it, and an alias
+   table naming a namespace method that does not exist."""
+
+   assert set(FLAT_ALIASES) == set(CAPABILITIES)
+   assert set(FLAT_ALIASES.values()) <= set(NAMESPACE_METHODS)
+   assert len(set(FLAT_ALIASES.values())) == len(FLAT_ALIASES)
+
+
+class RecordingTransport:
+   """Records every request and answers each with the same body, which carries no data."""
+
+   def __init__(self) -> None:
+      self.sent: list[Request] = []
+
+   async def send(self, request: Request) -> Response:
+      self.sent.append(request)
+
+      return Response(
+         status_code=200,
+         headers={"content-type": "application/json; charset=utf-8"},
+         content=b"{}",
+         final_url=request.url,
+      )
+
+   async def aclose(self) -> None:
+      return None
+
+
+def a_scripted_session() -> Session:
+   session = a_bootstrapped_session()
+   session.actor_id = "17841400000000000"
+
+   return session
+
+
+def paced_on_a_fake_clock(transport: RecordingTransport) -> PacedSender:
+   clock = FakeClock()
+
+   return PacedSender(transport, Pacer(clock=clock, sleep=clock.sleep, jitter=lambda: 0.0))
+
+
+def arguments_for(function: Any) -> tuple[list[object], dict[str, object]]:
+   positional: list[object] = []
+   keyword: dict[str, object] = {}
+
+   for parameter in list(inspect.signature(function).parameters.values())[1:]:
+      argument = ARGUMENT_FOR_PARAMETER[parameter.name]
+
+      if parameter.kind is inspect.Parameter.KEYWORD_ONLY:
+         keyword[parameter.name] = argument
+      else:
+         positional.append(argument)
+
+   return positional, keyword
+
+
+Outcome = tuple[str, str]
+
+
+def outcome_of(call: Any) -> Outcome:
+   try:
+      returned = call()
+   except Exception as error:
+      return (type(error).__qualname__, str(error))
+
+   return ("returned", repr(returned))
+
+
+async def async_answer(pick: Any, function: Any) -> tuple[list[Request], Outcome]:
+   transport = RecordingTransport()
+   client = AsyncClient(a_scripted_session(), behavior=SCRIPTED_BEHAVIOR)
+   await client._sender.aclose()
+   client._sender = paced_on_a_fake_clock(transport)
+   positional, keyword = arguments_for(function)
+
+   try:
+      try:
+         returned = await pick(client)(*positional, **keyword)
+         outcome: Outcome = ("returned", repr(returned))
+      except Exception as error:
+         outcome = (type(error).__qualname__, str(error))
+   finally:
+      await client.aclose()
+
+   return transport.sent, outcome
+
+
+def blocking_answer(pick: Any, function: Any) -> tuple[list[Request], Outcome]:
+   transport = RecordingTransport()
+   positional, keyword = arguments_for(function)
+
+   with SyncClient(a_scripted_session(), behavior=SCRIPTED_BEHAVIOR) as client:
+      client._loop.run(client._impl._sender.aclose(), operation="the scripted sender swap")
+      client._impl._sender = paced_on_a_fake_clock(transport)
+
+      outcome = outcome_of(lambda: pick(client)(*positional, **keyword))
+
+   return transport.sent, outcome
+
+
+SCRIPTED_BEHAVIOR = replace(PARITY, cookie_sync=False)
+"""The cookie sync tail would leave through the transport the client was built with, so it is
+off here. Nothing else departs from the default behavior."""
+
+
+@pytest.fixture
+def fixed_send_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+   """A text send draws a fresh threading id from the clock and a random number on every call,
+   the one request that differs between two identical calls. Both are pinned here."""
+
+   monkeypatch.setattr(writes_direct, "time", SimpleNamespace(time=lambda: 1758412345.0))
+   monkeypatch.setattr(writes_direct, "secrets", SimpleNamespace(randbits=lambda bits: 12345))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("flat", sorted(FLAT_ALIASES))
+async def test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_async(
+   flat: str, fixed_send_identity: None
+) -> None:
+   """Catches an alias delegating to another capability's core function, and either of the pair
+   dropping, swapping or defaulting an argument, on the awaitable surface."""
+
+   namespace, method = split(FLAT_ALIASES[flat])
+   flat_function = getattr(AsyncClient, flat)
+
+   flat_sent, flat_outcome = await async_answer(lambda client: getattr(client, flat), flat_function)
+   alias_sent, alias_outcome = await async_answer(
+      lambda client: getattr(getattr(client, namespace), method), flat_function
+   )
+
+   assert flat_sent
+   assert alias_sent == flat_sent
+   assert alias_outcome == flat_outcome
+
+
+@pytest.mark.parametrize("flat", sorted(FLAT_ALIASES))
+def test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_blocking(
+   flat: str, fixed_send_identity: None
+) -> None:
+   """The same gate on the blocking surface, whose flat method and alias reach the async one by
+   different routes."""
+
+   namespace, method = split(FLAT_ALIASES[flat])
+   flat_function = getattr(SyncClient, flat)
+
+   flat_sent, flat_outcome = blocking_answer(lambda client: getattr(client, flat), flat_function)
+   alias_sent, alias_outcome = blocking_answer(
+      lambda client: getattr(getattr(client, namespace), method), flat_function
+   )
+
+   assert flat_sent
+   assert alias_sent == flat_sent
+   assert alias_outcome == flat_outcome
+
+
+CORE_FUNCTION_FOR_ALIAS = {
+   "direct.delete_note": "dumpstagram._core.writes.notes.delete_note",
+   "direct.messages": "dumpstagram._core.direct.read_thread_messages",
+   "direct.notes": "dumpstagram._core.notes.read_notes",
+   "direct.send": "dumpstagram._core.writes.direct.send_message",
+   "direct.set_note": "dumpstagram._core.writes.notes.set_note",
+   "direct.unsend": "dumpstagram._core.writes.direct.unsend_message",
+   "feeds.home": "dumpstagram._core.feed.read_feed_page",
+   "media.by_code": "dumpstagram._core.posts.read_post",
+   "media.comment": "dumpstagram._core.writes.comments.create_comment",
+   "media.comments": "dumpstagram._core.comments.read_comment_page",
+   "media.delete_comment": "dumpstagram._core.writes.comments.delete_comment",
+   "media.like": "dumpstagram._core.writes.likes.like_post",
+   "media.unlike": "dumpstagram._core.writes.likes.unlike_post",
+   "profiles.by_id": "dumpstagram._core.profiles.read_profile_by_id",
+   "profiles.by_username": "dumpstagram._core.profiles.read_profile",
+   "social.follow": "dumpstagram._core.writes.follows.follow_user",
+   "social.unfollow": "dumpstagram._core.writes.follows.unfollow_user",
+}
+"""The core capability each namespace method delegates to. The flat and alias gates above cannot
+see an alias reaching the wrong one, since a flat method answers through its alias, so this
+table is the independent half."""
+
+
+class ReachedTheCore(Exception):
+   pass
+
+
+def test_every_namespace_method_names_the_core_capability_it_reaches() -> None:
+   """Catches a namespace method added without saying which core capability answers for it,
+   which would leave it outside the gate below."""
+
+   assert set(CORE_FUNCTION_FOR_ALIAS) == set(NAMESPACE_METHODS)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("qualified", sorted(CORE_FUNCTION_FOR_ALIAS))
+async def test_a_namespace_method_reaches_the_core_capability_the_table_names(
+   qualified: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+   """Catches an alias delegating to another capability's core function, such as an unlike
+   that likes, which every other gate in this file would pass."""
+
+   namespace, method = split(qualified)
+   namespace_module = sys.modules[ASYNC_NAMESPACES[namespace].__module__]
+   reached: list[str] = []
+
+   def spy_for(qualified_core_name: str) -> Any:
+      def spy(*args: object, **kwargs: object) -> object:
+         reached.append(qualified_core_name)
+
+         raise ReachedTheCore(qualified_core_name)
+
+      return spy
+
+   for name, member in list(vars(namespace_module).items()):
+      is_a_core_function = inspect.isfunction(member) and member.__module__.startswith(
+         "dumpstagram._core."
+      )
+
+      if is_a_core_function:
+         monkeypatch.setattr(
+            namespace_module, name, spy_for(f"{member.__module__}.{member.__name__}")
+         )
+
+   awaitable = getattr(ASYNC_NAMESPACES[namespace], method)
+   positional, keyword = arguments_for(awaitable)
+
+   async with AsyncClient(a_session()) as client:
+      with pytest.raises(ReachedTheCore):
+         await getattr(getattr(client, namespace), method)(*positional, **keyword)
+
+   assert reached == [CORE_FUNCTION_FOR_ALIAS[qualified]]

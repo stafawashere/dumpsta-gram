@@ -28,7 +28,7 @@ PROFILES = "dumpstagram/_core/profiles.py"
 PAGE_LOAD = "dumpstagram/_core/page_load.py"
 REQUESTING = "dumpstagram/_core/requesting.py"
 BEHAVIOR = "dumpstagram/behavior.py"
-AIO = "dumpstagram/aio.py"
+PROFILES_NAMESPACE = "dumpstagram/namespaces/profiles.py"
 GATES = "tests/test_profile_page.py"
 
 MUTATIONS: list[dict[str, object]] = [
@@ -160,7 +160,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{GATES}::test_the_client_loads_the_page_under_the_default_behavior",
       "defect": "the client drops the behavior setting",
-      "edits": [(AIO, "         route=self._behavior.profile_route,\n", "")],
+      "edits": [(PROFILES_NAMESPACE, "         route=client._behavior.profile_route,\n", "")],
    },
 ]
 

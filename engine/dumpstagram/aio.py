@@ -8,8 +8,11 @@ This module is thin by rule. It owns the connection pool and the pacer for one a
 it delegates everything else. It knows nothing about endpoints, headers, cursors, or GraphQL,
 and `engine/docs/architecture.md` forbids it from learning any of them.
 
-Capabilities are one method each and hold no logic of their own. Every one of them delegates
-to `_core`, which is where pacing, retries, pagination and the token recovery live.
+Capabilities live on the domain namespaces in `dumpstagram.namespaces`, reached as
+``client.direct``, ``client.feeds`` and the rest, and hold no logic of their own. Every one of
+them delegates to `_core`, which is where pacing, retries, pagination and the token recovery
+live. The flat methods here are the names `1.0.0` shipped, kept for good, and each one answers
+through its namespace alias.
 """
 
 from __future__ import annotations
@@ -19,23 +22,12 @@ import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from types import TracebackType
 
-from dumpstagram._core.comments import read_comment_page
 from dumpstagram._core.cookie_sync import CookieSync
-from dumpstagram._core.direct import read_thread_messages
-from dumpstagram._core.feed import read_feed_page
-from dumpstagram._core.notes import read_notes
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
-from dumpstagram._core.posts import read_post
-from dumpstagram._core.profiles import read_profile, read_profile_by_id
 from dumpstagram._core.realtime.buffer import EventBuffer
 from dumpstagram._core.realtime.poller import inbox_poller
 from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_events
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
-from dumpstagram._core.writes.comments import create_comment, delete_comment
-from dumpstagram._core.writes.direct import send_message, unsend_message
-from dumpstagram._core.writes.follows import follow_user, unfollow_user
-from dumpstagram._core.writes.likes import like_post, unlike_post
-from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram.behavior import PARITY, Behavior
@@ -53,6 +45,11 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.direct import AsyncDirect
+from dumpstagram.namespaces.feeds import AsyncFeeds
+from dumpstagram.namespaces.media import AsyncMedia
+from dumpstagram.namespaces.profiles import AsyncProfiles
+from dumpstagram.namespaces.social import AsyncSocial
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -175,6 +172,36 @@ class AsyncClient:
 
       return self._closed or owner_closed
 
+   @property
+   def direct(self) -> AsyncDirect:
+      """Direct threads and the notes on the direct inbox, ``client.direct``."""
+
+      return AsyncDirect._of(self)
+
+   @property
+   def feeds(self) -> AsyncFeeds:
+      """The timelines, ``client.feeds``."""
+
+      return AsyncFeeds._of(self)
+
+   @property
+   def media(self) -> AsyncMedia:
+      """Posts, their likes and their comments, ``client.media``."""
+
+      return AsyncMedia._of(self)
+
+   @property
+   def profiles(self) -> AsyncProfiles:
+      """Profiles, ``client.profiles``."""
+
+      return AsyncProfiles._of(self)
+
+   @property
+   def social(self) -> AsyncSocial:
+      """The viewer's relationships to other accounts, ``client.social``."""
+
+      return AsyncSocial._of(self)
+
    async def thread_messages(
       self,
       thread_fbid: str,
@@ -182,487 +209,122 @@ class AsyncClient:
       after: str | None = None,
       newer_than_message_id: str | None = None,
    ) -> Page[Message]:
-      """Read one page of one direct thread.
+      """Read one page of one direct thread. The same call as :meth:`AsyncDirect.messages
+      <dumpstagram.namespaces.direct.AsyncDirect.messages>`."""
 
-      ``thread_fbid`` is the thread's ``fbid``, which is one of three identifiers the same
-      thread has. The other two return an empty answer rather than an error, so the parameter
-      name says which one it wants.
-
-      ``after`` is an ``end_cursor`` from a previous page. ``newer_than_message_id`` fetches
-      only what has arrived since a message already seen, which makes a poll a top-up rather
-      than a full re-read.
-
-      The returned page's ``has_next_page`` is the only thing that says whether more exist. A
-      short page is not the end of the thread.
-
-      Under the default behavior the newest page is read with the query a browser sends when
-      it opens the thread, and every other page with the query it sends as the thread scrolls.
-      :attr:`~dumpstagram.behavior.Behavior.thread_first_page` set to
-      :attr:`~dumpstagram.behavior.ThreadFirstPage.QUERY` reads the newest page with the
-      scrolling query too. One live request either way.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_thread_messages(
-            self._sender,
-            self._session,
-            thread_fbid,
-            after=after,
-            newer_than_message_id=newer_than_message_id,
-            first_page=self._behavior.thread_first_page,
-            user_agent=self._user_agent,
-         )
+      return await self.direct.messages(
+         thread_fbid,
+         after=after,
+         newer_than_message_id=newer_than_message_id,
       )
 
    async def profile(self, username: str) -> Profile:
-      """Read one account's profile by username.
-
-      Under the default behavior this loads the profile page and sends the page's six queries
-      at once, seven requests in one action, as a browser does. It raises
-      :class:`~dumpstagram.errors.NotFound` when no account has the username.
-
-      :attr:`~dumpstagram.behavior.Behavior.profile_route` set to
-      :attr:`~dumpstagram.behavior.ProfileRoute.QUERIES` spends two requests instead, resolving
-      the username through the account's timeline and then reading the profile. That route
-      raises :class:`~dumpstagram.errors.NotFound` when the account does not exist, or its
-      posts are not visible to this session, or it has none, and cannot say which.
-
-      A caller that already holds the id wants :meth:`profile_by_id`, one request.
+      """Read one account's profile by username. The same call as
+      :meth:`AsyncProfiles.by_username <dumpstagram.namespaces.profiles.AsyncProfiles.by_username>`.
       """
 
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_profile(
-            self._sender,
-            self._session,
-            username,
-            route=self._behavior.profile_route,
-            companions=self._behavior.page_load_companions,
-            cookie_sync=self._cookie_sync_if_on(),
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.profiles.by_username(username)
 
    async def profile_by_id(self, user_id: str) -> Profile:
-      """Read one account's profile by its numeric account id. One live request.
+      """Read one account's profile by its numeric account id. The same call as
+      :meth:`AsyncProfiles.by_id <dumpstagram.namespaces.profiles.AsyncProfiles.by_id>`."""
 
-      ``user_id`` is the account's ``pk``, which is what :attr:`~dumpstagram.models.Profile.id`
-      carries. It is not the ``fbid`` the same account carries as a message sender, and the
-      two are different numbers for the same person.
-
-      On anyone else's profile, ``friendship_status`` carries the viewer's relationship to the
-      account, which makes this the read that confirms :meth:`follow` and :meth:`unfollow`.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_profile_by_id(
-            self._sender,
-            self._session,
-            user_id,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.profiles.by_id(user_id)
 
    async def feed(self, *, after: str | None = None) -> Page[FeedItem]:
-      """Read one page of the signed-in account's home timeline. One live request.
+      """Read one page of the home timeline. The same call as :meth:`AsyncFeeds.home
+      <dumpstagram.namespaces.feeds.AsyncFeeds.home>`."""
 
-      ``after`` is an ``end_cursor`` from a previous page, and omitting it asks for the first
-      page. Under the default behavior the first page is read out of the home document, as a
-      browser reads it, and it is short: four measured loads carried 3 or 4 items.
-      :attr:`~dumpstagram.behavior.Behavior.feed_first_page` set to
-      :attr:`~dumpstagram.behavior.FeedFirstPage.QUERY` asks the pagination query instead.
-
-      The returned page holds :class:`~dumpstagram.models.FeedItem` rather than posts, because
-      most of a timeline is not posts: of fifteen measured items, six were posts and the rest
-      were advertisements and suggestions. An item carrying a post has
-      :attr:`~dumpstagram.models.FeedItem.kind` equal to
-      :attr:`~dumpstagram.models.FeedItemKind.POST`, and every other kind is reported by name
-      and carries nothing.
-
-      The page's length is the upstream's decision. Three measured pages carried 14, 12 and 5
-      items for the same request, so a caller collecting posts keeps asking and stops on
-      ``has_next_page``, never on a page looking short.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_feed_page(
-            self._sender,
-            self._session,
-            after=after,
-            first_page=self._behavior.feed_first_page,
-            companions=self._behavior.page_load_companions,
-            cookie_sync=self._cookie_sync_if_on(),
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.feeds.home(after=after)
 
    async def notes(self) -> tuple[Note, ...]:
-      """Read the notes tray on the direct inbox, whole, in the tray's order. One live request.
+      """Read the notes tray on the direct inbox. The same call as :meth:`AsyncDirect.notes
+      <dumpstagram.namespaces.direct.AsyncDirect.notes>`."""
 
-      Each author has at most one note, and the viewer's own is the one whose
-      :attr:`~dumpstagram.models.Note.author_id` equals this session's ``ds_user_id``. It is
-      absent when the viewer has no note.
-
-      The tray is one call with no cursor. If the upstream ever starts paging it, this raises
-      :class:`~dumpstagram.errors.SchemaChanged` rather than returning the first page as the
-      whole tray.
-
-      A browser reads the tray inside an inbox page load, beside nine other queries. This sends
-      the tray query alone under every behavior, a departure recorded in
-      ``docs/web-request-contract.md`` until the inbox load is modelled.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_notes(
-            self._sender,
-            self._session,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.direct.notes()
 
    async def set_note(
       self, text: str, *, audience: NoteAudience = NoteAudience.CLOSE_FRIENDS
    ) -> Note:
-      """Set the viewer's note on the direct inbox to ``text``. One write, sent once.
+      """Set the viewer's note on the direct inbox to ``text``. The same call as
+      :meth:`AsyncDirect.set_note <dumpstagram.namespaces.direct.AsyncDirect.set_note>`.
 
-      Returns the created note, whose ``id`` is what :meth:`delete_note` takes. A set replaces
-      any note the viewer already has up, whatever it was, including a song note, which this
-      library cannot make again. Read :meth:`notes` first when the old one matters. Empty text
-      raises :class:`ValueError`.
-
-      ``audience`` defaults to :attr:`NoteAudience.CLOSE_FRIENDS
-      <dumpstagram.models.NoteAudience.CLOSE_FRIENDS>`, the narrower of the two the web
-      composer offers, so a note set without choosing is seen by the fewest people. Pass
-      :attr:`NoteAudience.MUTUAL_FOLLOWS <dumpstagram.models.NoteAudience.MUTUAL_FOLLOWS>` for
-      the composer's own default, followers the viewer follows back. If the upstream answers
-      without an error but reports another audience, this raises
-      :class:`~dumpstagram.errors.UpstreamRejected` with code ``note_audience_did_not_follow``,
-      and the note it made is up.
-
-      The write waits out the behavior's write spacing, counts against its write budget, and
-      raises :class:`~dumpstagram.errors.OutcomeUnknown` if the connection fails while it is in
-      flight. To reconcile that, read :meth:`notes` and look for the viewer's own note: a set
-      replaces rather than appends, so sending again converges on one note.
-
-      The request a browser sends around a note has not been recorded, so this sends the
-      create alone, a departure recorded in ``docs/web-request-contract.md``.
+      A set replaces any note already up. After :class:`~dumpstagram.errors.OutcomeUnknown`,
+      read :meth:`notes` and look for the viewer's own note before deciding anything.
       """
 
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         set_note(
-            self._sender,
-            self._session,
-            text,
-            audience=audience,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.direct.set_note(text, audience=audience)
 
    async def delete_note(self, note_id: str) -> None:
-      """Delete the viewer's note whose tray item id is ``note_id``. One write, sent once.
+      """Delete the viewer's note. The same call as :meth:`AsyncDirect.delete_note
+      <dumpstagram.namespaces.direct.AsyncDirect.delete_note>`."""
 
-      ``note_id`` is :attr:`Note.id <dumpstagram.models.Note.id>`, from :meth:`set_note` or
-      from the viewer's own item in :meth:`notes`, digits only, and never the author's id. The
-      upstream answers a delete with nothing, so success is an answer without an error. After
-      :class:`~dumpstagram.errors.OutcomeUnknown`, read :meth:`notes`: a note no longer listed
-      is gone.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         delete_note(
-            self._sender,
-            self._session,
-            note_id,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.direct.delete_note(note_id)
 
    async def post(self, code: str) -> PostDetail:
-      """Read one post by the shortcode in its web address. One live request.
+      """Read one post by its shortcode. The same call as :meth:`AsyncMedia.by_code
+      <dumpstagram.namespaces.media.AsyncMedia.by_code>`."""
 
-      The answer carries both of the post's identifiers, and :attr:`PostDetail.pk
-      <dumpstagram.models.PostDetail.pk>` is the one :meth:`like` and :meth:`unlike` take. It
-      carries ``has_liked`` and ``like_count`` for this viewer, which is how a like is
-      confirmed, and how one whose outcome was unknown is reconciled.
-
-      A browser reads a post inside a post page load. This sends the post query alone under
-      every behavior, a departure recorded in ``docs/web-request-contract.md``.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_post(
-            self._sender,
-            self._session,
-            code,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.media.by_code(code)
 
    async def like(self, post_pk: str) -> None:
-      """Like the post whose media ``pk`` is ``post_pk``. One write, sent once, never retried.
+      """Like a post. The same call as :meth:`AsyncMedia.like
+      <dumpstagram.namespaces.media.AsyncMedia.like>`."""
 
-      ``post_pk`` is :attr:`Post.pk <dumpstagram.models.Post.pk>` or
-      :attr:`PostDetail.pk <dumpstagram.models.PostDetail.pk>`. The ``<pk>_<author id>`` form in
-      their ``id`` raises :class:`ValueError` before anything is sent.
-
-      Liking a post that is already liked succeeds and changes nothing, observed once. The write
-      waits out the behavior's write spacing, counts against its write budget, and raises
-      :class:`~dumpstagram.errors.OutcomeUnknown` if the connection fails while it is in flight.
-      To reconcile that, read the post with :meth:`post` and look at ``has_liked``.
-
-      The request a browser sends around a like has not been recorded, so this sends the like
-      alone, a departure recorded in ``docs/web-request-contract.md``.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         like_post(
-            self._sender,
-            self._session,
-            post_pk,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.media.like(post_pk)
 
    async def unlike(self, post_pk: str) -> None:
-      """Unlike the post whose media ``pk`` is ``post_pk``. One write, sent once, never retried.
+      """Unlike a post. The same call as :meth:`AsyncMedia.unlike
+      <dumpstagram.namespaces.media.AsyncMedia.unlike>`."""
 
-      The same identifier, rules and reconciliation as :meth:`like`. Unliking a post that is
-      not liked succeeds and changes nothing, observed once.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         unlike_post(
-            self._sender,
-            self._session,
-            post_pk,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.media.unlike(post_pk)
 
    async def follow(self, user_id: str) -> None:
-      """Follow the account whose numeric id is ``user_id``. One write, sent once, never retried.
+      """Follow an account. The same call as :meth:`AsyncSocial.follow
+      <dumpstagram.namespaces.social.AsyncSocial.follow>`."""
 
-      ``user_id`` is :attr:`Profile.id <dumpstagram.models.Profile.id>`. A username raises
-      :class:`ValueError` before anything is sent, and :meth:`profile` turns one into a
-      :class:`~dumpstagram.models.Profile` carrying the id.
-
-      Returns nothing, because the answer cannot tell a follow from a request. On a private
-      account a follow becomes a follow request, and the answer selects ``following`` alone,
-      which the request leaves false. The account's profile read with :meth:`profile_by_id`
-      says which it was, through ``friendship_status.following`` and
-      ``friendship_status.outgoing_request``, and it is also the read that reconciles
-      :class:`~dumpstagram.errors.OutcomeUnknown`. The account is notified of the follow.
-
-      The write waits out the behavior's write spacing and counts against its write budget. The
-      request a browser sends around a follow has not been recorded, so this sends the follow
-      alone, a departure recorded in ``docs/web-request-contract.md``.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         follow_user(
-            self._sender,
-            self._session,
-            user_id,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.social.follow(user_id)
 
    async def unfollow(self, user_id: str) -> None:
-      """Unfollow the account whose numeric id is ``user_id``. One write, sent once, never
-      retried.
+      """Unfollow an account. The same call as :meth:`AsyncSocial.unfollow
+      <dumpstagram.namespaces.social.AsyncSocial.unfollow>`."""
 
-      The same identifier, rules and reconciling read as :meth:`follow`. An answer that still
-      reports following raises :class:`~dumpstagram.errors.UpstreamRejected`. Whether it also
-      withdraws a pending follow request to a private account is unobserved, so read
-      ``friendship_status.outgoing_request`` afterwards when that matters.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         unfollow_user(
-            self._sender,
-            self._session,
-            user_id,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.social.unfollow(user_id)
 
    async def send_message(self, thread_fbid: str, text: str) -> SentMessage:
-      """Send ``text`` into the direct thread whose ``thread_fbid`` is ``thread_fbid``. One write,
-      sent once, never retried.
+      """Send a text message into a direct thread. The same call as :meth:`AsyncDirect.send
+      <dumpstagram.namespaces.direct.AsyncDirect.send>`."""
 
-      ``thread_fbid`` is the value :meth:`thread_messages` takes. The thread must exist: a send
-      that would start a new thread takes a different shape, which is not built. Empty text
-      raises :class:`ValueError` before anything is sent.
-
-      Returns a :class:`~dumpstagram.models.SentMessage` with the new message's ``id``, which is
-      what :meth:`unsend_message` takes, its ``sent_at``, and the ``offline_threading_id`` this
-      client generated for it. The answer carries nothing else, so the full
-      :class:`~dumpstagram.models.Message` comes from reading the thread.
-
-      A message appends, so it is never sent again, by this library or by any retry path. The
-      recipient is notified and may read it at once. If the connection fails while it is in
-      flight this raises :class:`~dumpstagram.errors.OutcomeUnknown`, and sending again may
-      deliver it twice. To reconcile, read the thread's newest page with
-      :meth:`thread_messages` for the viewer's own message with this text sent since the
-      attempt began before deciding anything. That match is ambiguous when the same text went
-      twice. A send that returned is found exactly instead: the read echoes its
-      ``offline_threading_id`` on :attr:`Message.offline_threading_id
-      <dumpstagram.models.Message.offline_threading_id>`.
-
-      The write waits out the behavior's write spacing and counts against its write budget. A
-      browser marks the thread read and refetches it around a send. This sends the message
-      alone, a departure recorded in ``docs/web-request-contract.md``.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         send_message(
-            self._sender,
-            self._session,
-            thread_fbid,
-            text,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.direct.send(thread_fbid, text)
 
    async def unsend_message(self, thread_fbid: str, message_id: str) -> None:
-      """Unsend the viewer's own message ``message_id`` from the thread ``thread_fbid``. One
-      write, sent once, never retried.
+      """Unsend the viewer's own message. The same call as :meth:`AsyncDirect.unsend
+      <dumpstagram.namespaces.direct.AsyncDirect.unsend>`."""
 
-      ``message_id`` is :attr:`SentMessage.id <dumpstagram.models.SentMessage.id>` or
-      :attr:`Message.id <dumpstagram.models.Message.id>`, a ``mid.`` string, and anything else
-      raises :class:`ValueError` before anything is sent.
-
-      The unsend names the thread by a third identifier that no message carries and only the
-      thread open does, so the thread is opened first, as a browser has it open when its menu
-      unsends. Two requests: the open, a read, and the unsend, a write.
-
-      The recipient may already have read the message. An answer saying the unsend did not apply
-      raises :class:`~dumpstagram.errors.UpstreamRejected` with code ``message_not_unsent``. After
-      :class:`~dumpstagram.errors.OutcomeUnknown`, read the thread's newest page: an unsent
-      message is no longer listed, with no placeholder in its place.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         unsend_message(
-            self._sender,
-            self._session,
-            thread_fbid,
-            message_id,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.direct.unsend(thread_fbid, message_id)
 
    async def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]:
-      """Read one page of the comments on the post whose media ``pk`` is ``post_pk``.
+      """Read one page of a post's comments. The same call as :meth:`AsyncMedia.comments
+      <dumpstagram.namespaces.media.AsyncMedia.comments>`."""
 
-      One live request. ``after`` is the previous page's ``end_cursor``, and ``has_next_page``
-      is the only sign that more exist: a short or empty page is not the end. This is the read
-      that confirms :meth:`comment` and :meth:`delete_comment`, and the one that reconciles
-      either after :class:`~dumpstagram.errors.OutcomeUnknown`.
-
-      ``post_pk`` is :attr:`Post.pk <dumpstagram.models.Post.pk>` or
-      :attr:`PostDetail.pk <dumpstagram.models.PostDetail.pk>`, and the ``<pk>_<author id>``
-      form raises :class:`ValueError` before anything is sent.
-
-      A browser reads comments inside a post page load, its first page with a query of its
-      own. This sends the pagination query alone for every page, a departure recorded in
-      ``docs/web-request-contract.md``.
-      """
-
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         read_comment_page(
-            self._sender,
-            self._session,
-            post_pk,
-            after=after,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.media.comments(post_pk, after=after)
 
    async def comment(self, post_pk: str, text: str) -> Comment:
-      """Comment ``text`` on the post whose media ``pk`` is ``post_pk``. One write, sent once.
+      """Comment ``text`` on a post. The same call as :meth:`AsyncMedia.comment
+      <dumpstagram.namespaces.media.AsyncMedia.comment>`.
 
-      Returns the created comment, whose ``id`` is what :meth:`delete_comment` takes. Its
-      ``like_count``, ``reply_count``, ``parent_comment_id`` and ``has_liked`` are None, because
-      the answer to a new comment does not carry them. Empty text raises :class:`ValueError`.
-
-      A comment appends, so it is never sent again, by this library or by any retry path. If
-      the connection fails while it is in flight this raises
-      :class:`~dumpstagram.errors.OutcomeUnknown`, and sending again may post it twice where
-      everyone who can see the post sees it. To reconcile, read the post's comments with
-      :meth:`comments` and look for the viewer's own comment with this text created after the
-      attempt began, and only then decide.
-
-      The write waits out the behavior's write spacing and counts against its write budget.
-      The request a browser sends around a comment has not been recorded, so this sends the
-      comment alone, a departure recorded in ``docs/web-request-contract.md``.
+      A comment appends, so it is never sent again. After
+      :class:`~dumpstagram.errors.OutcomeUnknown`, read the post's comments with
+      :meth:`comments` and look for the viewer's own comment before sending again.
       """
 
-      self._refuse_when_closed()
-
-      return await self._watch_for_checkpoint(
-         create_comment(
-            self._sender,
-            self._session,
-            post_pk,
-            text,
-            user_agent=self._user_agent,
-         )
-      )
+      return await self.media.comment(post_pk, text)
 
    async def delete_comment(self, post_pk: str, comment_id: str) -> None:
-      """Delete the comment ``comment_id`` on the post whose media ``pk`` is ``post_pk``.
+      """Delete one comment on a post. The same call as :meth:`AsyncMedia.delete_comment
+      <dumpstagram.namespaces.media.AsyncMedia.delete_comment>`."""
 
-      One write, sent once, never retried. Both identifiers are digits only, and the upstream
-      takes them together. ``comment_id`` is :attr:`Comment.id
-      <dumpstagram.models.Comment.id>`.
-
-      Raises :class:`~dumpstagram.errors.UpstreamRejected` with code ``comment_not_deleted``
-      when the upstream answers that nothing was deleted, which is how it answered a delete
-      naming no existing comment. After :class:`~dumpstagram.errors.OutcomeUnknown`, read the
-      comments with :meth:`comments`: a comment that is no longer listed is gone.
-      """
-
-      self._refuse_when_closed()
-
-      await self._watch_for_checkpoint(
-         delete_comment(
-            self._sender,
-            self._session,
-            post_pk,
-            comment_id,
-            user_agent=self._user_agent,
-         )
-      )
+      await self.media.delete_comment(post_pk, comment_id)
 
    async def events(self, *, since: str | None = None) -> AsyncIterator[Event]:
       """Every new direct message on this account, for as long as the iteration runs.

@@ -27,6 +27,7 @@ ADAPTER = "dumpstagram/_private/web/cookie_sync.py"
 REQUESTING = "dumpstagram/_core/requesting.py"
 PROFILES = "dumpstagram/_core/profiles.py"
 CLIENT = "dumpstagram/aio.py"
+PROFILES_NAMESPACE = "dumpstagram/namespaces/profiles.py"
 BEHAVIOR = "dumpstagram/behavior.py"
 GATES = "tests/test_cookie_sync.py"
 
@@ -273,14 +274,14 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the client does not pass the sync to the profile route",
       "edits": [
          (
-            CLIENT,
-            "            companions=self._behavior.page_load_companions,\n"
-            "            cookie_sync=self._cookie_sync_if_on(),\n"
-            "            user_agent=self._user_agent,\n"
-            "         )\n      )\n\n   async def profile_by_id",
-            "            companions=self._behavior.page_load_companions,\n"
-            "            user_agent=self._user_agent,\n"
-            "         )\n      )\n\n   async def profile_by_id",
+            PROFILES_NAMESPACE,
+            "            companions=client._behavior.page_load_companions,\n"
+            "            cookie_sync=client._cookie_sync_if_on(),\n"
+            "            user_agent=client._user_agent,\n"
+            "         )\n      )\n\n   async def by_id",
+            "            companions=client._behavior.page_load_companions,\n"
+            "            user_agent=client._user_agent,\n"
+            "         )\n      )\n\n   async def by_id",
          )
       ],
    },

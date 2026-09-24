@@ -26,7 +26,8 @@ REQUESTS_PAGE_LOAD = "dumpstagram/_private/web/requests/page_load.py"
 PRELOAD = "dumpstagram/_private/web/preload.py"
 PAGE_LOAD = "dumpstagram/_core/page_load.py"
 FEED = "dumpstagram/_core/feed.py"
-CLIENT = "dumpstagram/aio.py"
+FEEDS_NAMESPACE = "dumpstagram/namespaces/feeds.py"
+PROFILES_NAMESPACE = "dumpstagram/namespaces/profiles.py"
 BEHAVIOR = "dumpstagram/behavior.py"
 GATES = "tests/test_page_load.py"
 
@@ -185,10 +186,10 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the client drops the setting on the way to the feed route",
       "edits": [
          (
-            CLIENT,
-            "            first_page=self._behavior.feed_first_page,\n"
-            "            companions=self._behavior.page_load_companions,\n",
-            "            first_page=self._behavior.feed_first_page,\n",
+            FEEDS_NAMESPACE,
+            "            first_page=client._behavior.feed_first_page,\n"
+            "            companions=client._behavior.page_load_companions,\n",
+            "            first_page=client._behavior.feed_first_page,\n",
          )
       ],
    },
@@ -197,10 +198,10 @@ MUTATIONS: list[dict[str, object]] = [
       "defect": "the profile route sends the companions whatever the behavior says",
       "edits": [
          (
-            CLIENT,
-            "            route=self._behavior.profile_route,\n"
-            "            companions=self._behavior.page_load_companions,\n",
-            "            route=self._behavior.profile_route,\n            companions=True,\n",
+            PROFILES_NAMESPACE,
+            "            route=client._behavior.profile_route,\n"
+            "            companions=client._behavior.page_load_companions,\n",
+            "            route=client._behavior.profile_route,\n            companions=True,\n",
          )
       ],
    },

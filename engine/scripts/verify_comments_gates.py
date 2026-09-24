@@ -32,6 +32,7 @@ REQUESTS_MEDIA = "dumpstagram/_private/web/requests/media.py"
 READ = "dumpstagram/_core/comments.py"
 WRITES = "dumpstagram/_core/writes/comments.py"
 FACADE = "dumpstagram/aio.py"
+MEDIA_NAMESPACE = "dumpstagram/namespaces/media.py"
 CLI = "dumpstagram/_cli/main.py"
 GATES = "tests/test_comments.py"
 
@@ -235,13 +236,20 @@ MUTATIONS: list[dict[str, object]] = [
    },
    {
       "gate": gate("test_the_comment_docstring_names_the_reconciling_read"),
-      "defect": "the comment docstring stops naming the comment read",
+      "defect": "the comment docstring on client.media stops naming the comment read",
       "edits": [
          (
-            FACADE,
+            MEDIA_NAMESPACE,
             "attempt began, and only then decide.",
             "attempt began.",
          ),
+         (MEDIA_NAMESPACE, "comments with\n      :meth:`comments` and look", "comments and look"),
+      ],
+   },
+   {
+      "gate": gate("test_the_comment_docstring_names_the_reconciling_read"),
+      "defect": "the flat comment docstring stops naming the comment read",
+      "edits": [
          (FACADE, "comments with\n      :meth:`comments` and look", "comments and look"),
       ],
    },

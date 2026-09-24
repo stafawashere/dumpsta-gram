@@ -22,7 +22,7 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-AIO = "dumpstagram/aio.py"
+FEEDS_NAMESPACE = "dumpstagram/namespaces/feeds.py"
 FEED = "dumpstagram/_core/feed.py"
 PRELOAD = "dumpstagram/_private/web/preload.py"
 BEHAVIOR = "dumpstagram/behavior.py"
@@ -96,16 +96,16 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{GATES}::test_the_client_sends_the_document_under_the_default_behavior",
       "defect": "the client drops its behavior and the capability falls back to the query",
-      "edits": [(AIO, "first_page=self._behavior.feed_first_page,\n", "")],
+      "edits": [(FEEDS_NAMESPACE, "first_page=client._behavior.feed_first_page,\n", "")],
    },
    {
       "gate": f"{GATES}::test_the_client_sends_the_query_when_the_behavior_names_the_departure",
       "defect": "the client always sends the document whatever the behavior names",
       "edits": [
          (
-            AIO,
-            "first_page=self._behavior.feed_first_page,",
-            "first_page=type(self._behavior.feed_first_page).DOCUMENT,",
+            FEEDS_NAMESPACE,
+            "first_page=client._behavior.feed_first_page,",
+            "first_page=type(client._behavior.feed_first_page).DOCUMENT,",
          )
       ],
    },

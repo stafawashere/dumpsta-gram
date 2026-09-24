@@ -15,6 +15,7 @@ dumpstagram/
    __init__.py            public exports
    client.py              SyncClient, blocking facade
    aio.py                 AsyncClient, awaitable surface
+   namespaces/            the domain namespaces both clients carry, client.direct and the rest
    models/                typed boundary models
    errors.py              public exception hierarchy
    _core/                 async implementation, the real logic
@@ -69,6 +70,13 @@ Each layer has a single job and a rule about what it may know.
 **`client.py` and `aio.py`, the public surfaces.** Thin. They contain no logic beyond
 argument validation and, for the sync facade, crossing into the loop thread. They know
 about `_core` and `models`. They must never know an endpoint or a header.
+
+**`namespaces/`, the domain namespaces.** Since E1 item 4, 2026-09-23. `client.direct`,
+`client.feeds`, `client.media`, `client.profiles` and `client.social`, each a small class per
+surface in one module per namespace. They are part of the public surfaces and follow the same
+rule: the awaitable method makes the one `_core` call, the blocking one crosses the loop thread,
+and the flat methods on the two clients answer through them. See
+[web-parity-plan.md](web-parity-plan.md), rulings W19 to W21.
 
 **`models/`, the boundary.** Typed representations of everything that crosses the
 public boundary. This is where upstream schema churn stops. A field that Instagram

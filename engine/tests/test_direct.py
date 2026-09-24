@@ -17,7 +17,6 @@ from urllib.parse import parse_qs
 
 import pytest
 
-from dumpstagram import aio
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.requesting import PacedSender
@@ -28,6 +27,7 @@ from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import ThreadFirstPage
 from dumpstagram.client import SyncClient
 from dumpstagram.models import Message, Page
+from dumpstagram.namespaces import direct as direct_namespace
 from dumpstagram.session import Session, SpinParameters
 from tests.test_parse import CURSOR, MESSAGE_ID, THREAD_FBID, node, payload
 
@@ -234,7 +234,7 @@ async def test_the_async_facade_forwards_every_argument(monkeypatch: pytest.Monk
    """Catches a facade that accepts an argument and never passes it on."""
 
    spy = SpyCapability()
-   monkeypatch.setattr(aio, "read_thread_messages", spy)
+   monkeypatch.setattr(direct_namespace, "read_thread_messages", spy)
 
    session = a_bootstrapped_session()
 
@@ -259,7 +259,7 @@ def test_the_sync_facade_forwards_every_argument(monkeypatch: pytest.MonkeyPatch
    """Catches the two surfaces drifting on the arguments of this capability."""
 
    spy = SpyCapability()
-   monkeypatch.setattr(aio, "read_thread_messages", spy)
+   monkeypatch.setattr(direct_namespace, "read_thread_messages", spy)
 
    session = a_bootstrapped_session()
 
@@ -284,7 +284,7 @@ async def test_a_closed_client_refuses_rather_than_sending(
    """Catches a read issued through a connection pool that has already been torn down."""
 
    spy = SpyCapability()
-   monkeypatch.setattr(aio, "read_thread_messages", spy)
+   monkeypatch.setattr(direct_namespace, "read_thread_messages", spy)
 
    client = AsyncClient(a_bootstrapped_session())
 

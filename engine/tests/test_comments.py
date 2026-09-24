@@ -46,6 +46,7 @@ from dumpstagram._private.web.parse.media import parse_comment_page, parse_creat
 from dumpstagram.aio import AsyncClient
 from dumpstagram.errors import UpstreamRejected
 from dumpstagram.models import Comment, CommentAuthor, Page
+from dumpstagram.namespaces.media import AsyncMedia
 from dumpstagram.session import Session
 from tests.test_direct import (
    ScriptedTransport,
@@ -382,12 +383,13 @@ async def test_an_error_envelope_on_a_comment_raises_and_departs_once() -> None:
    assert len(transport.sent) == 1
 
 
-def test_the_comment_docstring_names_the_reconciling_read() -> None:
-   """The documentation row of the table, held mechanically. Catches the public ``comment``
-   losing the instruction to read the comments before sending again, which for an appending
-   write is the only safe way out of an unknown outcome."""
+@pytest.mark.parametrize("public_comment", [AsyncClient.comment, AsyncMedia.comment])
+def test_the_comment_docstring_names_the_reconciling_read(public_comment: Any) -> None:
+   """The documentation row of the table, held mechanically. Catches the public ``comment``,
+   flat or on ``client.media``, losing the instruction to read the comments before sending
+   again, which for an appending write is the only safe way out of an unknown outcome."""
 
-   documented = AsyncClient.comment.__doc__ or ""
+   documented = public_comment.__doc__ or ""
 
    assert "OutcomeUnknown" in documented
    assert ":meth:`comments`" in documented

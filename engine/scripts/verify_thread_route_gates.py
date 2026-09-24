@@ -22,7 +22,7 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 
 
-AIO = "dumpstagram/aio.py"
+DIRECT_NAMESPACE = "dumpstagram/namespaces/direct.py"
 DIRECT = "dumpstagram/_core/direct.py"
 PARSE_DIRECT = "dumpstagram/_private/web/parse/direct.py"
 REQUESTS_DIRECT = "dumpstagram/_private/web/requests/direct.py"
@@ -32,7 +32,9 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": f"{GATES}::test_a_default_client_opens_a_thread_with_the_detail_query",
       "defect": "the client does not pass its behavior down to the capability",
-      "edits": [(AIO, "         first_page=self._behavior.thread_first_page,\n", "")],
+      "edits": [
+         (DIRECT_NAMESPACE, "         first_page=client._behavior.thread_first_page,\n", "")
+      ],
    },
    {
       "gate": f"{GATES}::test_the_detail_query_carries_the_variables_a_browser_sent",

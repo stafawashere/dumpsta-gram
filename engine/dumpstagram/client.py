@@ -37,6 +37,11 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.direct import SyncDirect
+from dumpstagram.namespaces.feeds import SyncFeeds
+from dumpstagram.namespaces.media import SyncMedia
+from dumpstagram.namespaces.profiles import SyncProfiles
+from dumpstagram.namespaces.social import SyncSocial
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -124,6 +129,36 @@ class SyncClient:
       """Whether :meth:`close` has run, on this client or on the one that owns its pool."""
 
       return self._closed or self._impl.closed
+
+   @property
+   def direct(self) -> SyncDirect:
+      """Direct threads and the notes on the direct inbox, ``client.direct``."""
+
+      return SyncDirect._of(self)
+
+   @property
+   def feeds(self) -> SyncFeeds:
+      """The timelines, ``client.feeds``."""
+
+      return SyncFeeds._of(self)
+
+   @property
+   def media(self) -> SyncMedia:
+      """Posts, their likes and their comments, ``client.media``."""
+
+      return SyncMedia._of(self)
+
+   @property
+   def profiles(self) -> SyncProfiles:
+      """Profiles, ``client.profiles``."""
+
+      return SyncProfiles._of(self)
+
+   @property
+   def social(self) -> SyncSocial:
+      """The viewer's relationships to other accounts, ``client.social``."""
+
+      return SyncSocial._of(self)
 
    def thread_messages(
       self,
