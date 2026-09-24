@@ -1,0 +1,18 @@
+{
+ "source": "shape of the carousel answer with media_type 1, which the two engine photo publishes carried, pseudonymised and cut to the keys the engine reads; the photo answers were 22151 bytes and not kept",
+ "answer": {
+  "media": {
+   "pk": "3000000000000000001",
+   "id": "3000000000000000001_1234567890",
+   "code": "Cfixture0000000000000000000000000000001",
+   "taken_at": 1790217551,
+   "media_type": 1,
+   "caption": null,
+   "user": {
+    "pk": "1234567890",
+    "username": "fixture_owner"
+   }
+  },
+  "status": "ok"
+ }
+}

@@ -511,6 +511,63 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   `scripts/verify_ledger_gates.py`. Two write safety anchors followed the code:
   `_refuse_past_the_budget` now takes the record and the instant, and the stop check reads
   `account_is_stopped`.
+- **W37. Posting lives on `client.media` as three methods, and a publish returns what its
+  answer carries.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1
+  item 9. `media.publish_photo(image, *, caption="")`, `media.publish_carousel(images, *,
+  caption="")` and `media.delete_post(post_pk, code)`, on both clients, with no flat twin (W1,
+  W24). W19 kept `post` off the namespace because it reads as publishing, and `publish_` says it
+  outright. A publish returns the new `PublishedPost` (`pk`, `id`, `code`, `taken_at`,
+  `media_type`, `upload_ids`) rather than `PostDetail`, for the reason ruling 33 gave
+  `SentMessage`: the answer is the private API's media object, another shape, and filling a
+  `PostDetail` from it would be guessing. The read that confirms a post is up is `by_code`, and
+  the `dumpsta` commands make it in the same process, so the capability stays one publish and a
+  failed confirmation never hides a post that is up. `delete_post` takes the shortcode beside
+  the `pk` because the delete is sent from the post's page, whose address is its referer, and it
+  names the post as `<pk>_<viewer id>`, so only the viewer's own post can be named. An image is
+  a JPEG as bytes or a path, read on a worker thread, and anything else is refused before a
+  request, since only a JPEG upload was observed; converting is the caller's, which keeps an
+  image library out of the package, and `pillow` is a dev dependency for the probes and gates
+  only. The caption defaults to empty, nothing about location, tags, collaborators or sharing
+  out is sent, a carousel needs two images, and its upper limit is left to the upstream,
+  unobserved. The snapshot grew from 520 lines to 535, all additions.
+- **W38. An upload is a write, and a half finished publish raises the original error with a
+  note.** Ruled 2026-09-23 for E1 item 9. Each upload goes through `send_write` on a sender
+  over a fourth pool pinned to `i.instagram.com`, carrying the account's cookies as the browser
+  did, and sharing the account's pacer. So it is sent once, spaced by the write spacing, counted
+  against the write budget and stopped by the write stop, like every write, and a photo costs two
+  writes and a carousel of n costs n + 1. The browser sent a carousel's uploads at once and the
+  publish 3.4 s later, and under `PARITY` the engine takes over a minute for two slides, a
+  recorded departure that `FAST` removes. When an upload applied and a later write fails, the
+  exception raised is the failing write's own, unwrapped, so `CheckpointRequired` and
+  `OutcomeUnknown` stay what they are, with a note beginning `posting:` naming the half that
+  failed and every orphaned upload id. That is Step 19's orphaned upload gate. Nothing is retried
+  or reused, and what an orphan costs is UNRESOLVED. The CLI now prints every note an exception
+  carries after its first line, for every command, which adds the loop-thread seam note to
+  stderr where it was dropped before.
+- **W39. One browser post, and the single photo publish identified from the bundle.** Ruled
+  2026-09-23 for E1 item 9. The knowledge base held nothing on posting, so the browser posted
+  once, as the owner's limits allow, and deleted in the same run: a carousel of two generated
+  squares, chosen over a photo because it exercised two uploads, the JSON body and the delete in
+  one post. The single photo `configure` was never sent by the browser. Its path and form came
+  from the composer bundle, read at no request, and its first two observations were engine
+  replays, which the skill accepts as an identification. Every literal reached `verify_count` 2
+  before it entered `engine/dumpstagram`. A deleted post's read answered a generic query error,
+  code `1675030`, on all five the engine read back, so `dumpsta delete-post` reports `gone` only
+  on that code after a delete answered `did_delete` true, and a read refused any other way is
+  reported unknown. That literal sits in `_cli/commands/posting.py`, outside the provenance
+  gate's failure-code scope of `_private/web`, which the gate does not check, and is named here
+  so it is not mistaken for a checked one. Live traffic for the item: 2 browser page loads, and 35
+  engine requests (22 discovery, 13 acceptance), 7 of them uploads to `i.instagram.com`.
+- **W40. The gates hold recorded shapes, and two shared gates grew.** Ruled 2026-09-23 for E1
+  item 9. `tests/fixtures/posting/` holds the browser's upload, carousel publish and delete,
+  pseudonymised from the capture, and the engine's verified photo form. The request gates compare
+  header names in both directions, so a header the engine adds or drops fails, less the three the
+  engine does not send (`content-length`, which `httpx` adds, and the two departures,
+  `x-web-session-id` and `x-ig-max-touch-points`). `tests/test_facade_parity.py` gained the three
+  methods in `CORE_FUNCTION_FOR_ALIAS` and three parameter values, which puts them under every
+  namespace gate rather than loosening any. The CLI's `Client` protocol gained `media`, which
+  `SyncClient` already satisfies. `scripts/verify_posting_gates.py` holds 40 mutations over 26
+  gates in `tests/test_posting.py` and three parity gates, each seen red then green.
 - **W41. E2 is prepared from compiled artifacts read without the session, and its contracts stay
   local.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for the E2
   preparation. The owner was asleep, so no request carrying the account's cookies was sent. The
@@ -667,6 +724,18 @@ the per-domain layout.
 9. **Posting.** Photo upload, publish, delete, and carousel, per build plan Step 19 as already
    written, including the orphaned upload gate. The upload host must pass the provenance host
    check.
+   Done 2026-09-23: `client.media.publish_photo`, `publish_carousel` and `delete_post` on both
+   clients, returning the new `PublishedPost` (W37), and `dumpsta publish-photo`,
+   `publish-carousel` and `delete-post`, each confirming itself with a read. Uploads go to
+   `i.instagram.com`, backed by finding `upload-a-photo-for-a-post`, so the host passes the
+   provenance host check, and each upload is a write (W38). Findings `upload-a-photo-for-a-post`,
+   `publish-a-photo-post`, `publish-a-carousel-post` and `delete-my-own-post`, verified 5, 3, 3
+   and 5 times (W39). Snapshot 520 to 535 lines, all additions. 40 mutations red then green in
+   `scripts/verify_posting_gates.py` (W40). Live: 2 browser page loads, one carousel posted and
+   deleted from the browser; 35 engine requests, three photos and two carousels posted, read
+   back and deleted. The stop condition part held in `probes/posting_cli_acceptance.py`, 13
+   requests from `dumpsta`, `media_count` 8 before and after. Log
+   `engine/logs/posting-cli-acceptance-2026-09-23-233411.json`.
 
 **Stop condition.** The census exists and covers every page type above. A photo and a two item
 carousel are posted, read back, and deleted from `dumpsta` in one run. `dumpsta doctor` reports

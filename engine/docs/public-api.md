@@ -406,7 +406,7 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
-| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, and downloading its renditions |
+| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 
@@ -520,6 +520,54 @@ the CDN declared raises `TransportFailure`, and one with no declared length, whi
 once, is written as it arrives. A 4xx raises `NotFound`, since a rendition URL is signed and
 expires (INFERENCE, no expired URL has been fetched), and reading the post again gives a fresh
 one. A URL outside the `cdninstagram.com` hosts or not over `https` is refused before it is sent.
+
+### Posting
+
+Landed 2026-09-23, E1 item 9 of [web-parity-plan.md](web-parity-plan.md) and build plan Step 19,
+rulings W37 to W40. Three methods on `media`, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `media.publish_photo(image, *, caption="")` | `PublishedPost` | two writes, the upload and the publish |
+| `media.publish_carousel(images, *, caption="")` | `PublishedPost` | one write per image and one publish |
+| `media.delete_post(post_pk, code)` | `None` | one write |
+
+```python
+published = client.media.publish_photo("square.jpg")
+detail = client.media.by_code(published.code)              # the read that confirms it
+client.media.delete_post(published.pk, published.code)
+
+published = await aclient.media.publish_carousel([first_bytes, "second.jpg"])
+```
+
+An image is a JPEG, as `bytes` or as a path. Anything else raises `ValueError` before anything
+is sent, because only a JPEG upload has been observed, and converting is the caller's to do. The
+width and height the upload declares are read from the file's own frame header. A carousel
+needs at least two images, and its upper limit is the upstream's and unobserved. Nothing is sent
+about a location, a tag, a collaborator or sharing elsewhere, and the caption defaults to empty.
+
+`PublishedPost` carries `pk`, `id` (the `<pk>_<owner id>` form), `code`, `taken_at`,
+`media_type` (1 for a photo, 8 for a carousel) and `upload_ids` in slide order. It is not a
+`PostDetail`, because the publish answers with the private API's media object, a different shape
+from the post read's. Read the post back with `media.by_code(published.code)`, which is the read
+that confirms it is up.
+
+Every upload and every publish goes through `send_write`: sent once, never retried, spaced by the
+behavior's write spacing and counted against its write budget, so under `PARITY` a photo takes
+about half a minute and a two slide carousel about a minute. When an upload applies and a later
+write fails, the uploads that applied are orphaned. The exception raised is the one the failing
+write raised, unwrapped, with a note beginning `posting:` that names the half that failed and
+every upload id that applied. After `OutcomeUnknown` on the publish the post may be up, so read
+the profile's `media_count` before publishing again. What an orphaned upload costs, and when it
+expires, is UNRESOLVED.
+
+`delete_post` takes the `pk` and the shortcode, because the delete names the post by its
+`<pk>_<viewer id>` form and is sent from the post's page. Only the viewer's own post can be
+deleted. A delete answered without `did_delete` raises `UpstreamRejected` with code
+`post_not_deleted`. To confirm, read the post with `media.by_code`: on all five deletes the engine read back
+the read of a deleted post was refused with `UpstreamRejected` code `1675030`, a generic query
+error, and the profile's `media_count` fell back. That code carries no meaning of its own, so it
+confirms a delete only after the delete answered `did_delete` true.
 
 ## Stability contract
 

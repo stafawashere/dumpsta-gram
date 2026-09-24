@@ -1,0 +1,44 @@
+{
+ "source": "run-2026-09-23-222948 composer-share, first of two uploads, pseudonymised",
+ "method": "POST",
+ "url": "https://i.instagram.com/rupload_igphoto/fb_uploader_1700000000001",
+ "header_names": [
+  "accept",
+  "content-length",
+  "content-type",
+  "offset",
+  "origin",
+  "referer",
+  "sec-fetch-dest",
+  "sec-fetch-mode",
+  "sec-fetch-site",
+  "x-asbd-id",
+  "x-entity-length",
+  "x-entity-name",
+  "x-entity-type",
+  "x-ig-app-id",
+  "x-ig-max-touch-points",
+  "x-instagram-ajax",
+  "x-instagram-rupload-params",
+  "x-web-session-id"
+ ],
+ "header_values": {
+  "accept": "*/*",
+  "content-type": "image/jpeg",
+  "offset": "0",
+  "origin": "https://www.instagram.com",
+  "referer": "https://www.instagram.com/",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-site",
+  "x-asbd-id": "359341",
+  "x-entity-type": "image/jpeg"
+ },
+ "rupload_params": {
+  "media_type": 1,
+  "upload_id": "1700000000001",
+  "upload_media_height": 1080,
+  "upload_media_width": 1080
+ },
+ "entity_name": "fb_uploader_1700000000001"
+}

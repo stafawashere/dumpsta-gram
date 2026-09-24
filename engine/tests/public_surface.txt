@@ -37,6 +37,7 @@ alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProfileRoute -> dumpstagram.behavior.ProfileRoute
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
+alias dumpstagram.PublishedPost -> dumpstagram.models.posts.PublishedPost
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
 alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
 alias dumpstagram.Reaction -> dumpstagram.models.messages.Reaction
@@ -198,6 +199,7 @@ alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
+alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
@@ -375,6 +377,13 @@ field dumpstagram.models.posts.PostDetail.product_type: str
 field dumpstagram.models.posts.PostDetail.taken_at: datetime
 field dumpstagram.models.posts.PostDetail.video_duration: float | None = None
 field dumpstagram.models.posts.PostDetail.videos: tuple[VideoRendition, ...] = ()
+class dumpstagram.models.posts.PublishedPost()
+field dumpstagram.models.posts.PublishedPost.code: str
+field dumpstagram.models.posts.PublishedPost.id: str
+field dumpstagram.models.posts.PublishedPost.media_type: int
+field dumpstagram.models.posts.PublishedPost.pk: str
+field dumpstagram.models.posts.PublishedPost.taken_at: datetime
+field dumpstagram.models.posts.PublishedPost.upload_ids: tuple[str, ...]
 module dumpstagram.models.profiles
 class dumpstagram.models.profiles.BioLink()
 field dumpstagram.models.profiles.BioLink.is_pinned: bool
@@ -456,9 +465,12 @@ def dumpstagram.namespaces.media.AsyncMedia.by_code(self, code: str) -> PostDeta
 def dumpstagram.namespaces.media.AsyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.AsyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.delete_post(self, post_pk: str, code: str) -> None
 def dumpstagram.namespaces.media.AsyncMedia.download(self, rendition: MediaImage | VideoRendition, path: str | os.PathLike[str], *, overwrite: bool = False) -> Path
 def dumpstagram.namespaces.media.AsyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
+def dumpstagram.namespaces.media.AsyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.AsyncMedia.unlike(self, post_pk: str) -> None
 class dumpstagram.namespaces.media.SyncMedia()
 def dumpstagram.namespaces.media.SyncMedia.__init__(self) -> None
@@ -466,9 +478,12 @@ def dumpstagram.namespaces.media.SyncMedia.by_code(self, code: str) -> PostDetai
 def dumpstagram.namespaces.media.SyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.SyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.SyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.delete_post(self, post_pk: str, code: str) -> None
 def dumpstagram.namespaces.media.SyncMedia.download(self, rendition: MediaImage | VideoRendition, path: str | os.PathLike[str], *, overwrite: bool = False) -> Path
 def dumpstagram.namespaces.media.SyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> Iterator[Comment]
 def dumpstagram.namespaces.media.SyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
+def dumpstagram.namespaces.media.SyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.SyncMedia.unlike(self, post_pk: str) -> None
 module dumpstagram.namespaces.profiles
 class dumpstagram.namespaces.profiles.AsyncProfiles()

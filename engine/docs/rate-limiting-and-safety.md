@@ -234,6 +234,28 @@ when wrong is one new client. The HTML application shell is excluded, because it
 token was refused, and the write path clears `fb_dtsg` so the caller's next call bootstraps.
 Each write capability passes the codes its own verified finding explains.
 
+## Posting is several writes, 2026-09-23
+
+E1 item 9, ruling W38 of [web-parity-plan.md](web-parity-plan.md). A photo publish is two writes
+and a carousel of n images is n + 1: every upload is a write, and so is the publish that names
+them. An upload shows nobody anything, but it stores a file on the account's behalf and cannot be
+taken back, so it takes a write slot, waits out the write spacing, counts against the write
+budget and is never sent twice, like any other write. The upload host, `i.instagram.com`, has a
+pool of its own, and its sender shares the account's pacer, so the budget and the stop cover
+both hosts as one account.
+
+The cost is time and budget. Under `PARITY` a photo takes about 30 s to 40 s and a carousel of two
+about 70 s, where the browser sent the two uploads at once and the publish 3.4 s after them. A
+photo spends 2 of the 30 writes an hour allows, and a ten slide carousel 11. A publish that would
+pass the budget part way through is refused at the write that would pass it, which can orphan
+the uploads already sent, and the error's `posting:` note names them. `FAST` removes the spacing
+and keeps the budget.
+
+Measured on 2026-09-23, on the owner's account from one residential connection: the engine
+published three photos and two carousels of two and deleted each in the run that made it, 7
+uploads, 5 publishes and 5 deletes between 22:56 and 23:34, and the browser one carousel, with
+no throttle, no checkpoint and no rejection. That is one evening's sample, not a rate.
+
 ## Media downloads are not API traffic, 2026-09-23
 
 `client.media.download` fetches a rendition from `cdninstagram.com`, not from Instagram's API, and
@@ -304,8 +326,8 @@ and change. The library reduces obvious risk and documents the rest honestly.
 Two things in particular are unmeasured and should not be assumed safe by analogy.
 
 **Writes.** The prior project was read-only by hard constraint. Nothing sent, deleted, marked
-read, or reacted. Every number on this page describes read traffic only, and write operations
-are plausibly scored differently.
+read, or reacted. The measured numbers on this page describe read traffic, the write samples
+since 2026-09-23 are single evenings, and write operations are plausibly scored differently.
 
 **Non-residential IPs.** Every measurement came from one residential connection on one day. A
 datacentre or VPS address may be treated differently, including the finding that a plain HTTP

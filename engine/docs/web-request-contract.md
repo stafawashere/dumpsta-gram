@@ -453,10 +453,56 @@ by its mapper, so no request shape is new. `documents/catalog.py` sorts the thir
 entries into ten reads, ten companions and ten writes, and a gate holds it to every entry in the
 domain modules exactly once. Companions and writes are compared with the bundle and never sent.
 
+## The posting requests, 2026-09-23
+
+E1 item 9 added the first requests that are not the GraphQL form envelope, in
+`_private/web/requests/posting.py`, sent by `_core/writes/posts.py` through `send_write`, and
+answered through `_private/web/parse/posting.py`. Findings `upload-a-photo-for-a-post`,
+`publish-a-photo-post`, `publish-a-carousel-post` and `delete-my-own-post`, run
+`run-2026-09-23-222948`. The browser posted one two slide carousel and deleted it (two page
+loads), which is the first observation of the upload, the carousel publish and the delete. The
+single photo publish was named from the composer bundle and first observed by the engine. Each
+reached `verify_count` 2 before its literal entered `engine/dumpstagram`, by
+`probes/posting_discovery.py` (22 requests), and the acceptance added one more.
+
+| Request | Method and URL | Body | Headers that differ from the GraphQL set |
+|---|---|---|---|
+| Upload | `POST https://i.instagram.com/rupload_igphoto/fb_uploader_<upload_id>` | the JPEG's bytes, whole, at offset 0 | `offset: 0`, `x-entity-name`, `x-entity-length`, `x-entity-type`, `x-instagram-rupload-params` (`{"media_type":1,"upload_id","upload_media_height","upload_media_width"}`), `sec-fetch-site: same-site`, `x-instagram-ajax` (the spin revision). No `x-csrftoken` |
+| Photo publish | `POST https://www.instagram.com/api/v1/media/configure/` | form: `archive_only`, `caption`, `clips_share_preview_to_feed`, `disable_comments`, `igtv_share_preview_to_feed`, `is_unified_video`, `like_and_view_counts_disabled`, `media_share_flow`, `share_to_facebook`, `share_to_fb_destination_type`, `source_type`, `upload_id`, `video_subtitles_enabled`, `jazoest`, `fb_dtsg` | `x-csrftoken`, `x-requested-with: XMLHttpRequest`, `x-instagram-ajax`. No `x-fb-lsd`, no friendly name |
+| Carousel publish | `POST https://www.instagram.com/api/v1/media/configure_sidecar/` | JSON in the browser's key order: `archive_only`, `caption`, `children_metadata` (`[{"upload_id"}]` in slide order), `client_sidecar_id`, `disable_comments`, `is_open_to_public_submission`, `like_and_view_counts_disabled`, `media_share_flow`, `share_to_facebook`, `share_to_fb_destination_type`, `source_type`, `jazoest`, `fb_dtsg` | as the photo publish, with `content-type: application/json` |
+| Delete | `POST https://www.instagram.com/api/v1/web/create/<pk>_<viewer id>/delete/` | the comet form: `__d`, `__user`, `__a`, `__req`, `__hs`, `dpr`, `__ccg`, `__rev`, `__hsi`, `__comet_req`, `fb_dtsg`, `jazoest`, `lsd`, `__spin_r`, `__spin_b`, `__spin_t`, `__crn` (`comet.igweb.PolarisDesktopPostRoute`) | `referer` the post's page, `x-fb-lsd`, `x-ig-d: www`. No `x-csrftoken` |
+
+The upload host is a fourth pool the client owns, `HttpxTransport` pinned to `i.instagram.com`
+and carrying the account's cookies, because the browser sent them there with credentials. Its
+sender shares the account's pacer, so an upload is spaced and budgeted as a write (W38). Upload
+ids and `client_sidecar_id` are the millisecond clock as digits, one apart per slide, as the
+composer drew them. The answers are REST: an upload answers `{"upload_id", "status": "ok"}`, a
+publish `{"media": {...}, "status": "ok"}` with the private API's media object, and the delete
+`for (;;);{"payload": {"did_delete": true, ...}}`. The classifier reads GraphQL envelopes only,
+so `parse/posting.py` treats a `status` other than `ok` as a rejection, coded by `error_type`
+when there is one and `status_not_ok` otherwise. No failure answer of any of the four has been
+observed.
+
+**Recorded departures.** Each is a difference a fingerprint check could read, kept because
+producing the value was not verified:
+
+- `x-web-session-id` is not sent on the upload or the publish. The browser sent a three part id
+  its page generates. `x-ig-max-touch-points: 0` is not sent on any of the four.
+- The delete leaves out `__s`, `__dyn`, `__csr`, `__hsdp`, `__hblp` and `__sjsp`, the same page
+  fields every GraphQL request here leaves out.
+- The browser sent both uploads at once and the publish 3.4 s later. The engine sends each as its
+  own write, spaced by the behavior's write spacing, 30 s plus jitter under `PARITY`, so a
+  carousel of two takes over a minute (W38).
+- The browser's Share also sent `usePolarisCoppaEnforcementStatusViewerQuery` and the page's own
+  logging, and its delete was followed by the profile page's reload. None of it is sent.
+- The engine never opens the composer, and posts from no page, so the upload's `referer` is the
+  home page the browser's was.
+
 ## What is not implemented here
 
-- No write request. Every query here is a read. The write path exists in `_core/writing.py`,
-  and no write request has been built on it yet.
+- Writes other than the ones above and those in the GraphQL registry. A video upload, a reel, a
+  story, a caption edit and an archive have compiled routes in the composer bundle and none is
+  built.
 - No mobile surface. The registry and the builders are web only, per ADR-0007.
 - A post's likers, user tags, location and the DASH manifest's representations arrive on the
   feed payload and stop at the mapper. A carousel's slides, a video's renditions and duration,

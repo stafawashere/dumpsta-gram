@@ -60,6 +60,11 @@ from dumpstagram._cli.commands.media import (
    run_post,
 )
 from dumpstagram._cli.commands.notes import add_note_parser, run_note_list, run_note_write
+from dumpstagram._cli.commands.posting import (
+   POSTING_COMMANDS,
+   add_posting_parsers,
+   run_posting_command,
+)
 from dumpstagram._cli.commands.profiles import add_profile_parser, run_profile
 from dumpstagram._cli.commands.session import (
    add_adopt_parser,
@@ -111,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_comment_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
+   add_posting_parsers(commands)
 
    return parser
 
@@ -171,6 +177,9 @@ def main(
       if arguments.command in ("comments", "comment", "delete-comment"):
          return run_comment_command(arguments, chosen_environment, out, client_factory)
 
+      if arguments.command in POSTING_COMMANDS:
+         return run_posting_command(arguments, chosen_environment, out, client_factory)
+
       if arguments.command in ("send-message", "unsend-message"):
          return run_direct_write(arguments, chosen_environment, out, client_factory)
 
@@ -189,6 +198,9 @@ def main(
       return run_thread(arguments, chosen_environment, out, client_factory)
    except DumpstagramError as failure:
       print(redact(f"{type(failure).__name__}: {failure}"), file=errors)
+
+      for note in getattr(failure, "__notes__", ()):
+         print(redact(note), file=errors)
 
       return exit_code_for(failure)
    except (UsageError, OSError) as failure:

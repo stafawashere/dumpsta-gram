@@ -1,9 +1,10 @@
-"""``client.media``, one post and what the viewer does to it: likes, comments and downloads."""
+"""``client.media``, one post and what the viewer does to it: likes, comments, downloads, and
+publishing and deleting the viewer's own."""
 
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +14,15 @@ from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_b
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
-from dumpstagram.models import Comment, MediaImage, Page, PostDetail, VideoRendition
+from dumpstagram._core.writes.posts import delete_post, publish_carousel, publish_photo
+from dumpstagram.models import (
+   Comment,
+   MediaImage,
+   Page,
+   PostDetail,
+   PublishedPost,
+   VideoRendition,
+)
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -257,6 +266,106 @@ class AsyncMedia:
          user_agent=client._user_agent,
       )
 
+   async def publish_photo(
+      self, image: bytes | str | os.PathLike[str], *, caption: str = ""
+   ) -> PublishedPost:
+      """Publish ``image`` as a post on the viewer's account with ``caption``, and return it.
+
+      ``image`` is a JPEG, as bytes or as the path of a file. Anything else raises
+      :class:`ValueError` before anything is sent, because only a JPEG upload has been
+      observed. Converting is the caller's to do. The width and height are read from the file.
+
+      Two writes, each sent once and never retried: the upload to Instagram's upload host,
+      then the publish that names it. Each waits out the behavior's write spacing and counts
+      against its write budget, so under the default behavior a publish takes about half a
+      minute. Nothing is sent about a location, a tag, a collaborator or sharing elsewhere.
+
+      The post is visible to everyone who can see the account as soon as the publish applies.
+      Read it back with :meth:`by_code` and :attr:`PublishedPost.code
+      <dumpstagram.models.PublishedPost.code>` to confirm it is up.
+
+      When the upload applies and the publish fails, the upload is orphaned: stored, published
+      nowhere, and not retried or reused. The error raised is the one the failing write raised,
+      with a note naming the half that failed and the orphaned upload id. After
+      :class:`~dumpstagram.errors.OutcomeUnknown` on the publish the post may be up, so read the
+      viewer's profile and its ``media_count`` before publishing again.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         publish_photo(
+            client._sender,
+            client._uploads,
+            client._session,
+            image,
+            caption=caption,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def publish_carousel(
+      self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = ""
+   ) -> PublishedPost:
+      """Publish ``images`` as one carousel post, in that order, and return it.
+
+      Each image is what :meth:`publish_photo` takes, and every one is read and checked before
+      the first upload leaves. Fewer than two raises :class:`ValueError`, since one image is a
+      photo. The upper limit is the upstream's and has not been observed.
+
+      One write per image and one publish, each sent once and never retried, each spaced and
+      budgeted as :meth:`publish_photo`'s are. When an upload or the publish fails, the uploads
+      that applied before it are orphaned, and the error carries a note naming which write
+      failed and which upload ids applied. Confirm and reconcile as :meth:`publish_photo` says.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         publish_carousel(
+            client._sender,
+            client._uploads,
+            client._session,
+            images,
+            caption=caption,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def delete_post(self, post_pk: str, code: str) -> None:
+      """Delete the viewer's own post whose media ``pk`` is ``post_pk`` and shortcode ``code``.
+
+      One write, sent once, never retried. ``post_pk`` is :attr:`PublishedPost.pk
+      <dumpstagram.models.PublishedPost.pk>` or :attr:`PostDetail.pk
+      <dumpstagram.models.PostDetail.pk>`, and the ``<pk>_<owner id>`` form raises
+      :class:`ValueError` before anything is sent. ``code`` is the post's shortcode, which the
+      delete names the post's page by, as the page the browser deletes from.
+
+      Only the viewer's own post can be deleted, because the request names the post with the
+      viewer's own id. Raises :class:`~dumpstagram.errors.UpstreamRejected` with code
+      ``post_not_deleted`` when the answer says nothing was deleted.
+
+      To confirm, read the post with :meth:`by_code`. A deleted post's read was refused with
+      :class:`~dumpstagram.errors.UpstreamRejected` on all five deletes read back, and the
+      profile's ``media_count`` fell back by one. The same two reads reconcile
+      :class:`~dumpstagram.errors.OutcomeUnknown`.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      await client._watch_for_checkpoint(
+         delete_post(
+            client._sender,
+            client._session,
+            post_pk,
+            code,
+            user_agent=client._user_agent,
+         )
+      )
+
 
 class SyncMedia:
    """Posts, their likes, their comments and their downloads, as ``client.media`` on
@@ -386,4 +495,45 @@ class SyncMedia:
       return self._client._loop.run(
          self._client._impl.media.delete_comment(post_pk, comment_id),
          operation="SyncClient.media.delete_comment",
+      )
+
+   def publish_photo(
+      self, image: bytes | str | os.PathLike[str], *, caption: str = ""
+   ) -> PublishedPost:
+      """Publish ``image`` as a post. Blocks until the publish is answered.
+
+      The same call as :meth:`AsyncMedia.publish_photo`, run on the shared loop thread. Two
+      writes, each sent once, never retried, and an orphaned upload named in the error's note
+      when the publish fails.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.publish_photo(image, caption=caption),
+         operation="SyncClient.media.publish_photo",
+      )
+
+   def publish_carousel(
+      self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = ""
+   ) -> PublishedPost:
+      """Publish ``images`` as one carousel post. Blocks until the publish is answered.
+
+      The same call as :meth:`AsyncMedia.publish_carousel`, run on the shared loop thread. One
+      write per image and one publish, each sent once, never retried.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.publish_carousel(images, caption=caption),
+         operation="SyncClient.media.publish_carousel",
+      )
+
+   def delete_post(self, post_pk: str, code: str) -> None:
+      """Delete the viewer's own post. Blocks until the write is answered.
+
+      The same call as :meth:`AsyncMedia.delete_post`, run on the shared loop thread. One
+      write, sent once, never retried.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.delete_post(post_pk, code),
+         operation="SyncClient.media.delete_post",
       )

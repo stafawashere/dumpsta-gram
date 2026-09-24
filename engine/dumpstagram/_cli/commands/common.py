@@ -22,6 +22,7 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.media import SyncMedia
 from dumpstagram.session import Session
 
 __all__ = [
@@ -56,6 +57,9 @@ class Client(Protocol):
 
    @property
    def session(self) -> Session: ...
+
+   @property
+   def media(self) -> SyncMedia: ...
 
    def thread_messages(
       self,

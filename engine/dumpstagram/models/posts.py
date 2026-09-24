@@ -23,7 +23,7 @@ from dumpstagram.models.feed import (
    VideoRendition,
 )
 
-__all__ = ["PostDetail"]
+__all__ = ["PostDetail", "PublishedPost"]
 
 
 @dataclass(frozen=True)
@@ -70,3 +70,27 @@ class PostDetail:
    has_audio: bool | None = None
    audio: MediaAudio | None = None
    carousel_children: tuple[CarouselChild, ...] = ()
+
+
+@dataclass(frozen=True)
+class PublishedPost:
+   """What the upstream answers about a post just published.
+
+   ``pk`` is what :meth:`~dumpstagram.namespaces.media.AsyncMedia.delete_post`,
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.like` and the comment calls take, ``id`` is
+   ``"<pk>_<owner id>"``, and ``code`` is the shortcode
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` reads the post back by.
+   ``media_type`` is 1 for a photo and 8 for a carousel, the values the answer and the post read
+   both carry. ``upload_ids`` are the uploads the post was published from, in slide order.
+
+   It is not a :class:`PostDetail`. The publish answers with the private API's media object,
+   a different shape from the post read's, so the post is read back with ``by_code`` for the
+   rest, which is also the read that confirms the post is up.
+   """
+
+   pk: str
+   id: str
+   code: str
+   taken_at: datetime
+   media_type: int
+   upload_ids: tuple[str, ...]

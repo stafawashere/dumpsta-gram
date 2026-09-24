@@ -9,6 +9,7 @@ from dumpstagram.models import (
    Page,
    Post,
    PostDetail,
+   PublishedPost,
 )
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
    "describe_comment_page",
    "describe_post",
    "describe_post_detail",
+   "describe_published_post",
    "render_comment_page",
    "render_post_detail",
 ]
@@ -163,3 +165,16 @@ def render_comment_page(page: Page[Comment]) -> str:
    lines.append(f"{len(page.items)} comments, {more}")
 
    return "\n".join(lines)
+
+
+def describe_published_post(published: PublishedPost) -> dict[str, Any]:
+   """The JSON form of a post just published. Every key here is part of the CLI's contract."""
+
+   return {
+      "pk": published.pk,
+      "id": published.id,
+      "code": published.code,
+      "taken_at": published.taken_at.isoformat(),
+      "media_type": published.media_type,
+      "upload_ids": list(published.upload_ids),
+   }

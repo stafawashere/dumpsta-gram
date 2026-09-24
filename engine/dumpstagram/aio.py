@@ -34,6 +34,7 @@ from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
 from dumpstagram._private.web.bundles import STATIC_BUNDLE_HOST
 from dumpstagram._private.web.cdn import CDN_HOST_FAMILY, CDN_MAX_CONNECTIONS
+from dumpstagram._private.web.requests.posting import UPLOAD_HOST
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
 from dumpstagram.models import (
@@ -103,6 +104,12 @@ class AsyncClient:
       self._sender = PacedSender(
          transport, Pacer(), pacing_for(behavior), write_policy_for(behavior)
       )
+      self._uploads = PacedSender(
+         upload_transport_for(session),
+         self._sender.pacer,
+         pacing_for(behavior),
+         write_policy_for(behavior),
+      )
       self._cookie_sync = CookieSync(
          self._sender.background(),
          BackgroundSender(self._facebook, self._sender.pacer),
@@ -155,6 +162,7 @@ class AsyncClient:
       scoped._facebook = self._facebook
       scoped._cdn = self._cdn
       scoped._sender = self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))
+      scoped._uploads = self._uploads.with_pacing(pacing_for(behavior), write_policy_for(behavior))
       scoped._cookie_sync = self._cookie_sync
       scoped._event_source = self._event_source
 
@@ -467,7 +475,10 @@ class AsyncClient:
                try:
                   await self._facebook.aclose()
                finally:
-                  await self._cdn.aclose()
+                  try:
+                     await self._cdn.aclose()
+                  finally:
+                     await self._uploads.aclose()
 
    async def __aenter__(self) -> AsyncClient:
       return self
@@ -489,6 +500,21 @@ def cdn_transport_for(session: Session) -> HttpxTransport:
       allowed_host_family=CDN_HOST_FAMILY,
       max_connections=CDN_MAX_CONNECTIONS,
       cookieless=True,
+   )
+
+
+def upload_transport_for(session: Session) -> HttpxTransport:
+   """The pool photo uploads go through: the account's cookies, and only the upload host.
+
+   A separate pool because the cookie jar has no domain, so a transport pinned to one host is
+   what keeps the account's cookies from reaching any other. Its sender shares the account's
+   pacer, so an upload is spaced and budgeted with every other write.
+   """
+
+   return HttpxTransport(
+      cookies=cookies_for(session),
+      proxy=session.proxy,
+      allowed_host=UPLOAD_HOST,
    )
 
 

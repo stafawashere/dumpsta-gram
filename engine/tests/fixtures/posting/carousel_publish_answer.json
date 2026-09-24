@@ -1,0 +1,27 @@
+{
+ "source": "run-2026-09-23-222948 composer-share answer, 45118 bytes, trimmed to the keys the engine reads plus their neighbours and pseudonymised",
+ "top_keys": [
+  "client_sidecar_id",
+  "media",
+  "status"
+ ],
+ "media_key_count": 110,
+ "answer": {
+  "client_sidecar_id": "1700000000003",
+  "media": {
+   "pk": "3000000000000000001",
+   "id": "3000000000000000001_1234567890",
+   "code": "Cfixture0000000000000000000000000000001",
+   "taken_at": 1790217551,
+   "media_type": 8,
+   "product_type": "carousel_container",
+   "carousel_media_count": 2,
+   "caption": null,
+   "user": {
+    "pk": "1234567890",
+    "username": "fixture_owner"
+   }
+  },
+  "status": "ok"
+ }
+}

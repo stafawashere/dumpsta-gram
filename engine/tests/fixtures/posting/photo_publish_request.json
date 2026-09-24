@@ -1,0 +1,37 @@
+{
+ "source": "the form the engine sent on both verified publishes, posting-discovery-photo-2026-09-23-225654.json and -230134.json, 421 bytes each, named from the composer bundle's single media branch",
+ "method": "POST",
+ "url": "https://www.instagram.com/api/v1/media/configure/",
+ "content_type": "application/x-www-form-urlencoded",
+ "body_field_names_in_order": [
+  "archive_only",
+  "caption",
+  "clips_share_preview_to_feed",
+  "disable_comments",
+  "igtv_share_preview_to_feed",
+  "is_unified_video",
+  "like_and_view_counts_disabled",
+  "media_share_flow",
+  "share_to_facebook",
+  "share_to_fb_destination_type",
+  "source_type",
+  "upload_id",
+  "video_subtitles_enabled",
+  "jazoest",
+  "fb_dtsg"
+ ],
+ "body_fixed_values": {
+  "archive_only": "false",
+  "clips_share_preview_to_feed": "1",
+  "disable_comments": "0",
+  "igtv_share_preview_to_feed": "1",
+  "is_unified_video": "1",
+  "like_and_view_counts_disabled": "0",
+  "media_share_flow": "creation_flow",
+  "share_to_facebook": "",
+  "share_to_fb_destination_type": "USER",
+  "source_type": "library",
+  "video_subtitles_enabled": "0"
+ },
+ "request_bytes_with_empty_caption_and_a_24_character_token": 421
+}

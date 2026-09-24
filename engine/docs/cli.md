@@ -53,6 +53,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
+| `publish-photo IMAGE` | 2 writes and 1 read, plus 1 read if the session has no token yet | Uploads one JPEG, publishes it as a post and reads it back by its code. Writes to the account, visible to everyone who can see it |
+| `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
+| `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
 | `doctor` | 0 without `--live`. With it, 2 documents and at most 10 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
@@ -332,6 +335,40 @@ code `comment_not_deleted`.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
+### `publish-photo`, `publish-carousel` and `delete-post`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json publish-photo square.jpg
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json publish-carousel a.jpg b.jpg
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json delete-post PK CODE
+```
+
+Landed 2026-09-23, E1 item 9. All three write to the account, with no prompt and no default
+target. Each image is a JPEG file, and anything else ends with exit code 2 before a request is
+sent, as does a carousel of one image, which is refused before a client is opened. `--caption
+TEXT` sets the caption, empty unless given. Nothing is sent about a location, a tag or a
+collaborator.
+
+A publish reads its post back by its code in the same process and reports whether the read
+shows the viewer's own post with the same `pk`, `code` and `media_type`. The JSON form is
+`command`, `post` (`pk`, `id`, `code`, `taken_at`, `media_type`, `upload_ids`), `read_back`
+(the `post` command's keys, or null) and `confirmed`. When the read after the publish fails the
+post is still printed, with `read_back_error` naming the class and `confirmed` false, and the
+exit code is the read's, so the code of a post that is up is never lost. When the publish fails
+after an upload applied, stderr carries the error and then a `posting:` line naming the half that
+failed and the orphaned upload ids. On exit code 11 read `dumpsta profile --by-id` for the viewer
+and compare `media_count` before publishing again.
+
+`delete-post PK CODE` takes the post's `pk`, digits only, and its shortcode, deletes it, then
+reads the code again. The JSON form is `command`, `pk`, `code`, `deleted`, `gone` and, when the
+read was refused, `read_refused_with`. `gone` is true only when the read is refused with code
+`1675030`, which is how the upstream answered the read of each of the five deleted posts the
+engine read back, and then the exit code is 0. A post that still reads back is `gone` false with
+exit code 6. A read refused with another code, or failing some other way, is `gone` null with
+that failure's exit code.
+
+- `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
 ### `events`
 
 ```bash
@@ -422,12 +459,14 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set` and `note delete` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set`, `note delete`, `publish-photo`, `publish-carousel` and `delete-post` are the commands that can end with it |
 | 12 | `doctor --live` only: a stored `doc_id` differs from the one the site's bundle compiles |
 | 13 | `doctor --live` only: no `doc_id` drifted, and a read replayed once came back failed |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
-reaches output with nobody having written it there.
+reaches output with nobody having written it there. Since 2026-09-23 each note the exception
+carries follows it on its own line, redacted the same way, so the seam note a blocking call adds
+and the `posting:` note naming an orphaned upload both reach the user.
 
 ## What it does not cover yet
 
@@ -457,7 +496,8 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 `tests/test_follows.py`, and `scripts/verify_direct_send_gates.py` for the five `send-message`
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
-and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`. The live acceptance run for the thread command is recorded in
+and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.
@@ -484,3 +524,11 @@ surface: three listing reads and one thread read, all 200, two unarranged new me
 as ids only, exit 0, log `logs/events-live-async-2026-09-23-065605.json`. Every request held the
 account's pacer slot. The planned run of ten polls with an arranged incoming message is still
 owed.
+
+The posting commands' live acceptance ran 2026-09-23 through `probes/posting_cli_acceptance.py`,
+which drives `uv run dumpsta --json` subprocesses with every request counted: `profile --by-id`,
+`publish-photo`, `delete-post`, `publish-carousel`, `delete-post`, `profile --by-id`, thirteen
+requests, ten to www.instagram.com and three to i.instagram.com. Both publishes were confirmed by
+their read back, the carousel's with `carousel_media_count` 2, both deletes reported `gone` true
+on `read_refused_with` `1675030`, and `media_count` was 8 before and after. Log
+`logs/posting-cli-acceptance-2026-09-23-233411.json`.

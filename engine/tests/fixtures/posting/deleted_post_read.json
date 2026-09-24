@@ -1,0 +1,19 @@
+{
+ "source": "the post read by a deleted post's code, all three engine deletes of 2026-09-23, 1480 bytes, envelope fields as recorded by probes/posting_discovery.py, the second error unrecorded",
+ "answer": {
+  "data": null,
+  "errors": [
+   {
+    "code": 1675030,
+    "summary": "Query Error",
+    "message": "A server error field_exception occured. Check server logs for details.",
+    "description": "Error performing query.",
+    "severity": "CRITICAL",
+    "is_silent": false
+   }
+  ],
+  "extensions": {
+   "is_final": true
+  }
+ }
+}

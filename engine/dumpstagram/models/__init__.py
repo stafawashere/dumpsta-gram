@@ -21,7 +21,7 @@ from dumpstagram.models.feed import (
 from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
-from dumpstagram.models.posts import PostDetail
+from dumpstagram.models.posts import PostDetail, PublishedPost
 from dumpstagram.models.profiles import BioLink, FriendshipStatus, Profile
 
 __all__ = [
@@ -47,6 +47,7 @@ __all__ = [
    "Post",
    "PostAuthor",
    "PostDetail",
+   "PublishedPost",
    "Profile",
    "Reaction",
    "SentMessage",
