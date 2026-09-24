@@ -518,3 +518,4 @@ class dumpstagram.session.SpinParameters()
 field dumpstagram.session.SpinParameters.branch: str | None = None
 field dumpstagram.session.SpinParameters.revision: str | None = None
 field dumpstagram.session.SpinParameters.timestamp: str | None = None
+def dumpstagram.session.clear_write_stop(path: str | os.PathLike[str]) -> bool

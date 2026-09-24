@@ -14,7 +14,9 @@ The engine ships with conservative pacing and you should keep it. By default eac
 1.3 s to 5.3 s after the previous one, fitted to a person browsing, every write waits at least
 30 s after the previous write, and no more than 30 writes leave in any rolling hour. A write is
 sent once and never retried by the engine, a checkpoint is never retried under any setting, and
-an unrecognised rejection of a write stops further writes for the life of the client. Faster
+an unrecognised rejection of a write stops further writes for the life of the client. A client
+built from a session file keeps the budget and the stop beside that file, so every process on
+the account shares them and the stop stays until a person lifts it. Faster
 presets exist and nothing has measured how Instagram treats them.
 
 ## Install

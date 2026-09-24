@@ -87,6 +87,22 @@ Prints the account id, whether the session carries tokens, the checkpoint flag a
 proxy is configured. It prints no credential, and a gate holds that with the file itself as
 the positive control.
 
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta session --clear-write-stop
+```
+
+`--clear-write-stop` lifts the write stop kept in the pacing ledger beside the session file,
+`state/session.json.ledger`, and adds `write_stop_cleared` to the output, True when a stop was
+set. It keeps the hour's write departures, so the budget still counts them. It spends no live
+request. Run it only after a person has looked at the account, since the stop is set by a
+rejection nothing recorded explains, the likeliest form of an action block. It goes
+through `dumpstagram.session.clear_write_stop`. A ledger that cannot be read is left as it is
+and the command exits 8, `SchemaChanged`. Deleting that file by hand lifts the
+stop and also forgets the hour's writes.
+
+Every command built from a session file shares that ledger, so a write budget spent by one
+`dumpsta` process is spent for the next, and a stop one of them saw refuses writes in the rest.
+
 ### `thread`
 
 ```bash

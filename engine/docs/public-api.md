@@ -326,7 +326,15 @@ rulings 3 and 4 in [build-plan.md](build-plan.md) section 17.13. `PARITY` carrie
 placeholder spacing too, because no human write timing has been measured, and takes the
 measured timing when one exists. `FAST` sets `write_spacing` to zero and keeps the budget and
 the stop. The budget, the stop and the record of what departed belong to the account's pacer,
-so a client from `with_behavior` shares them with its owner. No setting makes the engine retry
+so a client from `with_behavior` shares them with its owner. A client from `from_session_file`
+keeps the budget and the stop in a pacing ledger beside the file, `<path>.ledger`, so every
+client and every process built from that file shares them, and the stop stays until a person
+lifts it. A client built over a bare `Session` keeps them in memory, as before.
+`dumpstagram.session.clear_write_stop(path)` is how a person lifts that stop: it clears the
+stop in the ledger beside the session file at `path`, keeps the hour's departures, returns
+whether a stop was set, and raises `SchemaChanged` without changing anything when the ledger
+cannot be read. It is for a person who has looked at the account, never for a program that
+wants its writes back. See [rate-limiting-and-safety.md](rate-limiting-and-safety.md). No setting makes the engine retry
 a write, ruling 13.
 
 Other companion requests and side effects such as marking a thread read become fields with

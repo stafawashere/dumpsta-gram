@@ -219,6 +219,25 @@ The second constraint is that the engine cannot renew what it did not create. Wh
 session expires or the user logs out elsewhere, the engine detects the revocation and says so
 plainly. It does not attempt recovery.
 
+### The pacing ledger beside the session file, added 2026-09-23
+
+A client built with `from_session_file(path)` keeps the account's write budget and write stop
+in `<path>.ledger`, with `<path>.ledger.lock` beside it, so separate processes on one account
+share them. E1 item 8 of [web-parity-plan.md](web-parity-plan.md), rulings W34 to W36. The
+session file's schema is unchanged and the library still never writes the session file. The
+ledger holds wall clock instants of the hour's write departures, a stop flag and the instant it
+was set, and nothing else: no credential, no id, no content. It is written owner-only and
+replaced by a rename under an exclusive `flock` on the lock file. The details and what it does
+not cover are in [rate-limiting-and-safety.md](rate-limiting-and-safety.md).
+
+A person lifts a write stop with `dumpsta session --clear-write-stop`, or an application does
+it on a person's say with `dumpstagram.session.clear_write_stop(path)`. Both keep the hour's
+departures.
+
+A session file replaced in place by another account's inherits the ledger. That errs toward
+refusing writes. Two different session files for one account keep two ledgers, and do not
+share a budget.
+
 ### Token lifetime is unmeasured
 
 UNRESOLVED, inherited. The prior project bootstrapped once per process and reused tokens for the

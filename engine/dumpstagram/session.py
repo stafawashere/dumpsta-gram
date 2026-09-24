@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from dumpstagram._core.ledger import FileLedger, LedgerUnreadable, WriteRecord, ledger_path_for
 from dumpstagram.errors import AuthenticationFailed, SchemaChanged
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
    "ProxyConfig",
    "Session",
    "SpinParameters",
+   "clear_write_stop",
 ]
 
 SCHEMA_VERSION = 1
@@ -278,3 +280,36 @@ class Session:
          raise SchemaChanged(f"session file at {source} is not a JSON object")
 
       return cls.from_dict(payload)
+
+
+def clear_write_stop(path: str | os.PathLike[str]) -> bool:
+   """Lift the write stop kept beside the session file at ``path``, and say whether one was set.
+
+   A client built with ``from_session_file(path)`` keeps the account's write budget and write
+   stop in ``<path>.ledger``. The stop is set by a write rejection nothing recorded explains,
+   the likeliest form of an action block, and it never lapses on its own, so lifting it is a
+   person's decision after looking at the account, never a program's reflex. The hour's write
+   departures are kept, so the budget still counts them.
+
+   Blocks for as long as another process holds the ledger's lock, which is a few milliseconds.
+   Raises :class:`~dumpstagram.errors.SchemaChanged` and changes nothing when the ledger cannot
+   be read. Deleting that file lifts the stop and also forgets the hour's writes.
+   """
+
+   ledger = FileLedger(ledger_path_for(path))
+
+   try:
+      return ledger.update_now(_lift_stop)
+   except LedgerUnreadable as unreadable:
+      raise SchemaChanged(
+         f"{unreadable}. Nothing was cleared. Deleting that file lifts the stop and also "
+         "forgets the hour's writes"
+      ) from unreadable
+
+
+def _lift_stop(record: WriteRecord, now: float) -> bool:
+   was_stopped = record.writes_stopped
+   record.writes_stopped = False
+   record.stopped_at = None
+
+   return was_stopped

@@ -207,7 +207,7 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_write_budget_refuses_without_sending"),
       "defect": "the budget check is dropped",
-      "edits": [(PACER, "         self._refuse_past_the_budget(writes)\n", "")],
+      "edits": [(PACER, "      self._refuse_past_the_budget(writes, record, now)\n", "")],
    },
    {
       "gate": gate("test_an_unrecognised_write_rejection_stops_later_writes_and_not_reads"),
@@ -241,8 +241,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PACER,
-            "is_stopped = self._writes_stopped and writes.stop_after_unrecognised_rejection",
-            "is_stopped = self._writes_stopped",
+            "is_stopped = account_is_stopped and writes.stop_after_unrecognised_rejection",
+            "is_stopped = account_is_stopped",
          )
       ],
    },

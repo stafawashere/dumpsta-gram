@@ -1,4 +1,9 @@
-"""The two commands that spend no live request: adopt a browser session, and print one."""
+"""The two commands that spend no live request: adopt a browser session, and print one.
+
+`session --clear-write-stop` is the one way the CLI lifts a write stop, and it is always a
+person's decision. It clears the stop in the pacing ledger beside the session file and keeps
+the budget's departures, so clearing a stop never also hands back an hour's writes.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,7 @@ from dumpstagram._cli.commands.common import Subcommands, emit, resolve_session_
 from dumpstagram._cli.cookie_sources import read_cookie_file, session_from
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.session import describe_session, render_session
-from dumpstagram.session import Session
+from dumpstagram.session import Session, clear_write_stop
 
 __all__ = [
    "add_adopt_parser",
@@ -45,6 +50,9 @@ def run_session(
    path = resolve_session_path(arguments.session, environment)
    summary = describe_session(Session.load(path), path)
 
+   if arguments.clear_write_stop:
+      summary["write_stop_cleared"] = clear_write_stop(path)
+
    emit(summary, render_session(summary), as_json=arguments.json, stream=stdout)
 
    return EXIT_OK
@@ -68,7 +76,15 @@ def add_adopt_parser(commands: Subcommands) -> None:
 
 
 def add_session_parser(commands: Subcommands) -> None:
-   commands.add_parser(
+   session = commands.add_parser(
       "session",
       help="print what the saved session holds, redacted, spending no live request",
+   )
+   session.add_argument(
+      "--clear-write-stop",
+      action="store_true",
+      help=(
+         "lift the write stop kept beside the session file, after a person has checked the "
+         "account. The hour's write budget is kept"
+      ),
    )

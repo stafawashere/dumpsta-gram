@@ -55,6 +55,7 @@ yet measures the denominator, which is the first thing E1 fixes. Measured since 
    no carousel child, no audio, and no way to download a rendition. A clone cannot render a reel.
 4. Pacing state is per process. The write budget and the write stop reset with each `dumpsta`
    invocation, which is a recorded 1.0.0 limitation and a real gap for a long-lived server.
+   Closed by E1 item 8 for clients built from a session file.
 5. Every write so far runs on the owner's only account. Group threads, blocking, restricting,
    removing a follower and follow request handling each need a second or third account that the
    owner controls. Those items are collected in E6, so nothing before it waits on another account.
@@ -413,6 +414,51 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   observed when they arrive, in a later run if need be, and an item whose acceptance needs him to
   act on cue, such as accepting a follow request, stays in E6. Group threads still need a third
   account under W9.
+- **W34. The pacing ledger sits beside the session file and only a file-built client keeps
+  one.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1 item 8.
+  `from_session_file(path)` on both clients keeps the write budget and the write stop in
+  `<path>.ledger`, locked through `<path>.ledger.lock`. A client built over a bare `Session`
+  keeps them in memory as before, because it has no file to sit beside and the step asked for
+  that. The session file's schema is unchanged, since a sibling file needs no migration and an
+  older engine reading a newer session file would otherwise refuse it. No `Behavior` setting
+  was added: persisting the record changes nothing the upstream sees, so it is not an ADR-0013
+  departure, and a caller who wants a private budget builds the client over a `Session`. The
+  ledger lives in `_core/ledger.py`, and W36 adds the one public name. The file holds the
+  wall clock instants of the last hour's write departures, `writes_stopped` and `stopped_at`,
+  and nothing else, so no credential, id or content. Wall clock because a monotonic reading
+  means nothing to another process. A memory ledger stays on the pacer's clock, which is what
+  the fake clock in the tests drives. Write spacing, read spacing and throttle holds stay per
+  process, so two processes can write closer together than the write floor, and the budget
+  still bounds them.
+- **W35. Every access is locked, atomic and read afresh, and an unreadable ledger refuses
+  writes.** Ruled 2026-09-23 for E1 item 8. Each read and write holds an exclusive `flock` on
+  the lock file from the read to the rename, and the record is written to a temporary file,
+  synced and renamed over the old one, so a crash leaves one whole record. The lock file is
+  separate because a rename replaces the inode another process would be holding a lock on.
+  `fcntl` is POSIX, so Windows is out of scope under ADR-0010. A write judges the record twice,
+  both times read afresh: before it waits out its spacing, and after, where the same locked
+  update records its departure, so two processes cannot both take the last slot. File access
+  goes through `asyncio.to_thread`, because the lock can wait on another process and the loop
+  must not. A ledger that is not JSON, not a write record, or of another `schema_version`
+  refuses every write with `UpstreamRejected(code="writes_stopped")` and is never rewritten,
+  because a reset would forget a stop it may hold. A stop is written as soon as the rejection is
+  recorded. If that write fails the stop still holds in the process and a warning is logged.
+- **W36. Only a person lifts a stop, and lifting it keeps the budget.** Ruled 2026-09-23 for E1
+  item 8. The stop never lapses with the window or with a restart. `dumpsta session
+  --clear-write-stop` clears it and keeps the hour's departures, so lifting a stop never also
+  hands back an hour's writes, and on an unreadable ledger it changes nothing and exits 8,
+  `SchemaChanged`. Deleting the ledger lifts the stop and forgets the departures, which is the
+  recovery for an unreadable one. The flag sits on the existing `session` command rather than a
+  new command, so the CLI gains no command. The CLI may not reach `_core`, a gate in
+  `tests/test_cli.py`, and the Swift app must never learn the ledger's format, so the lift is
+  public: `dumpstagram.session.clear_write_stop(path) -> bool`, one snapshot line, a plain
+  function because it needs no client, no loop and no request. It is not re-exported from the
+  package root, which keeps `dumpstagram/__init__.py` out of this change. Its docstring says it
+  is a person's decision after looking at the account. The gates are fourteen in `tests/test_pacing_ledger.py`, six of them
+  across real interpreters, each red under one of the 16 mutations of the new
+  `scripts/verify_ledger_gates.py`. Two write safety anchors followed the code:
+  `_refuse_past_the_budget` now takes the record and the instant, and the stop check reads
+  `account_is_stopped`.
 
 ## Standing rules for every phase
 
@@ -499,6 +545,16 @@ the per-domain layout.
    checked by artifact only, never fired. Runs on demand, never in the suite.
 8. **Durable pacing ledger.** The pacer's write budget and write stop persist beside the session
    file, so separate processes on one account share them. Closes the 1.0.0 limitation.
+   Done 2026-09-23, 0 live requests: `from_session_file` keeps both in `<path>.ledger` under a
+   `flock`, a bare `Session` keeps them in memory (W34), an unreadable ledger refuses writes
+   (W35), and `dumpsta session --clear-write-stop` is how a person lifts a stop (W36). The
+   snapshot grew from 473 lines to 474, `dumpstagram.session.clear_write_stop`, none removed or
+   changed. `tests/test_pacing_ledger.py` holds fourteen gates, each
+   seen red under the 16 mutations of `scripts/verify_ledger_gates.py`, then green. The
+   cross-process gates run two interpreters over the engine's own write path, `send_write`
+   through a pacer on the ledger beside one session file, with a fake wire, and a separate
+   gate holds both clients' `from_session_file` to that ledger. No gate runs the `dumpsta`
+   write commands themselves in two processes.
 9. **Posting.** Photo upload, publish, delete, and carousel, per build plan Step 19 as already
    written, including the orphaned upload gate. The upload host must pass the provenance host
    check.

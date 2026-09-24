@@ -208,7 +208,7 @@ default in rulings 3 and 4, and each is a `Behavior` setting a caller may change
 |---|---|---|
 | `write_spacing` | 30 s floor plus 5 s mean jitter, uniform 30 s to 40 s | The gap before a write, measured from the account's previous write. About ten times the read spacing. A read between two writes leaves at the read spacing, and a write still keeps the read spacing from whatever went before it |
 | `write_budget_per_hour` | 30 | Writes allowed to depart in any rolling hour. The next one raises `RateLimited` with `retry_after` set to when the oldest leaves the window, and sends nothing. None removes the budget, 0 refuses every write |
-| `stop_writes_after_unrecognised_rejection` | True | After a write is rejected with a code nothing recorded explains, every later write raises `UpstreamRejected(code="writes_stopped")` without sending, for the life of the client. Reads carry on |
+| `stop_writes_after_unrecognised_rejection` | True | After a write is rejected with a code nothing recorded explains, every later write raises `UpstreamRejected(code="writes_stopped")` without sending, for the life of the client, and with a session file for every later process too, until a person lifts it. Reads carry on |
 
 `PARITY` carries the placeholder spacing because no human write timing exists yet. When Step 12a
 or a later sample measures one, the parity spacing becomes it and the budget stays either way.
@@ -220,7 +220,8 @@ Writes pass the same pacer and take the same slot as every request, through
 write tokens are the pacer's, so they are per account: a client from `with_behavior` inherits
 what its owner has spent and seen, and a zero spacing or a different budget on it changes only
 how its own writes are judged. A refused write never departed, so it neither holds the account
-nor counts against the budget.
+nor counts against the budget. With a session file the budget and the stop are shared across
+processes as well, in the pacing ledger below.
 
 A throttle on a write records an account-wide hold with `Pacer.hold` and raises. It does not
 sleep and resend. The engine never retries a write on its own and no setting makes it, ruling
@@ -246,6 +247,45 @@ pool, four connections per client, the concurrency the prior project's browser s
 download sends no cookie and nothing identifying the account beyond the user agent and the
 instagram.com referer, both as measured. Unmeasured: whether a burst of CDN fetches far beyond a
 browser's is scored against the account at all. Five fetches in one evening say nothing about it.
+
+## The pacing ledger, 2026-09-23
+
+E1 item 8 of [web-parity-plan.md](web-parity-plan.md), rulings W34 to W36. Until then the budget
+and the stop lived in the pacer's memory, so each `dumpsta` process started with a full budget
+and no stop, the limitation 1.0.0 recorded.
+
+A client built with `from_session_file(path)` keeps the account's write record in a ledger file
+beside the session file, `<path>.ledger`. Every client and every process built from that file
+reads and writes the same record, so they spend one budget and honour one stop. A client built
+over a bare `Session` has no file to sit beside and keeps the record in memory, exactly as
+before. There is no setting for it: persistence changes nothing the upstream sees, so it is not
+an ADR-0013 departure, and a caller who wants a private budget builds the client over a
+`Session`.
+
+| Property | What it is |
+|---|---|
+| Contents | JSON with `schema_version` 1, the wall clock instants of the writes that departed in the last hour, `writes_stopped`, and `stopped_at`. No credential, id or content |
+| Locking | Every read and write holds an exclusive `flock` on `<path>.ledger.lock`, a separate file that is never renamed over, from the read to the rename. POSIX only, and Windows is out of scope under ADR-0010 |
+| Crash safety | The new record is written to a temporary file in the same directory, flushed, synced and renamed over the old one, so a crash leaves the old record or the new one and never half of either |
+| Clock | Wall clock seconds in the file, since a monotonic reading means nothing to another process. A memory ledger stays on the pacer's monotonic clock. A wall clock set backwards keeps departures counted longer, and one set forwards lets them leave the window early |
+| Unreadable or newer | A ledger that is not JSON, is not a write record, or carries another `schema_version` refuses every write with `UpstreamRejected(code="writes_stopped")` and is never rewritten or reset, because a reset would forget a stop it held |
+| Lifting a stop | A person runs `dumpsta session --clear-write-stop`, or an application calls `dumpstagram.session.clear_write_stop(path)` on a person's say, which clears the stop and keeps the hour's departures. Deleting the file lifts it too and also forgets them. The stop never lapses on its own |
+
+A write judges the record twice, both times read afresh under the lock. The first judgement
+refuses before the write waits out its spacing. The second, after the wait, refuses what another
+process spent or stopped meanwhile and records the departure in the same locked update, so two
+processes cannot both take the last slot. File access runs on a worker thread through
+`asyncio.to_thread`, so the loop does not block on the lock. A write cancelled during that
+second update may leave its departure recorded without having left, which spends a slot and
+errs toward refusing.
+
+A stop is written to the ledger as soon as the rejection that caused it is recorded, before the
+error reaches the caller. If the ledger cannot be written, the stop holds in that process and a
+warning is logged. An unreadable ledger already refuses every write, so it is left as it is.
+
+Not shared across processes: the write spacing, the read spacing, and an account-wide throttle
+hold. Those stay per process, so two processes writing at once can place two writes closer than
+the write floor. The budget still bounds them.
 
 ## Defaults
 

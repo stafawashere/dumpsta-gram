@@ -23,6 +23,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from types import TracebackType
 
 from dumpstagram._core.cookie_sync import CookieSync
+from dumpstagram._core.ledger import FileLedger, ledger_path_for
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.realtime.buffer import EventBuffer
 from dumpstagram._core.realtime.poller import inbox_poller
@@ -118,9 +119,17 @@ class AsyncClient:
 
       Raises the same errors :meth:`~dumpstagram.session.Session.load` raises, before any
       pool is created, so a refused file leaves nothing to close.
+
+      The account's write budget and write stop are kept in a pacing ledger beside the file,
+      ``<path>.ledger``, so every client built from the same file, in this process or another,
+      spends one budget and honours one stop. A client built over a bare `Session` keeps them
+      in memory for its own lifetime instead.
       """
 
-      return cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+      client = cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+      client._keep_write_record_beside(path)
+
+      return client
 
    def with_behavior(self, behavior: Behavior) -> AsyncClient:
       """Another client over the same account that differs only in ``behavior``.
@@ -148,6 +157,9 @@ class AsyncClient:
       scoped._event_source = self._event_source
 
       return scoped
+
+   def _keep_write_record_beside(self, session_path: str | os.PathLike[str]) -> None:
+      self._sender.pacer.ledger = FileLedger(ledger_path_for(session_path))
 
    @property
    def session(self) -> Session:

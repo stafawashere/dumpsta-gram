@@ -10,7 +10,8 @@ in an error the caller sees instead:
   error the caller might answer by sending again
 - the HTML application shell clears the page token so the next call bootstraps, and raises
 - a throttle holds the whole account and raises, without sleeping and resending
-- a rejection nothing recorded explains stops later writes on the account, if the policy says so
+- a rejection nothing recorded explains stops later writes on the account, if the policy says so,
+  and the stop is written to the account's ledger so other processes on the account see it
 
 It takes no deadline, because a write abandoned at a deadline and started again is a retry.
 Cancelling it in flight raises :class:`~dumpstagram.errors.OperationCancelled` at the facade,
@@ -64,6 +65,7 @@ async def send_write(
    except (RateLimited, UpstreamRejected) as failure:
       if sender.pacer.write_departed(write.token):
          _record_answer(sender, session, failure, recognised_rejections)
+         await sender.pacer.share_write_stop()
 
       raise
 

@@ -84,10 +84,14 @@ class SyncClient:
       """Load a saved session from ``path`` and build a client around it.
 
       The file is read before the loop thread is acquired, so a refused file leaves no thread
-      running and nothing to release.
+      running and nothing to release. The write budget and the write stop are kept beside the
+      file, as :meth:`~dumpstagram.aio.AsyncClient.from_session_file` describes.
       """
 
-      return cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+      client = cls(Session.load(path), user_agent=user_agent, behavior=behavior)
+      client._impl._keep_write_record_beside(path)
+
+      return client
 
    def with_behavior(self, behavior: Behavior) -> SyncClient:
       """Another client over the same account that differs only in ``behavior``.

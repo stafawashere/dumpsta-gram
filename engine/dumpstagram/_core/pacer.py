@@ -21,6 +21,13 @@ that refuses every later write once one was rejected in a way nothing recorded e
 three are account state, so a client derived with a different behavior inherits what the
 account already spent and already saw.
 
+The budget and the stop are judged against the account's write record in a
+:class:`~dumpstagram._core.ledger.WriteLedger`. By default that is a memory ledger, which lives
+as long as the pacer. A client built from a session file swaps in the ledger file beside it,
+and then every process on the account spends one budget and honours one stop. The record is
+read afresh under the file's lock for every judgement, once before the write waits for its
+turn and again, recording the departure, just before it leaves.
+
 The clock, the sleep, and the jitter source are all injected, because a pacer whose spacing
 can only be observed by waiting several real seconds per assertion does not get tested.
 
@@ -31,13 +38,15 @@ it is bound to the loop its lock was first awaited on, which is the engine's loo
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import time
-from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import partial
 
+from dumpstagram._core.ledger import LedgerUnreadable, MemoryLedger, WriteLedger, WriteRecord
 from dumpstagram.errors import RETRYABLE, RateLimited, UpstreamRejected
 
 __all__ = [
@@ -59,6 +68,8 @@ WRITES_STOPPED = "writes_stopped"
 never one the upstream sent."""
 
 WRITE_BUDGET_WINDOW_SECONDS = 3600.0
+
+_logger = logging.getLogger("dumpstagram")
 
 
 @dataclass(frozen=True)
@@ -148,6 +159,7 @@ class Pacer:
       clock: Callable[[], float] = time.monotonic,
       sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
       jitter: Callable[[], float] = random.random,
+      ledger: WriteLedger | None = None,
    ) -> None:
       self.pacing = pacing
       self.backoff = backoff
@@ -156,12 +168,15 @@ class Pacer:
       self._sleep = sleep
       self._jitter = jitter
 
+      self.ledger: WriteLedger = ledger or MemoryLedger(clock)
+      """Where the account's write budget and write stop are kept. Replaced only before the
+      first write, by the client that knows the session file."""
+
       self._lock = asyncio.Lock()
       self._last_departure_at = float("-inf")
       self._held_until = float("-inf")
 
       self._last_write_at = float("-inf")
-      self._writes_this_window: deque[float] = deque()
       self._departed_write_tokens: set[str] = set()
       self._writes_stopped = False
       self._writes_built = 0
@@ -212,18 +227,24 @@ class Pacer:
       Every refusal happens before any wait and before the token is recorded, so a refused
       write has not departed and says so by raising. A token already recorded is a defect in
       the caller rather than an upstream condition, and is raised as one.
+
+      The account's record is judged twice. The first judgement refuses before the wait. The
+      second, after it, refuses what another process spent or stopped meanwhile, and records
+      the departure in the same locked update, so two processes cannot both take the last
+      slot of a budget.
       """
 
       async with self._lock:
          self._refuse_a_second_departure(token)
-         self._refuse_when_writes_are_stopped(writes)
-         self._refuse_past_the_budget(writes)
+         await self._judge_write(writes, record_departure=False)
 
          write_spaced_at = self._last_write_at + self._gap_seconds(writes.spacing)
-         await self._wait_until_allowed(pacing or self.pacing, not_before=write_spaced_at)
+         departs_at = await self._wait_for_turn(pacing or self.pacing, not_before=write_spaced_at)
 
-         self._last_write_at = self._last_departure_at
-         self._writes_this_window.append(self._last_write_at)
+         await self._judge_write(writes, record_departure=True)
+
+         self._last_departure_at = departs_at
+         self._last_write_at = departs_at
          self._departed_write_tokens.add(token)
 
          yield
@@ -241,6 +262,24 @@ class Pacer:
       """
 
       self._writes_stopped = True
+
+   async def share_write_stop(self) -> None:
+      """Write this pacer's stop into the account's ledger, so every process sees it.
+
+      Nothing to share when this pacer has not stopped. An unreadable ledger already refuses
+      every write in every process, so it is left as it is. A ledger that cannot be written
+      leaves the stop in this process only, and says so in the log.
+      """
+
+      if not self._writes_stopped:
+         return
+
+      try:
+         await self.ledger.update(_mark_stopped)
+      except LedgerUnreadable:
+         return
+      except OSError:
+         _logger.warning("the write stop could not be kept in the pacing ledger file")
 
    def hold(self, seconds: float) -> None:
       """Stop the whole account for ``seconds``, without waiting here.
@@ -293,8 +332,35 @@ class Pacer:
       if token in self._departed_write_tokens:
          raise RuntimeError("this write request has already departed once and cannot again")
 
-   def _refuse_when_writes_are_stopped(self, writes: WritePolicy) -> None:
-      is_stopped = self._writes_stopped and writes.stop_after_unrecognised_rejection
+   async def _judge_write(self, writes: WritePolicy, *, record_departure: bool) -> None:
+      judgement = partial(self._judge_record, writes, record_departure)
+
+      try:
+         await self.ledger.update(judgement)
+      except LedgerUnreadable as unreadable:
+         raise UpstreamRejected(
+            f"{unreadable}, so writes are refused until a person inspects and removes it",
+            code=WRITES_STOPPED,
+         ) from unreadable
+
+   def _judge_record(
+      self,
+      writes: WritePolicy,
+      record_departure: bool,
+      record: WriteRecord,
+      now: float,
+   ) -> None:
+      record.forget_before(now - WRITE_BUDGET_WINDOW_SECONDS)
+
+      self._refuse_when_writes_are_stopped(writes, record)
+      self._refuse_past_the_budget(writes, record, now)
+
+      if record_departure:
+         record.departures.append(now)
+
+   def _refuse_when_writes_are_stopped(self, writes: WritePolicy, record: WriteRecord) -> None:
+      account_is_stopped = self._writes_stopped or record.writes_stopped
+      is_stopped = account_is_stopped and writes.stop_after_unrecognised_rejection
 
       if is_stopped:
          raise UpstreamRejected(
@@ -302,24 +368,18 @@ class Pacer:
             code=WRITES_STOPPED,
          )
 
-   def _refuse_past_the_budget(self, writes: WritePolicy) -> None:
+   def _refuse_past_the_budget(self, writes: WritePolicy, record: WriteRecord, now: float) -> None:
       if writes.budget_per_hour is None:
          return
 
-      now = self._clock()
-      window_opened_at = now - WRITE_BUDGET_WINDOW_SECONDS
-
-      while self._writes_this_window and self._writes_this_window[0] <= window_opened_at:
-         self._writes_this_window.popleft()
-
-      budget_is_spent = len(self._writes_this_window) >= writes.budget_per_hour
+      budget_is_spent = len(record.departures) >= writes.budget_per_hour
       if not budget_is_spent:
          return
 
-      if not self._writes_this_window:
+      if not record.departures:
          raise RateLimited("this account's write budget is zero, so no write departs")
 
-      frees_at = self._writes_this_window[0] + WRITE_BUDGET_WINDOW_SECONDS
+      frees_at = min(record.departures) + WRITE_BUDGET_WINDOW_SECONDS
 
       raise RateLimited(
          "this account's write budget for the hour is spent",
@@ -332,6 +392,14 @@ class Pacer:
       *,
       not_before: float = float("-inf"),
    ) -> None:
+      self._last_departure_at = await self._wait_for_turn(pacing, not_before=not_before)
+
+   async def _wait_for_turn(
+      self,
+      pacing: PacingPolicy,
+      *,
+      not_before: float = float("-inf"),
+   ) -> float:
       gap = self._gap_seconds(pacing)
 
       while True:
@@ -342,12 +410,20 @@ class Pacer:
 
          await self._sleep(remaining)
 
-      self._last_departure_at = self._clock()
+      return self._clock()
 
    def _gap_seconds(self, pacing: PacingPolicy) -> float:
       spread = 2.0 * pacing.mean_jitter_seconds
 
       return pacing.floor_seconds + self._jitter() * spread
+
+
+def _mark_stopped(record: WriteRecord, now: float) -> None:
+   if record.writes_stopped:
+      return
+
+   record.writes_stopped = True
+   record.stopped_at = now
 
 
 async def run_with_retries[T](
