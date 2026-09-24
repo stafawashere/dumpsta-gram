@@ -398,7 +398,7 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
-| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes and its comments |
+| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, and downloading its renditions |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 
@@ -470,6 +470,48 @@ it directly. The blocking one reads each page on the shared loop thread, raises 
 raised with a seam note naming the iterator, such as `SyncClient.feeds.iter_home`, and can be
 closed or abandoned at any point without leaving a request in flight, because no page is read
 until the caller asks for an item from it.
+
+### The media model and downloads
+
+Landed 2026-09-23, E1 item 6 of [web-parity-plan.md](web-parity-plan.md), rulings W26 to W29.
+`Post` and `PostDetail` gained five fields, each with a default, so nothing that existed changed:
+
+| Field | Type | Empty or `None` when |
+|---|---|---|
+| `videos` | `tuple[VideoRendition, ...]` | the post is not a video |
+| `video_duration` | `float \| None`, seconds | the post is not a video |
+| `has_audio` | `bool \| None` | the upstream sends null, on a photo and a carousel |
+| `audio` | `MediaAudio \| None` | the post is not a reel |
+| `carousel_children` | `tuple[CarouselChild, ...]` | the post is not a carousel |
+
+`VideoRendition` carries `url`, `width`, `height` and `version_type`, the upstream's own
+enumeration (101, 102 and 103 were seen, three per reel, all at one size). The duration comes from
+the `mediaPresentationDuration` of the DASH manifest the payload carries, because the web payload
+has no duration field. `MediaAudio` carries `kind` (`AudioKind.MUSIC` or
+`AudioKind.ORIGINAL_SOUND`, named for the upstream slot that held it), `audio_id`, `title`,
+`artist`, `is_explicit`, `should_mute`, and `artist_id` on an original sound only. A
+`CarouselChild` is one slide with its own `media_type`, `product_type`, dimensions, `images`,
+`videos` and `video_duration`, and no shortcode. No video slide has been seen live, so that case
+is mapped by the reel's rules and gated only on a fixture built from a live reel.
+
+```python
+post = client.media.by_code(code)
+smallest = min(post.videos, key=lambda rendition: rendition.width * rendition.height)
+path = client.media.download(smallest, "reel.mp4")                 # returns the Path written
+path = await aclient.media.download(post.images[0], "cover.jpg", overwrite=True)
+```
+
+`media.download(rendition, path, *, overwrite=False) -> Path` takes a `MediaImage` or a
+`VideoRendition`, on the namespace only, with no flat twin. It is one fetch from Instagram's CDN
+and no API request, so it takes no turn from the account's pacer, and downloads may run at once,
+at most four connections per client. It sends no cookie. The body streams to a temporary file
+beside `path` and is renamed onto it when complete, so a failure leaves nothing. A file already
+at `path` raises `FileExistsError` before anything is sent unless `overwrite` is true, and one
+that appears while the body arrives is not replaced either. A body that differs from the length
+the CDN declared raises `TransportFailure`, and one with no declared length, which the CDN sent
+once, is written as it arrives. A 4xx raises `NotFound`, since a rendition URL is signed and
+expires (INFERENCE, no expired URL has been fetched), and reading the post again gives a fresh
+one. A URL outside the `cdninstagram.com` hosts or not over `https` is refused before it is sent.
 
 ## Stability contract
 
@@ -595,6 +637,10 @@ assumed otherwise. See
 | Transport failure | Network-level. | Yes |
 | Outcome unknown | `OutcomeUnknown`, added 2026-09-23 for writes. The connection failed while a write was in flight, so it may or may not have applied. `operation` names the write, and the network failure is on `__cause__`. The way forward is to read the state the write would have changed. In its first version every `TransportFailure` during a write becomes this, including a connect timeout that probably sent nothing, because that is INFERENCE about `httpx` rather than measured. | Never, structurally: absent from `RETRYABLE` and sharing no base with its members, so not a `TransportFailure` |
 | Operation cancelled | The awaited work was cancelled. Exists because of the threading model rather than because of Instagram, since `asyncio.CancelledError` is a `BaseException` and would slip past a caller's `except Exception`. A write cancelled in flight has an unknown outcome too, and stays this type because ADR-0012 permits one translation. | No |
+
+A download's own file system failures are the builtin `OSError` family, `FileExistsError` for a
+refused overwrite among them, because they are about the caller's disk rather than the upstream
+(W29). Everything the CDN answers wrongly is one of the categories above.
 
 On a write, `UpstreamRejected` is an answer, read as "not applied", INFERENCE since no failed
 write has been observed, and `SchemaChanged` means the upstream answered without an error and

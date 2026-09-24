@@ -34,7 +34,9 @@ from dumpstagram.errors import (
 )
 from dumpstagram.listener import EventListener
 from dumpstagram.models import (
+   AudioKind,
    BioLink,
+   CarouselChild,
    Comment,
    CommentAuthor,
    Event,
@@ -43,6 +45,7 @@ from dumpstagram.models import (
    FeedItemKind,
    FriendshipStatus,
    ListenerStopped,
+   MediaAudio,
    MediaImage,
    Message,
    MessageSender,
@@ -56,6 +59,7 @@ from dumpstagram.models import (
    Profile,
    Reaction,
    SentMessage,
+   VideoRendition,
 )
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
 
@@ -66,9 +70,11 @@ __all__ = [
    "RETRYABLE",
    "SCHEMA_VERSION",
    "AsyncClient",
+   "AudioKind",
    "AuthenticationFailed",
    "Behavior",
    "BioLink",
+   "CarouselChild",
    "CheckpointRequired",
    "Comment",
    "CommentAuthor",
@@ -81,6 +87,7 @@ __all__ = [
    "FeedItemKind",
    "FriendshipStatus",
    "ListenerStopped",
+   "MediaAudio",
    "MediaImage",
    "Message",
    "MessageSender",
@@ -108,6 +115,7 @@ __all__ = [
    "ThreadFirstPage",
    "TransportFailure",
    "UpstreamRejected",
+   "VideoRendition",
 ]
 
 _getLogger("dumpstagram").addHandler(_NullHandler())

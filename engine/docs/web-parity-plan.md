@@ -337,6 +337,82 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   iterator, and demands the two sets cover the whole, so it checks strictly more than before.
   No existing gate was loosened, and the iterator mutations live in the new
   `scripts/verify_iterator_gates.py`.
+- **W26. A CDN fetch takes no pacer slot, and one download is one fetch.** Ruled 2026-09-23 by
+  the orchestrator on the owner's delegation, for E1 item 6. ADR-0001 names media and CDN
+  fetches as not API traffic and not subject to the API pacer, and nothing in the engine's
+  documents says a CDN fetch must be paced, so `client.media.download` sends through a pool of
+  its own and never asks the account's pacer for a slot. The pacer's numbers were measured on
+  the API gateway, and a browser fetches a page's media from the CDN in parallel with its API
+  calls, so pacing a download would make the engine slower than the browser it imitates and
+  would serialize downloads behind reads for nothing. Concurrency is bounded instead by the
+  pool: four connections per client, the concurrency the prior project's browser script used.
+  A gate holds a download to never touching the pacer. The risk left open is recorded in
+  [rate-limiting-and-safety.md](rate-limiting-and-safety.md): whether CDN bursts far past a
+  browser's are scored against an account is unmeasured.
+- **W27. The CDN pin is the `cdninstagram.com` family over `https`, and the provenance gate
+  backs a family by an observed host under it.** Ruled 2026-09-23 for E1 item 6. Every rendition
+  URL on seven feed pages and two post reads sat on a subdomain of `cdninstagram.com`, one host
+  per point of presence (`scontent-lga3-1`, `-2` and `-3` were fetched), so no single host can be
+  pinned. `HttpxTransport` gained `allowed_host_family`, a second hook beside the one-host pin
+  rather than a loosening of it: a host passes only as a subdomain at a label boundary and only
+  over `https`, a transport takes one pin or the other, and the one-host pin's code and gates
+  are unchanged. `fbcdn.net` appeared only as music cover artwork, 6 URLs in all, and was never
+  fetched, so it is not in the pin. `check_provenance.py` compared a host literal only against a
+  finding's exact host, which a family literal can never equal. It now also backs a literal that
+  an observed host of a verified finding sits under at a label boundary, so `"cdninstagram.com"`
+  is backed by `scontent-lga3-3.cdninstagram.com` and `"ninstagram.com"` is not. That widens
+  what the gate accepts, and only to domains with a verified observation under them. Its host
+  fixture gained a backed family and an unbacked partial label, and
+  `verify_provenance_controls.py` gained two scanner mutations (no label boundary, no family
+  backing) and two injections (an unobserved family, a partial label of the observed one), all
+  of which fired. `skills/` is local, so this change is not in the repository.
+- **W28. The media model follows the payload, and names what it does not carry.** Ruled
+  2026-09-23 for E1 item 6, from `probes/media_shape.py`: eleven reels, seven carousels and
+  thirty-one slides counted over seven timeline page reads, the first page read twice so a node
+  may be counted twice, and one reel and one carousel read again through the post
+  query. Renditions are `Post.videos`, beside `images`, as `VideoRendition` with the upstream's
+  `type` passed through as `version_type`, because the three per reel share one size and nothing
+  says which is better. The payload has no duration field, so `video_duration` is read from the
+  `mediaPresentationDuration` on the root of `video_dash_manifest`, with a pattern over the root
+  tag rather than an XML parser, and a video without it raises `SchemaChanged`. The manifest
+  itself is not exposed. Audio is `MediaAudio` from whichever of `music_info` and
+  `original_sound_info` is filled; both filled raises, both null is `None`, unobserved. There is
+  no audio download, because the track is inside the video. Slides are `CarouselChild` with
+  their own kind, and read no `has_audio`, because the post query's slides do not carry the key.
+  `PostDetail` gained the same five fields, because the post query's item carried the same keys
+  on both reads. Music cover artwork and an original sound's account picture are dropped. Every
+  field is additive with a default, and the snapshot grew from 473 lines to 520, none removed or
+  changed.
+  One existing mutation anchor followed the code: `verify_feed_gates.py`'s keep-one-crop
+  mutation named the end of `_images` by the `_post_author` definition after it, which the new
+  mappers now separate, so it names `MANIFEST_ROOT` instead, found once, the replacement
+  unchanged but for that line.
+- **W29. A download is atomic, refuses to overwrite, checks the length it was told, and never
+  follows a redirect.** Ruled 2026-09-23 for E1 item 6.
+  `client.media.download(rendition, path, *, overwrite=False) -> Path`, on the namespace only
+  (W1, W24). The body streams undecoded to a `mkstemp` file beside the destination and is hard
+  linked into place, so a name taken while the body arrived is not replaced, with a rename after
+  a second check on a file system without hard links. `overwrite=True` renames over. A
+  `content-length` is compared with the bytes received where one is sent, and one live fetch sent
+  none, so its absence is accepted. A `content-encoding` other than identity, a body over 2 GiB,
+  and a status other than 200 are refused: a 4xx as `NotFound`, since a signed URL is expected to
+  expire (INFERENCE), and anything else as `TransportFailure`. Local file errors are the builtin
+  `OSError` family, `FileExistsError` for a refused overwrite, because they concern the caller's
+  disk. The destination is the caller's full path, not a name derived from upstream data, so the
+  path rule in `engineering/08-security-and-trust-boundaries.md` has nothing to resolve.
+- **W30. A second person for direct messages and follows, named by the owner.** Ruled by the
+  owner on 2026-09-23, recorded by the orchestrator. The owner named one further account as a
+  test partner for direct messages, follows and similar two-person tests. It is read from
+  `IG_BUDDY_TARGET` in the root `.env` and is never named in a committed file, a log or a
+  commit message, like the ruling 30 target. It is another person, not an account the owner
+  controls, and he replies to messages sent to him, sometimes late. This widens W8: from E4 on,
+  message kinds, reactions, edits and unsends may run in a one-to-one thread with him, a new
+  one-to-one thread may be opened with him from his profile, and a follow and unfollow may run
+  on his account, each restored in the same run under ruling 24. No acceptance may depend on a
+  timely reply. Events only he can cause, such as his reply, reaction or seen state, are
+  observed when they arrive, in a later run if need be, and an item whose acceptance needs him to
+  act on cue, such as accepting a follow request, stays in E6. Group threads still need a third
+  account under W9.
 
 ## Standing rules for every phase
 
@@ -406,6 +482,18 @@ the per-domain layout.
    plus `client.media.download(rendition, path)` over the CDN. CDN fetches may run concurrently
    under the existing ADR-0001 exception. Needs one feed shape probe that lands on a reel and a
    carousel.
+   Done 2026-09-23: `VideoRendition`, `MediaAudio`, `AudioKind` and `CarouselChild`, five new
+   fields on `Post` and `PostDetail`, and `client.media.download` on both clients (W26 to W29).
+   Evidence, 0 browser page loads: `probes/media_shape.py`, three runs, 10 API reads and 3 CDN
+   fetches, logs `engine/logs/media-shape-2026-09-23-212358.json`, `-212550.json` and
+   `media-shape-post-detail-2026-09-23-212705.json`; the live acceptance
+   `probes/media_download_live.py`, two runs of 1 API read and 1 CDN fetch each, logs
+   `engine/logs/media-download-live-2026-09-23-214329.json` and `-214350.json`. In all 12 API
+   reads and 5 CDN fetches. Finding `cdn-media-rendition-download`, verified 4 times. The snapshot
+   grew from 473 lines to 520, all additions. `tests/test_media_model.py` and
+   `tests/test_downloads.py` were each seen red under the 43 mutations of
+   `scripts/verify_media_gates.py`, then green. No video slide in a carousel was seen, so that
+   case rests on a fixture built from a live reel.
 7. **Rotation canary.** `dumpsta doctor` replays each verified read finding once, compares the
    `doc_id` the current bundle compiles against the stored one, and reports drift. Writes are
    checked by artifact only, never fired. Runs on demand, never in the suite.

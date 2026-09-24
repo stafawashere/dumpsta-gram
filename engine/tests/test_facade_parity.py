@@ -44,7 +44,7 @@ from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY
 from dumpstagram.client import SyncClient
 from dumpstagram.listener import EventListener
-from dumpstagram.models import NoteAudience, Page
+from dumpstagram.models import NoteAudience, Page, VideoRendition
 from dumpstagram.session import Session
 from tests.test_direct import FakeClock, a_bootstrapped_session
 
@@ -360,7 +360,15 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "message_id": "mid.$abcdefghijklmnop",
    "newer_than_message_id": "mid.$olderthanthatone",
    "note_id": "17901234567890123",
+   "overwrite": True,
+   "path": "never-written.mp4",
    "post_pk": "3456789012345678901",
+   "rendition": VideoRendition(
+      url="https://scontent-fixture-1.cdninstagram.com/v/fixture.mp4",
+      width=720,
+      height=1280,
+      version_type=101,
+   ),
    "text": "a text",
    "thread_fbid": "1234567890123456",
    "user_id": "71234567",
@@ -747,6 +755,7 @@ CORE_FUNCTION_FOR_ALIAS = {
    "media.comment": "dumpstagram._core.writes.comments.create_comment",
    "media.comments": "dumpstagram._core.comments.read_comment_page",
    "media.delete_comment": "dumpstagram._core.writes.comments.delete_comment",
+   "media.download": "dumpstagram._core.downloads.download_rendition",
    "media.like": "dumpstagram._core.writes.likes.like_post",
    "media.unlike": "dumpstagram._core.writes.likes.unlike_post",
    "profiles.by_id": "dumpstagram._core.profiles.read_profile_by_id",

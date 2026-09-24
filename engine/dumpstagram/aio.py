@@ -30,6 +30,7 @@ from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_e
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
+from dumpstagram._private.web.cdn import CDN_HOST_FAMILY, CDN_MAX_CONNECTIONS
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
 from dumpstagram.models import (
@@ -94,6 +95,7 @@ class AsyncClient:
          allowed_host=FACEBOOK_HOST,
          cookieless=True,
       )
+      self._cdn = cdn_transport_for(session)
 
       self._sender = PacedSender(
          transport, Pacer(), pacing_for(behavior), write_policy_for(behavior)
@@ -140,6 +142,7 @@ class AsyncClient:
       scoped._closed = False
       scoped._owner = self._owner or self
       scoped._facebook = self._facebook
+      scoped._cdn = self._cdn
       scoped._sender = self._sender.with_pacing(pacing_for(behavior), write_policy_for(behavior))
       scoped._cookie_sync = self._cookie_sync
       scoped._event_source = self._event_source
@@ -186,7 +189,7 @@ class AsyncClient:
 
    @property
    def media(self) -> AsyncMedia:
-      """Posts, their likes and their comments, ``client.media``."""
+      """Posts, their likes, their comments and their downloads, ``client.media``."""
 
       return AsyncMedia._of(self)
 
@@ -447,7 +450,10 @@ class AsyncClient:
             try:
                await self._sender.aclose()
             finally:
-               await self._facebook.aclose()
+               try:
+                  await self._facebook.aclose()
+               finally:
+                  await self._cdn.aclose()
 
    async def __aenter__(self) -> AsyncClient:
       return self
@@ -459,6 +465,17 @@ class AsyncClient:
       traceback: TracebackType | None,
    ) -> None:
       await self.aclose()
+
+
+def cdn_transport_for(session: Session) -> HttpxTransport:
+   """The pool media downloads go through: no cookie jar, and only https hosts of the CDN."""
+
+   return HttpxTransport(
+      proxy=session.proxy,
+      allowed_host_family=CDN_HOST_FAMILY,
+      max_connections=CDN_MAX_CONNECTIONS,
+      cookieless=True,
+   )
 
 
 def pacing_for(behavior: Behavior) -> PacingPolicy:

@@ -1,16 +1,19 @@
-"""``client.media``, one post and what the viewer does to it: likes and comments."""
+"""``client.media``, one post and what the viewer does to it: likes, comments and downloads."""
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.comments import read_comment_page
+from dumpstagram._core.downloads import download_rendition
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.posts import read_post
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
-from dumpstagram.models import Comment, Page, PostDetail
+from dumpstagram.models import Comment, MediaImage, Page, PostDetail, VideoRendition
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -20,7 +23,7 @@ __all__ = ["AsyncMedia", "SyncMedia"]
 
 
 class AsyncMedia:
-   """Posts, their likes and their comments, as ``client.media`` on
+   """Posts, their likes, their comments and their downloads, as ``client.media`` on
    :class:`~dumpstagram.aio.AsyncClient`."""
 
    _client: AsyncClient
@@ -218,9 +221,45 @@ class AsyncMedia:
          )
       )
 
+   async def download(
+      self,
+      rendition: MediaImage | VideoRendition,
+      path: str | os.PathLike[str],
+      *,
+      overwrite: bool = False,
+   ) -> Path:
+      """Fetch one rendition from Instagram's CDN into the file at ``path``, and return it.
+
+      ``rendition`` is one entry of a post's ``images`` or ``videos``, or of a carousel
+      slide's. It is one fetch of a static file, not an Instagram API request, so it takes no
+      turn from this account's pacer, and several downloads may run at once, four connections at
+      most per client. No cookie is sent, because the CDN asked for none on any fetch measured.
+
+      The body is written to a temporary file beside ``path`` as it arrives and renamed onto
+      ``path`` only when it is complete, so a failed download leaves nothing behind. A file
+      already at ``path`` raises :class:`FileExistsError` before anything is sent, unless
+      ``overwrite`` is true. The directory must exist.
+
+      A body shorter or longer than the length the CDN declared raises
+      :class:`~dumpstagram.errors.TransportFailure`. Rendition URLs are signed and expire, and
+      a refused one raises :class:`~dumpstagram.errors.NotFound`, after which reading the post
+      again gives a fresh URL. A URL outside the CDN's hosts is refused before it is sent.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await download_rendition(
+         client._cdn,
+         rendition.url,
+         path,
+         overwrite=overwrite,
+         user_agent=client._user_agent,
+      )
+
 
 class SyncMedia:
-   """Posts, their likes and their comments, as ``client.media`` on
+   """Posts, their likes, their comments and their downloads, as ``client.media`` on
    :class:`~dumpstagram.client.SyncClient`. Each method blocks on the shared loop thread and
    answers as its :class:`AsyncMedia` twin does."""
 
@@ -317,6 +356,24 @@ class SyncMedia:
       return self._client._loop.run(
          self._client._impl.media.comment(post_pk, text),
          operation="SyncClient.media.comment",
+      )
+
+   def download(
+      self,
+      rendition: MediaImage | VideoRendition,
+      path: str | os.PathLike[str],
+      *,
+      overwrite: bool = False,
+   ) -> Path:
+      """Fetch one rendition from the CDN into ``path``. Blocks until the file is complete.
+
+      The same call as :meth:`AsyncMedia.download`, run on the shared loop thread. One CDN
+      fetch and no Instagram API request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.download(rendition, path, overwrite=overwrite),
+         operation="SyncClient.media.download",
       )
 
    def delete_comment(self, post_pk: str, comment_id: str) -> None:

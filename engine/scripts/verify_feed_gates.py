@@ -101,12 +101,12 @@ AUTHOR_COMES_FROM_OWNER_ID = """   author = _required(node, "owner_id", path)
 IMAGES_KEEP_EVERY_CANDIDATE = """   return tuple(built)
 
 
-def _post_author("""
+MANIFEST_ROOT = """
 
 IMAGES_KEEP_THE_FIRST = """   return tuple(built[:1])
 
 
-def _post_author("""
+MANIFEST_ROOT = """
 
 CURSOR_COMES_FROM_PAGE_INFO = (
    '   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)\n'

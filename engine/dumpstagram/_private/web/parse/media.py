@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
 from dumpstagram._private.web.parse.common import (
    _hd_profile_pic_url,
    _object_at,
+   _optional_flag,
    _optional_integer,
    _optional_string,
    _required,
@@ -17,13 +19,17 @@ from dumpstagram._private.web.parse.common import (
 )
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
+   AudioKind,
+   CarouselChild,
    Comment,
    CommentAuthor,
+   MediaAudio,
    MediaImage,
    Page,
    Post,
    PostAuthor,
    PostDetail,
+   VideoRendition,
 )
 
 __all__ = [
@@ -140,6 +146,219 @@ def _images(node: dict[str, Any], path: str) -> tuple[MediaImage, ...]:
    return tuple(built)
 
 
+MANIFEST_ROOT = re.compile(r"<MPD\b[^>]*>")
+MANIFEST_DURATION = re.compile(r'\bmediaPresentationDuration="([^"]*)"')
+ISO_DURATION = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?")
+SECONDS_PER_MINUTE = 60
+SECONDS_PER_HOUR = 3600
+
+
+def _videos(node: dict[str, Any], path: str) -> tuple[VideoRendition, ...]:
+   """A video's renditions, in the order the upstream sent them, empty on anything else.
+
+   ``video_versions`` was null on every photo and carousel measured and a list of three on every
+   reel. Each entry carried ``url``, ``width``, ``height`` and ``type`` and nothing else.
+   """
+
+   versions = _required(node, "video_versions", path)
+
+   if versions is None:
+      return ()
+
+   if not isinstance(versions, list):
+      raise SchemaChanged(
+         f"{path}.video_versions is not a list or null", path=f"{path}.video_versions"
+      )
+
+   built: list[VideoRendition] = []
+
+   for index, entry in enumerate(versions):
+      entry_path = f"{path}.video_versions[{index}]"
+
+      built.append(
+         VideoRendition(
+            url=_required_string(entry, "url", entry_path),
+            width=_required_integer(entry, "width", entry_path),
+            height=_required_integer(entry, "height", entry_path),
+            version_type=_required_integer(entry, "type", entry_path),
+         )
+      )
+
+   return tuple(built)
+
+
+def _seconds_from(iso_duration: str, path: str) -> float:
+   match = ISO_DURATION.fullmatch(iso_duration)
+   refusal = f"{path} is not a duration in hours, minutes and seconds"
+
+   if match is None:
+      raise SchemaChanged(refusal, path=path)
+
+   hours, minutes, seconds = match.groups()
+   names_no_component = hours is None and minutes is None and seconds is None
+
+   if names_no_component:
+      raise SchemaChanged(refusal, path=path)
+
+   return (
+      int(hours or 0) * SECONDS_PER_HOUR
+      + int(minutes or 0) * SECONDS_PER_MINUTE
+      + float(seconds or 0)
+   )
+
+
+def _video_duration(node: dict[str, Any], path: str) -> float:
+   """A video's length in seconds, from its DASH manifest.
+
+   The web payload carries no duration field. The manifest in ``video_dash_manifest`` carried
+   ``mediaPresentationDuration`` on its root element on all eleven reels measured, as an ISO 8601
+   duration such as ``PT68.26667S``. A video without the manifest, or a manifest without that
+   attribute, raises rather than reporting no duration, because both mean the upstream changed.
+   Only the root element's opening tag is searched, with a pattern rather than an XML parser, so
+   an upstream document is never expanded.
+   """
+
+   manifest_path = f"{path}.video_dash_manifest"
+   manifest = _required(node, "video_dash_manifest", path)
+
+   if not isinstance(manifest, str):
+      raise SchemaChanged(f"{manifest_path} is not a string on a video", path=manifest_path)
+
+   root = MANIFEST_ROOT.search(manifest)
+   duration = MANIFEST_DURATION.search(root.group(0)) if root is not None else None
+
+   if duration is None:
+      raise SchemaChanged(
+         f"{manifest_path} names no mediaPresentationDuration on its root", path=manifest_path
+      )
+
+   return _seconds_from(duration.group(1), f"{manifest_path}.mediaPresentationDuration")
+
+
+def _duration_if_video(
+   node: dict[str, Any], videos: tuple[VideoRendition, ...], path: str
+) -> float | None:
+   if not videos:
+      return None
+
+   return _video_duration(node, path)
+
+
+def _music(slot: dict[str, Any], path: str) -> MediaAudio:
+   asset_path = f"{path}.music_asset_info"
+   asset = _required(slot, "music_asset_info", path)
+   consumption_path = f"{path}.music_consumption_info"
+   consumption = _required(slot, "music_consumption_info", path)
+
+   return MediaAudio(
+      kind=AudioKind.MUSIC,
+      audio_id=_required_string(asset, "audio_cluster_id", asset_path),
+      title=_required_string(asset, "title", asset_path),
+      artist=_required_string(asset, "display_artist", asset_path),
+      is_explicit=_required_flag(asset, "is_explicit", asset_path),
+      should_mute=_required_flag(consumption, "should_mute_audio", consumption_path),
+   )
+
+
+def _original_sound(slot: dict[str, Any], path: str) -> MediaAudio:
+   artist_path = f"{path}.ig_artist"
+   artist = _required(slot, "ig_artist", path)
+
+   return MediaAudio(
+      kind=AudioKind.ORIGINAL_SOUND,
+      audio_id=_required_string(slot, "audio_asset_id", path),
+      title=_required_string(slot, "original_audio_title", path),
+      artist=_required_string(artist, "username", artist_path),
+      is_explicit=_required_flag(slot, "is_explicit", path),
+      should_mute=_required_flag(slot, "should_mute_audio", path),
+      artist_id=_required_string(artist, "id", artist_path),
+   )
+
+
+def _audio(node: dict[str, Any], path: str) -> MediaAudio | None:
+   """The track a reel plays, from whichever of its two audio slots the upstream filled.
+
+   ``clips_metadata`` is null on a photo and a carousel, and on each of the eleven reels
+   measured exactly one of ``music_info`` and ``original_sound_info`` was an object. Both filled
+   raises, because which one plays would be a guess. Both null returns ``None``: it has not been
+   seen, and it is what a reel with no track of either kind would plausibly send.
+   """
+
+   metadata = _required(node, "clips_metadata", path)
+
+   if metadata is None:
+      return None
+
+   metadata_path = f"{path}.clips_metadata"
+
+   if not isinstance(metadata, dict):
+      raise SchemaChanged(f"{metadata_path} is not an object or null", path=metadata_path)
+
+   music = _required(metadata, "music_info", metadata_path)
+   original = _required(metadata, "original_sound_info", metadata_path)
+   has_music = music is not None
+   has_original = original is not None
+   has_both = has_music and has_original
+
+   if has_both:
+      raise SchemaChanged(
+         f"{metadata_path} filled both music_info and original_sound_info", path=metadata_path
+      )
+
+   if has_music:
+      return _music(music, f"{metadata_path}.music_info")
+
+   if has_original:
+      return _original_sound(original, f"{metadata_path}.original_sound_info")
+
+   return None
+
+
+def _carousel_child(node: Any, path: str) -> CarouselChild:
+   """One slide, read with its own kind, renditions and dimensions.
+
+   A slide carries the video keys a reel does, null on every photo slide measured. It has no
+   ``code`` (null), and on the post query no ``has_audio`` at all, so neither is read.
+   """
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   videos = _videos(node, path)
+
+   return CarouselChild(
+      id=_required_string(node, "id", path),
+      pk=_required_string(node, "pk", path),
+      media_type=_required_integer(node, "media_type", path),
+      product_type=_required_string(node, "product_type", path),
+      original_width=_optional_integer(node, "original_width", path),
+      original_height=_optional_integer(node, "original_height", path),
+      accessibility_caption=_optional_string(node, "accessibility_caption", path),
+      images=_images(node, path),
+      videos=videos,
+      video_duration=_duration_if_video(node, videos, path),
+   )
+
+
+def _carousel_children(node: dict[str, Any], path: str) -> tuple[CarouselChild, ...]:
+   """A carousel's slides in the upstream's order, empty on a post that is not a carousel."""
+
+   children = _required(node, "carousel_media", path)
+
+   if children is None:
+      return ()
+
+   if not isinstance(children, list):
+      raise SchemaChanged(
+         f"{path}.carousel_media is not a list or null", path=f"{path}.carousel_media"
+      )
+
+   return tuple(
+      _carousel_child(child, f"{path}.carousel_media[{index}]")
+      for index, child in enumerate(children)
+   )
+
+
 def _post_author(node: dict[str, Any], path: str) -> PostAuthor:
    """The posting account, read off the media's own ``user`` object.
 
@@ -184,6 +403,8 @@ def parse_post(node: Any, path: str) -> Post:
    if not isinstance(node, dict):
       raise SchemaChanged(f"{path} is not an object", path=path)
 
+   videos = _videos(node, path)
+
    return Post(
       id=_required_string(node, "id", path),
       pk=_required_string(node, "pk", path),
@@ -204,6 +425,11 @@ def parse_post(node: Any, path: str) -> Post:
       images=_images(node, path),
       is_paid_partnership=_required_flag(node, "is_paid_partnership", path),
       like_and_view_counts_disabled=_required_flag(node, "like_and_view_counts_disabled", path),
+      videos=videos,
+      video_duration=_duration_if_video(node, videos, path),
+      has_audio=_optional_flag(node, "has_audio", path),
+      audio=_audio(node, path),
+      carousel_children=_carousel_children(node, path),
    )
 
 
@@ -236,6 +462,8 @@ def parse_post_detail(payload: Any) -> PostDetail:
    if not isinstance(node, dict):
       raise SchemaChanged(f"{path} is not an object", path=path)
 
+   videos = _videos(node, path)
+
    return PostDetail(
       id=_required_string(node, "id", path),
       pk=_required_string(node, "pk", path),
@@ -255,6 +483,11 @@ def parse_post_detail(payload: Any) -> PostDetail:
       images=_images(node, path),
       is_paid_partnership=_required_flag(node, "is_paid_partnership", path),
       like_and_view_counts_disabled=_required_flag(node, "like_and_view_counts_disabled", path),
+      videos=videos,
+      video_duration=_duration_if_video(node, videos, path),
+      has_audio=_optional_flag(node, "has_audio", path),
+      audio=_audio(node, path),
+      carousel_children=_carousel_children(node, path),
    )
 
 

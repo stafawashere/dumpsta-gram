@@ -144,7 +144,7 @@ class SyncClient:
 
    @property
    def media(self) -> SyncMedia:
-      """Posts, their likes and their comments, ``client.media``."""
+      """Posts, their likes, their comments and their downloads, ``client.media``."""
 
       return SyncMedia._of(self)
 

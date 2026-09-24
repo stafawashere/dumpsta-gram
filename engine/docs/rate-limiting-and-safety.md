@@ -233,6 +233,20 @@ when wrong is one new client. The HTML application shell is excluded, because it
 token was refused, and the write path clears `fb_dtsg` so the caller's next call bootstraps.
 Each write capability passes the codes its own verified finding explains.
 
+## Media downloads are not API traffic, 2026-09-23
+
+`client.media.download` fetches a rendition from `cdninstagram.com`, not from Instagram's API, and
+takes no pacer slot, under the media and CDN exception of
+[ADR-0001](../../docs/decisions/ADR-0001-async-core-sync-facade.md) (ruling W26 of
+[web-parity-plan.md](web-parity-plan.md)). The pacer's anchors, 0.351 requests per second against
+4.46 for a browser, were measured on the API gateway, and a browser fetches a page's images and
+video segments from the CDN in parallel with its API calls. So a download neither waits for the
+account's slot nor delays the next read, and several may run at once. What bounds them is the CDN
+pool, four connections per client, the concurrency the prior project's browser script used. A
+download sends no cookie and nothing identifying the account beyond the user agent and the
+instagram.com referer, both as measured. Unmeasured: whether a burst of CDN fetches far beyond a
+browser's is scored against the account at all. Five fetches in one evening say nothing about it.
+
 ## Defaults
 
 Conservative. Consumers who know what they are doing can widen them, and the widening is

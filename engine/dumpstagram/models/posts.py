@@ -15,7 +15,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from dumpstagram.models.feed import MediaImage, PostAuthor
+from dumpstagram.models.feed import (
+   CarouselChild,
+   MediaAudio,
+   MediaImage,
+   PostAuthor,
+   VideoRendition,
+)
 
 __all__ = ["PostDetail"]
 
@@ -34,7 +40,11 @@ class PostDetail:
    which is the pair a like or an unlike is confirmed by. Both moved by exactly one across the
    measured like and unlike, and neither moved on a repeat of either.
 
-   The other fields mean what they mean on :class:`~dumpstagram.models.Post`.
+   The other fields mean what they mean on :class:`~dumpstagram.models.Post`, the video,
+   audio and carousel ones included: the post query's item carried the same keys for them as the
+   timeline's node on the one reel and the one carousel read through both on 2026-09-23, except
+   that its slides carry no ``has_audio``, which is why :class:`~dumpstagram.models.CarouselChild`
+   has none.
    """
 
    id: str
@@ -55,3 +65,8 @@ class PostDetail:
    images: tuple[MediaImage, ...] = ()
    is_paid_partnership: bool = False
    like_and_view_counts_disabled: bool = False
+   videos: tuple[VideoRendition, ...] = ()
+   video_duration: float | None = None
+   has_audio: bool | None = None
+   audio: MediaAudio | None = None
+   carousel_children: tuple[CarouselChild, ...] = ()

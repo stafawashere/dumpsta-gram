@@ -62,6 +62,18 @@ def _required_flag(node: Any, key: str, path: str) -> bool:
    return value
 
 
+def _optional_flag(node: dict[str, Any], key: str, path: str) -> bool | None:
+   value = _required(node, key, path)
+
+   if value is None:
+      return None
+
+   if not isinstance(value, bool):
+      raise SchemaChanged(f"{path}.{key} is not a boolean or null", path=f"{path}.{key}")
+
+   return value
+
+
 def _optional_string(node: dict[str, Any], key: str, path: str) -> str | None:
    value = _required(node, key, path)
 

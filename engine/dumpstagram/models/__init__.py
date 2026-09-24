@@ -7,7 +7,17 @@ fields, because an extras bag reopens the boundary this package exists to close.
 
 from dumpstagram.models.comments import Comment, CommentAuthor
 from dumpstagram.models.events import Event, EventsDropped, ListenerStopped, NewMessage
-from dumpstagram.models.feed import FeedItem, FeedItemKind, MediaImage, Post, PostAuthor
+from dumpstagram.models.feed import (
+   AudioKind,
+   CarouselChild,
+   FeedItem,
+   FeedItemKind,
+   MediaAudio,
+   MediaImage,
+   Post,
+   PostAuthor,
+   VideoRendition,
+)
 from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
@@ -15,7 +25,9 @@ from dumpstagram.models.posts import PostDetail
 from dumpstagram.models.profiles import BioLink, FriendshipStatus, Profile
 
 __all__ = [
+   "AudioKind",
    "BioLink",
+   "CarouselChild",
    "Comment",
    "CommentAuthor",
    "Event",
@@ -24,6 +36,7 @@ __all__ = [
    "FeedItemKind",
    "FriendshipStatus",
    "ListenerStopped",
+   "MediaAudio",
    "MediaImage",
    "Message",
    "MessageSender",
@@ -37,4 +50,5 @@ __all__ = [
    "Profile",
    "Reaction",
    "SentMessage",
+   "VideoRendition",
 ]

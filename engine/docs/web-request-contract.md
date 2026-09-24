@@ -23,6 +23,7 @@ dumpstagram/_private/
       documents/          the persisted GraphQL query registry, one module per domain
       requests/           the body and header set in common.py, built from a Session,
                           and each domain's requests in a module beside it
+      cdn.py              the one request that is not Instagram's API: a media rendition
 ```
 
 `_core` never imports any of it directly and never sees a URL. It passes an intent plus typed
@@ -388,11 +389,34 @@ in a domain module names its path through the constant it imports from there, wh
 resolves across the import since 2026-09-23. Any URL assembled
 at runtime is invisible to this gate.
 
+## The CDN request, 2026-09-23
+
+E1 item 6 added one request that leaves the account's API traffic entirely:
+`build_rendition_request` in `_private/web/cdn.py`, which `client.media.download` sends through a
+third pool the client owns, beside the instagram.com and facebook.com ones. Finding
+`cdn-media-rendition-download`, observed and replayed by `probes/media_shape.py` and
+`probes/media_download_live.py`, five fetches in all.
+
+| Part | Value | Why |
+|---|---|---|
+| Method and URL | `GET` of the rendition's `url` exactly as the payload named it | The URL is signed in its query string, so nothing in it is rebuilt |
+| Host | a subdomain of `cdninstagram.com`, over `https` only | Every rendition URL measured sat there, on a host per point of presence (`scontent-lga3-1` to `-3` fetched). The pool is pinned to the family, W27 |
+| Headers | `user-agent` (the client's), `referer: https://www.instagram.com/`, `accept: */*` | What four of the five fetches carried. The first carried only `user-agent` and answered the same |
+| Cookies | none, and the pool is cookieless | Every fetch carried none and answered 200. The account's `sessionid` must not leave for a third host |
+| Redirects | never followed | None was seen. A 3xx is refused as a failure rather than followed to a host the URL did not name |
+| Length | `content-length` compared with the bytes received where it is sent | Three fetches declared it and matched, one declared none |
+
+The answer is the body inline with status 200, `content-type` `image/jpeg` or `video/mp4`, no
+`content-encoding`, `accept-ranges: bytes` and no `set-cookie`. Music cover artwork sat on a
+second family, `fbcdn.net`, and was never fetched, so the pin does not cover it. A download is not
+paced as API traffic (W26). The browser fetches media alongside a page, many at once, and the
+pool bounds the engine at four connections per client.
+
 ## What is not implemented here
 
 - No write request. Every query here is a read. The write path exists in `_core/writing.py`,
   and no write request has been built on it yet.
 - No mobile surface. The registry and the builders are web only, per ADR-0007.
-- Nothing inside a post beyond its own fields. A carousel's slides, a video's renditions, the
-  comments and the likers all arrive on the feed payload and all stop at the mapper, because no
-  capability reads them.
+- A post's likers, user tags, location and the DASH manifest's representations arrive on the
+  feed payload and stop at the mapper. A carousel's slides, a video's renditions and duration,
+  and a reel's audio are read since E1 item 6.

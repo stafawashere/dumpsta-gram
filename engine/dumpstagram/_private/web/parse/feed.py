@@ -82,10 +82,12 @@ def parse_feed_page(payload: Any) -> Page[FeedItem]:
    - ``owner_id``, an object repeating the author's ``pk`` and ``id`` a third time.
    - ``message_id``-style second names aside, ``caption.pk`` and ``caption.has_translation``,
      which belong to a caption capability that does not exist yet.
-   - ``carousel_media``, the slides themselves, for the same reason.
-   - ``clips_metadata``, ``video_versions``, ``video_dash_manifest``, ``has_audio``,
-     ``number_of_qualities`` and ``view_count``, all null across the measured page because
-     every post on it was a photo or a photo carousel. Video is unmeasured on this surface.
+   - ``number_of_qualities``, ``is_dash_eligible`` and ``view_count``, and everything in the DASH
+     manifest but its duration. The slides in ``carousel_media``, the renditions in
+     ``video_versions``, the duration, ``has_audio`` and the track in ``clips_metadata`` are
+     read since E1 item 6, from eleven reels and seven carousels measured on 2026-09-23. The
+     cover artwork of a song and the account picture of an original sound are dropped, and so
+     are ``clips_metadata.originality_info`` and ``achievements_info``.
    - ``facepile_top_likers``, ``top_likers``, ``social_context``, ``floating_context_items``
      and ``media_notes``, which are presentation the web client assembles.
    - ``logging_info_token``, ``organic_tracking_token``, ``inventory_source`` and

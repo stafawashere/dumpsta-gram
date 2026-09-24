@@ -1,0 +1,252 @@
+{
+ "accessibility_caption": null,
+ "ai_interactive_embodiment_attachment_style_info": null,
+ "ai_label_info": null,
+ "all_previous_submitters": null,
+ "audience": null,
+ "boost_unavailable_identifier": null,
+ "boost_unavailable_reason": null,
+ "boosted_status": null,
+ "brs_severity": null,
+ "can_reshare": null,
+ "can_see_insights_as_brand": false,
+ "can_viewer_reshare": true,
+ "caption": {
+  "has_translation": null,
+  "pk": "10000000000000005",
+  "text": "fixture text"
+ },
+ "caption_is_edited": false,
+ "carousel_media": null,
+ "carousel_media_count": null,
+ "carousel_parent_id": null,
+ "clips_attribution_info": null,
+ "clips_metadata": {
+  "is_shared_to_fb": false,
+  "music_info": null,
+  "original_sound_info": {
+   "audio_asset_id": "10000000000000004",
+   "audio_filter_infos": null,
+   "consumption_info": {
+    "is_trending_in_clips": false,
+    "should_mute_audio_reason": "",
+    "should_mute_audio_reason_type": null
+   },
+   "ig_artist": {
+    "id": "10000000002",
+    "profile_pic_url": "https://scontent.fixture.cdninstagram.com/v/fixture-20.jpg",
+    "username": "fixture username"
+   },
+   "is_explicit": false,
+   "original_audio_title": "fixture original_audio_title",
+   "should_mute_audio": false
+  },
+  "originality_info": null
+ },
+ "coauthor_producers": [],
+ "code": "fixture code",
+ "comment_count": 142,
+ "commenting_disabled_for_viewer": null,
+ "comments_disabled": null,
+ "creative_config": null,
+ "crosspost_metadata": {
+  "is_feed_feedback_aggregated": null,
+  "is_feedback_aggregated": true
+ },
+ "display_uri": null,
+ "enable_media_notes_production": true,
+ "explore": null,
+ "facepile_top_likers": [],
+ "fb_comment_count": 4,
+ "fb_like_count": 39,
+ "feed_demotion_control": null,
+ "feed_recs_demotion_control": null,
+ "floating_context_items": [],
+ "follow_hashtag_info": null,
+ "has_audio": true,
+ "has_liked": false,
+ "has_viewer_saved": null,
+ "headline": null,
+ "hidden_likes_string_variant": -1,
+ "id": "1000000000000000001_10000000002",
+ "ig_media_sharing_disabled": false,
+ "image_versions2": {
+  "candidates": [
+   {
+    "height": 2144,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-6.jpg",
+    "width": 1206
+   },
+   {
+    "height": 1920,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-7.jpg",
+    "width": 1080
+   },
+   {
+    "height": 1280,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-8.jpg",
+    "width": 720
+   },
+   {
+    "height": 1138,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-9.jpg",
+    "width": 640
+   },
+   {
+    "height": 853,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-10.jpg",
+    "width": 480
+   },
+   {
+    "height": 569,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-11.jpg",
+    "width": 320
+   },
+   {
+    "height": 427,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-12.jpg",
+    "width": 240
+   },
+   {
+    "height": 1080,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-13.jpg",
+    "width": 1080
+   },
+   {
+    "height": 750,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-14.jpg",
+    "width": 750
+   },
+   {
+    "height": 640,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-15.jpg",
+    "width": 640
+   },
+   {
+    "height": 480,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-16.jpg",
+    "width": 480
+   },
+   {
+    "height": 320,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-17.jpg",
+    "width": 320
+   },
+   {
+    "height": 240,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-18.jpg",
+    "width": 240
+   },
+   {
+    "height": 150,
+    "url": "https://scontent.fixture.cdninstagram.com/v/fixture-19.jpg",
+    "width": 150
+   }
+  ]
+ },
+ "inventory_source": "fixture inventory_source",
+ "invited_coauthor_producers": [],
+ "is_dash_eligible": 1,
+ "is_fb_only": null,
+ "is_in_profile_grid": false,
+ "is_internal_only": null,
+ "is_paid_partnership": false,
+ "is_seen": false,
+ "is_shared_from_basel": null,
+ "like_and_view_counts_disabled": false,
+ "like_count": 27728,
+ "link": null,
+ "link_text": null,
+ "location": null,
+ "logging_info_token": "fixture logging_info_token",
+ "longform_clip_metadata": null,
+ "main_feed_carousel_starting_media_id": null,
+ "media_attributions_data": [],
+ "media_notes": {
+  "items": []
+ },
+ "media_overlay_info": null,
+ "media_repost_count": 2201,
+ "media_type": 2,
+ "number_of_qualities": 8,
+ "open_carousel_submission_state": null,
+ "organic_tracking_token": "fixture organic_tracking_token",
+ "original_height": 1920,
+ "original_width": 1080,
+ "owner_id": {
+  "id": "10000000002",
+  "pk": "10000000002"
+ },
+ "pk": "1000000000000000001",
+ "preview": null,
+ "product_type": "clips",
+ "profile_grid_control_enabled": false,
+ "saved_collection_ids": null,
+ "sharing_friction_info": {
+  "bloks_app_url": null,
+  "should_have_sharing_friction": false
+ },
+ "social_context": [],
+ "sponsor_tags": null,
+ "story_cta": null,
+ "taken_at": 1789758859,
+ "tappable_elements": [],
+ "top_likers": [],
+ "user": {
+  "__typename": "XDTUserDict",
+  "ai_agent_owner_username": null,
+  "aigm_account_label_info": {
+   "attribution_label_text": null,
+   "is_enabled": false
+  },
+  "friendship_status": {
+   "following": true,
+   "is_feed_favorite": false
+  },
+  "full_name": "fixture full_name",
+  "hd_profile_pic_url_info": {
+   "url": "https://scontent.fixture.cdninstagram.com/v/fixture-2.jpg"
+  },
+  "id": "10000000002",
+  "is_ai_user": null,
+  "is_embeds_disabled": false,
+  "is_private": false,
+  "is_unpublished": false,
+  "is_verified": false,
+  "latest_reel_media": 1000000003,
+  "live_broadcast_id": null,
+  "live_broadcast_visibility": null,
+  "pk": "10000000002",
+  "profile_pic_url": "https://scontent.fixture.cdninstagram.com/v/fixture-1.jpg",
+  "show_account_transparency_details": true,
+  "transparency_label": null,
+  "transparency_product": null,
+  "transparency_product_enabled": false,
+  "username": "fixture username"
+ },
+ "usertags": null,
+ "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT68.26667S\"/>",
+ "video_versions": [
+  {
+   "height": 1280,
+   "type": 101,
+   "url": "https://scontent.fixture.cdninstagram.com/v/fixture-3.mp4",
+   "width": 720
+  },
+  {
+   "height": 1280,
+   "type": 102,
+   "url": "https://scontent.fixture.cdninstagram.com/v/fixture-4.mp4",
+   "width": 720
+  },
+  {
+   "height": 1280,
+   "type": 103,
+   "url": "https://scontent.fixture.cdninstagram.com/v/fixture-5.mp4",
+   "width": 720
+  }
+ ],
+ "view_count": null,
+ "view_state_item_type": 128,
+ "wearable_attribution_info": null
+}
