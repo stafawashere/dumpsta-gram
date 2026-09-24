@@ -23,6 +23,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from types import TracebackType
 
 from dumpstagram._core.cookie_sync import CookieSync
+from dumpstagram._core.doctor import DEFAULT_BUNDLE_LIMIT, DoctorPlan, RotationDoctor, doctor_plan
 from dumpstagram._core.ledger import FileLedger, ledger_path_for
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.realtime.buffer import EventBuffer
@@ -31,6 +32,7 @@ from dumpstagram._core.realtime.pump import SourceContext, SourceFactory, pump_e
 from dumpstagram._core.requesting import BackgroundSender, PacedSender
 from dumpstagram._private.transport import HttpxTransport, cookies_for
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, FACEBOOK_HOST, INSTAGRAM_HOST
+from dumpstagram._private.web.bundles import STATIC_BUNDLE_HOST
 from dumpstagram._private.web.cdn import CDN_HOST_FAMILY, CDN_MAX_CONNECTIONS
 from dumpstagram.behavior import PARITY, Behavior
 from dumpstagram.errors import CheckpointRequired
@@ -506,3 +508,38 @@ def write_policy_for(behavior: Behavior) -> WritePolicy:
       budget_per_hour=behavior.write_budget_per_hour,
       stop_after_unrecognised_rejection=behavior.stop_writes_after_unrecognised_rejection,
    )
+
+
+def _rotation_doctor(
+   client: AsyncClient, *, bundle_limit: int = DEFAULT_BUNDLE_LIMIT
+) -> RotationDoctor:
+   """The rotation canary over ``client``'s account, for the ``dumpsta doctor`` command.
+
+   Not a capability, so not on the client: it reads the private query registry, which ADR-0007
+   keeps off the public surface. It is assembled here because this is the one module outside
+   ``_core`` that may build a transport. The canary shares the client's pacer and session and
+   gets a cookieless transport of its own, pinned to the static bundle host, which it closes.
+   """
+
+   client._refuse_when_closed()
+
+   bundles = HttpxTransport(
+      proxy=client._session.proxy,
+      allowed_host=STATIC_BUNDLE_HOST,
+      cookieless=True,
+   )
+
+   return RotationDoctor(
+      client._sender,
+      bundles,
+      client._session,
+      user_agent=client._user_agent,
+      bundle_limit=bundle_limit,
+      owns_bundle_sender=True,
+   )
+
+
+def _rotation_doctor_plan(bundle_limit: int = DEFAULT_BUNDLE_LIMIT) -> DoctorPlan:
+   """What a canary run would send, known without a session and without sending anything."""
+
+   return doctor_plan(bundle_limit)

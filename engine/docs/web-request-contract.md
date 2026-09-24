@@ -412,6 +412,47 @@ second family, `fbcdn.net`, and was never fetched, so the pin does not cover it.
 paced as API traffic (W26). The browser fetches media alongside a page, many at once, and the
 pool bounds the engine at four connections per client.
 
+## The compiled bundles, read by the rotation canary
+
+Added 2026-09-23 for E1 item 7, rulings W31 to W33 of [web-parity-plan.md](web-parity-plan.md).
+`dumpsta doctor` checks every registry entry against the site without a browser, and that needs
+two requests this contract did not have.
+
+**The bundle host is `static.cdninstagram.com`, and it is the one constant
+`STATIC_BUNDLE_HOST` in `_private/web/bundles.py`.** Backed by the finding
+`static-js-bundle-fetch`, verified twice from browser captures of two home loads on 2026-09-23,
+45 and 59 script fetches from that host, all 200, none setting a cookie. No engine fetch has
+happened yet, and `probes/doctor_bundle_host.py` is the one that will. A bundle is a `GET` with
+`accept */*`, `origin` and `referer` the site, `sec-fetch-dest script`, `sec-fetch-mode cors`
+and `sec-fetch-site cross-site`, as the one browser fetch whose wire headers were recorded sent
+it. It carries no cookie and follows no redirect. `accept-encoding` is left to `httpx`, because
+the browser advertised `zstd` and a client that cannot decode it would hand the parser bytes. The
+canary's third transport is cookieless and pinned to that host, built in `aio.py` beside the
+facebook.com one, and it takes no pacer slot.
+
+**Which bundles.** A page document names its bundles two ways: plainly in `<link rel="preload"
+as="script">` and `<script src>` tags, and with every slash escaped inside the `rsrcMap` of a
+`Bootloader` `handlePayload` payload. `bundle_urls` reads both, keeps only `.js` on the pinned
+host, and keeps document order with each bundle once. The home document of 2026-09-23 named 541
+this way and a cold load fetched 66 of them. The canary reads the inbox document the bootstrap
+already loads and the home document, and stops fetching once every registry operation is found.
+Scripts on `static.xx.fbcdn.net` were fetched by the same loads but named by neither document, so
+that host is not read.
+
+**What a bundle says.** A compiled operation is two modules. `<Operation>.graphql` is the
+artifact, and it depends on `<Operation>_instagramRelayOperation`, whose whole body exports the
+`doc_id` as a string. `compiled_operations` matches the second by pattern and evaluates nothing.
+The shape rests on one id module recorded whole, `usePolarisPostDeleteCommentMutation`, whose id
+equalled the registry's, and two artifacts naming their id module, in the pattern
+`a-bundle-exports-each-operation-s-doc-id-from-its-own-module`. Operations only a lazily loaded
+chunk holds are not reachable this way, so the canary reports them `missing`, never as drift.
+
+**The replays.** `_private/web/canary.py` holds one step per read in
+`documents/catalog.py`'s `READ_QUERIES`, each built by the builder its capability uses and read
+by its mapper, so no request shape is new. `documents/catalog.py` sorts the thirty registry
+entries into ten reads, ten companions and ten writes, and a gate holds it to every entry in the
+domain modules exactly once. Companions and writes are compared with the bundle and never sent.
+
 ## What is not implemented here
 
 - No write request. Every query here is a read. The write path exists in `_core/writing.py`,

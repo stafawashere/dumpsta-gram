@@ -34,6 +34,14 @@ from dumpstagram._cli.commands.direct import (
    run_direct_write,
    run_thread,
 )
+from dumpstagram._cli.commands.doctor import (
+   DoctorFactory,
+   PlanFactory,
+   add_doctor_parser,
+   open_doctor,
+   plan_only,
+   run_doctor,
+)
 from dumpstagram._cli.commands.events import (
    AsyncListeningClientFactory,
    ListeningClientFactory,
@@ -102,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_message_write_parsers(commands)
    add_comment_parsers(commands)
    add_events_parser(commands)
+   add_doctor_parser(commands)
 
    return parser
 
@@ -113,6 +122,8 @@ def main(
    client_factory: ClientFactory = open_client,
    listening_client_factory: ListeningClientFactory = open_listening_client,
    async_listening_client_factory: AsyncListeningClientFactory = open_async_listening_client,
+   doctor_factory: DoctorFactory = open_doctor,
+   plan_factory: PlanFactory = plan_only,
    stdout: TextIO | None = None,
    stderr: TextIO | None = None,
 ) -> int:
@@ -162,6 +173,9 @@ def main(
 
       if arguments.command in ("send-message", "unsend-message"):
          return run_direct_write(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command == "doctor":
+         return run_doctor(arguments, chosen_environment, out, errors, doctor_factory, plan_factory)
 
       if arguments.command == "events":
          return run_events(

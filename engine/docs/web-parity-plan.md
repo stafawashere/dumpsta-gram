@@ -414,6 +414,58 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   observed when they arrive, in a later run if need be, and an item whose acceptance needs him to
   act on cue, such as accepting a follow request, stays in E6. Group threads still need a third
   account under W9.
+- **W31. The canary reads doc_ids from the bundles the page documents name, over plain HTTP.** Ruled
+  2026-09-23 by the orchestrator on the owner's delegation, for E1 item 7. ADR-0003 rules out the
+  browser the census used, so `dumpsta doctor` loads the two documents the engine already loads, the
+  inbox page the bootstrap reads and home, and collects every `.js` bundle on
+  `static.cdninstagram.com` they name, plainly in script and preload tags and with escaped slashes
+  in the bootloader's `rsrcMap` (541 on the home document of 2026-09-23, of which a cold load
+  fetched 66). Each bundle is read for the module `<Operation>_instagramRelayOperation`, whose body
+  exports the operation's `doc_id`, and nothing is evaluated. The scan runs in document order and
+  stops as soon as every stored operation is found, capped at 1000 bundles unless `--bundle-limit`
+  says fewer. Bundles are static, public and immutable, so they go through a third cookieless
+  transport pinned to that host and, like a CDN download under W26, take no pacer slot. Per
+  operation the verdict is `ok` when the bundles compile exactly the stored id, `drift` with every
+  compiled id when they compile another, and `missing` when no scanned bundle compiles it. Missing
+  is not drift: the census found five engine operations only in lazy chunks, which no document
+  names, so they will read `missing` on every run. The command exits 12 on any drift, 13 when
+  nothing drifted but a replay failed, and 0 otherwise. The host literal is backed by the finding
+  `static-js-bundle-fetch`, verified twice from the two recorded browser captures of 2026-09-23 as
+  browser observations, not replays, the precedent the cookie sync findings set;
+  `probes/doctor_bundle_host.py` is the first engine fetch and has not run. The module shape rests
+  on one id module recorded whole and two artifacts, recorded as the pattern
+  `a-bundle-exports-each-operation-s-doc-id-from-its-own-module`. `skills/` is local, so neither is
+  in the repository.
+- **W32. The canary replays the ten capability reads once each, and sends nothing else.** Ruled
+  2026-09-23 by the orchestrator on the owner's delegation, for E1 item 7. "Each verified read
+  finding" is read as the ten queries whose answers a capability reads: the inbox listing, the notes
+  tray, the thread open, both thread page queries, the timeline, the post, its comment page, the
+  profile by id and the profile posts. Each is built with its capability's own request builder and
+  read with its own mapper, so a replay passes only when the capability would still get an answer it
+  can map. Arguments come from earlier replays, never from the caller: the first inbox thread, the
+  first timeline post, the viewer's own `ds_user_id` and the username its profile carries, and a
+  read whose argument never turned up is `skipped` and not sent. The ten page load and profile
+  companions, whose answers nothing reads, and the ten writes are compared with the bundle only. A
+  write is never built, and a gate fails on any write reaching the fake site. Every replay is one
+  paced send, with no retry and no token recovery, so a run costs the two documents and at most ten
+  reads. A checkpoint ends the run at once, and any other classified failure is reported with its
+  class and code while the run goes on. The command is a dry run by default that prints what it
+  would send and opens nothing, and `--live` prints the same count on stderr before the first
+  request.
+- **W33. The canary is private, reached through one assembly function, and no gate moved.** Ruled
+  2026-09-23 by the orchestrator on the owner's delegation, for E1 item 7. It reads the private
+  query registry, and ADR-0007 keeps GraphQL shapes off the public surface, so it is not a client
+  method and the snapshot is unchanged. The logic is `RotationDoctor` in `_core/doctor.py`, the
+  surface knowledge is in `_private/web/bundles.py` and `_private/web/canary.py`, and
+  `_private/web/documents/catalog.py` sorts the thirty registry queries into reads, companions and
+  writes. `tests/test_cli.py` holds the command to importing nothing from `_core` or `_private` but
+  redaction, and `tests/test_import_boundary.py` lets only `aio.py` import `_private` from outside
+  `_core`, so the command reaches the canary through `_rotation_doctor` and `_rotation_doctor_plan`
+  in `aio.py`, which also builds the bundle transport, and neither gate was changed. A gate holds
+  the catalog to every `PersistedQuery` in the domain modules exactly once, so a query added by
+  posting cannot go unchecked by omission. `tests/test_doctor.py` holds 17 gates, 21 cases, and each
+  but the positive control for drift and missing was seen red under the 24 mutations of
+  `scripts/verify_doctor_gates.py`, then green.
 - **W34. The pacing ledger sits beside the session file and only a file-built client keeps
   one.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E1 item 8.
   `from_session_file(path)` on both clients keeps the write budget and the write stop in
@@ -543,6 +595,15 @@ the per-domain layout.
 7. **Rotation canary.** `dumpsta doctor` replays each verified read finding once, compares the
    `doc_id` the current bundle compiles against the stored one, and reports drift. Writes are
    checked by artifact only, never fired. Runs on demand, never in the suite.
+   Built and gated offline 2026-09-23, 0 live requests: `dumpsta doctor`, a dry run unless
+   `--live`, loads the inbox and home documents, reads the bundles they name on
+   `static.cdninstagram.com` for each operation's `doc_id`, replays the ten capability reads once,
+   and checks the ten companions and ten writes by artifact only (W31 to W33). Exit 12 on drift,
+   13 on a failed replay. `tests/test_doctor.py`, 17 gates, every one but a positive control red
+   under the 24 mutations of `scripts/verify_doctor_gates.py`, then green. Not yet run live: the
+   stop condition's zero drift on a fresh session needs `probes/doctor_bundle_host.py` (3
+   requests) and then `dumpsta doctor --live` (2 documents, at most 10 reads, and the bundle
+   fetches).
 8. **Durable pacing ledger.** The pacer's write budget and write stop persist beside the session
    file, so separate processes on one account share them. Closes the 1.0.0 limitation.
    Done 2026-09-23, 0 live requests: `from_session_file` keeps both in `<path>.ledger` under a

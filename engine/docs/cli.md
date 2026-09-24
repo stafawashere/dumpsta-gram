@@ -4,8 +4,11 @@ The engine's first consumer, and the acceptance harness for the Phase 2 stop con
 [ADR-0005](../../docs/decisions/ADR-0005-engine-first-build-order.md) makes it a real
 consumer rather than a demo: every capability it reaches, it reaches through `SyncClient`, so
 anything awkward to do from the command line is a gap in the public API rather than something
-the command works around. `events --surface async` is the one exception, and it goes through
-the other public surface, `AsyncClient`, never past it.
+the command works around. `events --surface async` is one exception, and it goes through
+the other public surface, `AsyncClient`, never past it. `doctor` is the other: it checks the
+private query registry, which is not a capability and stays off the public surface, so it reaches
+the canary through the private assembly function `_rotation_doctor` in `dumpstagram/aio.py` and
+still imports nothing from `_core` or `_private` itself.
 
 It lives at `dumpstagram/_cli/`. The installed console script is the contract and the module
 layout behind it is not, which is why `_cli` is private and why nothing about the command
@@ -51,6 +54,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 10 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -362,6 +366,42 @@ per line rather than one document, because the output is a stream: `{"event": "n
 `events_dropped`. A failure that ends the listener ends the command with that failure's exit
 code, the blocking listener's final `ListenerStopped` included.
 
+### `doctor`
+
+```bash
+uv run dumpsta doctor
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json doctor --live
+```
+
+The rotation canary, E1 item 7 of [web-parity-plan.md](web-parity-plan.md), rulings W31 to W33.
+Without `--live` it opens no session and sends nothing: it prints what a live run would send, the
+two documents, the ten reads it would replay, the bundle limit, and the ten writes and ten
+companions it compares by artifact only. The JSON form is `command`, `live` false and `plan`.
+
+With `--live` it first prints that count on stderr, then loads the inbox document the bootstrap
+reads and the home document, collects every bundle on `static.cdninstagram.com` the two name,
+and reads each for the `doc_id` its operations compile to, stopping once every stored operation
+is found or at `--bundle-limit N`, 1000 by default. Then it replays each capability read once
+through that capability's own request builder and mapper, taking a thread from the inbox, a post
+from the timeline and a username from the viewer's own profile, and skipping a read whose
+argument never turned up. The documents and reads pass the account's pacer. The bundles go
+through a cookieless transport pinned to the static host and take no pacer slot. Nothing is
+retried, and a checkpoint ends the run with exit code 4 and no report.
+
+One line per stored operation: the bundle verdict, the replay verdict, the role, the operation,
+the stored id and the compiled ids, then the error class and code of a failed replay or the
+reason a read was skipped. The bundle verdict is `ok` when the bundles compile exactly the
+stored id, `drift` when they compile another, and `missing` when no scanned bundle compiles it,
+with a note when the operation's `.graphql` artifact was seen without its id module. The replay
+verdict is `ok`, `failed`, `skipped`, or `artifact_only` for a write or a companion. A summary
+line counts documents, bundles named, fetched and failed, reads sent, drift, missing and failed
+replays. The JSON form adds `summary` and `operations` with those keys.
+
+`missing` is not drift. Five engine operations, the note create and delete, the direct unsend,
+`useIGDMessageListPaginationQuery` and `IGDOmniPickerNullStateListQuery`, were found by the
+census only in chunks a page loads later, which no document names, so they are expected to read
+`missing`. `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
 ## Exit codes
 
 A harness cannot branch on prose, so every deliberate failure has its own number. The mapping
@@ -383,6 +423,8 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
 | 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set` and `note delete` are the commands that can end with it |
+| 12 | `doctor --live` only: a stored `doc_id` differs from the one the site's bundle compiles |
+| 13 | `doctor --live` only: no `doc_id` drifted, and a read replayed once came back failed |
 
 Failure text goes to stderr through the library's redaction, which is the one place a cookie
 reaches output with nobody having written it there.

@@ -26,11 +26,24 @@ from dumpstagram.errors import (
    UpstreamRejected,
 )
 
-__all__ = ["EXIT_BY_ERROR", "EXIT_OK", "EXIT_USAGE", "exit_code_for"]
+__all__ = [
+   "EXIT_BY_ERROR",
+   "EXIT_DRIFT",
+   "EXIT_OK",
+   "EXIT_REPLAY_FAILED",
+   "EXIT_USAGE",
+   "exit_code_for",
+]
 
 EXIT_OK = 0
 EXIT_USAGE = 2
 """What `argparse` already exits with on a bad command line, restated so nothing shadows it."""
+
+EXIT_DRIFT = 12
+"""`dumpsta doctor`: a stored `doc_id` differs from the one the site's bundle compiles."""
+
+EXIT_REPLAY_FAILED = 13
+"""`dumpsta doctor`: no id drifted, and a read replayed once came back failed."""
 
 EXIT_BY_ERROR: Mapping[type[DumpstagramError], int] = {
    DumpstagramError: 1,
