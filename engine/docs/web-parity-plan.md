@@ -511,6 +511,54 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   `scripts/verify_ledger_gates.py`. Two write safety anchors followed the code:
   `_refuse_past_the_budget` now takes the record and the instant, and the stop check reads
   `account_is_stopped`.
+- **W41. E2 is prepared from compiled artifacts read without the session, and its contracts stay
+  local.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for the E2
+  preparation. The owner was asleep, so no request carrying the account's cookies was sent. The
+  artifacts come from three sources that spend nothing on the account: the census scout's
+  in-browser reading, the request bodies the skill's captures already keep, and cookieless
+  fetches of static bundles through the doctor's host pin, capped at 80, at least 1 s apart,
+  with no page document fetched, because the recorded home document names them. Its bootloader
+  `compMap` names the chunks of lazily loaded dialogs, which is how the likers and activity
+  feed queries were found without opening either. 78 fetches were spent, one of them a read
+  stall. Every contract lands in the local knowledge base as a hypothesis finding with its
+  replay template, and the `e2_*` probes read the `doc_id`, the path and the root field from
+  there at run time, so no `doc_id` literal enters `engine/`, a probe included. The committed
+  [e2-execution.md](e2-execution.md) names operations, variables and their sources, and holds no
+  `doc_id` and no personal data.
+- **W42. No other person's story is marked seen before the seen mutation is verified on the
+  owner's own.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E2. W6
+  stands: a story read marks seen by default. The mutation is visible to the story's owner, so
+  its live verification is an arranged run: the owner posts a story from his phone, the engine
+  reads it and marks one item seen, a read confirms it, and the owner deletes the story. Until
+  that run passes, `client.stories` does not ship. The read queries mark nothing (INFERENCE), so
+  discovery reads the owner's own reel and highlights, and reads another account's reel only
+  behind the probe's explicit `--third-party-reel` flag, as the read query alone. The W30
+  partner's stories are never read or marked seen, since W30 admits him for direct messages and
+  follows only.
+- **W43. Reading other accounts' public content is not treated as visible to them, and three E2
+  actions are.** Ruled 2026-09-23 by the orchestrator on the owner's delegation, for E2.
+  Profiles, posts, comments and replies, likers, follower lists, explore, hashtag and location
+  pages and search answer a read the other person cannot see (INFERENCE: no web surface lists
+  who read them), so E2 acceptance may read them on public accounts the owner's timeline or
+  explore shows. Three E2 actions are visible and are never run on another person in E1 to E5:
+  marking a story seen (W42), opening a message request thread, which marks it seen to its
+  sender (INFERENCE), and marking a thread read. Two E2 side effects change only the owner's own
+  state, `news/inbox_seen` and the activity view's `mark_as_seen`; discovery sends neither, and
+  the page model decides the default.
+- **W44. A variable never observed is captured, not guessed, and an operation without a
+  capability carries its reason.** Ruled 2026-09-23 by the orchestrator on the owner's
+  delegation, for E2. Where the artifact names an object argument whose fields it does not
+  carry, or an enum whose values it does not list (the reels feed's `data`, the personalised
+  typeahead's `data`, the keyword grid's session ids, saved posts' `collection_types`, the
+  activity view's request objects, the badge's `device_id`), no probe sends a plausible value;
+  the batch waits for one browser capture night of about fifteen loads, listed in
+  [e2-execution.md](e2-execution.md). A scalar whose value was not observed but whose meaning is
+  plain, such as a page size, is sent at the value the neighbouring verified query uses and
+  named as unobserved in its finding. Every E2 census operation that will not back a capability
+  is given a reason there: professional accounts only, ads, generated text, machine
+  translation, a player's thumbnails, an alternate compiled route of an action with a chosen
+  route, or chrome. Items whose non-empty answer needs another person's action, incoming follow
+  requests and the blocked list, are verified empty in E2 and non-empty in E6.
 
 ## Standing rules for every phase
 
@@ -646,6 +694,10 @@ for a clone site. All of it runs on the owner's account.
   comment parity departures recorded in `1.0.0-notes.md`.
 
 Estimated at 20 to 25 new read capabilities and about 4 discovery nights. HYPOTHESIS.
+
+Prepared offline 2026-09-23 with no request carrying the session: nine batches with a probe
+each, one capture night and one arranged story run, in [e2-execution.md](e2-execution.md)
+(W41 to W44).
 
 **Stop condition.** Every read in the census that belongs to a page listed above is either a
 public capability or has a recorded reason it is not. `dumpsta` can render, as text, each page a
