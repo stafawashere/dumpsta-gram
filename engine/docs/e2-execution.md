@@ -605,6 +605,32 @@ One browser night under the ruling 23 cap, reads only, each a page load or a cli
 Opening a message request thread, viewing another person's story and anything that clicks a
 control someone else can see stay out of it (W43).
 
+**Status: read-only part captured on 2026-09-27, reverse-engineer run `run-2026-09-27-131354`, 366
+requests to the site counted from the capture windows, browser background calls included, under
+ruling 23's 400.** Every observed operation is a hypothesis finding with its replay template in
+the local knowledge base, and `probes/e2_capture_replays.py` replays them in six stages, 27
+requests, not yet run. What it found:
+
+- The post page document preloads five queries, among them the comments container and the
+  related grid at count 7, so neither goes out as a request, and the liked by line was not sent.
+- The profile's reels tab and tagged tab each have their query, and the following list is the
+  followers route's twin with a numeric `max_id` offset and `show_many` after each page.
+- `/reels/` sends the desktop clips tab container with `seen_reels` as a JSON string on later
+  pages, not the reels root the census guessed. The personalised typeahead goes out as the
+  refetchable query, not the container, and the keyword grid keys both session ids on one
+  client made uuid.
+- Saved: the saved tab query lists collections only, and "All posts" is REST
+  `feed/saved/posts/`. The story archive grid is a comet GET carrying a page token whose source
+  was not observed, so it is not replayed.
+- The notifications panel is REST only, and the page sent `news/inbox_seen` 7 ms after the panel
+  opened, clearing the owner's own badge. FACT, one observation. The GraphQL activity view was not
+  sent, so its objects stay unobserved.
+- Not captured: mutual followers (two followed accounts showed a count of 0), the blocked list and
+  an audio page (budget), and the explore next page (the window was occluded and the grid never
+  rendered). The story seen mutation and the blocked list with an entry were left out: both are
+  writes, and the orchestrator's first attempt to include them was refused by the session's
+  permission check, so they wait for the owner.
+
 ## Visibility and second account, collected
 
 | Item | Flag |

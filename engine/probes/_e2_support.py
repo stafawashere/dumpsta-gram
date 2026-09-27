@@ -36,8 +36,13 @@ from _probe_support import ENGINE_ROOT, ENV_PATH, SESSION_PATH, load_env, report
 from dumpstagram._core.pacer import Pacer
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._private.transport import HttpxTransport, Request, cookies_for
-from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN, bootstrap
-from dumpstagram._private.web.classify import classify
+from dumpstagram._private.web.bootstrap import (
+   DEFAULT_USER_AGENT,
+   ORIGIN,
+   bootstrap,
+   build_document_request,
+)
+from dumpstagram._private.web.classify import classify, classify_checkpoint_only
 from dumpstagram._private.web.documents.common import (
    API_GRAPHQL_URL,
    GRAPHQL_QUERY_URL,
@@ -457,6 +462,42 @@ class E2Replay:
       is_partial = has_data and every_error_is_a_field_error
 
       return parsed if is_partial else None
+
+   async def send(self, label: str, request: Request) -> Any:
+      """One request the probe shaped itself, for a surface the other helpers do not build."""
+
+      return await self._send(label, request)
+
+   async def document(self, label: str, url: str) -> str | None:
+      """One page document, as a navigation. Only a checkpoint is read off it, since HTML is
+      its payload, and its body is never kept, since it carries the page tokens."""
+
+      await self._space()
+      started = time.monotonic()
+      entry: dict[str, Any] = {"label": label}
+
+      try:
+         response = await self._sender.send(build_document_request(url, self.user_agent))
+         classify_checkpoint_only(response)
+      except STOPPING_FAILURES as failure:
+         entry["failed_with"] = type(failure).__name__
+         self.report["replays"].append(entry)
+
+         raise ProbeStopped(f"{label}: {type(failure).__name__}") from failure
+      except DumpstagramError as failure:
+         entry["failed_with"] = type(failure).__name__
+         self.report["replays"].append(entry)
+
+         return None
+      finally:
+         entry["elapsed_ms"] = int((time.monotonic() - started) * 1000)
+
+      entry["status"] = response.status_code
+      entry["bytes"] = len(response.content)
+      entry["redirected"] = bool(response.history_urls)
+      self.report["replays"].append(entry)
+
+      return response.text
 
    async def engine_read(self, label: str, request: Request) -> dict[str, Any] | None:
       """One read the library already builds, from a verified finding, used for arguments."""

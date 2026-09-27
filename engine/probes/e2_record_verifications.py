@@ -80,6 +80,20 @@ LABEL_TO_FINDING = {
       "ad responses tab": "read-whether-the-ad-responses-tab-shows",
       "suggested threadline reels": "read-suggested-threads-reels",
    },
+   "e2-capture-replays": {
+      "profile reels tab": "read-a-profile-s-reels-tab",
+      "profile tagged tab": "read-a-profile-s-tagged-tab",
+      "following first page": "read-an-account-s-following",
+      "following next page": "read-an-account-s-following",
+      "personalised typeahead": "search-typeahead-personalised-as-sent",
+      "keyword results": "read-keyword-search-results",
+      "reels feed first page": "read-the-reels-tab-first-page",
+      "reels feed next page": "read-the-reels-tab-next-page",
+      "saved collections tab": "read-saved-posts",
+      "all saved posts": "read-all-saved-posts",
+      "close friends list": "read-the-close-friends-list",
+      "post page document": "read-a-post-page-document",
+   },
 }
 
 
