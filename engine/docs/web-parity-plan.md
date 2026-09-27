@@ -7,9 +7,9 @@ end state is an engine that can back a site behaving like instagram.com for a si
 reopens a locked decision.
 
 The phases are named E1 to E6 so they do not collide with the roadmap's Phase 5 (the Swift app)
-and Phase 6 (push transport). E4 absorbs Phase 6. E1 to E5 need only the owner's account and the
-direct message target already named in ruling 30. Everything that needs a second account the
-owner controls waits in E6, which opens once that account exists. Each phase ships as one
+and Phase 6 (push transport). E4 absorbs Phase 6. Since 2026-09-27 the owner has a second
+account, account B (W49), so every item that needs a second account the owner controls sits in
+the phase it belongs to, and E6 keeps only what needs a third account (W51). Each phase ships as one
 additive minor release under ADR-0011, so the Swift app can be built against `1.0.0` in parallel
 and never sees a removed or changed line.
 
@@ -617,6 +617,34 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   translation, a player's thumbnails, an alternate compiled route of an action with a chosen
   route, or chrome. Items whose non-empty answer needs another person's action, incoming follow
   requests and the blocked list, are verified empty in E2 and non-empty in E6.
+- **W49. Account B is the second account, and it is the owner's to spend.** Ruled by the owner on
+  2026-09-27, recorded by the orchestrator. The owner made a new account for the engine's tests,
+  called account B here. Its cookies are in `.env.account-b` at the repository root, gitignored,
+  adopted into `engine/state/session-b.json`, and its username is never named in a committed file,
+  a log or a commit message. A `profile --by-id` read as B answered on 2026-09-27: public, no
+  posts, no followers. B is not another person under W8, W30 and W43, so a write whose effect lands
+  on B is allowed, including making B private, B following the owner, and the owner blocking B,
+  each restored in the same run under ruling 24. No password is kept anywhere. The engine adopts
+  cookies (ADR-0008), and the one live login in E5 is started by the owner, who types B's password
+  at run time.
+- **W50. Account B ages before it sends its first engine write.** Ruled 2026-09-27 by the
+  orchestrator on the owner's delegation. A new account is likely scored more strictly than an
+  aged one (ASSUMPTION, the risk this plan already carried), and a restricted B would stop every
+  two-account item at once. So reads as B run from 2026-09-27, and writes sent as B run from
+  2026-09-30, while the owner uses B by hand meanwhile. Writes sent as the owner that land on B,
+  such as a follow of B, are the owner's writes and run on the owner's schedule. Until
+  2026-10-11 a client built on B's session halves `Behavior`'s write budget, a setting and not a
+  code change. Instagram can link the two accounts through the shared device and network, so a
+  restriction on one may reach the other. ASSUMPTION.
+- **W51. The second-account items move into the phase they belong to, and E6 keeps what needs a
+  third account.** Ruled 2026-09-27 by the orchestrator on the owner's delegation. The plan parked
+  every two-account item in E6 only because no second account existed. With B, the reads that
+  were verified empty (follow requests, message requests, the blocked list) are verified non-empty
+  in E2, the relationship writes and the writes on another account's content join E3, the direct
+  items and the events only the other side causes join E4, where B replaces the owner's hand as
+  the other side of an arranged run, and the live login, the username change, log out and the
+  live multi-account host join E5, all on B (W7). Group threads still need a third participant,
+  so E6 keeps them under W9. The W30 partner is not borrowed for a group without the owner's word.
 
 ## Standing rules for every phase
 
@@ -791,6 +819,9 @@ for a clone site. All of it runs on the owner's account.
   requests, unread counts and badges.
 - **Page models:** the inbox load and the post page document, which close the notes, post and
   comment parity departures recorded in `1.0.0-notes.md`.
+- **With account B (W51):** the follow request list, the message request folder and a message
+  request row read non-empty once B has sent them (writes as B from 2026-09-30, W50), and B's
+  profile, posts, stories and highlights read as another account's.
 
 Estimated at 20 to 25 new read capabilities and about 4 discovery nights. HYPOTHESIS.
 
@@ -818,33 +849,43 @@ Only writes whose effect lands on the owner's account or content, each with its 
   edit and delete from the owner's own archived stories.
 - **Follow a public account and unfollow it,** already shipped, extended with favorites add and
   remove, which is private to the viewer.
+- **Relationships with account B (W51):** follow B while B is private and cancel the pending
+  request, accept and deny B's request to follow the owner, remove B as a follower, block and
+  unblock, restrict and unrestrict, close friends add and remove, mute and unmute, and approve a
+  restricted account's comment.
+- **B's content (W51):** like and reply to a comment on B's post, story like, story reply and
+  reaction, note reply.
 
-Estimated at 25 to 30 new writes. HYPOTHESIS.
+Estimated at 40 to 45 new writes. HYPOTHESIS.
 
 **Stop condition.** Every E3 write has run once live from `dumpsta`, confirmed by an E2 read in the
-same run and reversed where a reversal exists. A reel is published, read back with its video
-rendition, downloaded, and deleted.
+same run and reversed where a reversal exists, and every write that lands on B is also confirmed by
+a read as B. A reel is published, read back with its video rendition, downloaded, and deleted.
 
-## E4, 1.4.0: direct messaging in the existing thread, and push transport
+## E4, 1.4.0: direct messaging with account B, and push transport
 
-This absorbs roadmap Phase 6 (W3). Every message runs in the ruling 30 one-to-one thread (W8), and
-every event the other side would have to cause is either produced by the owner from another
-device, as Phase 4's arranged send was, or deferred to E6.
+This absorbs roadmap Phase 6 (W3). Every message runs in a one-to-one thread between the owner and
+account B (W51). The engine drives both sides, so an event the other side has to cause is caused
+by a second client on B's session in the same run, and no arranged run needs the owner's hand. The
+ruling 30 thread and the W30 partner stay available and no acceptance depends on them.
 
 - **Messages:** photo, video and voice send, reactions, replies, edit, unsend of media, the like
   heart, forward, share a post into the thread, message search.
-- **Threads:** mark seen at parity (W6), typing indicator, mute, pin, vanish mode, delete the
-  thread from the owner's inbox only if the census shows it is recoverable, otherwise E6.
+- **Threads:** mark seen at parity (W6), typing indicator, mute, pin, vanish mode, and delete the
+  thread from the owner's inbox, since B can send into a new one.
+- **Two sides (W51):** a message request from B accepted and declined, a new one-to-one thread
+  opened from a profile, and the events only the other side causes: B's reaction, typing, seen,
+  edit and unsend.
 - **Push transport.** Discover the realtime socket the web inbox holds, replace the poller behind
   `events()`, and keep polling as a named fallback `Behavior` setting.
 - **Event kinds,** additive to the `Event` hierarchy: reaction, unsend, edit, seen, typing, thread
   update, and the notification kinds from the activity feed. Each is gated offline on recorded
-  frames and seen live from the owner's own second device.
+  frames and seen live as caused by B.
 
 **Stop condition.** Every E4 message kind and reaction is sent and reversed from `dumpsta` in the
-existing thread. `dumpsta events` on push prints each new event kind the owner can cause alone
-within 5 s of the action on both facades, and survives a dropped socket by reconnecting, gated
-offline. The polling fallback still passes the Phase 4 stop condition.
+thread with B. `dumpsta events` on push prints each new event kind within 5 s of B causing it, on
+both facades, and survives a dropped socket by reconnecting, gated offline. The polling fallback
+still passes the Phase 4 stop condition.
 
 ## E5, 1.5.0: settings, login offline, multi-account host offline, parity closure
 
@@ -852,45 +893,36 @@ offline. The polling fallback still passes the Phase 4 stop condition.
   links, gender, avatar, activity status, story and message controls, notification settings, and
   read-only account data such as login activity where the web surface exposes it. The private
   account toggle is included, since it is reversible, and restored within the run.
-- **Login, built and gated offline.** Password, two factor, and a checkpoint surfaced as
-  `CheckpointRequired` with its required action, never solved or retried. Discovery reads the login
-  page's compiled operations with `scout_operations.py`, which fires nothing. The live login runs
-  in E6 on the second account (W7).
-- **Multi-account host, built and gated offline.** Many `Session`s in one process with one pacer
-  per account, a shared loop thread and per-account event fan-out, gated for isolation: no state,
-  cookie or budget crosses accounts. Its live run is in E6.
+- **Login.** Password, two factor, and a checkpoint surfaced as `CheckpointRequired` with its
+  required action, never solved or retried. Discovery reads the login page's compiled operations
+  with `scout_operations.py`, which fires nothing, and it is gated offline on recorded answers. The
+  live login runs on account B from a fresh process with no cookies, started by the owner, who
+  types B's password (W7, W49).
+- **Account B's lifecycle (W51):** a username change and its restore, and log out followed by a
+  fresh session adopted from the browser, all on B, since W7 keeps each of them off the owner's
+  only other session.
+- **Multi-account host.** Many `Session`s in one process with one pacer per account, a shared loop
+  thread and per-account event fan-out, gated offline for isolation: no state, cookie or budget
+  crosses accounts. Live, the owner and B run for an hour in one process with events flowing on
+  both and no cross-account request.
 - **Parity closure.** Every departure in the release notes is closed or re-recorded with the reason
   it cannot close. Human timing is resampled on at least three further days.
 - **Coverage report.** `census.md` regenerated against the current bundle, with the share of web
   actions covered stated as a number, and every remaining gap marked either E6 or excluded.
 
 **Stop condition.** Every E5 setting is changed and restored live from `dumpsta` on the owner's
-account. Login and the multi-account host pass their offline gates against recorded answers. The
-census shows every single-account web action as a capability or a recorded exclusion.
+account. Login and the multi-account host pass their offline gates against recorded answers, the
+live login on B succeeds once, and the hour on both accounts sends no cross-account request. The
+census shows every web action two accounts can reach as a capability or a recorded exclusion.
 
-## E6, 1.6.0: everything that needs a second account
+## E6, 1.6.0: group threads and a third account
 
-Opens when the owner has created a second account, and a third for group threads (W9). Suggested
-setup: a new account on the same residential network, aged a few days with ordinary browsing
-before any engine write, following and followed by the owner.
+Opens when the owner has a third account, since a group needs three participants (W9, W51). Every
+other item this phase once held moved into E2 to E5 with account B.
 
-- **Relationships:** follow a private account and cancel the pending request, accept and deny an
-  incoming follow request, remove a follower, block and unblock, restrict and unrestrict, close
-  friends add and remove, mute a messaged account, approve a restricted account's comment.
-- **Interaction with another person's content:** like and reply to a comment on another account's
-  post, story like, story reply and reaction, note reply.
-- **Direct:** message requests accepted and declined, a new one-to-one thread created from a
-  profile, thread delete, and the event kinds only the other side can cause (their reaction, their
-  typing, their seen).
 - **Group threads:** create, rename, add and remove members, leave, admin actions, and group
-  events. Needs the third account.
-- **Login live:** the E5 login on the second account, from a fresh process with no cookies,
-  including its two factor path.
-- **Username change** on the second account, and restored.
-- **Log out** on the second account, then sign it back in, since ending the only account's
-  session is the lockout W7 keeps off it (W13).
-- **Multi-account host live:** the owner and the second account run for an hour in one process with
-  events flowing on both and no cross-account request.
+  events, run with the owner, B and the third account.
+- Anything discovery shows needs a third participant, moved here under the standing rule.
 
 **Stop condition.** Every E6 item has run once live from `dumpsta`, confirmed by a read and reversed
 where a reversal exists. The census shows every in-scope web action as a capability or a recorded
@@ -901,11 +933,11 @@ exclusion, with no item left marked E6.
 | Phase | Release | New capabilities, HYPOTHESIS | Needs from the owner |
 |---|---|---|---|
 | E1 | 1.1.0 | about 6 plus infrastructure | Nothing |
-| E2 | 1.2.0 | 20 to 25 reads | Nothing |
-| E3 | 1.3.0 | 25 to 30 writes | Nothing |
-| E4 | 1.4.0 | 20 to 25 plus push | Sending from another device during arranged runs |
-| E5 | 1.5.0 | 15 to 20 plus login and host, offline | Nothing |
-| E6 | 1.6.0 | 25 to 30 plus live login and host | A second account, and a third for groups |
+| E2 | 1.2.0 | 20 to 25 reads | Using B by hand until its writes open on 2026-09-30 |
+| E3 | 1.3.0 | 40 to 45 writes | Nothing |
+| E4 | 1.4.0 | 25 to 30 plus push | Nothing, B is the other side |
+| E5 | 1.5.0 | 20 to 25 plus login and host | Typing B's password once for the live login |
+| E6 | 1.6.0 | group threads | A third account |
 
 ## Risks
 
@@ -915,6 +947,7 @@ exclusion, with no item left marked E6.
   riskiest items off it, but posting, reels and settings changes still run on it.
 - The web client changes weekly. A capability verified in E2 may need repair by E4. Repairs are
   patch releases and do not touch the surface.
-- A new second account may be treated more strictly than an aged one, so E6 results may not carry
-  back to the owner's account. ASSUMPTION.
+- Account B is new and may be treated more strictly than an aged one, so a result on B may not
+  carry back to the owner's account, and a restriction on B may reach the owner's through the
+  shared device and network (W50). ASSUMPTION.
 - The Swift app and this plan compete for the same live request budget and the same account.
