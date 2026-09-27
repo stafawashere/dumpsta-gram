@@ -70,6 +70,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `story-seen REEL_ID ITEM_PK` | 1 and 1 write, plus 1 if the session has no token yet | Marks one story item seen. Writes to the account, and the item's owner sees you among its viewers |
 | `follow-requests` | 1 | Lists the accounts asking to follow the viewer, the first page, and whether more exist |
 | `activity` | 1, plus 1 if the session has no token yet | Reads the viewer's activity feed. Marks nothing seen |
+| `saved` | 1 | Lists the first page of the viewer's saved posts and whether more exist |
+| `collections` | 1, plus 1 if the session has no token yet | Lists the viewer's saved collections with their kinds and post counts |
+| `close-friends` | 1, plus 1 if the session has no token yet | Lists the viewer's close friends. Changes nothing |
 | `explore` | 1 | Reads the explore grid's first page, section by section, and whether it goes on |
 | `place LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads a place's header: name, category, address, coordinates and post count |
 | `location LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads the first page of the posts tagged at a place, and whether more exist |
@@ -87,7 +90,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
 | `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
-| `doctor` | 0 without `--live`. With it, 2 documents and at most 24 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 37 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -596,6 +599,34 @@ Both take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_own_account_cli_acceptance.py`, runs both on the owner's own account, two requests,
 and checks each sent exactly one API request; it ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log `logs/e2-own-account-cli-2026-09-27-042111.json`.
 
+### `saved`, `collections` and `close-friends`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta saved
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json collections
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta close-friends
+```
+
+`saved` prints one line per saved post of the "All posts" view's first page, its code, author,
+product type, like count and the first line of its caption, then `posts: N  more_available: B`.
+No next page is read (W105). The JSON form is `command`, `post_count`, `more_available` and
+`posts`, each with the keys of a `post` without `comment_count` and `is_seen`, which the view does
+not carry; `like_and_view_counts_disabled` is null where the post does not carry it.
+
+`collections` prints one line per collection of the saved tab, its id, name, kind and post count,
+then `collections: N  more_available: B`. The JSON form is `command`, `collection_count`,
+`more_available` and `collections`, each with `id`, `name`, `kind` (`all_posts`, `audio` or
+`other`), `media_count` and `covers` (`media_id`, `image_urls`) (W106).
+
+`close-friends` prints one line per account on your close friends list, its id, username and full
+name, then `close friends: N`. It changes nothing and sends none of the settings page's other
+requests (W107). The JSON form is `command`, `account_count` and `accounts`, each in the
+`followers` row form with `is_private` and `friendship_status` null.
+
+All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_own_account_more_cli_acceptance.py`, runs the three on the owner's own account, three
+requests, five at most, and checks each sent exactly one request of its own kind; it ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`.
+
 ### `explore`, `place`, `location` and `new-posts`
 
 ```bash
@@ -858,7 +889,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`, and `scripts/verify_search_gates.py` for the seven `recent-searches`, `search` and `hashtag` mutations on the two command gates in `tests/test_search.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`, and `scripts/verify_search_gates.py` for the seven `recent-searches`, `search` and `hashtag` mutations on the two command gates in `tests/test_search.py`, and `scripts/verify_own_account_more_gates.py` for the four `saved`, `collections` and `close-friends` mutations on the three command gates in `tests/test_own_account_more.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

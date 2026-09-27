@@ -1920,6 +1920,123 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   `--non-personalised`. The surface grew from 970 lines to 1028, 58 added and none removed or
   changed. Live traffic for the batch: the search and reels stages' 10 requests on 2026-09-27;
   `probes/e2_discovery_search_cli_acceptance.py`, planned at seven requests and nine at most, ran on 2026-09-27, 7 requests, every step exit 0, log `logs/e2-discovery-search-cli-2026-09-27-163749.json`.
+- **W105. The saved posts are `account.saved() -> SavedPosts`, the first page with the upstream's
+  more flag, of a new `SavedPost`.** Ruled 2026-09-27 for E2 batch 11c on the owner's delegation.
+  `GET https://www.instagram.com/api/v1/feed/saved/posts/` (finding `read-all-saved-posts`, captured
+  once in `run-2026-09-27-131354` on clicking "All posts", replayed twice in
+  `run-2026-09-27-151121`) with no query and the follow list's header set. FACT over both replays,
+  1.12 MB each: status `ok`, `num_results` 21, `more_available` true, `auto_load_more_enabled`
+  false, a 120 character `next_max_id`, and 21 items each `{media}`, 20 reels and one saved
+  advertisement, `product_type` `ad`, all `media_type` 2. No next page was asked for, so under W45
+  it ships as the first page, `SavedPosts(posts, has_more)`, `has_more` the upstream's
+  `more_available`, with no cursor and no `iter_saved`; INFERENCE, `max_id` from `next_max_id`
+  would ask for the next page, and nothing sends it. The item is the explore grid's REST media
+  (W77), 150 keys over the 42 read, but `comment_count` was absent on all 42, which `Post`
+  requires as a frozen `int`, and `is_seen` absent too, so the brief's `Post` does not fit without
+  a guessed count; it is a new `SavedPost` with `Post`'s fields less `comment_count` and `is_seen`,
+  read by the timeline's field readers after W77's `REST_KEYS_ABSENT_AS_NULL`. The advertisement
+  lacked `like_and_view_counts_disabled` and `clips_metadata` beside 48 other keys, so that flag is
+  `bool | None`, `None` where absent, and its `audio` `None`; every reel read carried both. Every
+  item was a video, so the photo and carousel reading is W77's, unobserved here. The GET carries
+  no page token, so no bootstrap is spent. Departure: the referer is the site root where the
+  browser's was `/<username>/saved/all-posts/`, since the engine holds no username without a read,
+  as W54 ruled for the profile tabs; ASSUMPTION until the acceptance run answers.
+- **W106. The saved tab is `account.collections() -> SavedCollections`, amending W75.** Ruled
+  2026-09-27 for E2 batch 11c on the owner's delegation. W75 held collections because the picker
+  query had only answered an empty list. The saved tab's own query,
+  `PolarisProfileSavedTabContentQuery` (finding `read-saved-posts`, `27584326974521636`, on
+  `/api/graphql`), captured once and replayed twice with `collection_types`
+  `["ALL_MEDIA_AUTO_COLLECTION", "MEDIA", "AUDIO_AUTO_COLLECTION"]` and `first` 12, answered two
+  collection rows both times, 32148 bytes: FACT, `IGAllMediaAutoCollection`, `collection_id`
+  `ALL_MEDIA_AUTO_COLLECTION`, `collection_name` "All posts", `collection_media_count` 232, four
+  `cover_media_list` entries `{id, image_versions2.candidates[{url}]}` of 11 or 12 URLs with no
+  size, `cover_audio_list` empty and `cover_media` null; and `XDTAudioAutoCollection`,
+  `AUDIO_AUTO_COLLECTION`, "Audio", count null, four `cover_audio_list` entries
+  `{thumbnail_uri}` and no `cover_media_list` key; `page_info.has_next_page` false, `end_cursor`
+  "1". The "All posts" row carries the collection shape, so the capability ships:
+  `SavedCollections(collections, has_more)`, `SavedCollection(id, name, kind, media_count,
+  covers)` and `CollectionCover(media_id, image_urls)`, every rendition URL kept since none
+  carries a size. `SavedCollectionKind` has `ALL_POSTS` and `AUDIO` by `__typename` and `OTHER`:
+  the owner has no named collection, so its type name is unobserved, and refusing an unread
+  type would fail the read for every account with one, the ordinary case; a row of another type
+  is read with the keys both rows carried and reported as `OTHER` (INFERENCE that a named
+  collection is such a row, since the query asks for `MEDIA`). No pagination query for the tab was
+  observed, so it is the first page with `has_more`, and the picker query and its next page stay
+  unregistered. Departure: the site root as referer, where the browser's was
+  `/<username>/saved/`, W105's reason.
+- **W107. The close friends list is `account.close_friends() -> tuple[ProfileSummary, ...]`, read
+  out of the Bloks tree by structure.** Ruled 2026-09-27 for E2 batch 11c on the owner's
+  delegation. `POST https://www.instagram.com/async/wbloks/fetch/` with `appid`
+  `com.instagram.portable_settings.privacy.close_friends_screen_v2`, `type` app and `__bkv` the
+  Bloks version id (finding `read-the-close-friends-list`, captured on a load of
+  `/accounts/close_friends/` and replayed twice), the comet form the replays sent with `__crn`
+  `comet.igweb.PolarisSettingsCloseFriendsRoute` and `params` `{}`, and the page's wire header set,
+  which carried no `x-` header; the finding's list of headers named three the wire did not carry,
+  and the replay without them answered. Nothing unobserved is needed. FACT over four answers, the
+  two replays and the page's two fetches, about 140 KB each: `payload.layout.bloks_payload` holds
+  eight data entries and a tree; two entries are arrays of maps keyed `user_id`, `username`,
+  `name`, `profile_pic_url`, `is_verified`, `user_id` a 64 or 32 bit constant, one of 7 rows and
+  one of 114, disjoint and identical in order across all four; each is mapped into rows by a
+  component whose `on_bind` is `bk.action.array.Map` over `bk.action.bloks.GetVariable2` of the
+  entry, and the rows bind `selected` to a state variable whose initial value is `(bk.action.bool.
+  Const, true)` for the 7 and `false` for the 114, each row's click sending
+  `make_close_friend` with `should_not_make_close_friend` that state. So the 7 are the close
+  friends and the 114 the accounts offered to add (INFERENCE from the bindings, consistent with
+  the screen's check icons). The component ids differed on every answer, so the parser finds the
+  lists by that structure: exactly two mapped lists with one starting selected, each row the five
+  keys, or `SchemaChanged`. `parse/bloks.py` reads the script grammar into calls, strings and
+  bare words and evaluates nothing. An empty close friends list is UNRESOLVED, since the owner's
+  was not empty, and a list longer than seven may page (UNRESOLVED; no paging binding was seen on
+  the selected list). A row is `ProfileSummary` with `name` as `full_name` and `is_private` and
+  `friendship_status` `None`. Departures: the page's `PolarisSettingsDesktopContainerQuery`, its
+  second, near identical fetch and its `close_friend_count_updater` action, whose effect is
+  UNRESOLVED, are not sent; a gate holds the read to one fetch.
+- **W108. The blocked list does not ship; the replay probe is written, and the parser a later
+  batch needs is described.** Ruled 2026-09-27 for E2 batch 11c on the owner's delegation. Finding
+  `read-the-blocked-accounts-list` is a hypothesis never replayed by the engine. Its captures,
+  read for this ruling: the "empty" capture loaded `/accounts/blocked/`, which answered the error
+  route and sent no Bloks request, so the empty list was not observed there; the other two loaded
+  `/accounts/blocked_accounts/` and each sent two Bloks fetches with the close friends fetch's
+  form fields and wire headers and `__crn` `comet.igweb.PolarisBlockedAccountsSettingsRoute`: the
+  screen app, `appid` `com.instagram.portable_settings.privacy.blocked_accounts_v2`, `type` app,
+  `params` `{}`, 5607 bytes, then, 179 ms and 166 ms later with no click, the Bloks action
+  `appid` `com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader`, `type`
+  action, `params` `{"container_id_of_list":<n>,"container_id_of_rows":<n + 1>}`, whose two ids
+  differed per load and are the `bk.action.i32.Const` pair the screen answer passes to
+  `AsyncActionWithDataManifest` for the reloader, 57395 and 56544 bytes. The reloader's answer
+  carries one data entry, an array of maps keyed `user_id` (a string), `username`,
+  `secondary_text`, `is_verified`, `profile_pic_url` and `is_auto_blocked`, 53 rows with account B
+  blocked and 52 after unblocking, and a tree whose one action replaces the list container's
+  children; no paging word appears. So the list is not empty and a list is readable, but the
+  request pair was never replayed and the reloader is an action, so under the standing rule
+  nothing ships. `probes/e2_blocked_list_replay.py`, read only, three requests (the bootstrap, the
+  screen app and the reloader action), sends the pair exactly as captured, reads the container ids
+  out of the first answer with the engine's Bloks reader, which reproduces both captures' params
+  byte for byte offline, keeps both bodies and logs counts and key names only; it ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-blocked-list-replay-2026-09-27-174606.json` and
+  needs a second run to verify. The later batch's parser: read the screen answer's reloader call
+  for the two ids, send the action, and map the one data entry's rows by those six keys into
+  `ProfileSummary` plus the two flags, refusing any other row shape, and rule on whether
+  `secondary_text` is the full name.
+- **W109. Gates, the canary, the harness and the surface for batch 11c.** Ruled 2026-09-27.
+  `SAVED_COLLECTIONS` joined `READ_QUERIES` and the canary replays it keyed on nothing, the
+  viewer's own tab; the two REST and Bloks reads have no `doc_id` and are not replayed (W60). A
+  live doctor run goes from at most 36 reads to 37 and from at most 38 paced requests to 39.
+  `tests/test_doctor.py` followed in three literals the W48 way, 19 failed before the edit and 30
+  passed after: the registry count, 61 to 62, the dry run's paced total, 38 to 39, and the stated
+  plan, 36 reads to 37; it gained the recorded tab answer and one gate on the step's variables.
+  The new `tests/test_own_account_more.py` holds 20 gates, 26 cases, on fixtures pseudonymised by
+  `scripts/build_own_account_more_fixtures.py` from the engine replays, 519 values checked
+  absent, the 111 offered rows dropped from the close friends answer among them.
+  `scripts/verify_own_account_more_gates.py` holds 46 mutations, 46 of 46 fired. Two anchors of
+  `scripts/verify_account_gates.py`, `params={},` and `if not token:`, were lengthened, since the
+  new builders repeat both; it was rerun, 31 of 31, and the doctor harness 24 of 24, and
+  `scripts/check_harness_exits.py` passed. The parity table gained `account.saved`,
+  `account.collections` and `account.close_friends`. The commands are `saved`, `collections` and
+  `close-friends`, and `probes/cli_request_counter/` names the `async` path segment so the
+  acceptance can count Bloks fetches. The surface grew from 1028 lines to 1091, 63 added and none
+  removed or changed. Live traffic for the batch: the saved and close friends stages' replays of
+  `run-2026-09-27-151121`; `probes/e2_own_account_more_cli_acceptance.py`, three requests, five
+  at most, ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`.
 
 ## Standing rules for every phase
 

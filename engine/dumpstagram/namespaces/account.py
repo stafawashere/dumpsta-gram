@@ -1,4 +1,5 @@
-"""``client.account``, reading the viewer's own pending follow requests and activity feed.
+"""``client.account``, reading the viewer's own pending follow requests, activity feed, saved
+posts and collections, and close friends list.
 
 Reading the activity feed through the engine does not mark it seen. A browser opening it follows
 the read with a separate request that clears the viewer's own notifications badge, and the
@@ -9,8 +10,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dumpstagram._core.account import read_activity_feed, read_follow_requests
-from dumpstagram.models import ActivityFeed, FollowRequests
+from dumpstagram._core.account import (
+   read_activity_feed,
+   read_close_friends,
+   read_follow_requests,
+   read_saved_collections,
+   read_saved_posts,
+)
+from dumpstagram.models import (
+   ActivityFeed,
+   FollowRequests,
+   ProfileSummary,
+   SavedCollections,
+   SavedPosts,
+)
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -85,6 +98,74 @@ class AsyncAccount:
          )
       )
 
+   async def saved(self) -> SavedPosts:
+      """Read the posts the viewer saved, the first page of the "All posts" view. One live
+      request.
+
+      The posts are in the upstream's order, and ``has_more`` says whether the view goes on.
+      Nothing reads further, because no next page has been observed. A saved post carries no
+      comment count, since the view sends none; read it with
+      :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` for that.
+
+      A browser sends this from the viewer's saved page. This sends it with the site root as its
+      referer, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_saved_posts(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def collections(self) -> SavedCollections:
+      """Read the viewer's saved tab: the collections it lists, the two automatic ones, "All
+      posts" and "Audio", among them. One live request, and a bootstrap when the session holds no
+      page token.
+
+      The first page only, with the upstream's ``has_more``. A collection the viewer named has
+      not been read, so such a row is reported as
+      :attr:`~dumpstagram.models.SavedCollectionKind.OTHER`. The referer is the site root, where
+      a browser's is the viewer's saved page, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_saved_collections(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def close_friends(self) -> tuple[ProfileSummary, ...]:
+      """Read the viewer's close friends list, in the order its settings screen lists them. One
+      live request, and a bootstrap when the session holds no page token.
+
+      The list is read out of the screen's Bloks UI tree, so a screen laid out differently from
+      the one read raises :class:`~dumpstagram.errors.SchemaChanged` rather than returning a
+      partial list. A row carries no relationship and no privacy flag. Nothing is changed and no
+      count is updated: the page's own ``close_friend_count_updater`` action is not sent.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_close_friends(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
 
 class SyncAccount:
    """The viewer's own account, as ``client.account`` on :class:`~dumpstagram.client.SyncClient`.
@@ -125,4 +206,40 @@ class SyncAccount:
       return self._client._loop.run(
          self._client._impl.account.activity(),
          operation="SyncClient.account.activity",
+      )
+
+   def saved(self) -> SavedPosts:
+      """Read the posts the viewer saved. Blocks until it has them.
+
+      The same call as :meth:`AsyncAccount.saved`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.account.saved(),
+         operation="SyncClient.account.saved",
+      )
+
+   def collections(self) -> SavedCollections:
+      """Read the viewer's saved tab. Blocks until it has it.
+
+      The same call as :meth:`AsyncAccount.collections`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.account.collections(),
+         operation="SyncClient.account.collections",
+      )
+
+   def close_friends(self) -> tuple[ProfileSummary, ...]:
+      """Read the viewer's close friends list. Blocks until it has it.
+
+      The same call as :meth:`AsyncAccount.close_friends`, run on the shared loop thread. One
+      live request, and nothing is changed.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.account.close_friends(),
+         operation="SyncClient.account.close_friends",
       )

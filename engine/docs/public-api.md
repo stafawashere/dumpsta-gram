@@ -429,7 +429,7 @@ client.media.like(post.pk)
 
 | Property | Awaitable class | Blocking class | Covers |
 |---|---|---|---|
-| `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests and activity feed, read without marking anything seen |
+| `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests, activity feed, saved posts and collections, and close friends list, read without marking or changing anything |
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, whether the home feed has new posts, and the reels feed |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
@@ -930,13 +930,17 @@ The stories gallery query backs no method (W71).
 
 ### The viewer's own account
 
-Landed 2026-09-27, E2 batch 6 of [web-parity-plan.md](web-parity-plan.md), rulings W73 to W76.
-The `account` namespace, on both clients, with no flat twin:
+Landed 2026-09-27, E2 batch 6 of [web-parity-plan.md](web-parity-plan.md), rulings W73 to W76,
+and E2 batch 11c, rulings W105 to W109. The `account` namespace, on both clients, with no flat
+twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
 | `account.follow_requests()` | `FollowRequests` | one |
 | `account.activity()` | `ActivityFeed` | one, plus a bootstrap when the session holds no token |
+| `account.saved()` | `SavedPosts` | one |
+| `account.collections()` | `SavedCollections` | one, plus a bootstrap when the session holds no token |
+| `account.close_friends()` | `tuple[ProfileSummary, ...]` | one, plus a bootstrap when the session holds no token or no Bloks version id |
 
 ```python
 waiting = client.account.follow_requests()
@@ -970,9 +974,41 @@ accounts it names as `links` (`ActivityLink`: `start`, `end`, `kind`, `id`, `use
 `shortcode`, `image_url`), and where the item carries them the main and second account, the
 account a follow button acts on with the viewer's relationship to it (`follow_account`), a
 `comment_id` and the upstream's app route as `destination`. Only earlier items have been read;
-new and priority items are ASSUMED to share their shape. Saved collections, saved posts, the
-archive, the close friends and blocked lists and the notifications badge are not part of it
-(W75).
+new and priority items are ASSUMED to share their shape. The archive, the blocked list and the
+notifications badge are not read yet.
+
+**Saved posts.** `saved()` reads the first page of the saved "All posts" view, `SavedPosts` with
+`posts` in the upstream's order and `has_more`, the upstream's `more_available`. No next page has
+been observed, so there is no cursor and no `iter_saved` (W105). A `SavedPost` is the explore
+grid's REST post without `comment_count`, which the view never sends, and without `is_seen`;
+`media.by_code` with its `code` reads the whole post. A saved advertisement carries no
+`like_and_view_counts_disabled`, so it is `None` there. Every post read was a video.
+
+```python
+saved = client.account.saved()
+for post in saved.posts:
+   print(post.code, post.author.username, post.product_type)
+```
+
+**Saved collections.** `collections()` reads the saved tab, `SavedCollections` with
+`collections` and `has_more`, the page's `has_next_page`. A `SavedCollection` carries `id`, the
+upstream's `collection_id`, `name`, `kind` (`SavedCollectionKind.ALL_POSTS`, `AUDIO` or `OTHER`),
+`media_count`, `None` on the audio collection, and its `covers` (`CollectionCover`: `media_id`
+and every rendition's URL, or an audio thumbnail with no `media_id`). The account read had only
+the two automatic collections, so a collection the viewer named reads as `OTHER` until its type
+is observed (W106).
+
+**Close friends.** `close_friends()` returns the accounts on the viewer's close friends list, in
+the order its settings screen lists them, as `ProfileSummary` rows with no privacy flag and no
+relationship. The screen answers as a Bloks UI tree rather than a list, and the rows are found in
+it by structure; a tree laid out differently raises `SchemaChanged` rather than returning a
+partial or wrong list. Nothing is changed: the page's own count update action, whose effect is
+unknown, is not sent (W107).
+
+```python
+for account in client.account.close_friends():
+   print(account.id, account.username)
+```
 
 ### Discovery
 

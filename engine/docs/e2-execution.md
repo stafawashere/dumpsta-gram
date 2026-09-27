@@ -45,7 +45,7 @@ capture night that unblocks the rest.
 | 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
 | 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
-| 11 | Replays the capture unblocks, 11a profile done 2026-09-27 | `probes/e2_capture_replays.py` | 27, profile stage spent 10 | 7 |
+| 11 | Replays the capture unblocks, 11a profile, 11b reels and search, 11c saved and close friends done 2026-09-27 | `probes/e2_capture_replays.py` | 27, profile stage spent 10 | 7 |
 | 12 | Story seen, done 2026-09-27 on the owner's own highlight | `probes/story_seen_own_highlight.py` | 4, spent 4 | |
 
 Batches 1 to 9 spend 80 requests, 114 at most, 9 of them bootstraps, at the probe spacing of
@@ -356,10 +356,13 @@ Also in the bundle: `REST /api/v1/feed/reels_media/`, an alternate reel route ne
 | `REST POST /api/v1/news/inbox_seen/` | mark the activity feed seen | hypothesis, observed once, never sent (W74) |
 | `PolarisActivityFeedStoriesViewQuery` | the activity feed and requests over GraphQL | hypothesis, lazy, capture first |
 | `usePolarisNotificationsNavItemQuery` | the notifications badge | hypothesis, capture first |
-| `PolarisSavedCollectionPickerQuery` | saved collections | verified 2026-09-27, both answers empty, not shipped (W75) |
+| `PolarisSavedCollectionPickerQuery` | saved collections | verified 2026-09-27, both answers empty, not shipped (W75); the saved tab's own query shipped in batch 11c (W106) |
 | `PolarisSavedCollectionPickerPaginationQuery` | saved collections, next pages | hypothesis |
-| `PolarisProfileSavedTabContentQuery` and its `_connection` | saved posts | hypothesis, capture first |
-| archive, close friends list, blocked list | | capture first |
+| `PolarisProfileSavedTabContentQuery` | the saved tab's collections | verified 2026-09-27, public as `account.collections` in batch 11c |
+| `REST GET /api/v1/feed/saved/posts/` | saved posts, the "All posts" view | verified 2026-09-27, public as `account.saved` in batch 11c |
+| Bloks app `close_friends_screen_v2` | the close friends list | verified 2026-09-27, public as `account.close_friends` in batch 11c |
+| Bloks app `blocked_accounts_v2` and action `blocked_accounts_reloader` | the blocked list | hypothesis, captured, replay probe written, not shipped (W108) |
+| archive | | capture first |
 
 **Status: done on 2026-09-27 for the follow requests and the activity feed, rulings W73 to
 W76.** `probes/e2_own_account.py` ran once with 7 requests and no conditional one, in run
@@ -704,6 +707,39 @@ KeywordResults`, on both clients with no flat twin, with the new models `SearchR
 - `/explore/tags/<tag>/` lands on the keyword page for `#<tag>`, so a hashtag's posts are
   `search.keyword("#" + tag)`; only the plain text has been replayed.
 - The doctor replays thirty-six reads, the keyword grid on `CANARY_KEYWORD` (W104).
+
+## Batch 11c: saved posts, saved collections and close friends, from the capture night
+
+| Operation | Kind | Status |
+|---|---|---|
+| `REST GET /api/v1/feed/saved/posts/` | the saved "All posts" view, first page | verified 2026-09-27, public as `account.saved` |
+| `PolarisProfileSavedTabContentQuery` | the saved tab's collections | verified 2026-09-27, public as `account.collections` |
+| Bloks app `close_friends_screen_v2` | the close friends settings screen | verified 2026-09-27, public as `account.close_friends` |
+| `close_friend_count_updater` | a Bloks action the page sends after the list | never sent, effect UNRESOLVED (W107) |
+| Bloks app `blocked_accounts_v2`, action `blocked_accounts_reloader` | the blocked list | hypothesis, `probes/e2_blocked_list_replay.py` written, run 2026-09-27, not shipped (W108) |
+
+**Status: done on 2026-09-27 for the saved posts, the saved tab and the close friends list,
+rulings W105 to W109.** The browser captured each read in `run-2026-09-27-131354` and
+`probes/e2_capture_replays.py --stage saved` and `--stage close-friends` replayed each twice in
+`run-2026-09-27-151121`. It shipped `client.account.saved() -> SavedPosts`,
+`account.collections() -> SavedCollections` and `account.close_friends() -> tuple[ProfileSummary,
+...]`, on both clients with no flat twin, with the new models `SavedPost`, `SavedPosts`,
+`SavedCollection`, `SavedCollectionKind`, `SavedCollections` and `CollectionCover`, and `dumpsta
+saved`, `collections` and `close-friends`. The live acceptance,
+`probes/e2_own_account_more_cli_acceptance.py`, three requests, five at most, ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`. What the batch found:
+
+- A saved post is the explore grid's REST media without `comment_count` on all 42 read, so it is
+  the new `SavedPost` rather than `Post`, and the saved advertisement lacks the counts flag, which
+  is `None` there (W105). The view is the first page with `more_available`.
+- The saved tab answered two collection rows, "All posts" with 232 posts and "Audio", which
+  amends W75; a named collection's type is unobserved and reads as `OTHER` (W106).
+- The close friends screen is a Bloks tree carrying two lists of accounts, told apart by the
+  state their rows start in: 7 close friends and 114 accounts offered to add, identical across
+  four answers whose component ids all differed, so the list is read by structure (W107).
+- The blocked list's "empty" capture hit the error route; the other two show a screen app fetch
+  then a reloader action whose container ids come from the first answer, and a list of 53 and 52
+  accounts, so the owner's list is not empty. Nothing ships until the probe's replay (W108).
+- The doctor replays thirty-seven reads, the saved tab keyed on nothing (W109).
 
 ## Batch 12: story seen
 

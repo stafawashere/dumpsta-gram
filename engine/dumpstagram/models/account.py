@@ -1,5 +1,5 @@
-"""Typed representations of the viewer's own account: the follow requests waiting on it and its
-activity feed.
+"""Typed representations of the viewer's own account: the follow requests waiting on it, its
+activity feed, what it saved and its close friends list.
 
 Every field below was observed on the answers ``probes/e2_own_account.py`` kept on 2026-09-27,
 run ``run-2026-09-27-014102``: the pending follow requests read twice with one account each,
@@ -9,6 +9,10 @@ read that has one will test.
 
 Reading either through the engine marks nothing seen (W73, W74).
 
+The saved posts, the saved collections and the close friends list were read in E2 batch 11c from
+the answers ``probes/e2_capture_replays.py`` kept on 2026-09-27, run ``run-2026-09-27-151121``,
+two of each, and the browser capture of ``run-2026-09-27-131354`` (W105 to W108).
+
 Nothing here parses. Construction is done by the mappers in ``_private/web/parse/account.py``,
 which read named keys and raise rather than filling a default, so an upstream rename is loud.
 """
@@ -17,7 +21,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
+from dumpstagram.models.feed import (
+   CarouselChild,
+   Location,
+   MediaAudio,
+   MediaImage,
+   PostAuthor,
+   UserTag,
+   VideoRendition,
+)
 from dumpstagram.models.profiles import ProfileSummary
 
 __all__ = [
@@ -27,7 +41,13 @@ __all__ = [
    "ActivityLink",
    "ActivityMedia",
    "ActivitySection",
+   "CollectionCover",
    "FollowRequests",
+   "SavedCollection",
+   "SavedCollectionKind",
+   "SavedCollections",
+   "SavedPost",
+   "SavedPosts",
 ]
 
 
@@ -172,3 +192,114 @@ class ActivityFeed:
    @property
    def items(self) -> tuple[ActivityItem, ...]:
       return self.priority_items + self.new_items + self.earlier_items
+
+
+@dataclass(frozen=True)
+class SavedPost:
+   """One post of the viewer's saved "All posts" view, as that view carries it.
+
+   The view answers with the same REST media object the explore grid does, but without
+   ``comment_count`` on any of the 42 items read, so it is its own model rather than a
+   :class:`~dumpstagram.models.Post` with a guessed count, and it carries no ``is_seen`` either.
+   Every other field means what it means on ``Post``.
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` with its ``code`` reads the whole
+   post, the comment count included.
+
+   ``like_and_view_counts_disabled`` is ``None`` where the item does not carry it, which the one
+   saved advertisement read did not (``product_type`` ``ad``, 1 of 21 on each answer). Every item
+   read was a video, so the photo and carousel fields follow the explore grid's REST reading
+   (W77) without having been seen here.
+   """
+
+   id: str
+   pk: str
+   code: str
+   taken_at: datetime
+   author: PostAuthor
+   media_type: int
+   product_type: str
+   like_count: int
+   has_liked: bool
+   caption: str | None = None
+   accessibility_caption: str | None = None
+   original_width: int | None = None
+   original_height: int | None = None
+   carousel_media_count: int | None = None
+   images: tuple[MediaImage, ...] = ()
+   is_paid_partnership: bool = False
+   like_and_view_counts_disabled: bool | None = None
+   videos: tuple[VideoRendition, ...] = ()
+   video_duration: float | None = None
+   has_audio: bool | None = None
+   audio: MediaAudio | None = None
+   carousel_children: tuple[CarouselChild, ...] = ()
+   location: Location | None = None
+   user_tags: tuple[UserTag, ...] | None = None
+   collaborators: tuple[ProfileSummary, ...] | None = None
+
+
+@dataclass(frozen=True)
+class SavedPosts:
+   """The first page of the viewer's saved "All posts" view, in the upstream's order.
+
+   ``has_more`` is the upstream's ``more_available``, true on both answers read with 21 posts
+   each. No later page has been read, so nothing here hands out a cursor (W105).
+   """
+
+   posts: tuple[SavedPost, ...]
+   has_more: bool
+
+
+class SavedCollectionKind(StrEnum):
+   """What one row of the saved tab is, named by the upstream's ``__typename``.
+
+   The two automatic collections were read. A collection the viewer made and named was not,
+   since the account read had none, so its type name is unknown and any row of an unread type is
+   :attr:`OTHER`, carrying only what every row carried (W106).
+   """
+
+   ALL_POSTS = "IGAllMediaAutoCollection"
+   AUDIO = "XDTAudioAutoCollection"
+   OTHER = "other"
+
+
+@dataclass(frozen=True)
+class CollectionCover:
+   """One picture a saved collection shows as its cover.
+
+   A post's cover carries its ``media_id``, ``"<pk>_<author id>"``, and every rendition's URL in
+   the upstream's order; the renditions carry no size, so none is picked here. An audio cover
+   carries one thumbnail URL and no ``media_id``.
+   """
+
+   media_id: str | None
+   image_urls: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SavedCollection:
+   """One row of the viewer's saved tab.
+
+   ``id`` is the upstream's ``collection_id``, which on the two automatic collections is the
+   constant ``ALL_MEDIA_AUTO_COLLECTION`` or ``AUDIO_AUTO_COLLECTION`` rather than a number.
+   ``media_count`` is the number of posts the "All posts" collection holds; the audio
+   collection sent null, so it is ``None`` there.
+   """
+
+   id: str
+   name: str
+   kind: SavedCollectionKind
+   media_count: int | None = None
+   covers: tuple[CollectionCover, ...] = ()
+
+
+@dataclass(frozen=True)
+class SavedCollections:
+   """The first page of the viewer's saved tab, in the upstream's order.
+
+   ``has_more`` is the page's own ``has_next_page``, false on both answers read. No query that
+   reads past the first page has been observed, so nothing here hands out a cursor.
+   """
+
+   collections: tuple[SavedCollection, ...]
+   has_more: bool

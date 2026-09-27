@@ -12,7 +12,7 @@ viewer's own account, like the highlights tray. The hashtag header is read for
 :data:`CANARY_HASHTAG`, the tag its finding was verified with, since no earlier read yields one,
 and the keyword grid for :data:`CANARY_KEYWORD` for the same reason. Both typeaheads search for
 the viewer's own username, and the reels feed's next page is keyed on its first page's cursor and
-reels.
+reels. The saved tab is the viewer's own and keyed on nothing.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from dumpstagram._private.transport import Request
+from dumpstagram._private.web.documents.account import SAVED_COLLECTIONS
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import (
    DIRECT_INBOX,
@@ -73,6 +74,7 @@ from dumpstagram._private.web.documents.search import (
    RECENT_SEARCHES,
 )
 from dumpstagram._private.web.documents.stories import STORY_REEL
+from dumpstagram._private.web.parse.account import parse_saved_collections
 from dumpstagram._private.web.parse.direct import (
    parse_folder_unread_rows,
    parse_inbox_continuation,
@@ -116,6 +118,7 @@ from dumpstagram._private.web.parse.search import (
    parse_recent_searches,
 )
 from dumpstagram._private.web.parse.stories import parse_highlight_reel, parse_stories_tray
+from dumpstagram._private.web.requests.account import build_saved_collections_request
 from dumpstagram._private.web.requests.direct import (
    INBOX_FOLDER,
    build_folder_unread_rows_request,
@@ -652,6 +655,14 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, CANARY_KEYWORD, search_session_id=new_search_session_id(), user_agent=user_agent
       ),
       read=_mapped_by(parse_keyword_results),
+   ),
+   ReplayStep(
+      query=SAVED_COLLECTIONS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_saved_collections_request(
+         session, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_saved_collections),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

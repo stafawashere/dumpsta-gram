@@ -23,7 +23,7 @@ REQUEST_LOG_ENV = "DUMPSTA_PROBE_REQUEST_LOG"
 REQUEST_CAP_ENV = "DUMPSTA_PROBE_REQUEST_CAP"
 STEP_ENV = "DUMPSTA_PROBE_STEP"
 
-NAMED_PATH_SEGMENTS = ("", "ajax", "api", "graphql", "instagram", "sync")
+NAMED_PATH_SEGMENTS = ("", "ajax", "api", "async", "graphql", "instagram", "sync")
 """First path segments safe to record. Anything else may be a username, so it is not."""
 
 NAMED_REST_PATHS = (

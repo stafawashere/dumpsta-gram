@@ -1,0 +1,219 @@
+{
+ "data": {
+  "viewer": {
+   "collections_unified_with_auto_collections": {
+    "edges": [
+     {
+      "node": {
+       "__typename": "IGAllMediaAutoCollection",
+       "__isXDTSavedCollectionItem": "IGAllMediaAutoCollection",
+       "collection_id": "ALL_MEDIA_AUTO_COLLECTION",
+       "collection_name": "All posts",
+       "cover_audio_list": [],
+       "cover_media": null,
+       "cover_media_list": [
+        {
+         "image_versions2": {
+          "candidates": [
+           {
+            "url": "https://example.invalid/120"
+           },
+           {
+            "url": "https://example.invalid/121"
+           },
+           {
+            "url": "https://example.invalid/122"
+           },
+           {
+            "url": "https://example.invalid/123"
+           },
+           {
+            "url": "https://example.invalid/124"
+           },
+           {
+            "url": "https://example.invalid/124"
+           },
+           {
+            "url": "https://example.invalid/124"
+           },
+           {
+            "url": "https://example.invalid/125"
+           },
+           {
+            "url": "https://example.invalid/126"
+           },
+           {
+            "url": "https://example.invalid/127"
+           },
+           {
+            "url": "https://example.invalid/128"
+           }
+          ]
+         },
+         "id": "9000000000000000001_90000000002"
+        },
+        {
+         "image_versions2": {
+          "candidates": [
+           {
+            "url": "https://example.invalid/129"
+           },
+           {
+            "url": "https://example.invalid/130"
+           },
+           {
+            "url": "https://example.invalid/131"
+           },
+           {
+            "url": "https://example.invalid/132"
+           },
+           {
+            "url": "https://example.invalid/133"
+           },
+           {
+            "url": "https://example.invalid/134"
+           },
+           {
+            "url": "https://example.invalid/134"
+           },
+           {
+            "url": "https://example.invalid/135"
+           },
+           {
+            "url": "https://example.invalid/136"
+           },
+           {
+            "url": "https://example.invalid/137"
+           },
+           {
+            "url": "https://example.invalid/138"
+           },
+           {
+            "url": "https://example.invalid/139"
+           }
+          ]
+         },
+         "id": "9000000000000000054_900000055"
+        },
+        {
+         "image_versions2": {
+          "candidates": [
+           {
+            "url": "https://example.invalid/140"
+           },
+           {
+            "url": "https://example.invalid/141"
+           },
+           {
+            "url": "https://example.invalid/142"
+           },
+           {
+            "url": "https://example.invalid/143"
+           },
+           {
+            "url": "https://example.invalid/144"
+           },
+           {
+            "url": "https://example.invalid/145"
+           },
+           {
+            "url": "https://example.invalid/145"
+           },
+           {
+            "url": "https://example.invalid/145"
+           },
+           {
+            "url": "https://example.invalid/145"
+           },
+           {
+            "url": "https://example.invalid/146"
+           },
+           {
+            "url": "https://example.invalid/147"
+           },
+           {
+            "url": "https://example.invalid/148"
+           }
+          ]
+         },
+         "id": "9000000000000000092_9000000093"
+        },
+        {
+         "image_versions2": {
+          "candidates": [
+           {
+            "url": "https://example.invalid/149"
+           },
+           {
+            "url": "https://example.invalid/150"
+           },
+           {
+            "url": "https://example.invalid/151"
+           },
+           {
+            "url": "https://example.invalid/152"
+           },
+           {
+            "url": "https://example.invalid/153"
+           },
+           {
+            "url": "https://example.invalid/153"
+           },
+           {
+            "url": "https://example.invalid/153"
+           },
+           {
+            "url": "https://example.invalid/154"
+           },
+           {
+            "url": "https://example.invalid/155"
+           },
+           {
+            "url": "https://example.invalid/156"
+           },
+           {
+            "url": "https://example.invalid/157"
+           }
+          ]
+         },
+         "id": "9000000000000000158_90000000159"
+        }
+       ],
+       "collection_media_count": 232
+      },
+      "cursor": "C"
+     },
+     {
+      "node": {
+       "__typename": "XDTAudioAutoCollection",
+       "__isXDTSavedCollectionItem": "XDTAudioAutoCollection",
+       "collection_id": "AUDIO_AUTO_COLLECTION",
+       "collection_name": "Audio",
+       "cover_audio_list": [
+        {
+         "thumbnail_uri": "https://example.invalid/161"
+        },
+        {
+         "thumbnail_uri": "https://example.invalid/162"
+        },
+        {
+         "thumbnail_uri": "https://example.invalid/163"
+        },
+        {
+         "thumbnail_uri": "https://example.invalid/164"
+        }
+       ],
+       "cover_media": null,
+       "collection_media_count": null
+      },
+      "cursor": "C"
+     }
+    ],
+    "page_info": {
+     "end_cursor": "C",
+     "has_next_page": false
+    }
+   }
+  }
+ }
+}

@@ -12,7 +12,13 @@ from dumpstagram.models.account import (
    ActivityLink,
    ActivityMedia,
    ActivitySection,
+   CollectionCover,
    FollowRequests,
+   SavedCollection,
+   SavedCollectionKind,
+   SavedCollections,
+   SavedPost,
+   SavedPosts,
 )
 from dumpstagram.models.comments import Comment, CommentAuthor
 from dumpstagram.models.discovery import (
@@ -93,6 +99,7 @@ __all__ = [
    "AudioKind",
    "BioLink",
    "CarouselChild",
+   "CollectionCover",
    "Comment",
    "CommentAuthor",
    "DirectThread",
@@ -134,6 +141,11 @@ __all__ = [
    "ReelThumbnail",
    "RecentSearch",
    "RecentSearchKind",
+   "SavedCollection",
+   "SavedCollectionKind",
+   "SavedCollections",
+   "SavedPost",
+   "SavedPosts",
    "SearchPost",
    "SearchResult",
    "SearchResultKind",

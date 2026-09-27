@@ -103,7 +103,17 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": REQUESTS_GET,
       "defect": "the GET carries a page size",
-      "edits": [(REQUESTS, "      params={},", '      params={"count": "12"},')],
+      "edits": [
+         (
+            REQUESTS,
+            "      url=_FOLLOW_REQUESTS_URL,\n"
+            "      headers=_account_read_headers(session, web_session_id, user_agent),\n"
+            "      params={},",
+            "      url=_FOLLOW_REQUESTS_URL,\n"
+            "      headers=_account_read_headers(session, web_session_id, user_agent),\n"
+            '      params={"count": "12"},',
+         )
+      ],
    },
    {
       "gate": ACTIVITY_POST,
@@ -124,7 +134,25 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": ACTIVITY_POST,
       "defect": "the POST is built without a token",
-      "edits": [(REQUESTS, "   if not token:\n", "   if token is None and token:\n")],
+      "edits": [
+         (
+            REQUESTS,
+            "   if not token:\n"
+            "      raise AuthenticationFailed(\n"
+            '         "session has no fb_dtsg, so it has not been bootstrapped since it was '
+            'loaded"\n'
+            "      )\n"
+            "\n"
+            "   spin = session.spin\n",
+            "   if token is None and token:\n"
+            "      raise AuthenticationFailed(\n"
+            '         "session has no fb_dtsg, so it has not been bootstrapped since it was '
+            'loaded"\n'
+            "      )\n"
+            "\n"
+            "   spin = session.spin\n",
+         )
+      ],
    },
    {
       "gate": ITEMS,

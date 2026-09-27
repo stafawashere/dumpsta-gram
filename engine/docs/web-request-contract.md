@@ -784,6 +784,44 @@ did not keep, so the two fields and their order are the replay's, which answered
   feed `is_last_page` true with `continuation_token` 0 on both replays, so no next page request
   has been observed (W73, W74).
 
+## The saved posts, the saved tab and the close friends list, 2026-09-27
+
+E2 batch 11c added three reads to `_private/web/requests/account.py`, sent by `read_saved_posts`,
+`read_saved_collections` and `read_close_friends` in `_core/account.py`, each alone, and answered
+through `parse_saved_posts`, `parse_saved_collections` and `parse_close_friends`. Findings
+`read-all-saved-posts`, `read-saved-posts` and `read-the-close-friends-list`, each captured in the
+browser in `run-2026-09-27-131354` and replayed twice in `run-2026-09-27-151121` by
+`probes/e2_capture_replays.py --stage saved` and `--stage close-friends`. Rulings W105 to W109.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Saved posts | `GET https://www.instagram.com/api/v1/feed/saved/posts/` | none | the followers page's, `referer` the site root |
+| Saved tab | `PolarisProfileSavedTabContentQuery`, `27584326974521636`, on `API_GRAPHQL_URL` | `collection_types` `["ALL_MEDIA_AUTO_COLLECTION", "MEDIA", "AUDIO_AUTO_COLLECTION"]` and `first` 12 | the query form's, `referer` the site root |
+| Close friends | `POST https://www.instagram.com/async/wbloks/fetch/?appid=com.instagram.portable_settings.privacy.close_friends_screen_v2&type=app&__bkv=<Bloks version id>` | the comet form `__d`, `__user`, `__a`, `__req`, `__hs`, `dpr`, `__ccg`, `__rev`, `__hsi`, `__comet_req` 7, `fb_dtsg`, `jazoest`, `lsd`, `__spin_r`, `__spin_b`, `__spin_t`, `__crn` `comet.igweb.PolarisSettingsCloseFriendsRoute`, `params` `{}` | `accept`, `accept-language`, `content-type`, `origin`, `referer` `https://www.instagram.com/accounts/close_friends/`, the three `sec-fetch-*` and `user-agent`, no `x-` header, as the page's wire headers carried |
+
+The saved posts are REST and refused unless `status` is `ok`. The close friends answer is `for
+(;;);` then JSON, which the classifier strips, and its list is a Bloks UI tree read by
+`parse/bloks.py`, a reader of the script grammar that evaluates nothing. The saved posts GET
+carries no page token and spends no bootstrap; the saved tab bootstraps when the session holds no
+`fb_dtsg`, and the close friends fetch when it holds no `fb_dtsg` or no Bloks version id, which
+`__bkv` carries.
+
+**Recorded departures.**
+
+- A browser's saved posts and saved tab reads carry the viewer's own saved page as referer,
+  `/<username>/saved/all-posts/` and `/<username>/saved/`. The engine does not hold the viewer's
+  username without spending a read, so both carry the site root, as the profile tabs do under W54
+  (ASSUMPTION until the batch's acceptance run answers, W105, W106).
+- The close friends page sent `PolarisSettingsDesktopContainerQuery`, then the app fetch twice,
+  near identical, then the Bloks action `close_friend_count_updater`, whose effect is UNRESOLVED.
+  The engine sends the app fetch once and none of the rest (W107).
+- The comet form leaves out `__s`, `__dyn`, `__csr`, `__hsdp`, `__hblp` and `__sjsp`, which the
+  engine has never produced, the subset the delete post form and the replays sent.
+- Neither saved read's next page is sent, since none has been observed (W105, W106).
+
+The blocked accounts list is not sent. Its two Bloks requests are written out in
+`probes/e2_blocked_list_replay.py`, which has not run (W108).
+
 ## The explore grid, 2026-09-27
 
 E2 batch 7 added a third REST read, in `_private/web/requests/discovery.py`, sent by

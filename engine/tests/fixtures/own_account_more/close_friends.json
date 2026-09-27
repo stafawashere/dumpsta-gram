@@ -1,0 +1,1838 @@
+{
+ "__ar": 1,
+ "rid": "p206xxxxxxxxxxxxxxxxxxx",
+ "payload": {
+  "layout": {
+   "bloks_payload": {
+    "data": [
+     {
+      "id": "110655759_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, false)"
+      }
+     },
+     {
+      "id": "110655759_1",
+      "type": "gs",
+      "data": {
+       "key": "dtl:ig_privacy_settings:user_selection_list_showing_users",
+       "mode": "p",
+       "initial_lispy": "(bk.action.bool.Const, true)"
+      }
+     },
+     {
+      "id": "110655765_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.array.Make, (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000166), \"p167xxxxxxxxx\", \"p168xxx\", \"https://example.invalid/169\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000170), \"p171xxxxxxxxxxx\", \"p172xxxxxxxxxxxxx\", \"https://example.invalid/173\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i32.Const, 900000174), \"p175xxxxxxxxxxx\", \"p176xxxxxxxxxxxxxxxxxxxx\", \"https://example.invalid/177\", (bk.action.bool.Const, true))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000178), \"p179xxxx\", \"p18\", \"https://example.invalid/181\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000182), \"p183xxxx\", \"p184x\", \"https://example.invalid/185\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000186), \"p187xxxx\", \"p188x\", \"https://example.invalid/189\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000190), \"p191xxxxxx\", \"p192xxxx\", \"https://example.invalid/193\", (bk.action.bool.Const, false))))"
+      }
+     },
+     {
+      "id": "110655766_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, true)"
+      }
+     },
+     {
+      "id": "110655766_1",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, false)"
+      }
+     },
+     {
+      "id": "110655784_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.array.Make, (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000194), \"p195xxxxxxxxx\", \"p196xxxxxxx\", \"https://example.invalid/197\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000198), \"p199xxxxx\", \"p200x\", \"https://example.invalid/201\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"name\", \"profile_pic_url\", \"is_verified\"), (bk.action.array.Make, (bk.action.i64.Const, 90000000202), \"p203xxxxxxxxxxx\", \"p204xxx\", \"https://example.invalid/205\", (bk.action.bool.Const, false))))"
+      }
+     },
+     {
+      "id": "110655786_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, false)"
+      }
+     },
+     {
+      "id": "110655786_1",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, false)"
+      }
+     }
+    ],
+    "tree": {
+     "bk.components.Flexbox": {
+      "children": [
+       {
+        "bk.components.Flexbox": {
+         "children": [
+          {
+           "bk.components.Collection": {
+            "direction": "column",
+            "children": [
+             {
+              "bk.components.Flexbox": {
+               "flex_direction": "column",
+               "children": [
+                {
+                 "bk.components.Flexbox": {
+                  "children": [
+                   {
+                    "bk.components.RichText": {
+                     "children": [
+                      {
+                       "bk.components.TextSpan": {
+                        "text": "We don't send notifications when you edit your close friends list. ",
+                        "text_themed_color": {
+                         "bk.types.ThemedColor": {
+                          "light_color": "#6F7680",
+                          "dark_color": "#A2AAB4"
+                         }
+                        }
+                       }
+                      },
+                      {
+                       "bk.components.TextSpan": {
+                        "text": "How it works",
+                        "text_style": "semibold",
+                        "on_click": "(bk.action.bloks.PushBottomSheetV2, (bk.action.bloks.ParseEmbeddedV2, (bk.action.bloks.GetDeserializedEmbeddedPayload, \"110655760\")), (bk.action.bool.Const, true), (bk.action.context.Get))",
+                        "text_themed_color": {
+                         "bk.types.ThemedColor": {
+                          "light_color": "#4A5DF9",
+                          "dark_color": "#4A5DF9"
+                         }
+                        }
+                       }
+                      }
+                     ],
+                     "text_align": "start"
+                    }
+                   }
+                  ],
+                  "_style": {
+                   "flex": {
+                    "padding_bottom": "24dp"
+                   }
+                  }
+                 }
+                }
+               ],
+               "_style": {
+                "flex": {
+                 "padding_left": "16dp",
+                 "padding_right": "16dp"
+                }
+               }
+              }
+             },
+             {
+              "bk.components.internal.Shadow": {
+               "id": "110655759",
+               "child": {
+                "bk.components.Flexbox": {
+                 "flex_direction": "column",
+                 "children": [
+                  {
+                   "bk.components.Flexbox": {
+                    "children": [
+                     {
+                      "bk.components.Flexbox": {
+                       "decoration": {
+                        "bk.components.BoxDecoration": {
+                         "corner_radius": "8dp",
+                         "background": {
+                          "bk.components.ThemedColorDrawable": {
+                           "color": {
+                            "bk.types.ThemedColor": {
+                             "light_color": "#F5F5F5",
+                             "dark_color": "#262626"
+                            }
+                           }
+                          }
+                         }
+                        }
+                       },
+                       "flex_direction": "row",
+                       "align_items": "center",
+                       "children": [
+                        {
+                         "bk.components.Flexbox": {
+                          "children": [
+                           {
+                            "ig.components.Icon": {
+                             "url": "https://i.instagram.com/static/images/bloks/icons/generated/search__outline__16-4x.png",
+                             "resource_name": "search_outline_16",
+                             "height": "16dp",
+                             "width": "16dp",
+                             "tint_themed_color": {
+                              "bk.types.ThemedColor": {
+                               "light_color": "#6F7680",
+                               "dark_color": "#A2AAB4"
+                              }
+                             }
+                            }
+                           }
+                          ],
+                          "_style": {
+                           "flex": {
+                            "margin_start": "14dp"
+                           }
+                          }
+                         }
+                        },
+                        {
+                         "bk.components.TextInput": {
+                          "hint": "Search",
+                          "type": "text",
+                          "on_text_change": "(bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.core.TakeLast, (bk.action.array.Update, (bk.action.bloks.GetState, (bk.action.i64.Const, 110655759)), (bk.action.array.Make, (bk.action.i32.Const, 0)), (bk.action.array.Make, (bk.action.core.GetArg, 0))), (bk.action.core.TakeLast, (bk.action.bloks.Reduce, (bk.action.i64.Const, 110655759)), (bk.action.bloks.Reflow, (bk.action.i64.Const, 110655759)))), (bk.action.core.Delay, (bk.action.f32.Const, 300), (bk.action.function.BindWithArrayV2, (bk.action.core.FuncConst, (bk.action.core.Match, (bk.action.core.Match, (bk.action.core.GetArg, 0), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.array.Get, (bk.action.bloks.GetState, (bk.action.i64.Const, 110655759)), (bk.action.i32.Const, 0)), (bk.action.core.FuncConst, (bk.action.bool.Const, true)))), (bk.action.core.Default, (bk.action.core.FuncConst, (bk.action.bool.Const, false)))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655759_0\", (bk.action.bool.Const, true), (bk.action.i32.Const, 0)), (bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.privacy.selection_list_component.users_reloader\", (bk.action.map.Make, (bk.action.array.Make, \"container_id_of_parent\", \"container_id\", \"query\", \"cursor\", \"selection_type\"), (bk.action.array.Make, (bk.action.i32.Const, 110655757), (bk.action.i32.Const, 110655758), (bk.action.core.GetArg, 0), \"\", (bk.action.i32.Const, 2))), (bk.action.core.FuncConst, (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.bloks.WriteLocalState, \"110655759_0\", (bk.action.bool.Const, false), (bk.action.i32.Const, 0))), (bk.action.core.GetArg, 0), (bk.action.core.GetArg, 1))), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), \"current-screen\"))))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))), (bk.action.array.Make, (bk.action.core.GetArg, 0)))))), (bk.action.textinput.GetText, (bk.action.core.GetArg, 0), (bk.action.context.Get)))",
+                          "text_size": "16sp",
+                          "hint_text_themed_color": {
+                           "bk.types.ThemedColor": {
+                            "light_color": "#6F7680",
+                            "dark_color": "#A2AAB4"
+                           }
+                          },
+                          "_style": {
+                           "flex": {
+                            "height": "24dp",
+                            "margin_top": "8dp",
+                            "margin_left": "8dp",
+                            "margin_bottom": "8dp",
+                            "grow": 1
+                           }
+                          }
+                         }
+                        }
+                       ],
+                       "_style": {
+                        "flex": {
+                         "width": "100%",
+                         "margin_left": "12dp",
+                         "margin_right": "12dp"
+                        }
+                       }
+                      }
+                     }
+                    ],
+                    "_style": {
+                     "flex": {
+                      "margin_bottom": "12dp"
+                     }
+                    }
+                   }
+                  },
+                  {
+                   "bk.components.Flexbox": {
+                    "flex_direction": "column",
+                    "children": [
+                     {
+                      "bk.components.Flexbox": {
+                       "flex_direction": "column",
+                       "children": [
+                        {
+                         "bk.components.Flexbox": {
+                          "flex_direction": "column",
+                          "justify_content": "space_evenly",
+                          "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655783), \"children\", (bk.action.array.Map, (bk.action.bloks.GetVariable2, \"110655765_0\"), (bk.action.core.FuncConst, (bk.action.template.Make, (bk.action.i32.Const, 0), (bk.action.map.Make, (bk.action.array.Make, \"__110655768__\"), (bk.action.array.Make, (bk.action.core.GetArg, 1))), (bk.action.string.ValueOfNumber, (bk.action.core.GetArg, 0)))))))",
+                          "child_templates": [
+                           {
+                            "bk.components.Flexbox": {
+                             "children": [
+                              {
+                               "bk.components.Flexbox": {
+                                "decoration": {
+                                 "bk.components.BoxDecoration": {
+                                  "background": {
+                                   "bk.components.StateDrawable": {
+                                    "state_items": [
+                                     {
+                                      "bk.components.StateDrawableItem": {
+                                       "state": "pressed",
+                                       "drawable": {
+                                        "bk.components.ThemedColorDrawable": {
+                                         "color": {
+                                          "bk.types.ThemedColor": {
+                                           "light_color": "#F5F5F5",
+                                           "dark_color": "#262626"
+                                          }
+                                         }
+                                        }
+                                       }
+                                      }
+                                     }
+                                    ]
+                                   }
+                                  }
+                                 }
+                                },
+                                "flex_direction": "row",
+                                "justify_content": "space_between",
+                                "align_items": "center",
+                                "on_click": "(bk.action.core.TakeLast, (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655766_1\", (bk.action.bool.Const, true), (bk.action.i32.Const, 1)), (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.privacy.close_friends_screen.make_close_friend\", (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"should_not_make_close_friend\"), (bk.action.array.Make, (bk.action.core.GetArg, 1), (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1)))), (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655766_1\", (bk.action.bool.Const, false), (bk.action.i32.Const, 1)), (bk.action.core.TakeLast, (bk.action.io.Toast, \"Setting saved.\"), (ig.action.settings.RefreshSettingsSideMenu)))), (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655766_1\", (bk.action.bool.Const, false), (bk.action.i32.Const, 1)), (bk.action.io.Toast, \"There was a problem saving your setting.\"))), \"current-screen\")), (bk.action.core.GetArg, 0), (bk.action.core.GetArg, 1)), (bk.action.bloks.WriteLocalState, \"110655766_0\", (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))), (bk.action.i32.Const, 1)))), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"username\"), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"user_id\")), (bk.action.i32.Const, 1))",
+                                "children": [
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "flex_direction": "row",
+                                   "justify_content": "flex_start",
+                                   "align_items": "center",
+                                   "children": [
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "flex_direction": "row",
+                                      "align_items": "center",
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "flex_direction": "column",
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "align_items": "center",
+                                            "children": [
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "children": [],
+                                               "_style": {
+                                                "flex": {
+                                                 "width": "44dp",
+                                                 "height": "44dp"
+                                                }
+                                               }
+                                              }
+                                             },
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "justify_content": "center",
+                                               "align_items": "center",
+                                               "children": [
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "justify_content": "center",
+                                                  "align_items": "center",
+                                                  "children": [
+                                                   {
+                                                    "bk.components.Flexbox": {
+                                                     "children": [
+                                                      {
+                                                       "bk.components.Flexbox": {
+                                                        "decoration": {
+                                                         "bk.components.BoxDecoration": {
+                                                          "corner_radius": "22.25dp",
+                                                          "border_width": "0.5dp",
+                                                          "clipping": true,
+                                                          "background": {
+                                                           "bk.components.ThemedColorDrawable": {
+                                                            "color": {
+                                                             "bk.types.ThemedColor": {
+                                                              "light_color": "#FFFFFF",
+                                                              "dark_color": "#000000"
+                                                             }
+                                                            }
+                                                           }
+                                                          },
+                                                          "border_themed_color": {
+                                                           "bk.types.ThemedColor": {
+                                                            "light_color": "#26000000",
+                                                            "dark_color": "#26FFFFFF"
+                                                           }
+                                                          }
+                                                         }
+                                                        },
+                                                        "justify_content": "center",
+                                                        "align_items": "center",
+                                                        "children": [
+                                                         {
+                                                          "bk.components.Flexbox": {
+                                                           "decoration": {
+                                                            "bk.components.BoxDecoration": {
+                                                             "corner_radius": "22.0dp",
+                                                             "clipping": true,
+                                                             "background": {
+                                                              "bk.components.ThemedColorDrawable": {
+                                                               "color": {
+                                                                "bk.types.ThemedColor": {
+                                                                 "light_color": "#F5F5F5",
+                                                                 "dark_color": "#262626"
+                                                                }
+                                                               }
+                                                              }
+                                                             }
+                                                            }
+                                                           },
+                                                           "children": [
+                                                            {
+                                                             "bk.components.Image": {
+                                                              "url": "",
+                                                              "scale_type": "stretch",
+                                                              "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655769), \"url\", (bk.action.string.Concat, \"\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"profile_pic_url\"))))",
+                                                              "id": 110655769
+                                                             }
+                                                            }
+                                                           ],
+                                                           "extensions": [
+                                                            {
+                                                             "bk.components.AccessibilityExtension": {
+                                                              "enabled": true,
+                                                              "label": "Profile picture of "
+                                                             }
+                                                            }
+                                                           ],
+                                                           "_style": {
+                                                            "flex": {
+                                                             "width": "44dp",
+                                                             "height": "44dp"
+                                                            }
+                                                           }
+                                                          }
+                                                         }
+                                                        ],
+                                                        "_style": {
+                                                         "flex": {
+                                                          "width": "44.5dp",
+                                                          "height": "44.5dp"
+                                                         }
+                                                        }
+                                                       }
+                                                      }
+                                                     ],
+                                                     "visibility": "visible",
+                                                     "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Not, (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))"
+                                                    }
+                                                   }
+                                                  ],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "100%",
+                                                    "height": "100%",
+                                                    "position_type": "absolute"
+                                                   }
+                                                  }
+                                                 }
+                                                },
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "children": [
+                                                   {
+                                                    "bk.components.Flexbox": {
+                                                     "decoration": {
+                                                      "bk.components.BoxDecoration": {
+                                                       "background": {
+                                                        "bk.components.ThemedColorDrawable": {
+                                                         "color": {
+                                                          "bk.types.ThemedColor": {
+                                                           "light_color": "#B3FFFFFF",
+                                                           "dark_color": "#B3000000"
+                                                          }
+                                                         }
+                                                        }
+                                                       }
+                                                      }
+                                                     },
+                                                     "visibility": "gone",
+                                                     "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Const, false), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))",
+                                                     "_style": {
+                                                      "flex": {
+                                                       "width": "100%",
+                                                       "height": "100%"
+                                                      }
+                                                     }
+                                                    }
+                                                   }
+                                                  ],
+                                                  "extensions": [],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "100%",
+                                                    "height": "100%",
+                                                    "position_type": "absolute"
+                                                   }
+                                                  }
+                                                 }
+                                                }
+                                               ],
+                                               "_style": {
+                                                "flex": {
+                                                 "width": "100%",
+                                                 "height": "100%",
+                                                 "position_type": "absolute"
+                                                }
+                                               }
+                                              }
+                                             },
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "children": [],
+                                               "_style": {
+                                                "flex": {
+                                                 "width": "100%",
+                                                 "height": "100%",
+                                                 "position_type": "absolute"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "extensions": [],
+                                            "_style": {
+                                             "flex": {
+                                              "width": "44dp",
+                                              "height": "44dp",
+                                              "shrink": 0
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "_style": {
+                                          "flex": {
+                                           "margin_top": "8dp",
+                                           "margin_left": "12dp",
+                                           "margin_right": "12dp",
+                                           "margin_bottom": "8dp",
+                                           "shrink": 0
+                                          }
+                                         }
+                                        }
+                                       },
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "flex_direction": "column",
+                                         "align_items": "flex_start",
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "flex_direction": "row",
+                                            "align_items": "center",
+                                            "children": [
+                                             {
+                                              "bk.components.Text": {
+                                               "text": "",
+                                               "text_size": "14sp",
+                                               "text_style": "semibold",
+                                               "font_family": "sans-serif-medium",
+                                               "max_number_of_lines": 1,
+                                               "text_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#000000",
+                                                 "dark_color": "#fafafa"
+                                                }
+                                               },
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655770), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"username\")))",
+                                               "id": 110655770
+                                              }
+                                             },
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "align_items": "center",
+                                               "children": [
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "children": [
+                                                   {
+                                                    "ig.components.Icon": {
+                                                     "url": "https://i.instagram.com/static/images/bloks/icons/generated/verified__filled__24-4x.png",
+                                                     "resource_name": "verified_filled_24",
+                                                     "height": "12dp",
+                                                     "width": "12dp",
+                                                     "tint_themed_color": {
+                                                      "bk.types.ThemedColor": {
+                                                       "light_color": "#0095F6",
+                                                       "dark_color": "#0095F6"
+                                                      }
+                                                     },
+                                                     "_style": {
+                                                      "flex": {
+                                                       "width": "12dp",
+                                                       "height": "12dp",
+                                                       "margin_left": "4dp"
+                                                      }
+                                                     }
+                                                    }
+                                                   }
+                                                  ],
+                                                  "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655771), \"visibility\", (bk.action.core.Match, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"is_verified\"), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                                  "id": 110655771
+                                                 }
+                                                }
+                                               ]
+                                              }
+                                             }
+                                            ],
+                                            "_style": {
+                                             "flex": {
+                                              "margin_top": "-8dp",
+                                              "margin_bottom": "-1dp"
+                                             }
+                                            }
+                                           }
+                                          },
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "bk.components.Text": {
+                                               "text": "",
+                                               "text_size": "14sp",
+                                               "text_style": "normal",
+                                               "max_number_of_lines": 1,
+                                               "text_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#6F7680",
+                                                 "dark_color": "#A2AAB4"
+                                                }
+                                               },
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655773), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"name\")))",
+                                               "id": 110655773
+                                              }
+                                             }
+                                            ],
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655772), \"visibility\", (bk.action.core.Match, (bk.action.i32.Gt, (bk.action.string.Length, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655768__\", (bk.action.i32.Const, 1)), \"name\")), (bk.action.i32.Const, 0)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                            "id": 110655772
+                                           }
+                                          }
+                                         ],
+                                         "_style": {
+                                          "flex": {
+                                           "margin_top": "8dp",
+                                           "margin_right": "12dp",
+                                           "margin_bottom": "8dp"
+                                          }
+                                         }
+                                        }
+                                       }
+                                      ]
+                                     }
+                                    }
+                                   ],
+                                   "_style": {
+                                    "flex": {
+                                     "grow": 1
+                                    }
+                                   }
+                                  }
+                                 },
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "flex_direction": "row",
+                                   "justify_content": "flex_end",
+                                   "align_items": "center",
+                                   "children": [
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "ig.components.Icon": {
+                                            "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle-check__filled__24-4x.png",
+                                            "resource_name": "circle-check_filled_24",
+                                            "height": "24dp",
+                                            "width": "24dp",
+                                            "tint_themed_color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#4A5DF9",
+                                              "dark_color": "#4A5DF9"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655774), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1)), (bk.action.bool.Not, (bk.action.bool.Const, false))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                         "id": 110655774,
+                                         "extensions": [
+                                          {
+                                           "bk.components.AccessibilityExtension": {
+                                            "enabled": true,
+                                            "label": "Toggle checkbox",
+                                            "role": "Button",
+                                            "disabled": false,
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655775), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))))",
+                                            "id": 110655775
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       },
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "ig.components.Icon": {
+                                            "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle-check__filled__24-4x.png",
+                                            "resource_name": "circle-check_filled_24",
+                                            "height": "24dp",
+                                            "width": "24dp",
+                                            "tint_themed_color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#4d0095F6",
+                                              "dark_color": "#4d0095F6"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655776), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1)), (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                         "id": 110655776,
+                                         "extensions": [
+                                          {
+                                           "bk.components.AccessibilityExtension": {
+                                            "enabled": true,
+                                            "label": "Toggle checkbox",
+                                            "role": "Button",
+                                            "disabled": false,
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655777), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))))",
+                                            "id": 110655777
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       },
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "ig.components.Icon": {
+                                            "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle__outline__24-4x.png",
+                                            "resource_name": "circle_outline_24",
+                                            "height": "24dp",
+                                            "width": "24dp",
+                                            "tint_themed_color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#dbdbdb",
+                                              "dark_color": "#363636"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655778), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))), (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                         "id": 110655778,
+                                         "extensions": [
+                                          {
+                                           "bk.components.AccessibilityExtension": {
+                                            "enabled": true,
+                                            "label": "Toggle checkbox",
+                                            "role": "Button",
+                                            "disabled": false,
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655779), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))))",
+                                            "id": 110655779
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       },
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "ig.components.Icon": {
+                                            "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle__outline__24-4x.png",
+                                            "resource_name": "circle_outline_24",
+                                            "height": "24dp",
+                                            "width": "24dp",
+                                            "tint_themed_color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#dbdbdb",
+                                              "dark_color": "#363636"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655780), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))), (bk.action.bool.Not, (bk.action.bool.Const, false))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                         "id": 110655780,
+                                         "extensions": [
+                                          {
+                                           "bk.components.AccessibilityExtension": {
+                                            "enabled": true,
+                                            "label": "Toggle checkbox",
+                                            "role": "Button",
+                                            "disabled": false,
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655781), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655766_0\", (bk.action.i32.Const, 1))))",
+                                            "id": 110655781
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       }
+                                      ]
+                                     }
+                                    }
+                                   ],
+                                   "_style": {
+                                    "flex": {
+                                     "margin_right": "12dp",
+                                     "shrink": 0
+                                    }
+                                   }
+                                  }
+                                 }
+                                ],
+                                "id": 110655767,
+                                "_style": {
+                                 "flex": {
+                                  "width": "100%",
+                                  "margin_left": "4dp",
+                                  "margin_right": "4dp"
+                                 }
+                                }
+                               }
+                              },
+                              {
+                               "bk.components.Flexbox": {
+                                "decoration": {
+                                 "bk.components.BoxDecoration": {
+                                  "background": {
+                                   "bk.components.ThemedColorDrawable": {
+                                    "color": {
+                                     "bk.types.ThemedColor": {
+                                      "light_color": "#B3FFFFFF",
+                                      "dark_color": "#B3000000"
+                                     }
+                                    }
+                                   }
+                                  }
+                                 }
+                                },
+                                "justify_content": "center",
+                                "align_items": "center",
+                                "children": [
+                                 {
+                                  "ig.components.Spinner": {
+                                   "state": "loading",
+                                   "_style": {
+                                    "flex": {
+                                     "width": "24dp",
+                                     "height": "24dp",
+                                     "align_self": "center"
+                                    }
+                                   }
+                                  }
+                                 }
+                                ],
+                                "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655782), \"visibility\", (bk.action.core.Match, (bk.action.bloks.GetVariableWithScope, \"110655766_1\", (bk.action.i32.Const, 1)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                "id": 110655782,
+                                "_style": {
+                                 "flex": {
+                                  "width": "100%",
+                                  "height": "100%",
+                                  "position_type": "absolute"
+                                 }
+                                }
+                               }
+                              }
+                             ],
+                             "_style": {
+                              "flex": {
+                               "width": "100%",
+                               "margin_right": "10dp"
+                              }
+                             }
+                            }
+                           }
+                          ],
+                          "id": 110655783
+                         }
+                        },
+                        {
+                         "bk.components.Flexbox": {
+                          "flex_direction": "column",
+                          "children": [
+                           {
+                            "bk.components.Flexbox": {
+                             "flex_direction": "column",
+                             "justify_content": "space_evenly",
+                             "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655803), \"children\", (bk.action.array.Map, (bk.action.bloks.GetVariable2, \"110655784_0\"), (bk.action.core.FuncConst, (bk.action.template.Make, (bk.action.i32.Const, 0), (bk.action.map.Make, (bk.action.array.Make, \"__110655788__\"), (bk.action.array.Make, (bk.action.core.GetArg, 1))), (bk.action.string.ValueOfNumber, (bk.action.core.GetArg, 0)))))))",
+                             "child_templates": [
+                              {
+                               "bk.components.Flexbox": {
+                                "children": [
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "decoration": {
+                                    "bk.components.BoxDecoration": {
+                                     "background": {
+                                      "bk.components.StateDrawable": {
+                                       "state_items": [
+                                        {
+                                         "bk.components.StateDrawableItem": {
+                                          "state": "pressed",
+                                          "drawable": {
+                                           "bk.components.ThemedColorDrawable": {
+                                            "color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#F5F5F5",
+                                              "dark_color": "#262626"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         }
+                                        }
+                                       ]
+                                      }
+                                     }
+                                    }
+                                   },
+                                   "flex_direction": "row",
+                                   "justify_content": "space_between",
+                                   "align_items": "center",
+                                   "on_click": "(bk.action.core.TakeLast, (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655786_1\", (bk.action.bool.Const, true), (bk.action.i32.Const, 1)), (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.privacy.close_friends_screen.make_close_friend\", (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"should_not_make_close_friend\"), (bk.action.array.Make, (bk.action.core.GetArg, 1), (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1)))), (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655786_1\", (bk.action.bool.Const, false), (bk.action.i32.Const, 1)), (bk.action.core.TakeLast, (bk.action.io.Toast, \"Setting saved.\"), (ig.action.settings.RefreshSettingsSideMenu)))), (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"110655786_1\", (bk.action.bool.Const, false), (bk.action.i32.Const, 1)), (bk.action.io.Toast, \"There was a problem saving your setting.\"))), \"current-screen\")), (bk.action.core.GetArg, 0), (bk.action.core.GetArg, 1)), (bk.action.bloks.WriteLocalState, \"110655786_0\", (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))), (bk.action.i32.Const, 1)))), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"username\"), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"user_id\")), (bk.action.i32.Const, 1))",
+                                   "children": [
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "flex_direction": "row",
+                                      "justify_content": "flex_start",
+                                      "align_items": "center",
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "flex_direction": "row",
+                                         "align_items": "center",
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "flex_direction": "column",
+                                            "children": [
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "align_items": "center",
+                                               "children": [
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "children": [],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "44dp",
+                                                    "height": "44dp"
+                                                   }
+                                                  }
+                                                 }
+                                                },
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "justify_content": "center",
+                                                  "align_items": "center",
+                                                  "children": [
+                                                   {
+                                                    "bk.components.Flexbox": {
+                                                     "justify_content": "center",
+                                                     "align_items": "center",
+                                                     "children": [
+                                                      {
+                                                       "bk.components.Flexbox": {
+                                                        "children": [
+                                                         {
+                                                          "bk.components.Flexbox": {
+                                                           "decoration": {
+                                                            "bk.components.BoxDecoration": {
+                                                             "corner_radius": "22.25dp",
+                                                             "border_width": "0.5dp",
+                                                             "clipping": true,
+                                                             "background": {
+                                                              "bk.components.ThemedColorDrawable": {
+                                                               "color": {
+                                                                "bk.types.ThemedColor": {
+                                                                 "light_color": "#FFFFFF",
+                                                                 "dark_color": "#000000"
+                                                                }
+                                                               }
+                                                              }
+                                                             },
+                                                             "border_themed_color": {
+                                                              "bk.types.ThemedColor": {
+                                                               "light_color": "#26000000",
+                                                               "dark_color": "#26FFFFFF"
+                                                              }
+                                                             }
+                                                            }
+                                                           },
+                                                           "justify_content": "center",
+                                                           "align_items": "center",
+                                                           "children": [
+                                                            {
+                                                             "bk.components.Flexbox": {
+                                                              "decoration": {
+                                                               "bk.components.BoxDecoration": {
+                                                                "corner_radius": "22.0dp",
+                                                                "clipping": true,
+                                                                "background": {
+                                                                 "bk.components.ThemedColorDrawable": {
+                                                                  "color": {
+                                                                   "bk.types.ThemedColor": {
+                                                                    "light_color": "#F5F5F5",
+                                                                    "dark_color": "#262626"
+                                                                   }
+                                                                  }
+                                                                 }
+                                                                }
+                                                               }
+                                                              },
+                                                              "children": [
+                                                               {
+                                                                "bk.components.Image": {
+                                                                 "url": "",
+                                                                 "scale_type": "stretch",
+                                                                 "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655789), \"url\", (bk.action.string.Concat, \"\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"profile_pic_url\"))))",
+                                                                 "id": 110655789
+                                                                }
+                                                               }
+                                                              ],
+                                                              "extensions": [
+                                                               {
+                                                                "bk.components.AccessibilityExtension": {
+                                                                 "enabled": true,
+                                                                 "label": "Profile picture of "
+                                                                }
+                                                               }
+                                                              ],
+                                                              "_style": {
+                                                               "flex": {
+                                                                "width": "44dp",
+                                                                "height": "44dp"
+                                                               }
+                                                              }
+                                                             }
+                                                            }
+                                                           ],
+                                                           "_style": {
+                                                            "flex": {
+                                                             "width": "44.5dp",
+                                                             "height": "44.5dp"
+                                                            }
+                                                           }
+                                                          }
+                                                         }
+                                                        ],
+                                                        "visibility": "visible",
+                                                        "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Not, (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))"
+                                                       }
+                                                      }
+                                                     ],
+                                                     "_style": {
+                                                      "flex": {
+                                                       "width": "100%",
+                                                       "height": "100%",
+                                                       "position_type": "absolute"
+                                                      }
+                                                     }
+                                                    }
+                                                   },
+                                                   {
+                                                    "bk.components.Flexbox": {
+                                                     "children": [
+                                                      {
+                                                       "bk.components.Flexbox": {
+                                                        "decoration": {
+                                                         "bk.components.BoxDecoration": {
+                                                          "background": {
+                                                           "bk.components.ThemedColorDrawable": {
+                                                            "color": {
+                                                             "bk.types.ThemedColor": {
+                                                              "light_color": "#B3FFFFFF",
+                                                              "dark_color": "#B3000000"
+                                                             }
+                                                            }
+                                                           }
+                                                          }
+                                                         }
+                                                        },
+                                                        "visibility": "gone",
+                                                        "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Const, false), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))",
+                                                        "_style": {
+                                                         "flex": {
+                                                          "width": "100%",
+                                                          "height": "100%"
+                                                         }
+                                                        }
+                                                       }
+                                                      }
+                                                     ],
+                                                     "extensions": [],
+                                                     "_style": {
+                                                      "flex": {
+                                                       "width": "100%",
+                                                       "height": "100%",
+                                                       "position_type": "absolute"
+                                                      }
+                                                     }
+                                                    }
+                                                   }
+                                                  ],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "100%",
+                                                    "height": "100%",
+                                                    "position_type": "absolute"
+                                                   }
+                                                  }
+                                                 }
+                                                },
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "children": [],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "100%",
+                                                    "height": "100%",
+                                                    "position_type": "absolute"
+                                                   }
+                                                  }
+                                                 }
+                                                }
+                                               ],
+                                               "extensions": [],
+                                               "_style": {
+                                                "flex": {
+                                                 "width": "44dp",
+                                                 "height": "44dp",
+                                                 "shrink": 0
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "_style": {
+                                             "flex": {
+                                              "margin_top": "8dp",
+                                              "margin_left": "12dp",
+                                              "margin_right": "12dp",
+                                              "margin_bottom": "8dp",
+                                              "shrink": 0
+                                             }
+                                            }
+                                           }
+                                          },
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "flex_direction": "column",
+                                            "align_items": "flex_start",
+                                            "children": [
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "flex_direction": "row",
+                                               "align_items": "center",
+                                               "children": [
+                                                {
+                                                 "bk.components.Text": {
+                                                  "text": "",
+                                                  "text_size": "14sp",
+                                                  "text_style": "semibold",
+                                                  "font_family": "sans-serif-medium",
+                                                  "max_number_of_lines": 1,
+                                                  "text_themed_color": {
+                                                   "bk.types.ThemedColor": {
+                                                    "light_color": "#000000",
+                                                    "dark_color": "#fafafa"
+                                                   }
+                                                  },
+                                                  "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655790), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"username\")))",
+                                                  "id": 110655790
+                                                 }
+                                                },
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "align_items": "center",
+                                                  "children": [
+                                                   {
+                                                    "bk.components.Flexbox": {
+                                                     "children": [
+                                                      {
+                                                       "ig.components.Icon": {
+                                                        "url": "https://i.instagram.com/static/images/bloks/icons/generated/verified__filled__24-4x.png",
+                                                        "resource_name": "verified_filled_24",
+                                                        "height": "12dp",
+                                                        "width": "12dp",
+                                                        "tint_themed_color": {
+                                                         "bk.types.ThemedColor": {
+                                                          "light_color": "#0095F6",
+                                                          "dark_color": "#0095F6"
+                                                         }
+                                                        },
+                                                        "_style": {
+                                                         "flex": {
+                                                          "width": "12dp",
+                                                          "height": "12dp",
+                                                          "margin_left": "4dp"
+                                                         }
+                                                        }
+                                                       }
+                                                      }
+                                                     ],
+                                                     "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655791), \"visibility\", (bk.action.core.Match, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"is_verified\"), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                                     "id": 110655791
+                                                    }
+                                                   }
+                                                  ]
+                                                 }
+                                                }
+                                               ],
+                                               "_style": {
+                                                "flex": {
+                                                 "margin_top": "-8dp",
+                                                 "margin_bottom": "-1dp"
+                                                }
+                                               }
+                                              }
+                                             },
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "children": [
+                                                {
+                                                 "bk.components.Text": {
+                                                  "text": "",
+                                                  "text_size": "14sp",
+                                                  "text_style": "normal",
+                                                  "max_number_of_lines": 1,
+                                                  "text_themed_color": {
+                                                   "bk.types.ThemedColor": {
+                                                    "light_color": "#6F7680",
+                                                    "dark_color": "#A2AAB4"
+                                                   }
+                                                  },
+                                                  "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655793), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"name\")))",
+                                                  "id": 110655793
+                                                 }
+                                                }
+                                               ],
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655792), \"visibility\", (bk.action.core.Match, (bk.action.i32.Gt, (bk.action.string.Length, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__110655788__\", (bk.action.i32.Const, 1)), \"name\")), (bk.action.i32.Const, 0)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                               "id": 110655792
+                                              }
+                                             }
+                                            ],
+                                            "_style": {
+                                             "flex": {
+                                              "margin_top": "8dp",
+                                              "margin_right": "12dp",
+                                              "margin_bottom": "8dp"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       }
+                                      ],
+                                      "_style": {
+                                       "flex": {
+                                        "grow": 1
+                                       }
+                                      }
+                                     }
+                                    },
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "flex_direction": "row",
+                                      "justify_content": "flex_end",
+                                      "align_items": "center",
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "ig.components.Icon": {
+                                               "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle-check__filled__24-4x.png",
+                                               "resource_name": "circle-check_filled_24",
+                                               "height": "24dp",
+                                               "width": "24dp",
+                                               "tint_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#4A5DF9",
+                                                 "dark_color": "#4A5DF9"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655794), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1)), (bk.action.bool.Not, (bk.action.bool.Const, false))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                            "id": 110655794,
+                                            "extensions": [
+                                             {
+                                              "bk.components.AccessibilityExtension": {
+                                               "enabled": true,
+                                               "label": "Toggle checkbox",
+                                               "role": "Button",
+                                               "disabled": false,
+                                               "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655795), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))))",
+                                               "id": 110655795
+                                              }
+                                             }
+                                            ]
+                                           }
+                                          },
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "ig.components.Icon": {
+                                               "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle-check__filled__24-4x.png",
+                                               "resource_name": "circle-check_filled_24",
+                                               "height": "24dp",
+                                               "width": "24dp",
+                                               "tint_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#4d0095F6",
+                                                 "dark_color": "#4d0095F6"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655796), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1)), (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                            "id": 110655796,
+                                            "extensions": [
+                                             {
+                                              "bk.components.AccessibilityExtension": {
+                                               "enabled": true,
+                                               "label": "Toggle checkbox",
+                                               "role": "Button",
+                                               "disabled": false,
+                                               "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655797), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))))",
+                                               "id": 110655797
+                                              }
+                                             }
+                                            ]
+                                           }
+                                          },
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "ig.components.Icon": {
+                                               "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle__outline__24-4x.png",
+                                               "resource_name": "circle_outline_24",
+                                               "height": "24dp",
+                                               "width": "24dp",
+                                               "tint_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#dbdbdb",
+                                                 "dark_color": "#363636"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655798), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))), (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                            "id": 110655798,
+                                            "extensions": [
+                                             {
+                                              "bk.components.AccessibilityExtension": {
+                                               "enabled": true,
+                                               "label": "Toggle checkbox",
+                                               "role": "Button",
+                                               "disabled": false,
+                                               "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655799), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))))",
+                                               "id": 110655799
+                                              }
+                                             }
+                                            ]
+                                           }
+                                          },
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "ig.components.Icon": {
+                                               "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle__outline__24-4x.png",
+                                               "resource_name": "circle_outline_24",
+                                               "height": "24dp",
+                                               "width": "24dp",
+                                               "tint_themed_color": {
+                                                "bk.types.ThemedColor": {
+                                                 "light_color": "#dbdbdb",
+                                                 "dark_color": "#363636"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655800), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))), (bk.action.bool.Not, (bk.action.bool.Const, false))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                            "id": 110655800,
+                                            "extensions": [
+                                             {
+                                              "bk.components.AccessibilityExtension": {
+                                               "enabled": true,
+                                               "label": "Toggle checkbox",
+                                               "role": "Button",
+                                               "disabled": false,
+                                               "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"disabled\", (bk.action.bool.Const, false))",
+                                               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655801), \"selected\", (bk.action.bloks.GetVariableWithScope, \"110655786_0\", (bk.action.i32.Const, 1))))",
+                                               "id": 110655801
+                                              }
+                                             }
+                                            ]
+                                           }
+                                          }
+                                         ]
+                                        }
+                                       }
+                                      ],
+                                      "_style": {
+                                       "flex": {
+                                        "margin_right": "12dp",
+                                        "shrink": 0
+                                       }
+                                      }
+                                     }
+                                    }
+                                   ],
+                                   "id": 110655787,
+                                   "_style": {
+                                    "flex": {
+                                     "width": "100%",
+                                     "margin_left": "4dp",
+                                     "margin_right": "4dp"
+                                    }
+                                   }
+                                  }
+                                 },
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "decoration": {
+                                    "bk.components.BoxDecoration": {
+                                     "background": {
+                                      "bk.components.ThemedColorDrawable": {
+                                       "color": {
+                                        "bk.types.ThemedColor": {
+                                         "light_color": "#B3FFFFFF",
+                                         "dark_color": "#B3000000"
+                                        }
+                                       }
+                                      }
+                                     }
+                                    }
+                                   },
+                                   "justify_content": "center",
+                                   "align_items": "center",
+                                   "children": [
+                                    {
+                                     "ig.components.Spinner": {
+                                      "state": "loading",
+                                      "_style": {
+                                       "flex": {
+                                        "width": "24dp",
+                                        "height": "24dp",
+                                        "align_self": "center"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   ],
+                                   "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655802), \"visibility\", (bk.action.core.Match, (bk.action.bloks.GetVariableWithScope, \"110655786_1\", (bk.action.i32.Const, 1)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                   "id": 110655802,
+                                   "_style": {
+                                    "flex": {
+                                     "width": "100%",
+                                     "height": "100%",
+                                     "position_type": "absolute"
+                                    }
+                                   }
+                                  }
+                                 }
+                                ],
+                                "_style": {
+                                 "flex": {
+                                  "width": "100%",
+                                  "margin_right": "10dp"
+                                 }
+                                }
+                               }
+                              }
+                             ],
+                             "id": 110655803
+                            }
+                           }
+                          ],
+                          "id": 110655761
+                         }
+                        }
+                       ],
+                       "id": 110655758
+                      }
+                     }
+                    ],
+                    "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655757), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariable2, \"110655759_1\"), (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"110655759_0\"))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                    "id": 110655757
+                   }
+                  },
+                  {
+                   "bk.components.Flexbox": {
+                    "children": [
+                     {
+                      "bk.components.Text": {
+                       "text": "No users found.",
+                       "text_size": "16sp",
+                       "text_style": "bold",
+                       "text_themed_color": {
+                        "bk.types.ThemedColor": {
+                         "light_color": "#6F7680",
+                         "dark_color": "#A2AAB4"
+                        }
+                       },
+                       "_style": {
+                        "flex": {
+                         "margin_top": "12dp",
+                         "margin_left": "12dp",
+                         "margin_bottom": "12dp"
+                        }
+                       }
+                      }
+                     }
+                    ],
+                    "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655762), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"110655759_1\")), (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"110655759_0\"))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                    "id": 110655762
+                   }
+                  },
+                  {
+                   "bk.components.Flexbox": {
+                    "justify_content": "center",
+                    "children": [
+                     {
+                      "bk.components.Flexbox": {
+                       "justify_content": "center",
+                       "align_items": "center",
+                       "children": [
+                        {
+                         "ig.components.Spinner": {
+                          "state": "loading",
+                          "_style": {
+                           "flex": {
+                            "width": "36dp",
+                            "height": "36dp"
+                           }
+                          }
+                         }
+                        }
+                       ],
+                       "extensions": [
+                        {
+                         "ig.components.ViewpointExtension": {
+                          "key": "110655764"
+                         }
+                        }
+                       ],
+                       "_style": {
+                        "collection": {
+                         "height": "60dp"
+                        }
+                       }
+                      }
+                     }
+                    ],
+                    "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 110655763), \"visibility\", (bk.action.core.Match, (bk.action.bloks.GetVariable2, \"110655759_0\"), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                    "id": 110655763,
+                    "_style": {
+                     "flex": {
+                      "width": "100%",
+                      "grow": 1
+                     }
+                    }
+                   }
+                  }
+                 ]
+                }
+               },
+               "init_state": "(bk.action.array.Make, null)"
+              }
+             }
+            ],
+            "ios_truncate_cell_content_discouraged": true,
+            "_style": {
+             "flex": {
+              "padding_top": "16dp",
+              "padding_left": "32dp",
+              "padding_right": "32dp",
+              "padding_bottom": "32dp"
+             }
+            }
+           }
+          }
+         ],
+         "extensions": [
+          {
+           "bk.components.VisibilityExtension": {
+            "key": "110655756",
+            "on_appear": "(bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.privacy.close_friends_screen.close_friend_count_updater\", (bk.action.map.Make, (bk.action.array.Make), (bk.action.array.Make)), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), \"current-screen\")"
+           }
+          }
+         ],
+         "_style": {
+          "flex": []
+         }
+        }
+       }
+      ],
+      "extensions": [
+       {
+        "bk.components.RenderLifecycleExtension": {
+         "on_component_rendered": "(bk.action.i32.Const, 1)"
+        }
+       }
+      ]
+     }
+    },
+    "embedded_payloads": [
+     {
+      "id": "110655760",
+      "payload": {
+       "layout": {
+        "bloks_payload": {
+         "referenced": [],
+         "tree": {
+          "bk.components.BottomSheet": {
+           "content": {
+            "bk.components.Flexbox": {
+             "flex_direction": "column",
+             "children": [
+              {
+               "bk.components.Flexbox": {
+                "flex_direction": "row",
+                "children": [
+                 {
+                  "ig.components.Icon": {
+                   "url": "https://i.instagram.com/static/images/bloks/icons/generated/users-pano__outline__24-4x.png",
+                   "resource_name": "users-pano_outline_24",
+                   "height": "24dp",
+                   "width": "24dp",
+                   "tint_themed_color": {
+                    "bk.types.ThemedColor": {
+                     "light_color": "#000000",
+                     "dark_color": "#fafafa"
+                    }
+                   },
+                   "_style": {
+                    "flex": {
+                     "margin_right": "20dp"
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "bk.components.Flexbox": {
+                   "flex_direction": "column",
+                   "children": [
+                    {
+                     "bk.components.Text": {
+                      "text": "Choose who's on your list",
+                      "text_size": "14sp",
+                      "text_style": "semibold",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#000000",
+                        "dark_color": "#fafafa"
+                       }
+                      },
+                      "_style": {
+                       "flex": {
+                        "margin_bottom": "4dp"
+                       }
+                      }
+                     }
+                    },
+                    {
+                     "bk.components.Text": {
+                      "text": "When you add people, they'll be able to see stories you share with your list.",
+                      "text_size": "14sp",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#6F7680",
+                        "dark_color": "#A2AAB4"
+                       }
+                      }
+                     }
+                    }
+                   ],
+                   "_style": {
+                    "flex": {
+                     "padding_bottom": "24dp"
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              },
+              {
+               "bk.components.Flexbox": {
+                "flex_direction": "row",
+                "children": [
+                 {
+                  "ig.components.Icon": {
+                   "url": "https://i.instagram.com/static/images/bloks/icons/generated/circle-star-pano__outline__24-4x.png",
+                   "resource_name": "circle-star-pano_outline_24",
+                   "height": "24dp",
+                   "width": "24dp",
+                   "tint_themed_color": {
+                    "bk.types.ThemedColor": {
+                     "light_color": "#000000",
+                     "dark_color": "#fafafa"
+                    }
+                   },
+                   "_style": {
+                    "flex": {
+                     "margin_right": "20dp"
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "bk.components.Flexbox": {
+                   "flex_direction": "column",
+                   "children": [
+                    {
+                     "bk.components.Text": {
+                      "text": "Share with just them",
+                      "text_size": "14sp",
+                      "text_style": "semibold",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#000000",
+                        "dark_color": "#fafafa"
+                       }
+                      },
+                      "_style": {
+                       "flex": {
+                        "margin_bottom": "4dp"
+                       }
+                      }
+                     }
+                    },
+                    {
+                     "bk.components.Text": {
+                      "text": "Some stories aren't for everyone. Photos and videos shared to your list get a special label.",
+                      "text_size": "14sp",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#6F7680",
+                        "dark_color": "#A2AAB4"
+                       }
+                      }
+                     }
+                    }
+                   ],
+                   "_style": {
+                    "flex": {
+                     "padding_bottom": "24dp"
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              },
+              {
+               "bk.components.Flexbox": {
+                "flex_direction": "row",
+                "children": [
+                 {
+                  "ig.components.Icon": {
+                   "url": "https://i.instagram.com/static/images/bloks/icons/generated/eye-off-pano__outline__24-4x.png",
+                   "resource_name": "eye-off-pano_outline_24",
+                   "height": "24dp",
+                   "width": "24dp",
+                   "tint_themed_color": {
+                    "bk.types.ThemedColor": {
+                     "light_color": "#000000",
+                     "dark_color": "#fafafa"
+                    }
+                   },
+                   "_style": {
+                    "flex": {
+                     "margin_right": "20dp"
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "bk.components.Flexbox": {
+                   "flex_direction": "column",
+                   "children": [
+                    {
+                     "bk.components.Text": {
+                      "text": "Only you can see who's on your list",
+                      "text_size": "14sp",
+                      "text_style": "semibold",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#000000",
+                        "dark_color": "#fafafa"
+                       }
+                      },
+                      "_style": {
+                       "flex": {
+                        "margin_bottom": "4dp"
+                       }
+                      }
+                     }
+                    },
+                    {
+                     "bk.components.Text": {
+                      "text": "People on your close friends list will know they're on it, but they can't view your list.",
+                      "text_size": "14sp",
+                      "text_themed_color": {
+                       "bk.types.ThemedColor": {
+                        "light_color": "#6F7680",
+                        "dark_color": "#A2AAB4"
+                       }
+                      }
+                     }
+                    }
+                   ],
+                   "_style": {
+                    "flex": {
+                     "padding_bottom": "24dp"
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             ],
+             "_style": {
+              "flex": {
+               "padding_top": "24dp",
+               "padding_left": "32dp",
+               "padding_right": "32dp"
+              }
+             }
+            }
+           },
+           "title": "How Close Friends Works"
+          }
+         },
+         "referenced_embedded_payloads": []
+        }
+       }
+      }
+     }
+    ],
+    "error_attribution": {
+     "logging_id": "p207xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "source_map_id": "p208xxxxxxxxxxxxxxxx"
+    }
+   }
+  },
+  "server_data": {
+   "falco_log_policy_map": null,
+   "versioning_id": "p209xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "bloks_app_id": "ig_web"
+  }
+ },
+ "lid": "p210xxxxxxxxxxxxxxx"
+}

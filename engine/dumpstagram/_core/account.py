@@ -1,10 +1,16 @@
-"""The viewer's own pending follow requests and activity feed, asynchronously.
+"""The viewer's own pending follow requests, activity feed, saved posts and collections, and
+close friends list, asynchronously.
 
 Each read is one REST request sent alone, where a browser sends both inside its direct inbox
 load, and marks nothing seen. A browser's inbox load follows the activity feed with
 ``news/inbox_seen``, which clears the viewer's own notifications badge; that request has never
 been sent or observed answering, so the engine does not send it, W74's named departure from
 ADR-0013 until a verified finding exists.
+
+The close friends list is read from the settings screen's Bloks app fetch, sent once. A browser's
+page load sends the fetch twice, the settings side menu query before it and a
+``close_friend_count_updater`` action after it, whose effect is UNRESOLVED; none of those three
+is sent (W107).
 """
 
 from __future__ import annotations
@@ -13,16 +19,37 @@ from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
-from dumpstagram._private.web.parse.account import parse_activity_feed, parse_follow_requests
+from dumpstagram._private.web.parse.account import (
+   parse_activity_feed,
+   parse_close_friends,
+   parse_follow_requests,
+   parse_saved_collections,
+   parse_saved_posts,
+)
 from dumpstagram._private.web.requests.account import (
    build_activity_feed_request,
+   build_close_friends_request,
    build_follow_requests_request,
+   build_saved_collections_request,
+   build_saved_posts_request,
 )
 from dumpstagram._private.web.requests.profiles import new_web_session_id
-from dumpstagram.models import ActivityFeed, FollowRequests
+from dumpstagram.models import (
+   ActivityFeed,
+   FollowRequests,
+   ProfileSummary,
+   SavedCollections,
+   SavedPosts,
+)
 from dumpstagram.session import Session
 
-__all__ = ["read_activity_feed", "read_follow_requests"]
+__all__ = [
+   "read_activity_feed",
+   "read_close_friends",
+   "read_follow_requests",
+   "read_saved_collections",
+   "read_saved_posts",
+]
 
 
 async def read_follow_requests(
@@ -67,5 +94,74 @@ async def read_activity_feed(
       response = await sender.send(request)
 
       return parse_activity_feed(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_saved_posts(
+   sender: PacedSender,
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> SavedPosts:
+   """The first page of the viewer's saved "All posts" view, one live request (W105).
+
+   The GET carries no page token, so no bootstrap is spent on it, as with the follow requests.
+   """
+
+   async def attempt() -> SavedPosts:
+      request = build_saved_posts_request(
+         session, web_session_id=new_web_session_id(), user_agent=user_agent
+      )
+      response = await sender.send(request)
+
+      return parse_saved_posts(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_saved_collections(
+   sender: PacedSender,
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> SavedCollections:
+   """The viewer's saved tab, its first page, one live request and a bootstrap when no token is
+   held (W106)."""
+
+   async def attempt() -> SavedCollections:
+      if not session.fb_dtsg:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_saved_collections_request(session, user_agent=user_agent)
+      response = await sender.send(request)
+
+      return parse_saved_collections(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_close_friends(
+   sender: PacedSender,
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> tuple[ProfileSummary, ...]:
+   """The viewer's close friends, one live request and a bootstrap when the session holds no page
+   token or no Bloks version id (W107)."""
+
+   async def attempt() -> tuple[ProfileSummary, ...]:
+      lacks_page_tokens = not session.fb_dtsg or not session.bloks_version_id
+
+      if lacks_page_tokens:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_close_friends_request(session, user_agent=user_agent)
+      response = await sender.send(request)
+
+      return parse_close_friends(classify(response))
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

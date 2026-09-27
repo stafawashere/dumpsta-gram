@@ -12,6 +12,7 @@ alias dumpstagram.Behavior -> dumpstagram.behavior.Behavior
 alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.CarouselChild -> dumpstagram.models.feed.CarouselChild
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
+alias dumpstagram.CollectionCover -> dumpstagram.models.account.CollectionCover
 alias dumpstagram.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
 alias dumpstagram.DirectThread -> dumpstagram.models.threads.DirectThread
@@ -69,6 +70,11 @@ alias dumpstagram.RecentSearch -> dumpstagram.models.search.RecentSearch
 alias dumpstagram.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
 alias dumpstagram.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
 data dumpstagram.SCHEMA_VERSION: int = 1
+alias dumpstagram.SavedCollection -> dumpstagram.models.account.SavedCollection
+alias dumpstagram.SavedCollectionKind -> dumpstagram.models.account.SavedCollectionKind
+alias dumpstagram.SavedCollections -> dumpstagram.models.account.SavedCollections
+alias dumpstagram.SavedPost -> dumpstagram.models.account.SavedPost
+alias dumpstagram.SavedPosts -> dumpstagram.models.account.SavedPosts
 alias dumpstagram.SchemaChanged -> dumpstagram.errors.SchemaChanged
 alias dumpstagram.SearchPost -> dumpstagram.models.search.SearchPost
 alias dumpstagram.SearchResult -> dumpstagram.models.search.SearchResult
@@ -245,6 +251,7 @@ alias dumpstagram.models.ActivitySection -> dumpstagram.models.account.ActivityS
 alias dumpstagram.models.AudioKind -> dumpstagram.models.feed.AudioKind
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.CarouselChild -> dumpstagram.models.feed.CarouselChild
+alias dumpstagram.models.CollectionCover -> dumpstagram.models.account.CollectionCover
 alias dumpstagram.models.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.models.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
 alias dumpstagram.models.DirectThread -> dumpstagram.models.threads.DirectThread
@@ -287,6 +294,11 @@ alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.RecentSearch -> dumpstagram.models.search.RecentSearch
 alias dumpstagram.models.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
 alias dumpstagram.models.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
+alias dumpstagram.models.SavedCollection -> dumpstagram.models.account.SavedCollection
+alias dumpstagram.models.SavedCollectionKind -> dumpstagram.models.account.SavedCollectionKind
+alias dumpstagram.models.SavedCollections -> dumpstagram.models.account.SavedCollections
+alias dumpstagram.models.SavedPost -> dumpstagram.models.account.SavedPost
+alias dumpstagram.models.SavedPosts -> dumpstagram.models.account.SavedPosts
 alias dumpstagram.models.SearchPost -> dumpstagram.models.search.SearchPost
 alias dumpstagram.models.SearchResult -> dumpstagram.models.search.SearchResult
 alias dumpstagram.models.SearchResultKind -> dumpstagram.models.search.SearchResultKind
@@ -360,9 +372,54 @@ field dumpstagram.models.account.ActivityMedia.shortcode: str
 class dumpstagram.models.account.ActivitySection()
 field dumpstagram.models.account.ActivitySection.first_index: int
 field dumpstagram.models.account.ActivitySection.title: str
+class dumpstagram.models.account.CollectionCover()
+field dumpstagram.models.account.CollectionCover.image_urls: tuple[str, ...]
+field dumpstagram.models.account.CollectionCover.media_id: str | None
 class dumpstagram.models.account.FollowRequests()
 field dumpstagram.models.account.FollowRequests.accounts: tuple[ProfileSummary, ...]
 field dumpstagram.models.account.FollowRequests.has_more: bool
+class dumpstagram.models.account.SavedCollection()
+field dumpstagram.models.account.SavedCollection.covers: tuple[CollectionCover, ...] = ()
+field dumpstagram.models.account.SavedCollection.id: str
+field dumpstagram.models.account.SavedCollection.kind: SavedCollectionKind
+field dumpstagram.models.account.SavedCollection.media_count: int | None = None
+field dumpstagram.models.account.SavedCollection.name: str
+class dumpstagram.models.account.SavedCollectionKind(enum.StrEnum)
+data dumpstagram.models.account.SavedCollectionKind.ALL_POSTS: SavedCollectionKind = <SavedCollectionKind.ALL_POSTS: 'IGAllMediaAutoCollection'>
+data dumpstagram.models.account.SavedCollectionKind.AUDIO: SavedCollectionKind = <SavedCollectionKind.AUDIO: 'XDTAudioAutoCollection'>
+data dumpstagram.models.account.SavedCollectionKind.OTHER: SavedCollectionKind = <SavedCollectionKind.OTHER: 'other'>
+class dumpstagram.models.account.SavedCollections()
+field dumpstagram.models.account.SavedCollections.collections: tuple[SavedCollection, ...]
+field dumpstagram.models.account.SavedCollections.has_more: bool
+class dumpstagram.models.account.SavedPost()
+field dumpstagram.models.account.SavedPost.accessibility_caption: str | None = None
+field dumpstagram.models.account.SavedPost.audio: MediaAudio | None = None
+field dumpstagram.models.account.SavedPost.author: PostAuthor
+field dumpstagram.models.account.SavedPost.caption: str | None = None
+field dumpstagram.models.account.SavedPost.carousel_children: tuple[CarouselChild, ...] = ()
+field dumpstagram.models.account.SavedPost.carousel_media_count: int | None = None
+field dumpstagram.models.account.SavedPost.code: str
+field dumpstagram.models.account.SavedPost.collaborators: tuple[ProfileSummary, ...] | None = None
+field dumpstagram.models.account.SavedPost.has_audio: bool | None = None
+field dumpstagram.models.account.SavedPost.has_liked: bool
+field dumpstagram.models.account.SavedPost.id: str
+field dumpstagram.models.account.SavedPost.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.account.SavedPost.is_paid_partnership: bool = False
+field dumpstagram.models.account.SavedPost.like_and_view_counts_disabled: bool | None = None
+field dumpstagram.models.account.SavedPost.like_count: int
+field dumpstagram.models.account.SavedPost.location: Location | None = None
+field dumpstagram.models.account.SavedPost.media_type: int
+field dumpstagram.models.account.SavedPost.original_height: int | None = None
+field dumpstagram.models.account.SavedPost.original_width: int | None = None
+field dumpstagram.models.account.SavedPost.pk: str
+field dumpstagram.models.account.SavedPost.product_type: str
+field dumpstagram.models.account.SavedPost.taken_at: datetime
+field dumpstagram.models.account.SavedPost.user_tags: tuple[UserTag, ...] | None = None
+field dumpstagram.models.account.SavedPost.video_duration: float | None = None
+field dumpstagram.models.account.SavedPost.videos: tuple[VideoRendition, ...] = ()
+class dumpstagram.models.account.SavedPosts()
+field dumpstagram.models.account.SavedPosts.has_more: bool
+field dumpstagram.models.account.SavedPosts.posts: tuple[SavedPost, ...]
 module dumpstagram.models.comments
 class dumpstagram.models.comments.Comment()
 field dumpstagram.models.comments.Comment.author: CommentAuthor
@@ -837,11 +894,17 @@ module dumpstagram.namespaces.account
 class dumpstagram.namespaces.account.AsyncAccount()
 def dumpstagram.namespaces.account.AsyncAccount.__init__(self) -> None
 def dumpstagram.namespaces.account.AsyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.AsyncAccount.close_friends(self) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.account.AsyncAccount.collections(self) -> SavedCollections
 def dumpstagram.namespaces.account.AsyncAccount.follow_requests(self) -> FollowRequests
+def dumpstagram.namespaces.account.AsyncAccount.saved(self) -> SavedPosts
 class dumpstagram.namespaces.account.SyncAccount()
 def dumpstagram.namespaces.account.SyncAccount.__init__(self) -> None
 def dumpstagram.namespaces.account.SyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.SyncAccount.close_friends(self) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.account.SyncAccount.collections(self) -> SavedCollections
 def dumpstagram.namespaces.account.SyncAccount.follow_requests(self) -> FollowRequests
+def dumpstagram.namespaces.account.SyncAccount.saved(self) -> SavedPosts
 module dumpstagram.namespaces.direct
 class dumpstagram.namespaces.direct.AsyncDirect()
 def dumpstagram.namespaces.direct.AsyncDirect.__init__(self) -> None

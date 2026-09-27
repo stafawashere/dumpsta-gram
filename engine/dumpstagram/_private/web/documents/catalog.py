@@ -9,6 +9,7 @@ later cannot go unchecked by omission.
 
 from __future__ import annotations
 
+from dumpstagram._private.web.documents.account import SAVED_COLLECTIONS
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import (
    DIRECT_INBOX,
@@ -123,6 +124,7 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    REELS_FEED_NEXT_PAGE,
    PERSONALISED_TYPEAHEAD,
    KEYWORD_RESULTS,
+   SAVED_COLLECTIONS,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

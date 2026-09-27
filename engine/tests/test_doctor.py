@@ -41,6 +41,7 @@ from dumpstagram._private.transport import Request, Response
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL
 from dumpstagram._private.web.bundles import STATIC_BUNDLE_HOST, bundle_urls, compiled_operations
 from dumpstagram._private.web.canary import REPLAY_STEPS
+from dumpstagram._private.web.documents.account import SAVED_COLLECTIONS
 from dumpstagram._private.web.documents.catalog import (
    COMPANION_QUERIES,
    READ_QUERIES,
@@ -91,6 +92,7 @@ from tests.test_feed import payload as feed_payload
 from tests.test_inbox_listing import listing_payload, listing_row, message_edge
 from tests.test_likes import post_item, post_payload
 from tests.test_notes import tray_payload
+from tests.test_own_account_more import recorded as recorded_own_account_more
 from tests.test_parse import payload as thread_page_payload
 from tests.test_post_depth import recorded as recorded_post_depth
 from tests.test_profile_tabs import recorded as recorded_profile_tabs
@@ -262,6 +264,7 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisKeywordSearchExplorePageRelayQuery": recorded_discovery_search(
          "keyword_results.json"
       ),
+      "PolarisProfileSavedTabContentQuery": recorded_own_account_more("saved_collections.json"),
    }
 
 
@@ -483,7 +486,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 61
+   assert len(registry) == 62
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -781,7 +784,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 38
+   assert payload["plan"]["paced_requests_at_most"] == 39
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -877,7 +880,7 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 36 reads" in stated
+   assert "2 documents and at most 37 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated
 
 
@@ -916,3 +919,19 @@ def test_the_reels_and_search_steps_of_batch_11b_read_what_earlier_steps_learned
    assert check_for(report, KEYWORD_RESULTS).replay is ReplayVerdict.OK
    assert check_for(last_page_report, REELS_FEED_NEXT_PAGE).replay is ReplayVerdict.SKIPPED
    assert "PolarisClipsTabDesktopPaginationQuery" not in last_page_site.sent
+
+
+def test_the_saved_tab_step_of_batch_11c_replays_the_browsers_variables() -> None:
+   """Catches the saved tab replayed with variables other than the ones a browser sent, or its
+   answer read by a mapper other than the capability's."""
+
+   bundles = every_query_compiled()
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   variables = site.variables_of("PolarisProfileSavedTabContentQuery")
+
+   assert variables == {
+      "collection_types": ["ALL_MEDIA_AUTO_COLLECTION", "MEDIA", "AUDIO_AUTO_COLLECTION"],
+      "first": 12,
+   }
+   assert check_for(report, SAVED_COLLECTIONS).replay is ReplayVerdict.OK
