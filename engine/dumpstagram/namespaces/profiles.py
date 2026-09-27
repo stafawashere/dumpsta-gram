@@ -1,5 +1,5 @@
-"""``client.profiles``, reading one account's profile, its posts grid, its highlights tray, and
-the accounts suggested beside it or to the viewer."""
+"""``client.profiles``, reading one account's profile, its posts grid, its highlights tray, its
+followers, and the accounts suggested beside it or to the viewer."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.profiles import (
+   read_followers_page,
    read_highlight_tray,
    read_profile,
    read_profile_by_id,
@@ -205,6 +206,41 @@ class AsyncProfiles:
          )
       )
 
+   async def followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]:
+      """Read one page of an account's followers, in the upstream's order. Two live requests.
+
+      ``user_id`` is the numeric account id, :attr:`Profile.id
+      <dumpstagram.models.Profile.id>`, and a username raises :class:`ValueError` before
+      anything is sent. ``after`` is the ``end_cursor`` of a page this method returned, and the
+      page's ``has_next_page`` is the upstream's own ``has_more``, the only thing that says
+      whether more exist. The upstream decides a page's length: twelve are asked for, and a
+      second page of seven still said more existed.
+
+      Each account's ``friendship_status`` is the viewer's relationship to it, read by the
+      request a browser's follow list sends beside each page, inside the same action.
+      :attr:`~dumpstagram.behavior.Behavior.follow_list_statuses` set to False leaves that
+      request out, one live request a page, and every ``friendship_status`` is then ``None``.
+
+      A browser opens the list from the profile page, so its referer is that page. This sends
+      the site root, because the method has an id and no username, a departure recorded in
+      ``docs/web-request-contract.md``. Only the viewer's own followers have been read, so what
+      the upstream answers for a private account the viewer does not follow is not observed.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_followers_page(
+            client._sender,
+            client._session,
+            user_id,
+            after=after,
+            with_statuses=client._behavior.follow_list_statuses,
+            user_agent=client._user_agent,
+         )
+      )
+
    def iter_posts(
       self, username: str, *, limit: int | None, after: str | None = None
    ) -> AsyncIterator[Post]:
@@ -226,6 +262,29 @@ class AsyncProfiles:
 
       return iterate_pages(
          lambda cursor: self.posts(username, after=cursor), limit=limit, after=after
+      )
+
+   def iter_followers(
+      self, user_id: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[ProfileSummary]:
+      """Walk an account's followers one account at a time, reading a page with
+      :meth:`followers` each time the one before it is used up. Use it with ``async for``, and
+      do not await it.
+
+      ``limit`` is required and counts accounts. The walk stops once that many have been
+      yielded, without reading a page it would not use, and ``limit=None`` walks until a page
+      says no more exist. ``after`` starts the walk from a cursor :meth:`followers` handed out.
+
+      Each page is one read with everything :meth:`followers` sends for it, paced as any read
+      is, and never read ahead of the caller. A page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`, and a negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda next_max_id: self.followers(user_id, after=next_max_id), limit=limit, after=after
       )
 
 
@@ -318,6 +377,19 @@ class SyncProfiles:
          operation="SyncClient.profiles.suggested_for_you",
       )
 
+   def followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]:
+      """Read one page of an account's followers. Blocks until it has one.
+
+      The same call as :meth:`AsyncProfiles.followers`, with the same arguments and the same
+      result, run on the shared loop thread. Two live requests, one when
+      :attr:`~dumpstagram.behavior.Behavior.follow_list_statuses` is off.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.followers(user_id, after=after),
+         operation="SyncClient.profiles.followers",
+      )
+
    def iter_posts(
       self, username: str, *, limit: int | None, after: str | None = None
    ) -> Iterator[Post]:
@@ -338,3 +410,25 @@ class SyncProfiles:
          )
 
       return iterate_pages_blocking(read_page, limit=limit, after=after)
+
+   def iter_followers(
+      self, user_id: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[ProfileSummary]:
+      """Walk an account's followers one account at a time. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncProfiles.iter_followers`, with the same ``limit``, each page
+      read on the shared loop thread. Exceptions cross back as themselves, with a note naming
+      this method. Closing the iterator early leaves nothing running, because no page is read
+      ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_followers_of(next_max_id: str | None) -> Page[ProfileSummary]:
+         return client._loop.run(
+            client._impl.profiles.followers(user_id, after=next_max_id),
+            operation="SyncClient.profiles.iter_followers",
+         )
+
+      return iterate_pages_blocking(read_followers_of, limit=limit, after=after)

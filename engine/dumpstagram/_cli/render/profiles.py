@@ -1,5 +1,5 @@
-"""A profile and the viewer's relationship to it, a profile's posts grid, its highlights tray, and
-the suggested accounts, in both output forms."""
+"""A profile and the viewer's relationship to it, a profile's posts grid, its highlights tray, its
+followers, and the suggested accounts, in both output forms."""
 
 from __future__ import annotations
 
@@ -18,12 +18,14 @@ from dumpstagram.models import (
 )
 
 __all__ = [
+   "describe_follower_pages",
    "describe_friendship_status",
    "describe_grid_pages",
    "describe_highlight_tray",
    "describe_profile",
    "describe_profile_summary",
    "describe_suggested_account",
+   "render_followers",
    "render_grid",
    "render_highlight_tray",
    "render_profile",
@@ -256,5 +258,35 @@ def render_suggested_accounts(suggestions: tuple[SuggestedAccount, ...]) -> str:
       f"{_summary_line(suggestion.account)}\n   {suggestion.reason}" for suggestion in suggestions
    ]
    lines.append(f"accounts: {len(suggestions)}")
+
+   return "\n".join(lines)
+
+
+def describe_follower_pages(pages: list[Page[ProfileSummary]]) -> dict[str, Any]:
+   """What was read, with the last page's own terminator and cursor."""
+
+   last_page = pages[-1] if pages else None
+
+   return {
+      "pages_read": len(pages),
+      "account_count": sum(len(page.items) for page in pages),
+      "more_available": last_page.has_next_page if last_page is not None else False,
+      "end_cursor": last_page.end_cursor if last_page is not None else None,
+      "accounts": [describe_profile_summary(account) for page in pages for account in page.items],
+   }
+
+
+def render_followers(pages: list[Page[ProfileSummary]]) -> str:
+   """One line per follower in the upstream's order, then the trailer and the cursor."""
+
+   described = describe_follower_pages(pages)
+   lines = [_summary_line(account) for page in pages for account in page.items]
+   lines.append(
+      f"pages_read: {described['pages_read']}  accounts: {described['account_count']}  "
+      f"more_available: {described['more_available']}"
+   )
+
+   if described["end_cursor"]:
+      lines.append(f"next_cursor: {described['end_cursor']}")
 
    return "\n".join(lines)

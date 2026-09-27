@@ -827,6 +827,79 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   was seen red before the change and green after. Live, the batch 2 acceptance's first step spent
   three requests, the refusal, one bootstrap and the read, and answered.
 
+- **W58. The followers list is `profiles.followers(user_id, *, after=None) ->
+  Page[ProfileSummary]` and `iter_followers`, over REST, ending on `has_more`.** Ruled 2026-09-27
+  for E2 batch 3. The read is `GET /api/v1/friendships/<user id>/followers/` with `count` 12 and
+  `search_surface` follow_list_page, the query the browser's follow list sent in the recorded
+  browse of `run-2026-09-23-005544`, replayed six times on 2026-09-27 (finding
+  `read-an-account-s-followers`, logs `logs/e2-follow-lists-2026-09-27-013523.json` and
+  `-014452.json`). It is keyed on the numeric account id in the path, so a username raises
+  `ValueError` before anything is sent, as `social.follow` refuses one. The next page carries
+  `max_id` set to the previous page's `next_max_id`, a 120 character string; on both runs that
+  page answered 7 new accounts with zero overlap with the first page's 12. FACT, twice, which
+  meets the standing rule, so the read pages rather than shipping a first page only, and the
+  cursor `Page.end_cursor` hands out is `next_max_id` unchanged. The terminator is `has_more`.
+  No last page has been read: the owner's profile counts 82 followers, the walk stopped at 19,
+  and the second page, 7 accounts where 12 were asked for, still said `has_more` true with a
+  `next_max_id`. So a short page is not an end, FACT, and what the last page carries is not
+  observed; `has_more` false ending the walk is an INFERENCE from its name, and `next_max_id` is
+  read where the answer carries it and `None` where it is absent or null, so a last page that
+  drops it maps rather than failing, and a page that says more exist with no cursor raises
+  `SchemaChanged` in the walk (W23). The row is batch 2's `ProfileSummary` read by its mapper
+  unchanged: every row of the four pages read carried `pk`, `id` and `pk_id` equal, `username`,
+  `full_name`, `is_private`, `is_verified` and `profile_pic_url`, no high resolution picture and
+  no relationship; `profile_pic_id` was absent on one row of each page and is not read. Dropped from
+  the answer: `groups` and `more_groups_available`, two titled groups of two small pictures shown
+  above the list, three of whose four accounts were on the same page, empty on one first page of
+  four and absent from the next page, and seven flags, sizes and tokens that describe the list's chrome.
+  A REST answer reports failure in `status`, which the classifier does not read, so the mapper
+  refuses anything but `ok` with posting's check. The request is the first REST read on the web
+  API: the posting publishes' header set with `x-ig-max-touch-points` 0 and `x-web-session-id`,
+  a fresh three-group value per read, sent on both of that read's requests because the browser
+  carried one value on every request of its page session. Departures: a browser loads the list's
+  code chunk and opens it from the profile page, so its referer is that page; the engine sends
+  the page alone with the site root as referer, because the method has an id and no username, an
+  ASSUMPTION until the batch's live acceptance, which on 2026-09-27 read two pages that way with
+  both steps exit 0, one observation.
+  Following and mutual followers have no observed request and wait on the capture night (batch
+  10); nothing for them ships.
+- **W59. Each followers page is followed by the viewer's relationship to the accounts on it, as
+  the browser's list does, and `Behavior.follow_list_statuses` is the departure.** Ruled
+  2026-09-27 for E2 batch 3. FACT from the recorded browse: 455 ms after the one followers page it
+  loaded, the list sent `POST /api/v1/friendships/show_many/` with `user_ids` the page's 11 ids
+  in the page's order, then `jazoest` and `fb_dtsg`, with the same `x-web-session-id` and the
+  three headers a form POST adds. The browse did not scroll, so a later page's statuses were not
+  observed; that the list sends one per page is an INFERENCE from the list being paged and the
+  statuses naming exactly one page's ids. The read was replayed four times (finding
+  `friendship-statuses-for-many-accounts`), 11 statuses each. So under parity `followers` sends
+  the page and then its statuses inside one action, one pacer slot, and fills each row's
+  `friendship_status`, and `Behavior.follow_list_statuses` set to False leaves the second request
+  out, one request a page, with every `friendship_status` `None`. A page that lists nobody sends
+  no statuses, and a bootstrap is spent only when the statuses will be sent, because the page
+  itself carries no page token. `show_many` is a POST that changes nothing, so it is a read and
+  runs under the read retry policy. The statuses fold into batch 2's `ListFriendshipStatus`
+  unchanged: all 44 statuses read carried its six required flags as booleans and neither
+  `followed_by` nor `blocking`, which read `None`, the case W55 anticipated. `is_private`, which
+  the row itself carries, and `text_post_app_pre_following`, a Threads app flag, are dropped.
+  Statuses are matched to rows by account id, not position, and an account the answer does not
+  name keeps `None`; none was missing on any answer read.
+- **W60. The doctor does not replay the followers read, and `dumpsta followers` pages with
+  `--pages` only.** Ruled 2026-09-27 for E2 batch 3. The canary exists to catch a persisted
+  query's `doc_id` rotating (W31), and every `ReplayStep` is keyed on a `PersistedQuery` in
+  `READ_QUERIES`. The followers page and the statuses are REST paths with no `doc_id` for a
+  bundle to compile, so neither fits the W48 pattern, the canary is unchanged at seventeen reads,
+  and no doctor gate moved. A path that stops answering would fail the read itself with
+  `SchemaChanged` or `UpstreamRejected`. `dumpsta followers USER_ID` takes `--pages` (default 1)
+  and `--after`, as `posts` and `inbox` do, and stops on the page's own `has_more`. No `--limit`
+  was added: no existing paged command has one, and a limit that ended inside a page would print
+  the page's cursor, which resumes after the accounts it cut. `tests/test_follow_lists.py` holds
+  16 gates on the recorded answers, pseudonymised by `scripts/build_follow_lists_fixtures.py`,
+  and `scripts/verify_follow_lists_gates.py` holds 31 mutations, each seen red then green. The
+  parity tables gained `followers` and `iter_followers`. The surface grew from 631 lines to 636,
+  five added and none removed or changed. Live traffic: `probes/e2_follow_lists.py` ran twice,
+  7 requests each, 14; the CLI acceptance, `probes/e2_follow_lists_cli_acceptance.py`, is written
+  and not yet run, five requests planned.
+
 ## Standing rules for every phase
 
 - Every capability starts with a `reverse-engineer` run and a verified finding, per the

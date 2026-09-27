@@ -141,8 +141,9 @@ class ListFriendshipStatus:
    :class:`FriendshipStatus`: none of the 138 rows read on 2026-09-27 carried ``muting`` or
    ``is_muting_reel``, and they are not guessed. The six required flags were a boolean on every
    row. ``followed_by`` and ``blocking`` were a boolean on every row of both suggested lists and
-   are ``None`` on a row that does not carry them, which is expected of other lists (ASSUMPTION,
-   from the ``show_many`` answer of 2026-09-27, which lacks both).
+   are ``None`` on a row that does not carry them, which is every row of an account's followers:
+   the relationship statuses the follower list reads carried neither on any of 44 statuses read
+   on 2026-09-27.
    """
 
    following: bool

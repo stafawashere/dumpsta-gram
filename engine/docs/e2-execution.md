@@ -37,7 +37,7 @@ capture night that unblocks the rest.
 |---|---|---|---|---|
 | 1 | Direct read side, done 2026-09-24 | `probes/e2_direct_read.py` | 9, spent 9 | 3, spent 0 |
 | 2 | Profile tabs over GraphQL, done 2026-09-27 | `probes/e2_profile_tabs.py` | 12, spent 8 on each of 3 runs | 4, spent 0 |
-| 3 | Relationship lists | `probes/e2_follow_lists.py` | 6 | 1 |
+| 3 | Relationship lists, done 2026-09-27 | `probes/e2_follow_lists.py` | 6, spent 7 on each of 2 runs | 1, spent 1 on each |
 | 4 | Post depth | `probes/e2_post_depth.py` | 13 | 7 |
 | 5 | Stories, read only | `probes/e2_stories.py` | 8 | 4 |
 | 6 | Own account | `probes/e2_own_account.py` | 7 | 3 |
@@ -181,23 +181,47 @@ either, and neither is in the home document's lazy chunk map.
 
 | Operation | Kind | Status |
 |---|---|---|
-| `REST GET /api/v1/friendships/{user_id}/followers/` | followers, one page | hypothesis, observed once |
-| `REST POST /api/v1/friendships/show_many/` | the viewer's relationship to many ids | hypothesis, observed once |
-| following | | capture first |
-| mutual followers | | capture first |
+| `REST GET /api/v1/friendships/{user_id}/followers/` | followers, a page | verified 2026-09-27, public as `profiles.followers`, next pages on `max_id` |
+| `REST POST /api/v1/friendships/show_many/` | the viewer's relationship to many ids | verified 2026-09-27, sent after each followers page, folded into the rows (W59) |
+| following | | capture first, waiting on the capture night |
+| mutual followers | | capture first, waiting on the capture night |
+
+**Status: done on 2026-09-27 for the followers, rulings W58 to W60.** The probe ran twice at 7
+requests, 14, the conditional next page sent on both runs, and both findings were promoted to
+verified, the followers page at six replays and the statuses at four. The read shipped as
+`client.profiles.followers(user_id, *, after=None) -> Page[ProfileSummary]` and
+`client.profiles.iter_followers(user_id, *, limit, after=None)`, on both clients with no flat
+twin, with the new setting `Behavior.follow_list_statuses` and no new model, and as `dumpsta
+followers`. The live acceptance through `dumpsta`, `probes/e2_follow_lists_cli_acceptance.py`,
+ran on 2026-09-27 with both steps exit 0 and 5 requests: 19 followers over two pages with no overlap, statuses on all 19, and the site root referer of W58 answered, log `logs/e2-follow-lists-cli-2026-09-27-025019.json`. What the run found that the plan did not know:
+
+- `max_id` set to `next_max_id` reaches the next page: 7 new accounts, zero overlap, on both runs.
+- A short page is not the end. The second page held 7 accounts where 12 were asked for and still
+  said `has_more` true with a cursor, and the owner has 82 followers. No last page has been read,
+  so `has_more` false ending the walk is an INFERENCE (W58).
+- The browser sends the statuses for exactly the ids of the page it just loaded, in its order,
+  with the same web session id. Later pages were not browsed, so one statuses request per page is
+  an INFERENCE, and it is the default with `Behavior.follow_list_statuses` as the departure (W59).
+- A status carries the six flags `ListFriendshipStatus` requires and neither `followed_by` nor
+  `blocking`, so batch 2's model fits as it was (W59).
+- Neither REST read has a `doc_id`, so the doctor's canary does not replay them (W60).
+
+Following and mutual followers are not implemented. No request for either was observed, so both
+wait on the capture night (batch 10), which opens a following list and a mutual followers line.
 
 Variables. The followers page takes the account's numeric id in the path and the query
 `count` 12 and `search_surface` follow_list_page, observed on the owner's own followers. The
 next page parameter is not observed; the probe tries `max_id` from `next_max_id` once and records
 the answer as evidence for or against it. `show_many` takes the listed ids as `user_ids`.
 
-Methods. `client.profiles.followers(user_id, *, after=None) -> Page[ProfileSummary]` and
+Methods, as planned. `client.profiles.followers(user_id, *, after=None) -> Page[ProfileSummary]` and
 `iter_followers`, `client.profiles.following` and `iter_following`, and
 `client.profiles.mutual_followers(user_id)`. The relationship statuses fold into
-`ProfileSummary.friendship_status`, as the browser's list does, rather than a method.
+`ProfileSummary.friendship_status`, as the browser's list does, rather than a method. The first
+two shipped as planned; the rest wait on the capture night.
 
-Pagination. `next_max_id` and `has_more`, both in the answer. Which of the two the web client
-stops on is not observed, and the model waits for that before it names a terminator.
+Pagination. `next_max_id` and `has_more`, both in the answer. W58 ends the walk on `has_more`
+and carries `next_max_id` as the cursor, sent back as `max_id`.
 
 Side effect. None. Reading any account's list is visible to nobody (W43), but E2 acceptance runs
 on the owner's own lists, and on a public account the owner follows for mutual followers.

@@ -55,8 +55,10 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_PROFILES,
-            'outgoing_request=_required_flag(raw, "outgoing_request", status_path),',
-            "outgoing_request=False,",
+            'followed_by=_required_flag(raw, "followed_by", status_path),\n'
+            '      outgoing_request=_required_flag(raw, "outgoing_request", status_path),',
+            'followed_by=_required_flag(raw, "followed_by", status_path),\n'
+            "      outgoing_request=False,",
          )
       ],
    },
@@ -66,8 +68,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_PROFILES,
-            'following=_required_flag(raw, "following", status_path),',
-            'following=_required_flag(raw, "followed_by", status_path),',
+            'following=_required_flag(raw, "following", status_path),\n      followed_by=',
+            'following=_required_flag(raw, "followed_by", status_path),\n      followed_by=',
          )
       ],
    },
@@ -272,8 +274,14 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             RENDER_PROFILES,
-            '      "outgoing_request": status.outgoing_request,\n',
-            '      "outgoing_request": status.following,\n',
+            '      "outgoing_request": status.outgoing_request,\n'
+            '      "incoming_request": status.incoming_request,\n'
+            '      "blocking": status.blocking,\n'
+            '      "muting"',
+            '      "outgoing_request": status.following,\n'
+            '      "incoming_request": status.incoming_request,\n'
+            '      "blocking": status.blocking,\n'
+            '      "muting"',
          )
       ],
    },

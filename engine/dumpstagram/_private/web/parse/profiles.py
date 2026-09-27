@@ -1,8 +1,11 @@
 """Map a profile payload, the account id read off a timeline's first post, a page of a profile's
-posts grid, its highlights tray, and the two lists of suggested accounts."""
+posts grid, its highlights tray, the two lists of suggested accounts, and a page of an account's
+followers with the viewer's relationship to each."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
 from dumpstagram._private.web.parse.common import (
@@ -16,6 +19,7 @@ from dumpstagram._private.web.parse.common import (
    _required_string,
 )
 from dumpstagram._private.web.parse.media import parse_post
+from dumpstagram._private.web.parse.posting import _raise_unless_ok
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
    BioLink,
@@ -36,6 +40,9 @@ __all__ = [
    "SUGGESTED_ACCOUNTS_PATH",
    "SUGGESTED_BESIDE_PROFILE_PATH",
    "TIMELINE_PATH",
+   "attach_friendship_statuses",
+   "parse_followers_page",
+   "parse_friendship_statuses",
    "parse_highlight_tray",
    "parse_profile",
    "parse_profile_posts_page",
@@ -355,8 +362,10 @@ def _list_friendship_status(row: dict[str, Any], path: str) -> ListFriendshipSta
    if raw is None:
       return None
 
-   status_path = f"{path}.friendship_status"
+   return _read_list_friendship_status(raw, f"{path}.friendship_status")
 
+
+def _read_list_friendship_status(raw: Any, status_path: str) -> ListFriendshipStatus:
    if not isinstance(raw, dict):
       raise SchemaChanged(f"{status_path} is not an object or null", path=status_path)
 
@@ -452,3 +461,84 @@ def parse_suggested_accounts(payload: Any) -> tuple[SuggestedAccount, ...]:
          )
 
    return tuple(accounts)
+
+
+_FOLLOWERS = "<followers>"
+
+_STATUSES = "<friendship statuses>"
+
+
+def parse_followers_page(payload: Any) -> Page[ProfileSummary]:
+   """One followers page, its accounts in the upstream's order, with the upstream's terminator.
+
+   ``has_more`` says whether another page exists and ``next_max_id`` is the cursor that reaches
+   it, a 120 character string on every page read. Both pages of both replays said ``has_more``
+   true, the second with 7 accounts where 12 were asked for, so no last page has been read and
+   what one carries is unobserved: ``next_max_id`` is read where the answer carries it and
+   ``None`` where it is absent or null. A row carries no relationship; the statuses are a
+   second request, attached by :func:`attach_friendship_statuses`.
+
+   Dropped: ``groups`` and ``more_groups_available``, two groups shown above the list with a
+   title and the small pictures of two accounts each, three of the four on the same page. The
+   groups were empty on one of four first pages and absent from the next page. Also dropped are
+   ``big_list``, ``page_size``,
+   ``follow_ranking_token``, ``use_clickable_see_more``, ``show_spam_follow_request_tab`` and
+   the two ``should_limit_list_of_*`` flags, which describe the list's chrome.
+
+   Finding: ``read-an-account-s-followers``.
+   """
+
+   _raise_unless_ok(payload, "followers page")
+
+   users = _list_of(payload, "users", _FOLLOWERS)
+   has_more = _required_flag(payload, "has_more", _FOLLOWERS)
+   carries_a_cursor = payload.get("next_max_id") is not None
+   next_max_id = _required_string(payload, "next_max_id", _FOLLOWERS) if carries_a_cursor else None
+
+   accounts = tuple(
+      parse_profile_summary(user, f"{_FOLLOWERS}.users[{index}]")
+      for index, user in enumerate(users)
+   )
+
+   return Page(items=accounts, has_next_page=has_more, end_cursor=next_max_id)
+
+
+def parse_friendship_statuses(payload: Any) -> dict[str, ListFriendshipStatus]:
+   """The viewer's relationship to each account asked about, keyed by account id.
+
+   Every status read on 2026-09-27, 11 on each of four answers, carried the six flags
+   :class:`ListFriendshipStatus` requires and neither ``followed_by`` nor ``blocking``, which
+   are ``None``. Dropped: ``is_private``, which the followers row carries itself, and
+   ``text_post_app_pre_following``, a flag about the Threads app.
+
+   Finding: ``friendship-statuses-for-many-accounts``.
+   """
+
+   _raise_unless_ok(payload, "friendship statuses")
+
+   statuses = _required(payload, "friendship_statuses", _STATUSES)
+   statuses_path = f"{_STATUSES}.friendship_statuses"
+
+   if not isinstance(statuses, dict):
+      raise SchemaChanged(f"{statuses_path} is not an object", path=statuses_path)
+
+   return {
+      str(account_id): _read_list_friendship_status(raw, f"{statuses_path}.{account_id}")
+      for account_id, raw in statuses.items()
+   }
+
+
+def attach_friendship_statuses(
+   page: Page[ProfileSummary], statuses: Mapping[str, ListFriendshipStatus]
+) -> Page[ProfileSummary]:
+   """The page with each account's status filled in from ``statuses``, matched on its id.
+
+   An account the answer does not name keeps ``None``. None was missing on any answer read.
+   """
+
+   accounts = tuple(
+      replace(account, friendship_status=statuses.get(account.id, account.friendship_status))
+      for account in page.items
+   )
+
+   return replace(page, items=accounts)

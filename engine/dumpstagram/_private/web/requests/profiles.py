@@ -1,11 +1,21 @@
 """The profile requests: one account by id, a username resolved to one, a profile page's six
-queries, a page of a profile's posts grid, its highlights tray, and the suggested accounts.
+queries, a page of a profile's posts grid, its highlights tray, the suggested accounts, and a page
+of an account's followers with the viewer's relationship to each.
+
+The followers page and the relationship statuses are the first REST reads on the web API, not
+GraphQL. They carry the header set the browser's follow list sent, the posting publishes' set
+with ``x-ig-max-touch-points`` and ``x-web-session-id`` added, and the page, a GET, without the
+three a form body brings.
 """
 
 from __future__ import annotations
 
 import re
+import secrets
+import string
+from collections.abc import Sequence
 from typing import Any
+from urllib.parse import urlencode
 
 from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
@@ -21,14 +31,17 @@ from dumpstagram._private.web.documents.profiles import (
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
-from dumpstagram._private.web.requests.common import _USER_ID, build_graphql_request
-from dumpstagram.errors import NotFound
+from dumpstagram._private.web.requests.common import _USER_ID, build_graphql_request, jazoest_for
+from dumpstagram.errors import AuthenticationFailed, NotFound
 from dumpstagram.session import Session
 
 __all__ = [
+   "FOLLOWERS_PAGE_SIZE",
    "PROFILE_PAGE_POSTS",
    "RESOLUTION_PAGE_SIZE",
    "SUGGESTED_ACCOUNTS_SHOWN",
+   "build_followers_request",
+   "build_friendship_statuses_request",
    "build_highlight_tray_request",
    "build_profile_page_requests",
    "build_profile_posts_request",
@@ -36,6 +49,7 @@ __all__ = [
    "build_suggested_accounts_request",
    "build_suggested_beside_profile_request",
    "build_username_resolution_request",
+   "new_web_session_id",
    "profile_page_url",
    "refuse_what_is_not_a_user_id",
 ]
@@ -50,7 +64,20 @@ PROFILE_PAGE_POSTS = 12
 SUGGESTED_ACCOUNTS_SHOWN = 5
 """``max_number_to_display`` on the suggested accounts list, the value the recorded browse sent."""
 
+FOLLOWERS_PAGE_SIZE = 12
+"""``count`` on a followers page, the value the browser's follow list sent."""
+
 _USERNAME = re.compile(r"[A-Za-z0-9._]{1,30}")
+
+_FOLLOWERS_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/followers/"
+
+_FRIENDSHIP_STATUSES_URL = "https://www.instagram.com/api/v1/friendships/show_many/"
+
+_FOLLOW_LIST_SURFACE = "follow_list_page"
+
+_ASBD_ID = "359341"
+
+_WEB_SESSION_ALPHABET = string.ascii_lowercase + string.digits
 
 
 def build_profile_request(
@@ -332,4 +359,109 @@ def build_suggested_accounts_request(
 
    return build_graphql_request(
       session, SUGGESTED_ACCOUNTS, variables, referer=f"{ORIGIN}/", user_agent=user_agent
+   )
+
+
+def new_web_session_id() -> str:
+   """A fresh ``x-web-session-id``: three groups of six lowercase letters and digits.
+
+   The browser carried one value on every request of its page session that sent the header, so
+   a capability draws one per read and sends it on each request of that read.
+   """
+
+   groups = ("".join(secrets.choice(_WEB_SESSION_ALPHABET) for _ in range(6)) for _ in range(3))
+
+   return ":".join(groups)
+
+
+def _rest_read_headers(session: Session, web_session_id: str, user_agent: str) -> dict[str, str]:
+   return {
+      "accept": "*/*",
+      "accept-language": "en-US,en;q=0.9",
+      "referer": f"{ORIGIN}/",
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      "user-agent": user_agent,
+      "x-asbd-id": _ASBD_ID,
+      "x-csrftoken": session.csrftoken,
+      "x-ig-app-id": session.app_id or "",
+      "x-ig-max-touch-points": "0",
+      "x-requested-with": "XMLHttpRequest",
+      "x-web-session-id": web_session_id,
+   }
+
+
+def build_followers_request(
+   session: Session,
+   user_id: str,
+   *,
+   web_session_id: str,
+   after: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """One page of an account's followers, keyed on the numeric account id in the path.
+
+   The first page carries ``count`` and ``search_surface`` as the browser's follow list sent
+   them. A later page carries the same two and ``max_id``, the previous page's
+   ``next_max_id``, which answered the next accounts with no overlap on both replays. The
+   browser's referer was the profile page, which needs the username the caller did not give, so
+   the site root is sent, as :func:`build_highlight_tray_request` does. The account id is not
+   checked here; the capability refuses anything but digits first.
+
+   Finding: ``read-an-account-s-followers``.
+   """
+
+   params = {"count": str(FOLLOWERS_PAGE_SIZE), "search_surface": _FOLLOW_LIST_SURFACE}
+
+   if after is not None:
+      params["max_id"] = after
+
+   return Request(
+      method="GET",
+      url=_FOLLOWERS_URL.format(user_id=user_id),
+      headers=_rest_read_headers(session, web_session_id, user_agent),
+      params=params,
+      follow_redirects=False,
+   )
+
+
+def build_friendship_statuses_request(
+   session: Session,
+   account_ids: Sequence[str],
+   *,
+   web_session_id: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The viewer's relationship to each of ``account_ids``, one POST that changes nothing.
+
+   The body is the browser's, ``user_ids`` joined by commas in the page's order and then the
+   page token, and the headers are the followers page's with the three a form POST adds.
+
+   Finding: ``friendship-statuses-for-many-accounts``.
+   """
+
+   token = session.fb_dtsg
+
+   if not token:
+      raise AuthenticationFailed(
+         "session has no fb_dtsg, so it has not been bootstrapped since it was loaded"
+      )
+
+   spin = session.spin
+   revision = (spin.revision if spin is not None else None) or ""
+   fields = {"user_ids": ",".join(account_ids), "jazoest": jazoest_for(token), "fb_dtsg": token}
+   headers = {
+      **_rest_read_headers(session, web_session_id, user_agent),
+      "content-type": "application/x-www-form-urlencoded",
+      "origin": ORIGIN,
+      "x-instagram-ajax": revision,
+   }
+
+   return Request(
+      method="POST",
+      url=_FRIENDSHIP_STATUSES_URL,
+      headers=headers,
+      content=urlencode(fields).encode("utf-8"),
+      follow_redirects=False,
    )

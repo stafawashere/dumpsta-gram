@@ -1,0 +1,116 @@
+{
+ "friendship_statuses": {
+  "90000000002": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000008": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000014": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000020": {
+   "following": true,
+   "is_bestie": true,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000026": {
+   "following": false,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000032": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000038": {
+   "following": true,
+   "is_bestie": true,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000044": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000049": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000054": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000060": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  }
+ },
+ "status": "ok",
+ "status_code": "200"
+}

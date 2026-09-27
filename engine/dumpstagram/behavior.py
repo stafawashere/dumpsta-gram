@@ -7,7 +7,8 @@ nothing a caller could not set by hand, and ``dataclasses.replace`` derives a va
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
 feed's first page the second, the profile route the third, a thread's first page the fourth,
-the page load companions the fifth and the cookie sync the sixth. The three write settings came
+the page load companions the fifth, the cookie sync the sixth, and the follow list's
+relationship statuses the seventh. The three write settings came
 with the write path, before any write capability, because a write is only safe with all three in
 place from the first one. The listener's poll interval came with the ``events()`` surface.
 Other companion requests and
@@ -127,6 +128,12 @@ class Behavior:
    closed before then sends none of them. False leaves them out, including all traffic to
    facebook.com, and changes nothing else. The page load companions do not govern it.
 
+   ``follow_list_statuses`` sends, after each page of an account's followers, the request a
+   browser's list sends beside it for the viewer's relationship to every account on the page,
+   and fills each row's ``friendship_status`` from its answer. It is one request more per page,
+   inside the page's own action. False leaves it out, and each row's ``friendship_status`` is
+   ``None``.
+
    ``write_spacing`` is the gap before a write, measured from the account's previous write. It
    does not delay the reads between two writes, and a write still waits out ``spacing`` from
    whatever request went before it. The default, a 30 s floor plus 5 s mean jitter, is a
@@ -160,6 +167,7 @@ class Behavior:
    thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
    page_load_companions: bool = True
    cookie_sync: bool = True
+   follow_list_statuses: bool = True
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
    write_budget_per_hour: int | None = 30
    stop_writes_after_unrecognised_rejection: bool = True

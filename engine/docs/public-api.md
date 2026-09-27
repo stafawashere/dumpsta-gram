@@ -126,7 +126,8 @@ does not close the pool. Closing the owner stops both.
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
 `feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions`,
 `cookie_sync`, `write_spacing`, `write_budget_per_hour`,
-`stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`. The last, added with the
+`stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`, and since E2 batch 3
+`follow_list_statuses`, described with the followers below. The last, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
 zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
 above.
@@ -407,7 +408,7 @@ client.media.like(post.pk)
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
 | `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, downloading its renditions, and publishing and deleting the viewer's own |
-| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid and highlights tray, and the suggested accounts |
+| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 
 The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
@@ -456,6 +457,7 @@ only there, with no flat twin:
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
 | `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
+| `profiles.followers(user_id, *, after)` | `profiles.iter_followers(user_id, *, limit, after=None)` | `ProfileSummary`, in the upstream's order |
 
 ```python
 for message in client.direct.iter_messages(thread_fbid, limit=200):
@@ -675,6 +677,46 @@ departures recorded in [web-request-contract.md](web-request-contract.md).
 The same batch changed one thing every read shares: an answer whose `errors` array only names
 fields inside data that answered is now returned, those fields null, rather than refused (W52).
 A mapper that requires an errored field still raises `SchemaChanged`.
+
+### Followers
+
+Landed 2026-09-27, E2 batch 3 of [web-parity-plan.md](web-parity-plan.md), rulings W58 to W60.
+Two methods on `profiles`, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `profiles.followers(user_id, *, after=None)` | `Page[ProfileSummary]` | two, one with `follow_list_statuses` off |
+| `profiles.iter_followers(user_id, *, limit, after=None)` | iterator of `ProfileSummary` | two per page read |
+
+```python
+from dataclasses import replace
+from dumpstagram import PARITY
+
+me = client.profiles.by_id(client.session.ds_user_id)
+for account in client.profiles.iter_followers(me.id, limit=50):
+   status = account.friendship_status
+   print(account.username, status.following if status else None)
+
+lean = client.with_behavior(replace(PARITY, follow_list_statuses=False))
+page = lean.profiles.followers(me.id)                      # one request, every status None
+```
+
+The read is keyed on the numeric account id and raises `ValueError` for a username before
+anything is sent. A page holds the accounts the upstream sent, twelve asked for, and its length
+is the upstream's: a second page of seven still said more existed. `has_next_page` is the
+upstream's `has_more` and `end_cursor` its `next_max_id`, which `after` sends back (W58). No last
+page has been read, so `has_more` false ending the walk is an INFERENCE.
+
+Each row is the batch 2 `ProfileSummary`, with `is_private` carried and no high resolution
+picture. Its `friendship_status` comes from a second request the browser's follow list sends
+beside each page, the viewer's relationship to every account on it, matched by account id. Those
+statuses carry six flags and never `followed_by` or `blocking`, which read `None` (W59).
+`Behavior.follow_list_statuses`, True in every preset, sends that request; False leaves it out,
+halves the requests, and leaves every `friendship_status` `None`.
+
+Only the viewer's own followers have been read. The list's referer is the site root rather than
+the profile page, a departure recorded in [web-request-contract.md](web-request-contract.md).
+Following and mutual followers have no method: no request for either has been observed.
 
 ## Stability contract
 

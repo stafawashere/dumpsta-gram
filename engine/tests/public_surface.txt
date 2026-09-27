@@ -100,6 +100,7 @@ module dumpstagram.behavior
 class dumpstagram.behavior.Behavior()
 field dumpstagram.behavior.Behavior.cookie_sync: bool = True
 field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagram.behavior.FeedFirstPage>
+field dumpstagram.behavior.Behavior.follow_list_statuses: bool = True
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
 field dumpstagram.behavior.Behavior.poll_interval_seconds: float = 60.0
 field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
@@ -575,7 +576,9 @@ class dumpstagram.namespaces.profiles.AsyncProfiles()
 def dumpstagram.namespaces.profiles.AsyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_username(self, username: str) -> Profile
+def dumpstagram.namespaces.profiles.AsyncProfiles.followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.highlights(self, user_id: str) -> HighlightTray
+def dumpstagram.namespaces.profiles.AsyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
 def dumpstagram.namespaces.profiles.AsyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.profiles.AsyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
@@ -584,7 +587,9 @@ class dumpstagram.namespaces.profiles.SyncProfiles()
 def dumpstagram.namespaces.profiles.SyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.SyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.SyncProfiles.by_username(self, username: str) -> Profile
+def dumpstagram.namespaces.profiles.SyncProfiles.followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.highlights(self, user_id: str) -> HighlightTray
+def dumpstagram.namespaces.profiles.SyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> Iterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> Iterator[Post]
 def dumpstagram.namespaces.profiles.SyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.profiles.SyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]

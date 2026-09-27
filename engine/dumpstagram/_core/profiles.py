@@ -20,7 +20,9 @@ the page's: both measured loads sent all six within 5 ms.
 
 Since E2 batch 2 the profile's tabs are read here too: a page of the posts grid, the highlights
 tray, and the accounts suggested beside the profile or on the suggested accounts list. Each is
-one query sent alone, and the departures that makes are recorded in W53 to W55.
+one query sent alone, and the departures that makes are recorded in W53 to W55. Since E2 batch 3
+an account's followers are read a page at a time, each page followed inside its action by the
+viewer's relationship to the accounts on it, as the browser's follow list does (W58 to W60).
 """
 
 from __future__ import annotations
@@ -39,6 +41,9 @@ from dumpstagram._private.web.bootstrap import (
 )
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.profiles import (
+   attach_friendship_statuses,
+   parse_followers_page,
+   parse_friendship_statuses,
    parse_highlight_tray,
    parse_profile,
    parse_profile_posts_page,
@@ -49,6 +54,8 @@ from dumpstagram._private.web.parse.profiles import (
 from dumpstagram._private.web.preload import read_iris_device_id, read_profile_id
 from dumpstagram._private.web.requests.page_load import build_profile_page_load_companions
 from dumpstagram._private.web.requests.profiles import (
+   build_followers_request,
+   build_friendship_statuses_request,
    build_highlight_tray_request,
    build_profile_page_requests,
    build_profile_posts_request,
@@ -56,6 +63,7 @@ from dumpstagram._private.web.requests.profiles import (
    build_suggested_accounts_request,
    build_suggested_beside_profile_request,
    build_username_resolution_request,
+   new_web_session_id,
    profile_page_url,
    refuse_what_is_not_a_user_id,
 )
@@ -65,6 +73,7 @@ from dumpstagram.models import HighlightTray, Page, Post, Profile, ProfileSummar
 from dumpstagram.session import Session
 
 __all__ = [
+   "read_followers_page",
    "read_highlight_tray",
    "read_profile",
    "read_profile_by_id",
@@ -347,5 +356,55 @@ async def read_suggested_accounts(
       response = await sender.send(request)
 
       return parse_suggested_accounts(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_followers_page(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   after: str | None = None,
+   with_statuses: bool = True,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> Page[ProfileSummary]:
+   """One page of an account's followers, one action of one or two live requests.
+
+   The page is read first, then, when ``with_statuses`` is on and the page lists anyone, the
+   viewer's relationship to every account on it, which fills each row's ``friendship_status``.
+   A bootstrap is needed only for the second request, which carries the page token.
+   """
+
+   refuse_what_is_not_a_user_id(user_id)
+
+   async def attempt() -> Page[ProfileSummary]:
+      needs_a_token = with_statuses and not session.fb_dtsg
+
+      if needs_a_token:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      web_session_id = new_web_session_id()
+
+      async with sender.action() as action:
+         page_request = build_followers_request(
+            session, user_id, after=after, web_session_id=web_session_id, user_agent=user_agent
+         )
+         page = parse_followers_page(classify(await action.send(page_request)))
+         asks_for_statuses = with_statuses and bool(page.items)
+
+         if not asks_for_statuses:
+            return page
+
+         statuses_request = build_friendship_statuses_request(
+            session,
+            [account.id for account in page.items],
+            web_session_id=web_session_id,
+            user_agent=user_agent,
+         )
+         statuses = parse_friendship_statuses(classify(await action.send(statuses_request)))
+
+      return attach_friendship_statuses(page, statuses)
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

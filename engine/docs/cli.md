@@ -50,6 +50,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `highlights USER_ID` | 1, plus 1 if the session has no token yet | Lists an account's story highlights, the tray's first page. Opens no story |
 | `suggested USER_ID` | 1, plus 1 if the session has no token yet | Lists the accounts suggested beside an account's profile |
 | `suggested-for-you` | 1, plus 1 if the session has no token yet | Lists the accounts suggested to the viewer, each with the reason the website shows |
+| `followers USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of an account's followers with the viewer's relationship to each |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
@@ -204,7 +205,27 @@ with its eight flags, and `suggested-for-you` each `reason` (W55).
 `highlights` and `suggested` take the numeric account id, which `profile` prints, and refuse a
 username with exit 2 before anything is sent. All four take `--user-agent` and
 `--no-session-writeback`, and write harvested tokens back by default. The live acceptance,
-`probes/e2_profile_tabs_cli_acceptance.py`, is written and not yet run.
+`probes/e2_profile_tabs_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 7
+requests.
+
+### `followers`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta followers 1234567890 --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json followers 1234567890
+```
+
+`followers` prints one line per follower in the upstream's order, in the form `suggested` uses:
+the id, the username, the name and whether the viewer follows the account, then `pages_read`,
+`accounts` and `more_available`, and `next_cursor` when more exist. `--pages N` reads at most `N`
+pages, default 1, and stops earlier on the page's own `has_more`. `--after CURSOR` takes a
+`next_cursor` an earlier `followers` run printed for the same account. The JSON form carries
+`pages_read`, `account_count`, `more_available`, `end_cursor` and every account in the form
+`suggested` prints one, `friendship_status` with `followed_by` and `blocking` always null, since
+the statuses the list reads do not carry them (W59). Each page is two requests, the page and the
+relationship statuses a browser's list sends beside it (W58, W59). It takes the numeric account
+id and refuses a username with exit 2 before anything is sent. There is no `--limit` (W60). The
+live acceptance, `probes/e2_follow_lists_cli_acceptance.py`, ran on 2026-09-27, 5 requests, both steps exit 0.
 
 ### `profile`
 
@@ -566,7 +587,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

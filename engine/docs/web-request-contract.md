@@ -547,6 +547,38 @@ producing the value was not verified:
 - The engine never opens the composer, and posts from no page, so the upload's `referer` is the
   home page the browser's was.
 
+## The follow list's REST reads, 2026-09-27
+
+E2 batch 3 added the first REST reads on the web API, in `_private/web/requests/profiles.py`,
+sent by `read_followers_page` in `_core/profiles.py` inside one action, and answered through
+`parse_followers_page` and `parse_friendship_statuses`. Findings `read-an-account-s-followers`
+(six replays) and `friendship-statuses-for-many-accounts` (four), run `run-2026-09-27-014102`,
+both first seen in the recorded browse of `run-2026-09-23-005544`. Rulings W58 to W60.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Followers page | `GET https://www.instagram.com/api/v1/friendships/<user id>/followers/` | `count` 12, `search_surface` follow_list_page, and on a later page `max_id`, the previous page's `next_max_id` | `accept */*`, `accept-language`, `referer`, the three `sec-fetch-*`, `user-agent`, `x-asbd-id`, `x-csrftoken`, `x-ig-app-id`, `x-ig-max-touch-points: 0`, `x-requested-with: XMLHttpRequest`, `x-web-session-id` |
+| Relationship statuses | `POST https://www.instagram.com/api/v1/friendships/show_many/` | form in the browser's order: `user_ids` (the page's ids joined by commas, in its order), `jazoest`, `fb_dtsg` | the followers page's, plus `content-type: application/x-www-form-urlencoded`, `origin` and `x-instagram-ajax` (the spin revision) |
+
+`x-web-session-id` is three groups of six lowercase letters and digits joined by colons, drawn
+fresh for each read and sent on both of its requests, because the browser carried one value on
+every request of its page session. How the page derives it is not read, so it is random here, an
+ASSUMPTION that its value is not checked. Both answers are REST and report failure in `status`,
+so the mappers refuse anything but `ok` with posting's check. The followers GET carries no page
+token, so a read without the statuses spends no bootstrap.
+
+**Recorded departures.**
+
+- The referer is the site root. The browser's was the profile page, which needs a username the
+  method does not take, and every replay sent the profile page, so this is untested until the
+  batch's live acceptance.
+- The browser loaded the follow list's code chunk and opened the list from the profile page. The
+  engine sends the page alone, from no page.
+- The browser sent the statuses 455 ms after the page. The engine sends them as soon as the page
+  is mapped, inside the same action.
+- A later page's statuses were not observed in a browser; sending them per page is an INFERENCE
+  (W59). `Behavior.follow_list_statuses` set to False leaves them out.
+
 ## What is not implemented here
 
 - Writes other than the ones above and those in the GraphQL registry. A video upload, a reel, a
