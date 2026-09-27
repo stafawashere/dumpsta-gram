@@ -1,5 +1,6 @@
-"""The post requests: one post by shortcode, like and unlike, a comment page, and commenting and
-deleting a comment.
+"""The post requests: one post by shortcode or by media pk, like and unlike, a comment page, the
+replies under a comment, the likers, the more posts from the author, and commenting and deleting
+a comment.
 """
 
 from __future__ import annotations
@@ -11,10 +12,15 @@ from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents.media import (
    COMMENT_PAGE,
+   COMMENT_REPLIES,
+   COMMENT_REPLIES_NEXT_PAGE,
    CREATE_COMMENT,
    DELETE_COMMENT,
    LIKE_MEDIA,
+   MORE_FROM_AUTHOR,
+   POST_BY_MEDIA_ID,
    POST_BY_SHORTCODE,
+   POST_LIKERS,
    UNLIKE_MEDIA,
 )
 from dumpstagram._private.web.requests.common import build_graphql_request
@@ -23,11 +29,18 @@ from dumpstagram.session import Session
 
 __all__ = [
    "COMMENT_PAGE_SIZE",
+   "MORE_FROM_AUTHOR_COUNT",
+   "REPLIES_FIRST_PAGE_SIZE",
+   "REPLIES_NEXT_PAGE_SIZE",
    "build_comment_page_request",
    "build_create_comment_request",
    "build_delete_comment_request",
    "build_like_request",
+   "build_likers_request",
+   "build_more_from_author_request",
+   "build_post_by_id_request",
    "build_post_request",
+   "build_replies_request",
    "build_unlike_request",
    "is_a_comment_id",
    "is_a_media_pk",
@@ -46,6 +59,21 @@ COMMENT_PAGE_SIZE = 10
 The value the post page asks for has not been observed, so this is an ASSUMPTION and a
 difference a fingerprint check could read. Four engine reads sent it and were answered.
 """
+
+REPLIES_FIRST_PAGE_SIZE = 3
+"""The ``first`` the replies' first page is sent with, the probe's value and not a browser's.
+
+It does not bound the answer: on 2026-09-27 it drew 9 replies and then 11, so the upstream
+decides the page's length. A browser's value has not been observed (W61).
+"""
+
+REPLIES_NEXT_PAGE_SIZE = 10
+"""The ``first`` a later page of replies is sent with, the probe's value, answered with 12
+replies on both replays of 2026-09-27. A browser's value has not been observed (W61)."""
+
+MORE_FROM_AUTHOR_COUNT = 6
+"""How many posts the "more posts from" strip is asked for, the probe's value, answered with
+exactly six on both replays of 2026-09-27. A browser's value has not been observed (W64)."""
 
 
 def post_url(code: str) -> str:
@@ -253,6 +281,109 @@ def build_delete_comment_request(
             "comment_id": comment_id,
             "media_id": post_pk,
          }
+      },
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_replies_request(
+   session: Session,
+   post_pk: str,
+   comment_id: str,
+   *,
+   after: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The replies under the comment ``comment_id`` on the post whose media ``pk`` is ``post_pk``,
+   the first page when ``after`` is None and the next page query on its cursor otherwise.
+
+   Both pages carry the same variables but ``after`` and ``first``, as replayed live. The
+   referer is the site root, for the comment page's reason.
+
+   Findings: ``read-comment-replies`` and ``read-comment-replies-next-page``.
+   """
+
+   is_a_later_page = after is not None
+   query = COMMENT_REPLIES_NEXT_PAGE if is_a_later_page else COMMENT_REPLIES
+   page_size = REPLIES_NEXT_PAGE_SIZE if is_a_later_page else REPLIES_FIRST_PAGE_SIZE
+
+   return build_graphql_request(
+      session,
+      query,
+      {
+         "after": after,
+         "before": None,
+         "media_id": post_pk,
+         "parent_comment_id": comment_id,
+         "is_chronological": True,
+         "first": page_size,
+         "last": None,
+         "__relay_internal__pv__PolarisIsLoggedInrelayprovider": True,
+      },
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_likers_request(
+   session: Session,
+   post_pk: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The accounts listed as liking the post whose media ``pk`` is ``post_pk``.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/read-a-post-s-likers.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      POST_LIKERS,
+      {"media_id": post_pk},
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_post_by_id_request(
+   session: Session,
+   post_pk: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """One post read by its media ``pk``. The variable is ``mediaId``, in the upstream's case.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/read-a-post-by-media-id.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      POST_BY_MEDIA_ID,
+      {"mediaId": post_pk},
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_more_from_author_request(
+   session: Session,
+   author_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The "more posts from" strip for the account whose numeric id is ``author_id``.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/read-more-posts-from-an-account.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      MORE_FROM_AUTHOR,
+      {
+         "media_owner_id": author_id,
+         "count": MORE_FROM_AUTHOR_COUNT,
+         "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
       },
       referer=f"{ORIGIN}/",
       user_agent=user_agent,

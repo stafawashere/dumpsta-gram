@@ -38,7 +38,7 @@ capture night that unblocks the rest.
 | 1 | Direct read side, done 2026-09-24 | `probes/e2_direct_read.py` | 9, spent 9 | 3, spent 0 |
 | 2 | Profile tabs over GraphQL, done 2026-09-27 | `probes/e2_profile_tabs.py` | 12, spent 8 on each of 3 runs | 4, spent 0 |
 | 3 | Relationship lists, done 2026-09-27 | `probes/e2_follow_lists.py` | 6, spent 7 on each of 2 runs | 1, spent 1 on each |
-| 4 | Post depth | `probes/e2_post_depth.py` | 13 | 7 |
+| 4 | Post depth, done 2026-09-27 | `probes/e2_post_depth.py` | 13, spent 13, and 4 of `e2_next_pages.py` | 7, spent 0 |
 | 5 | Stories, read only | `probes/e2_stories.py` | 8 | 4 |
 | 6 | Own account | `probes/e2_own_account.py` | 7 | 3 |
 | 7 | Discovery feeds | `probes/e2_discovery_feeds.py` | 9 | 5 |
@@ -230,25 +230,53 @@ on the owner's own lists, and on a public account the owner follows for mutual f
 
 | Operation | Kind | Status |
 |---|---|---|
-| `PolarisPostChildCommentsQuery` | replies, first page | hypothesis |
-| `PolarisPostCommentsChildrenPaginationtQuery` | replies, next pages | hypothesis |
-| `PolarisPostLikedByListDialogQuery` | likers | hypothesis, lazy |
-| `PolarisPostActionLoadPostQueryMediaIdQuery` | a post by media pk | hypothesis |
-| `PolarisPostModalContextQuery` | a post modal's context | hypothesis |
-| `PolarisDesktopPostPageRelatedMediaGridQuery` | more posts from the author | hypothesis |
+| `PolarisPostChildCommentsQuery` | replies, first page | verified 2026-09-27, public as `media.replies` |
+| `PolarisPostCommentsChildrenPaginationtQuery` | replies, next pages | verified 2026-09-27, public as `media.replies` with a cursor |
+| `PolarisPostLikedByListDialogQuery` | likers | verified 2026-09-27, public as `media.likers` |
+| `PolarisPostActionLoadPostQueryMediaIdQuery` | a post by media pk | verified 2026-09-27, public as `media.by_id` |
+| `PolarisPostModalContextQuery` | a post modal's context | verified 2026-09-27, no capability and not sent (W66) |
+| `PolarisDesktopPostPageRelatedMediaGridQuery` | more posts from the author | verified 2026-09-27, public as `media.more_from_author` |
+
+**Status: done on 2026-09-27, rulings W61 to W67.** `probes/e2_post_depth.py` ran once with 13
+requests and no conditional one, and the replies' next page was replayed twice by
+`probes/e2_next_pages.py` on a comment with 52 replies, 4 of that probe's 10 requests, shared with
+batch 2; all six findings were promoted to verified. The reads shipped as
+`client.media.replies(post_pk, comment_id, *, after=None) -> Page[Comment]`,
+`client.media.iter_replies(post_pk, comment_id, *, limit, after=None)`,
+`client.media.likers(post_pk) -> tuple[ProfileSummary, ...]`, `client.media.by_id(post_pk) ->
+PostDetail` and `client.media.more_from_author(author_id) -> tuple[PostThumbnail, ...]`, on both
+clients with no flat twin, with the new public models `Location`, `UserTag` and `PostThumbnail`,
+the new fields `location`, `user_tags` and `collaborators` on `Post` and `PostDetail` and
+`user_tags` on `CarouselChild`, and as `dumpsta replies`, `likers`, `more-from-author` and `post
+--by-id`. The live acceptance through `dumpsta`, `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log `logs/e2-post-depth-cli-2026-09-27-033207.json`. What the
+run found that the plan did not know:
+
+- `first` does not bound a page of replies: 3 asked, 9 and then 11 answered. A reply is the
+  comment page's node with `child_comment_count` null, so `reply_count` is `None` on a reply (W61).
+- The likers are a sample: 98 accounts for a post counting 193647 likes, with nothing to page on
+  (W62).
+- The post read by media pk carries less than the shortcode read: slides without a kind, no image
+  description, no collaborators, tags without positions. `by_id` leaves those empty (W63).
+- The strip under a post takes no post, only the author, and its items are too thin for `Post`,
+  so it returns `PostThumbnail` (W64).
+- A tag on a slide can come without `pk`, and a location's `pk` is a string on the timeline and a
+  number on a grid (W65).
+- The post modal's context repeats what the post reads carry, so it backs nothing (W66).
 
 Variables. Every one takes the media `pk`, which `feeds.home`, `profiles.posts` and
-`media.by_code` return. Replies also take the parent comment's `pk` from `media.comments`, plus
-`is_chronological` and `first`, neither observed. The related grid takes the author's id from the
-post and a `count` that is not observed.
+`media.by_code` return, except the related grid, which takes only the author's id. Replies also
+take the parent comment's `pk` from `media.comments`, plus `is_chronological` true and `first` 3
+on the first page and 10 on later ones, the probe's values and not a browser's. The related grid
+takes `count` 6, the probe's value.
 
-Methods. `client.media.replies(post_pk, comment_id, *, after=None) -> Page[Comment]` and
+Methods, as planned. `client.media.replies(post_pk, comment_id, *, after=None) -> Page[Comment]` and
 `iter_replies`; `client.media.likers(post_pk) -> tuple[ProfileSummary, ...]`, since the
 artifact selects `likers_connection.nodes` with no page info; `client.media.by_id(post_pk) ->
 PostDetail`; `client.media.more_from_author(post_pk, author_id) -> tuple[Post, ...]`. User tags,
 location and collaborators are new fields on `Post` and `PostDetail`, not methods: the item
 `by_id` answers selects `usertags`, `location` and the coauthor fields, and the probe records
-their keys. Carousel children came with the E1 model.
+their keys. Carousel children came with the E1 model. All shipped as planned except
+`more_from_author`, which takes the author's id only and returns `PostThumbnail` (W64).
 
 Pagination. Replies on `page_info.has_next_page`. Likers and the related grid are single reads.
 

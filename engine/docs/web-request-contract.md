@@ -168,6 +168,27 @@ three have not been tested, an ASSUMPTION the batch's live acceptance checks. Th
 `profile-page-story-highlights`, `profile-suggested-users-on-demand` and
 `home-suggested-accounts`.
 
+**The replies, the likers, a post by its pk and the more posts from its author are each sent
+alone, a recorded departure.** Added 2026-09-27 with E2 batch 4, rulings W61 to W67.
+`COMMENT_REPLIES` (`28027289793632076`, `PolarisPostChildCommentsQuery`) and
+`COMMENT_REPLIES_NEXT_PAGE` (`27229753410037873`, `PolarisPostCommentsChildrenPaginationtQuery`,
+the upstream's own spelling) are sent with `media_id`, `parent_comment_id`, `is_chronological`
+true, `before` and `last` null, the logged-in provider true, `after` null or the previous page's
+`end_cursor`, and `first` 3 on the first page and 10 on a later one, the probe's values and no
+browser's. `POST_LIKERS` (`27928626103504365`, `PolarisPostLikedByListDialogQuery`) is sent with
+`media_id` the pk. All three answer on `API_GRAPHQL_URL`. `POST_BY_MEDIA_ID` (`28007559615590940`,
+`PolarisPostActionLoadPostQueryMediaIdQuery`) is sent with `mediaId` the pk, in that case, and
+`MORE_FROM_AUTHOR` (`27764946129846908`, `PolarisDesktopPostPageRelatedMediaGridQuery`) with
+`media_owner_id` the author's id, `count` 6, the probe's value, and the short drama provider
+false; both answer on `GRAPHQL_QUERY_URL` and carry `x-bloks-version-id` and
+`x-root-field-name`. Every one has the site root as its referer, because each method is handed
+a pk or an id and not the shortcode a post page address needs; a browser sends them from a post
+page, the replies when "view replies" is opened, the likers when the likes dialog is, and the
+post by pk and the strip inside a post page or modal whose burst has not been captured. The
+post modal's `PolarisPostModalContextQuery` is not sent (W66). Findings `read-comment-replies`,
+`read-comment-replies-next-page`, `read-a-post-s-likers`, `read-a-post-by-media-id` and
+`read-more-posts-from-an-account`.
+
 **A field error beside an answer does not fail the request.** Added 2026-09-27, W52. `classify`
 returns an answer whose every `errors` entry has a `path` of two elements or more under a `data`
 root that is present and not null, the errored fields null, and refuses any other `errors` array
@@ -500,7 +521,8 @@ chunk holds are not reachable this way, so the canary reports them `missing`, ne
 by its mapper, so no request shape is new. `documents/catalog.py` sorted the thirty registry
 entries of E1 into ten reads, ten companions and ten writes; since E2 batch 2 it sorts thirty-six
 into seventeen reads, nine companions and ten writes, the tray having moved from the companions to
-the reads (W56). A gate holds it to every entry in the domain modules exactly once. Companions and writes are compared with the bundle and never sent.
+the reads (W56), and since E2 batch 4 forty-one into twenty-two reads, nine companions and ten
+writes (W67). A gate holds it to every entry in the domain modules exactly once. Companions and writes are compared with the bundle and never sent.
 
 ## The posting requests, 2026-09-23
 

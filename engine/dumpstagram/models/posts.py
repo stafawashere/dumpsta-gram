@@ -1,4 +1,5 @@
-"""A post read on its own, by its shortcode.
+"""A post read on its own, by its shortcode or its media pk, and a post as the "more posts from"
+strip under a post shows it.
 
 Every field below was present on the ``PolarisPostRootQuery`` item the engine read four times on
 2026-09-23, recorded in `skills/reverse-engineer/knowledge/endpoints/read-a-post-by-shortcode.md`
@@ -17,13 +18,16 @@ from datetime import datetime
 
 from dumpstagram.models.feed import (
    CarouselChild,
+   Location,
    MediaAudio,
    MediaImage,
    PostAuthor,
+   UserTag,
    VideoRendition,
 )
+from dumpstagram.models.profiles import ProfileSummary
 
-__all__ = ["PostDetail", "PublishedPost"]
+__all__ = ["PostDetail", "PostThumbnail", "PublishedPost"]
 
 
 @dataclass(frozen=True)
@@ -44,7 +48,14 @@ class PostDetail:
    audio and carousel ones included: the post query's item carried the same keys for them as the
    timeline's node on the one reel and the one carousel read through both on 2026-09-23, except
    that its slides carry no ``has_audio``, which is why :class:`~dumpstagram.models.CarouselChild`
-   has none.
+   has none. ``location``, ``user_tags`` and ``collaborators`` follow the rule on ``Post``:
+   ``None`` means the read does not carry the field.
+
+   Read by media pk rather than by shortcode, the post's item carries less, and what it lacks is
+   left empty rather than guessed: its slides carry neither ``media_type`` nor ``product_type``,
+   so ``carousel_children`` is empty while ``carousel_media_count`` still counts them; it carries
+   no ``accessibility_caption``, no author's high resolution picture and no collaborators, so
+   those are ``None``; and its tags carry no position. Read the post by its ``code`` for those.
    """
 
    id: str
@@ -70,6 +81,41 @@ class PostDetail:
    has_audio: bool | None = None
    audio: MediaAudio | None = None
    carousel_children: tuple[CarouselChild, ...] = ()
+   location: Location | None = None
+   user_tags: tuple[UserTag, ...] | None = None
+   collaborators: tuple[ProfileSummary, ...] | None = None
+
+
+@dataclass(frozen=True)
+class PostThumbnail:
+   """One post as a strip of thumbnails shows it: what it is and how to open it, and no more.
+
+   The "more posts from" strip under a post answers with a thinner item than any other read of a
+   post: no time, no viewer state, no video renditions, no slides, and of its author only the
+   ``pk`` and ``username``. So it is its own model rather than a :class:`Post` with guesses in
+   it. Every field below was present on all six items of the two answers read on 2026-09-27.
+
+   ``pk``, ``id`` and ``code`` mean what they mean on :class:`Post`, so ``pk`` is what
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_id` takes and ``code`` what
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` takes. ``author_id`` and
+   ``author_username`` are the posting account's. ``images`` are the thumbnail's renditions in
+   the upstream's order, the cover frames on a video. ``carousel_media_count`` is ``None`` on a
+   post that is not a carousel, and ``caption`` ``None`` on one without a caption.
+   """
+
+   id: str
+   pk: str
+   code: str
+   author_id: str
+   author_username: str
+   media_type: int
+   product_type: str
+   like_count: int
+   comment_count: int
+   like_and_view_counts_disabled: bool
+   caption: str | None = None
+   carousel_media_count: int | None = None
+   images: tuple[MediaImage, ...] = ()
 
 
 @dataclass(frozen=True)

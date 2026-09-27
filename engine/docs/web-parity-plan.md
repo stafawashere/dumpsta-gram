@@ -900,6 +900,140 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   7 requests each, 14; the CLI acceptance, `probes/e2_follow_lists_cli_acceptance.py`, is written
   and not yet run, five requests planned.
 
+- **W61. The replies are `media.replies(post_pk, comment_id, *, after=None) -> Page[Comment]` and
+  `iter_replies`, two queries, and a reply is a `Comment`.** Ruled 2026-09-27 for E2 batch 4. The
+  first page is `PolarisPostChildCommentsQuery` (finding `read-comment-replies`, replayed three
+  times on 2026-09-27) and every later page `PolarisPostCommentsChildrenPaginationtQuery` (finding
+  `read-comment-replies-next-page`, replayed twice), both on `/api/graphql` under one root, with
+  `media_id`, `parent_comment_id`, `is_chronological` true, `before` and `last` null and the
+  logged-in provider, and `after` null or the previous page's `end_cursor`. FACT: `first` 3 drew
+  9 replies with `has_next_page` false on a comment with 9, and 11 with a 90 character cursor on a
+  comment with 52, and the next page with `first` 10 drew 12 new replies, none on the first page,
+  with a cursor again. So the page's length is the upstream's and `has_next_page` is the only
+  terminator. `first` 3 and 10 are the probe's values, never observed from a browser, an
+  ASSUMPTION a fingerprint could read, named in `REPLIES_FIRST_PAGE_SIZE` and
+  `REPLIES_NEXT_PAGE_SIZE`. A reply node is the comment page's node key for key, FACT over 32
+  replies, except that `child_comment_count` was null on every one, so `parse_reply` reads it
+  optional and `Comment.reply_count` is `None` on a reply, and `parent_comment_id`, a string on
+  every reply, is required; no new model. Replies come oldest first (INFERENCE from their
+  `created_at` over the two pages). No last page of a long thread has been read. Departure: a
+  browser reads replies when "view replies" is opened on a post page; the engine sends each page
+  alone with the site root as referer, because it is handed a pk and no shortcode. A `pk` in the
+  id form or a comment id that is not digits raises `ValueError` before anything is sent.
+- **W62. The likers are `media.likers(post_pk) -> tuple[ProfileSummary, ...]`, the list the
+  upstream gives, which is a sample.** Ruled 2026-09-27 for E2 batch 4. `PolarisPostLikedByListDialogQuery`
+  (finding `read-a-post-s-likers`, replayed twice) with `{"media_id": <pk>}`, root
+  `fetch__XDTMediaDict`, whose `likers_connection` carried `nodes` and nothing else. FACT: 98
+  accounts on both replays, for a post counting 193647 likes, so the list is bounded by the
+  upstream and is not every liker; no cursor, no count and no page info exist to go further, so
+  the method returns a tuple and no iterator ships (W45). A node is batch 2's list row read by
+  `parse_profile_summary` unchanged: `pk` equal to `id`, the names and pictures, a relationship
+  with all eight flags, and no `is_private`, which reads `None`. The REST
+  `/api/v1/media/<pk>/likers/` in the bundle was never observed and is not used. Departure: sent
+  alone with the site root as referer, where the dialog opens from a post.
+- **W63. `media.by_id(post_pk) -> PostDetail` leaves empty what its item does not carry.** Ruled
+  2026-09-27 for E2 batch 4. `PolarisPostActionLoadPostQueryMediaIdQuery` (finding
+  `read-a-post-by-media-id`, replayed twice) with `{"mediaId": <pk>}` on `/graphql/query`, root
+  `xdt_api__v1__media__media_id_web_info.items`. The first replay answered beside twelve field
+  errors under the item, on `ad_id`, `audience`, three slides' `organic_tracking_token`,
+  `logging_info_token` and six flags of the author's relationship, none read, so under W52 it
+  maps whole, and the second had none. FACT from the one post read twice, a carousel of three:
+  the item is the post query's family with less in it. Its slides carry neither `media_type` nor
+  `product_type`, which `CarouselChild` requires in the frozen snapshot, so `carousel_children` is
+  empty while `carousel_media_count` counts them, rather than a slide kind guessed from its
+  renditions; it carries no `accessibility_caption`, no `hd_profile_pic_url_info` on the author
+  and no `coauthor_producers`, which read `None`; its tags carry no `position`. The shortcode read
+  and the timeline still refuse an author without the picture key, which a gate holds. So a
+  caller wanting slides reads `by_code` with the returned `code`, one request more, and the
+  docstring says so. `PostDetail` rather than a new model, because every field it fills means
+  what it means there. Departure: sent alone with the site root as referer. Extended the same day
+  after the batch's live acceptance (log `logs/e2-post-depth-cli-stopped-2026-09-27-032646.json`)
+  saw `post --by-id` exit 8 on a reel: FACT from `probes/e2_post_by_id_shape.py` (4 requests, log
+  `logs/e2-post-by-id-shape-2026-09-27-032720.json`), of two reels read by media pk, one with
+  both audio slots null mapped, and the other's `original_sound_info` carried `audio_asset_id`,
+  `consumption_info`, `ig_artist`, `original_audio_title` and `should_mute_audio` and no
+  `is_explicit`, which `MediaAudio` requires, with no `errors` array. Every other key the video
+  and audio mappers require was present on both (`video_versions` entries of `url`, `width`,
+  `height` and `type`, a manifest naming its duration, `has_audio`, `clips_metadata` with both
+  slots, `ig_artist` with `id` and `username`). So on this read an original sound without the
+  flag makes `audio` `None` rather than a flag guessed, and every other read still refuses it; a
+  licensed song read by media pk has not been seen and is mapped strictly. The gate
+  `test_a_reel_read_by_media_pk_maps_and_an_original_sound_without_its_flag_is_unknown` was seen
+  red on the mapping before the change, `SchemaChanged: ...original_sound_info.is_explicit is
+  missing from the payload`, and green after, on both bodies pseudonymised into
+  `tests/fixtures/post_depth/`, and two mutations hold it.
+- **W64. The strip under a post is `media.more_from_author(author_id) -> tuple[PostThumbnail,
+  ...]`, keyed on the author only.** Ruled 2026-09-27 for E2 batch 4.
+  `PolarisDesktopPostPageRelatedMediaGridQuery` (finding `read-more-posts-from-an-account`,
+  replayed twice) with `media_owner_id`, `count` 6 and the short drama provider false, on
+  `/graphql/query`, root `xdt_api__v1__profile_timeline`. The query takes no post, so the method
+  takes none, rather than the plan's `(post_pk, author_id)`. `count` 6 is the probe's value, not
+  observed from a browser, an ASSUMPTION named in `MORE_FROM_AUTHOR_COUNT`. FACT: six posts on
+  both replays, the same six in the same order, none of them the post the author id came from.
+  An item is thinner than any post read, with no `taken_at`, no viewer state, no video renditions
+  and an author of `pk`, `id` and `username` only, so it cannot be a `Post` without guessing, and
+  the new `PostThumbnail` carries `id`, `pk`, `code`, the author's id and username, `media_type`,
+  `product_type`, the two counts, `like_and_view_counts_disabled`, `caption`,
+  `carousel_media_count` and `images`, every one present on all six. Dropped: the slides, which
+  carried an id and renditions and no kind, `num_results`, and fields null on all six or chrome,
+  listed on the mapper. A username raises `ValueError` before anything is sent.
+- **W65. Location, tagged accounts and collaborators are fields on the post, where `None` means
+  the read does not carry them.** Ruled 2026-09-27 for E2 batch 4. `Post` and `PostDetail` gained
+  `location: Location | None`, `user_tags: tuple[UserTag, ...] | None` and `collaborators:
+  tuple[ProfileSummary, ...] | None`, and `CarouselChild` gained `user_tags`, all with a `None`
+  default, additions only. Evidence, FACT over the 37 distinct posts of the home timeline and
+  grid captures of 2026-09-27 and the post read by media pk: every timeline and grid post
+  carried `location`, `usertags` and `coauthor_producers` keys, 5 had a location, 3 had tags and
+  1 had a collaborator; the post query items of E1 item 6 carry the same three keys. A location
+  carried `pk`, `name`, `lat` and `lng` on all 39 the E2 probes kept, with `pk` a string on the
+  home timeline and a number on a grid and in the post query, so `Location.id` is its string
+  form. A tag carried `user` and, except in the post read by media pk, a two-number `position`;
+  every tag carried `id` and the home timeline's one slide tag carried no `pk`, so a tag's account
+  is read by `id`, into `ProfileSummary` with no relationship. A collaborator carried a list row
+  with all eight relationship flags and is read as one. A null `usertags` or `coauthor_producers`
+  is an empty tuple, INFERENCE that null means none, and an absent key is `None`, so a caller can
+  tell "none" from "this read does not say". `invited_coauthor_producers` was an empty list on
+  every post and is not modelled. The CLI's post JSON gained `location`, `user_tags` and
+  `collaborators`. One existing gate followed: `test_the_post_read_maps_has_liked_and_like_count_from_the_item`
+  in `tests/test_likes.py` compares a whole `PostDetail` built from an item that carries a null
+  `usertags` and an empty `coauthor_producers`, seen red (`user_tags: () != None`) before
+  `user_tags=()` and `collaborators=()` were added to its expected value and green after, which
+  asserts two fields more than before.
+- **W66. The post modal's context backs no capability and is not sent.** Ruled 2026-09-27 for E2
+  batch 4. `PolarisPostModalContextQuery` (finding `read-a-post-modal-context`, replayed twice,
+  2339 bytes) answers the post's `pk`, `code`, kinds, the author with two relationship flags,
+  `coauthor_producers` as `pk` and `id` only, `usertags` with positions, and a few sharing and
+  grid flags. FACT from the two answers: nothing there is missing from `by_code` or the timeline,
+  and its collaborators are ids without names. It is a companion of opening a post in a modal,
+  whose burst has not been captured, so it is not registered and nothing sends it; once the
+  capture night records that burst, it joins `by_id` or `by_code` as a companion under ADR-0013.
+- **W67. The canary replays twenty-two reads, three doctor literals followed, and `post --by-id`
+  follows `profile --by-id`.** Ruled 2026-09-27 for E2 batch 4. `READ_QUERIES` gained the five
+  queries, so a live doctor run goes from at most 19 paced requests to at most 24. The comment
+  page step now learns the first comment whose `reply_count` is above zero, the replies step is
+  keyed on it and skipped without one, the replies' next page is keyed on the first page's cursor
+  and skipped without one, the likers and the post by media pk are keyed on the timeline's first
+  post, and the strip on that post's author, which the timeline step now learns. W48's pattern.
+  `tests/test_doctor.py` followed in three literals, each seen red before the edit and green
+  after: the registry count, 36 to 41 (`assert 41 == 36`), the dry run's paced total, 19 to 24
+  (`assert 24 == 19`), and the stated plan, 17 reads to 22. Its comment page answer moved from an
+  empty page to the recorded one, since an empty page now skips two reads, and the five new
+  reads answer from the batch's fixtures. A new gate holds the replies to the first comment with
+  replies on a page whose first comment has none, the next page to the first page's cursor, the
+  strip to the timeline post's author, and both reply steps to being skipped when no comment has
+  replies. The commands are `dumpsta replies PK COMMENT_ID` with `--pages` and `--after`,
+  `likers PK` and `more-from-author AUTHOR_ID`, and `post --by-id PK`, a flag on the existing
+  command as `profile --by-id` is, which refuses a shortcode with exit 2. The gate fixtures are
+  the recorded answers, pseudonymised by `scripts/build_post_depth_fixtures.py`, with the home
+  page trimmed to its six post edges. `tests/test_post_depth.py` holds 23 gates and
+  `scripts/verify_post_depth_gates.py` 51 mutations, each seen red then green. Seven anchors in
+  `verify_comments_gates.py` and `verify_likes_gates.py` that the new mappers and builders had
+  made ambiguous were lengthened. The surface grew from 636 lines to 681, 45 added and none
+  removed or changed. Live traffic for the discovery: `probes/e2_post_depth.py` 13 requests and
+  the replies half of `probes/e2_next_pages.py`, 4 of its 10. The CLI acceptance,
+  `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log
+  `logs/e2-post-depth-cli-2026-09-27-033207.json`, six of them `dumpsta feed` under parity.
+
 ## Standing rules for every phase
 
 - Every capability starts with a `reverse-engineer` run and a verified finding, per the

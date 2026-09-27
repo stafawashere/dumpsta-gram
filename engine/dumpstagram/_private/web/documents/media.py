@@ -1,17 +1,23 @@
-"""The post queries: one post by shortcode, like and unlike, a comment page, and commenting and
-deleting a comment.
+"""The post queries: one post by shortcode or by media pk, like and unlike, a comment page, the
+replies under a comment, the likers, the more posts from the author, and commenting and deleting
+a comment.
 """
 
 from __future__ import annotations
 
-from dumpstagram._private.web.documents.common import PersistedQuery
+from dumpstagram._private.web.documents.common import GRAPHQL_QUERY_URL, PersistedQuery
 
 __all__ = [
    "COMMENT_PAGE",
+   "COMMENT_REPLIES",
+   "COMMENT_REPLIES_NEXT_PAGE",
    "CREATE_COMMENT",
    "DELETE_COMMENT",
    "LIKE_MEDIA",
+   "MORE_FROM_AUTHOR",
+   "POST_BY_MEDIA_ID",
    "POST_BY_SHORTCODE",
+   "POST_LIKERS",
    "UNLIKE_MEDIA",
 ]
 
@@ -87,4 +93,66 @@ DELETE_COMMENT = PersistedQuery(
 A real delete answers its root field with an object. A delete naming no comment answered it
 null with no error, so a null root is not a delete. Verified by two engine sends on 2026-09-23,
 each confirmed by a comment page read, under ruling 23.
+"""
+
+COMMENT_REPLIES = PersistedQuery(
+   doc_id="28027289793632076",
+   friendly_name="PolarisPostChildCommentsQuery",
+   finding_id="read-comment-replies",
+)
+"""The first replies under one comment, keyed on the media ``pk`` and the parent comment's id.
+
+Replayed three times on 2026-09-27. It answered 9 replies with ``has_next_page`` false on a
+comment with 9, and 11 with a cursor on a comment with 52, both with ``first`` 3, so ``first``
+does not set how many come back.
+"""
+
+COMMENT_REPLIES_NEXT_PAGE = PersistedQuery(
+   doc_id="27229753410037873",
+   friendly_name="PolarisPostCommentsChildrenPaginationtQuery",
+   finding_id="read-comment-replies-next-page",
+)
+"""The replies past their first page, keyed as :data:`COMMENT_REPLIES` is plus the previous
+page's cursor. The name carries the upstream's own typo.
+
+Replayed twice on 2026-09-27: 12 new replies, none of them on the first page, and a cursor.
+"""
+
+POST_LIKERS = PersistedQuery(
+   doc_id="27928626103504365",
+   friendly_name="PolarisPostLikedByListDialogQuery",
+   finding_id="read-a-post-s-likers",
+)
+"""The accounts listed as liking one post, keyed on the media ``pk``, as the likes dialog lists
+them. Root ``fetch__XDTMediaDict``, whose ``likers_connection`` carries ``nodes`` and no page
+info.
+
+Replayed twice on 2026-09-27: 98 accounts both times, on a post counting 193647 likes.
+"""
+
+POST_BY_MEDIA_ID = PersistedQuery(
+   doc_id="28007559615590940",
+   friendly_name="PolarisPostActionLoadPostQueryMediaIdQuery",
+   finding_id="read-a-post-by-media-id",
+   url=GRAPHQL_QUERY_URL,
+   root_field="xdt_api__v1__media__media_id_web_info",
+)
+"""One post keyed on its media ``pk``, an item of the same family as :data:`POST_BY_SHORTCODE`.
+
+Replayed twice on 2026-09-27, the first answer beside twelve field errors under the item and the
+second with none.
+"""
+
+MORE_FROM_AUTHOR = PersistedQuery(
+   doc_id="27764946129846908",
+   friendly_name="PolarisDesktopPostPageRelatedMediaGridQuery",
+   finding_id="read-more-posts-from-an-account",
+   url=GRAPHQL_QUERY_URL,
+   root_field="xdt_api__v1__profile_timeline",
+)
+"""The "more posts from" strip under a post, keyed on the author's numeric id and a count, and on
+no post.
+
+Replayed twice on 2026-09-27 with ``count`` 6: six posts, the same six in the same order both
+times, none of them the post the author id was read from.
 """

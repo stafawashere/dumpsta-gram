@@ -4,7 +4,8 @@ Every read in :data:`~dumpstagram._private.web.documents.catalog.READ_QUERIES` h
 here, built with the request builder its capability uses and read with the mapper its capability
 uses, so a replay that passes is a query the capability would still get an answer from. A replay
 that needs an argument takes it from an earlier one: a thread from the inbox listing, a post from
-the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid.
+the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid, a
+comment with replies from the post's comments.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -29,7 +30,15 @@ from dumpstagram._private.web.documents.direct import (
    THREAD_OLDER_PAGE,
 )
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
-from dumpstagram._private.web.documents.media import COMMENT_PAGE, POST_BY_SHORTCODE
+from dumpstagram._private.web.documents.media import (
+   COMMENT_PAGE,
+   COMMENT_REPLIES,
+   COMMENT_REPLIES_NEXT_PAGE,
+   MORE_FROM_AUTHOR,
+   POST_BY_MEDIA_ID,
+   POST_BY_SHORTCODE,
+   POST_LIKERS,
+)
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
 from dumpstagram._private.web.documents.profiles import (
    PROFILE_BY_ID,
@@ -49,7 +58,14 @@ from dumpstagram._private.web.parse.direct import (
    parse_thread_message_page,
 )
 from dumpstagram._private.web.parse.feed import parse_feed_page
-from dumpstagram._private.web.parse.media import parse_comment_page, parse_post_detail
+from dumpstagram._private.web.parse.media import (
+   parse_comment_page,
+   parse_likers,
+   parse_more_from_author,
+   parse_post_by_media_id,
+   parse_post_detail,
+   parse_reply_page,
+)
 from dumpstagram._private.web.parse.notes import parse_inbox_tray
 from dumpstagram._private.web.parse.profiles import (
    parse_highlight_tray,
@@ -70,7 +86,14 @@ from dumpstagram._private.web.requests.direct import (
    build_thread_page_request,
 )
 from dumpstagram._private.web.requests.feed import build_feed_page_request
-from dumpstagram._private.web.requests.media import build_comment_page_request, build_post_request
+from dumpstagram._private.web.requests.media import (
+   build_comment_page_request,
+   build_likers_request,
+   build_more_from_author_request,
+   build_post_by_id_request,
+   build_post_request,
+   build_replies_request,
+)
 from dumpstagram._private.web.requests.notes import build_inbox_tray_request
 from dumpstagram._private.web.requests.profiles import (
    build_highlight_tray_request,
@@ -108,6 +131,9 @@ class ReplayArguments:
    post_pk: str | None = None
    username: str | None = None
    posts_cursor: str | None = None
+   author_id: str | None = None
+   parent_comment_id: str | None = None
+   replies_cursor: str | None = None
 
 
 @dataclass(frozen=True)
@@ -145,6 +171,7 @@ def _learn_first_post(payload: Any, arguments: ReplayArguments) -> None:
       if item.post is not None:
          arguments.post_code = item.post.code
          arguments.post_pk = item.post.pk
+         arguments.author_id = item.post.author.id
 
          return
 
@@ -162,6 +189,25 @@ def _learn_grid_cursor(payload: Any, arguments: ReplayArguments) -> None:
 
    if page.has_next_page:
       arguments.posts_cursor = page.end_cursor
+
+
+def _learn_comment_with_replies(payload: Any, arguments: ReplayArguments) -> None:
+   """The post's first comment page, and the first comment on it that has replies."""
+
+   for comment in parse_comment_page(payload).items:
+      has_replies = (comment.reply_count or 0) > 0
+
+      if has_replies:
+         arguments.parent_comment_id = comment.id
+
+         return
+
+
+def _learn_replies_cursor(payload: Any, arguments: ReplayArguments) -> None:
+   page = parse_reply_page(payload)
+
+   if page.has_next_page:
+      arguments.replies_cursor = page.end_cursor
 
 
 def _mapped_by(mapper: Callable[[Any], object]) -> Callable[[Any, ReplayArguments], None]:
@@ -243,7 +289,7 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
       build=lambda session, arguments, user_agent: build_comment_page_request(
          session, _required(arguments.post_pk), user_agent=user_agent
       ),
-      read=_mapped_by(parse_comment_page),
+      read=_learn_comment_with_replies,
    ),
    ReplayStep(
       query=PROFILE_BY_ID,
@@ -326,6 +372,53 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, user_agent=user_agent
       ),
       read=_mapped_by(parse_suggested_accounts),
+   ),
+   ReplayStep(
+      query=COMMENT_REPLIES,
+      requires="parent_comment_id",
+      build=lambda session, arguments, user_agent: build_replies_request(
+         session,
+         _required(arguments.post_pk),
+         _required(arguments.parent_comment_id),
+         user_agent=user_agent,
+      ),
+      read=_learn_replies_cursor,
+   ),
+   ReplayStep(
+      query=COMMENT_REPLIES_NEXT_PAGE,
+      requires="replies_cursor",
+      build=lambda session, arguments, user_agent: build_replies_request(
+         session,
+         _required(arguments.post_pk),
+         _required(arguments.parent_comment_id),
+         after=_required(arguments.replies_cursor),
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_reply_page),
+   ),
+   ReplayStep(
+      query=POST_LIKERS,
+      requires="post_pk",
+      build=lambda session, arguments, user_agent: build_likers_request(
+         session, _required(arguments.post_pk), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_likers),
+   ),
+   ReplayStep(
+      query=POST_BY_MEDIA_ID,
+      requires="post_pk",
+      build=lambda session, arguments, user_agent: build_post_by_id_request(
+         session, _required(arguments.post_pk), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_post_by_media_id),
+   ),
+   ReplayStep(
+      query=MORE_FROM_AUTHOR,
+      requires="author_id",
+      build=lambda session, arguments, user_agent: build_more_from_author_request(
+         session, _required(arguments.author_id), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_more_from_author),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

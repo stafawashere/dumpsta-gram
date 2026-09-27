@@ -113,6 +113,8 @@ def test_the_post_read_maps_has_liked_and_like_count_from_the_item() -> None:
          MediaImage(url="https://example.invalid/1024.jpg", width=1024, height=1280),
          MediaImage(url="https://example.invalid/640.jpg", width=640, height=800),
       ),
+      user_tags=(),
+      collaborators=(),
    )
    assert isinstance(post.author, PostAuthor)
    assert post.author.id == AUTHOR_ID

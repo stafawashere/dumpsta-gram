@@ -23,6 +23,7 @@ alias dumpstagram.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.HighlightTray -> dumpstagram.models.highlights.HighlightTray
 alias dumpstagram.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
+alias dumpstagram.Location -> dumpstagram.models.feed.Location
 alias dumpstagram.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
@@ -39,6 +40,7 @@ alias dumpstagram.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
+alias dumpstagram.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProfileRoute -> dumpstagram.behavior.ProfileRoute
 alias dumpstagram.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
@@ -60,6 +62,7 @@ alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticip
 alias dumpstagram.TransportFailure -> dumpstagram.errors.TransportFailure
 alias dumpstagram.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.UpstreamRejected -> dumpstagram.errors.UpstreamRejected
+alias dumpstagram.UserTag -> dumpstagram.models.feed.UserTag
 alias dumpstagram.VideoRendition -> dumpstagram.models.feed.VideoRendition
 module dumpstagram.aio
 class dumpstagram.aio.AsyncClient()
@@ -201,6 +204,7 @@ alias dumpstagram.models.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.models.HighlightTray -> dumpstagram.models.highlights.HighlightTray
 alias dumpstagram.models.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
+alias dumpstagram.models.Location -> dumpstagram.models.feed.Location
 alias dumpstagram.models.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
@@ -213,6 +217,7 @@ alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
 alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
+alias dumpstagram.models.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
 alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
@@ -221,6 +226,7 @@ alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
+alias dumpstagram.models.UserTag -> dumpstagram.models.feed.UserTag
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
 module dumpstagram.models.comments
 class dumpstagram.models.comments.Comment()
@@ -259,6 +265,7 @@ field dumpstagram.models.feed.CarouselChild.original_height: int | None = None
 field dumpstagram.models.feed.CarouselChild.original_width: int | None = None
 field dumpstagram.models.feed.CarouselChild.pk: str
 field dumpstagram.models.feed.CarouselChild.product_type: str
+field dumpstagram.models.feed.CarouselChild.user_tags: tuple[UserTag, ...] | None = None
 field dumpstagram.models.feed.CarouselChild.video_duration: float | None = None
 field dumpstagram.models.feed.CarouselChild.videos: tuple[VideoRendition, ...] = ()
 class dumpstagram.models.feed.FeedItem()
@@ -274,6 +281,11 @@ data dumpstagram.models.feed.FeedItemKind.ICEBREAKERS: FeedItemKind = <FeedItemK
 data dumpstagram.models.feed.FeedItemKind.POST: FeedItemKind = <FeedItemKind.POST: 'media'>
 data dumpstagram.models.feed.FeedItemKind.STORIES_TRAY: FeedItemKind = <FeedItemKind.STORIES_TRAY: 'stories_netego'>
 data dumpstagram.models.feed.FeedItemKind.SUGGESTED_USERS: FeedItemKind = <FeedItemKind.SUGGESTED_USERS: 'suggested_users'>
+class dumpstagram.models.feed.Location()
+field dumpstagram.models.feed.Location.id: str
+field dumpstagram.models.feed.Location.lat: float
+field dumpstagram.models.feed.Location.lng: float
+field dumpstagram.models.feed.Location.name: str
 class dumpstagram.models.feed.MediaAudio()
 field dumpstagram.models.feed.MediaAudio.artist: str
 field dumpstagram.models.feed.MediaAudio.artist_id: str | None = None
@@ -294,6 +306,7 @@ field dumpstagram.models.feed.Post.caption: str | None = None
 field dumpstagram.models.feed.Post.carousel_children: tuple[CarouselChild, ...] = ()
 field dumpstagram.models.feed.Post.carousel_media_count: int | None = None
 field dumpstagram.models.feed.Post.code: str
+field dumpstagram.models.feed.Post.collaborators: tuple[ProfileSummary, ...] | None = None
 field dumpstagram.models.feed.Post.comment_count: int
 field dumpstagram.models.feed.Post.has_audio: bool | None = None
 field dumpstagram.models.feed.Post.has_liked: bool
@@ -303,12 +316,14 @@ field dumpstagram.models.feed.Post.is_paid_partnership: bool = False
 field dumpstagram.models.feed.Post.is_seen: bool
 field dumpstagram.models.feed.Post.like_and_view_counts_disabled: bool = False
 field dumpstagram.models.feed.Post.like_count: int
+field dumpstagram.models.feed.Post.location: Location | None = None
 field dumpstagram.models.feed.Post.media_type: int
 field dumpstagram.models.feed.Post.original_height: int | None = None
 field dumpstagram.models.feed.Post.original_width: int | None = None
 field dumpstagram.models.feed.Post.pk: str
 field dumpstagram.models.feed.Post.product_type: str
 field dumpstagram.models.feed.Post.taken_at: datetime
+field dumpstagram.models.feed.Post.user_tags: tuple[UserTag, ...] | None = None
 field dumpstagram.models.feed.Post.video_duration: float | None = None
 field dumpstagram.models.feed.Post.videos: tuple[VideoRendition, ...] = ()
 class dumpstagram.models.feed.PostAuthor()
@@ -321,6 +336,9 @@ field dumpstagram.models.feed.PostAuthor.is_private: bool
 field dumpstagram.models.feed.PostAuthor.is_verified: bool
 field dumpstagram.models.feed.PostAuthor.profile_pic_url: str
 field dumpstagram.models.feed.PostAuthor.username: str
+class dumpstagram.models.feed.UserTag()
+field dumpstagram.models.feed.UserTag.account: ProfileSummary
+field dumpstagram.models.feed.UserTag.position: tuple[float, float] | None = None
 class dumpstagram.models.feed.VideoRendition()
 field dumpstagram.models.feed.VideoRendition.height: int
 field dumpstagram.models.feed.VideoRendition.url: str
@@ -390,6 +408,7 @@ field dumpstagram.models.posts.PostDetail.caption: str | None = None
 field dumpstagram.models.posts.PostDetail.carousel_children: tuple[CarouselChild, ...] = ()
 field dumpstagram.models.posts.PostDetail.carousel_media_count: int | None = None
 field dumpstagram.models.posts.PostDetail.code: str
+field dumpstagram.models.posts.PostDetail.collaborators: tuple[ProfileSummary, ...] | None = None
 field dumpstagram.models.posts.PostDetail.comment_count: int
 field dumpstagram.models.posts.PostDetail.has_audio: bool | None = None
 field dumpstagram.models.posts.PostDetail.has_liked: bool
@@ -398,14 +417,30 @@ field dumpstagram.models.posts.PostDetail.images: tuple[MediaImage, ...] = ()
 field dumpstagram.models.posts.PostDetail.is_paid_partnership: bool = False
 field dumpstagram.models.posts.PostDetail.like_and_view_counts_disabled: bool = False
 field dumpstagram.models.posts.PostDetail.like_count: int
+field dumpstagram.models.posts.PostDetail.location: Location | None = None
 field dumpstagram.models.posts.PostDetail.media_type: int
 field dumpstagram.models.posts.PostDetail.original_height: int | None = None
 field dumpstagram.models.posts.PostDetail.original_width: int | None = None
 field dumpstagram.models.posts.PostDetail.pk: str
 field dumpstagram.models.posts.PostDetail.product_type: str
 field dumpstagram.models.posts.PostDetail.taken_at: datetime
+field dumpstagram.models.posts.PostDetail.user_tags: tuple[UserTag, ...] | None = None
 field dumpstagram.models.posts.PostDetail.video_duration: float | None = None
 field dumpstagram.models.posts.PostDetail.videos: tuple[VideoRendition, ...] = ()
+class dumpstagram.models.posts.PostThumbnail()
+field dumpstagram.models.posts.PostThumbnail.author_id: str
+field dumpstagram.models.posts.PostThumbnail.author_username: str
+field dumpstagram.models.posts.PostThumbnail.caption: str | None = None
+field dumpstagram.models.posts.PostThumbnail.carousel_media_count: int | None = None
+field dumpstagram.models.posts.PostThumbnail.code: str
+field dumpstagram.models.posts.PostThumbnail.comment_count: int
+field dumpstagram.models.posts.PostThumbnail.id: str
+field dumpstagram.models.posts.PostThumbnail.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.posts.PostThumbnail.like_and_view_counts_disabled: bool
+field dumpstagram.models.posts.PostThumbnail.like_count: int
+field dumpstagram.models.posts.PostThumbnail.media_type: int
+field dumpstagram.models.posts.PostThumbnail.pk: str
+field dumpstagram.models.posts.PostThumbnail.product_type: str
 class dumpstagram.models.posts.PublishedPost()
 field dumpstagram.models.posts.PublishedPost.code: str
 field dumpstagram.models.posts.PublishedPost.id: str
@@ -548,28 +583,38 @@ module dumpstagram.namespaces.media
 class dumpstagram.namespaces.media.AsyncMedia()
 def dumpstagram.namespaces.media.AsyncMedia.__init__(self) -> None
 def dumpstagram.namespaces.media.AsyncMedia.by_code(self, code: str) -> PostDetail
+def dumpstagram.namespaces.media.AsyncMedia.by_id(self, post_pk: str) -> PostDetail
 def dumpstagram.namespaces.media.AsyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.AsyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.namespaces.media.AsyncMedia.delete_post(self, post_pk: str, code: str) -> None
 def dumpstagram.namespaces.media.AsyncMedia.download(self, rendition: MediaImage | VideoRendition, path: str | os.PathLike[str], *, overwrite: bool = False) -> Path
 def dumpstagram.namespaces.media.AsyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Comment]
+def dumpstagram.namespaces.media.AsyncMedia.iter_replies(self, post_pk: str, comment_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.AsyncMedia.likers(self, post_pk: str) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.media.AsyncMedia.more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]
 def dumpstagram.namespaces.media.AsyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.AsyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
+def dumpstagram.namespaces.media.AsyncMedia.replies(self, post_pk: str, comment_id: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.AsyncMedia.unlike(self, post_pk: str) -> None
 class dumpstagram.namespaces.media.SyncMedia()
 def dumpstagram.namespaces.media.SyncMedia.__init__(self) -> None
 def dumpstagram.namespaces.media.SyncMedia.by_code(self, code: str) -> PostDetail
+def dumpstagram.namespaces.media.SyncMedia.by_id(self, post_pk: str) -> PostDetail
 def dumpstagram.namespaces.media.SyncMedia.comment(self, post_pk: str, text: str) -> Comment
 def dumpstagram.namespaces.media.SyncMedia.comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.SyncMedia.delete_comment(self, post_pk: str, comment_id: str) -> None
 def dumpstagram.namespaces.media.SyncMedia.delete_post(self, post_pk: str, code: str) -> None
 def dumpstagram.namespaces.media.SyncMedia.download(self, rendition: MediaImage | VideoRendition, path: str | os.PathLike[str], *, overwrite: bool = False) -> Path
 def dumpstagram.namespaces.media.SyncMedia.iter_comments(self, post_pk: str, *, limit: int | None, after: str | None = None) -> Iterator[Comment]
+def dumpstagram.namespaces.media.SyncMedia.iter_replies(self, post_pk: str, comment_id: str, *, limit: int | None, after: str | None = None) -> Iterator[Comment]
 def dumpstagram.namespaces.media.SyncMedia.like(self, post_pk: str) -> None
+def dumpstagram.namespaces.media.SyncMedia.likers(self, post_pk: str) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.media.SyncMedia.more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]
 def dumpstagram.namespaces.media.SyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.SyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
+def dumpstagram.namespaces.media.SyncMedia.replies(self, post_pk: str, comment_id: str, *, after: str | None = None) -> Page[Comment]
 def dumpstagram.namespaces.media.SyncMedia.unlike(self, post_pk: str) -> None
 module dumpstagram.namespaces.profiles
 class dumpstagram.namespaces.profiles.AsyncProfiles()

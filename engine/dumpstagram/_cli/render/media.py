@@ -6,10 +6,13 @@ from typing import Any
 
 from dumpstagram.models import (
    Comment,
+   Location,
    Page,
    Post,
    PostDetail,
+   ProfileSummary,
    PublishedPost,
+   UserTag,
 )
 
 __all__ = [
@@ -23,6 +26,44 @@ __all__ = [
 ]
 
 
+def _describe_account(account: ProfileSummary) -> dict[str, Any]:
+   """An account a post names, in the form every account list prints. Imported here rather than
+   at the top, because the profiles renderer imports this module for the grid's posts."""
+
+   from dumpstagram._cli.render.profiles import describe_profile_summary
+
+   return describe_profile_summary(account)
+
+
+def _describe_location(location: Location | None) -> dict[str, Any] | None:
+   if location is None:
+      return None
+
+   return {"id": location.id, "name": location.name, "lat": location.lat, "lng": location.lng}
+
+
+def _describe_user_tags(tags: tuple[UserTag, ...] | None) -> list[dict[str, Any]] | None:
+   if tags is None:
+      return None
+
+   return [
+      {
+         "account": _describe_account(tag.account),
+         "position": list(tag.position) if tag.position is not None else None,
+      }
+      for tag in tags
+   ]
+
+
+def _describe_collaborators(
+   collaborators: tuple[ProfileSummary, ...] | None,
+) -> list[dict[str, Any]] | None:
+   if collaborators is None:
+      return None
+
+   return [_describe_account(account) for account in collaborators]
+
+
 def describe_post(post: Post) -> dict[str, Any]:
    """The JSON form of one post. Every key here is part of the CLI's contract.
 
@@ -31,6 +72,9 @@ def describe_post(post: Post) -> dict[str, Any]:
 
    ``images`` carries every rendition the upstream offered rather than one chosen here, since
    they are crops at several aspect ratios rather than one picture at several sizes.
+
+   ``location`` is null when the post has none. ``user_tags`` and ``collaborators`` are lists,
+   empty when there are none, and null when the read that produced the post does not carry them.
    """
 
    return {
@@ -65,6 +109,9 @@ def describe_post(post: Post) -> dict[str, Any]:
       ],
       "is_paid_partnership": post.is_paid_partnership,
       "like_and_view_counts_disabled": post.like_and_view_counts_disabled,
+      "location": _describe_location(post.location),
+      "user_tags": _describe_user_tags(post.user_tags),
+      "collaborators": _describe_collaborators(post.collaborators),
    }
 
 
@@ -95,6 +142,9 @@ def describe_post_detail(post: PostDetail) -> dict[str, Any]:
          images=post.images,
          is_paid_partnership=post.is_paid_partnership,
          like_and_view_counts_disabled=post.like_and_view_counts_disabled,
+         location=post.location,
+         user_tags=post.user_tags,
+         collaborators=post.collaborators,
       )
    )
    del described["is_seen"]

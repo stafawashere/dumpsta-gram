@@ -1,5 +1,6 @@
-"""``client.media``, one post and what the viewer does to it: likes, comments, downloads, and
-publishing and deleting the viewer's own."""
+"""``client.media``, one post and what the viewer does to it: likes, comments and their replies,
+the likers, the more posts from its author, downloads, and publishing and deleting the viewer's
+own."""
 
 from __future__ import annotations
 
@@ -8,10 +9,15 @@ from collections.abc import AsyncIterator, Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dumpstagram._core.comments import read_comment_page
+from dumpstagram._core.comments import read_comment_page, read_replies_page
 from dumpstagram._core.downloads import download_rendition
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
-from dumpstagram._core.posts import read_post
+from dumpstagram._core.posts import (
+   read_likers,
+   read_more_from_author,
+   read_post,
+   read_post_by_id,
+)
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
 from dumpstagram._core.writes.posts import delete_post, publish_carousel, publish_photo
@@ -20,6 +26,8 @@ from dumpstagram.models import (
    MediaImage,
    Page,
    PostDetail,
+   PostThumbnail,
+   ProfileSummary,
    PublishedPost,
    VideoRendition,
 )
@@ -170,6 +178,141 @@ class AsyncMedia:
 
       return iterate_pages(
          lambda cursor: self.comments(post_pk, after=cursor), limit=limit, after=after
+      )
+
+   async def replies(
+      self, post_pk: str, comment_id: str, *, after: str | None = None
+   ) -> Page[Comment]:
+      """Read one page of the replies under one comment. One live request.
+
+      ``post_pk`` is the post's media ``pk`` and ``comment_id`` is :attr:`Comment.id
+      <dumpstagram.models.Comment.id>` of a comment on it, one whose ``reply_count`` is above
+      zero. Anything but digits in either raises :class:`ValueError` before anything is sent.
+      Replies come oldest first, each a :class:`~dumpstagram.models.Comment` whose
+      ``parent_comment_id`` is ``comment_id`` and whose ``reply_count`` is ``None``, because a
+      reply carries no count of its own.
+
+      ``after`` is the previous page's ``end_cursor``, and ``has_next_page`` is the only sign that
+      more exist: the upstream decides a page's length, and a short page is not the end. The
+      first page and the later ones are two different queries, as the website sends them.
+
+      A browser reads replies when "view replies" is opened under a comment on a post page.
+      This sends the query alone, with the site root as its referer, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_replies_page(
+            client._sender,
+            client._session,
+            post_pk,
+            comment_id,
+            after=after,
+            user_agent=client._user_agent,
+         )
+      )
+
+   def iter_replies(
+      self, post_pk: str, comment_id: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[Comment]:
+      """Walk the replies under one comment reply by reply, reading a page with :meth:`replies`
+      each time the one before it is used up. Use it with ``async for``, and do not await it.
+
+      ``limit`` is required and counts replies, with the same rules as :meth:`iter_comments`:
+      ``limit=None`` walks until ``has_next_page`` is false, and a negative one raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.replies(post_pk, comment_id, after=cursor), limit=limit, after=after
+      )
+
+   async def likers(self, post_pk: str) -> tuple[ProfileSummary, ...]:
+      """Read the accounts the upstream lists as liking one post. One live request.
+
+      ``post_pk`` is the post's media ``pk``, and the ``<pk>_<author id>`` form raises
+      :class:`ValueError` before anything is sent. Each account carries the viewer's relationship
+      to it. The answer carries no cursor and no count, so the tuple is the whole list the
+      upstream gives, which on a popular post is a sample: 98 accounts were listed for a post
+      counting 193647 likes. Compare its length with ``like_count`` rather than read it as every
+      liker.
+
+      This is the query the likes dialog on a post sends. It is sent alone, with the site root
+      as its referer, a departure recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_likers(
+            client._sender,
+            client._session,
+            post_pk,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def by_id(self, post_pk: str) -> PostDetail:
+      """Read one post by its media ``pk``. One live request.
+
+      The read for a caller holding a ``pk`` and no shortcode, from a comment, a liker list or
+      a :class:`~dumpstagram.models.PostThumbnail`. Anything but digits raises
+      :class:`ValueError` before anything is sent.
+
+      The item this query answers carries less than :meth:`by_code`'s, and what it lacks is
+      left empty rather than guessed: ``carousel_children`` is empty on a carousel, whose slides
+      here say neither what kind each is nor its product type, while ``carousel_media_count``
+      still counts them; ``accessibility_caption``, the author's high resolution picture and
+      ``collaborators`` are ``None``; ``user_tags`` carry no position; and a reel's original
+      sound, sent without its explicit flag, leaves ``audio`` ``None``. Read the post with
+      :meth:`by_code` and the returned ``code`` for those, one more request.
+
+      It is sent alone, with the site root as its referer, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_post_by_id(
+            client._sender,
+            client._session,
+            post_pk,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]:
+      """Read the "more posts from" strip the website shows under a post. One live request.
+
+      ``author_id`` is the post author's numeric id, :attr:`PostAuthor.id
+      <dumpstagram.models.PostAuthor.id>`, and a username raises :class:`ValueError` before
+      anything is sent. The query takes no post, so the strip is the author's and not the
+      post's: six posts, in the upstream's order, each a :class:`~dumpstagram.models.PostThumbnail`
+      whose ``pk`` :meth:`by_id` reads in full.
+
+      Six is the count the engine asks for, which the discovery replays sent and were answered
+      with; a browser's count has not been observed. It is sent alone, with the site root as its
+      referer, departures recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_more_from_author(
+            client._sender,
+            client._session,
+            author_id,
+            user_agent=client._user_agent,
+         )
       )
 
    async def comment(self, post_pk: str, text: str) -> Comment:
@@ -453,6 +596,74 @@ class SyncMedia:
          )
 
       return iterate_pages_blocking(read_page, limit=limit, after=after)
+
+   def replies(self, post_pk: str, comment_id: str, *, after: str | None = None) -> Page[Comment]:
+      """Read one page of the replies under one comment. Blocks until it has it.
+
+      The same call as :meth:`AsyncMedia.replies`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.replies(post_pk, comment_id, after=after),
+         operation="SyncClient.media.replies",
+      )
+
+   def iter_replies(
+      self, post_pk: str, comment_id: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[Comment]:
+      """Walk the replies under one comment reply by reply. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncMedia.iter_replies`, each page read on the shared loop
+      thread, with nothing read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_reply_page(cursor: str | None) -> Page[Comment]:
+         return client._loop.run(
+            client._impl.media.replies(post_pk, comment_id, after=cursor),
+            operation="SyncClient.media.iter_replies",
+         )
+
+      return iterate_pages_blocking(read_reply_page, limit=limit, after=after)
+
+   def likers(self, post_pk: str) -> tuple[ProfileSummary, ...]:
+      """Read the accounts listed as liking one post. Blocks until it has them.
+
+      The same call as :meth:`AsyncMedia.likers`, run on the shared loop thread. One live
+      request, and a sample rather than every liker on a popular post.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.likers(post_pk),
+         operation="SyncClient.media.likers",
+      )
+
+   def by_id(self, post_pk: str) -> PostDetail:
+      """Read one post by its media ``pk``. Blocks until it has it.
+
+      The same call as :meth:`AsyncMedia.by_id`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.by_id(post_pk),
+         operation="SyncClient.media.by_id",
+      )
+
+   def more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]:
+      """Read the "more posts from" strip for one author. Blocks until it has it.
+
+      The same call as :meth:`AsyncMedia.more_from_author`, run on the shared loop thread. One
+      live request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.more_from_author(author_id),
+         operation="SyncClient.media.more_from_author",
+      )
 
    def comment(self, post_pk: str, text: str) -> Comment:
       """Comment on a post. Blocks until the write is answered.

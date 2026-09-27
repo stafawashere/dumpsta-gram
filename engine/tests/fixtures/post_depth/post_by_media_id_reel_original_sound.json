@@ -1,0 +1,210 @@
+{
+ "data": {
+  "xdt_api__v1__media__media_id_web_info": {
+   "items": [
+    {
+     "code": "p1358xxxxxx",
+     "pk": "9000000000000001359",
+     "id": "9000000000000001359_90001360",
+     "ad_id": null,
+     "taken_at": 1577836800,
+     "inventory_source": null,
+     "video_versions": [
+      {
+       "width": 0,
+       "height": 0,
+       "url": "https://example.invalid/1361",
+       "type": 101
+      },
+      {
+       "width": 0,
+       "height": 0,
+       "url": "https://example.invalid/1361",
+       "type": 102
+      },
+      {
+       "width": 0,
+       "height": 0,
+       "url": "https://example.invalid/1361",
+       "type": 103
+      }
+     ],
+     "facepile_top_likers": [],
+     "is_dash_eligible": 0,
+     "number_of_qualities": 0,
+     "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT15.833333S\"/>",
+     "image_versions2": {
+      "candidates": [
+       {
+        "url": "https://example.invalid/1362",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1363",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1364",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1365",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1366",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1367",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1367",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1367",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1368",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1369",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1370",
+        "height": 0,
+        "width": 0
+       },
+       {
+        "url": "https://example.invalid/1371",
+        "height": 0,
+        "width": 0
+       }
+      ]
+     },
+     "is_paid_partnership": false,
+     "sponsor_tags": null,
+     "original_height": 0,
+     "original_width": 0,
+     "organic_tracking_token": "p1372xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "user": {
+      "id": "90001360",
+      "username": "p1373xxxxxxxx",
+      "profile_pic_url": "https://example.invalid/1374",
+      "is_private": false,
+      "is_embeds_disabled": false,
+      "is_unpublished": false,
+      "is_verified": false,
+      "full_name": "p1375xxxxxxxxx",
+      "friendship_status": {
+       "following": true,
+       "blocking": null,
+       "followed_by": false,
+       "incoming_request": null,
+       "is_private": false,
+       "is_restricted": false,
+       "is_viewer_unconnected": null,
+       "muting": null,
+       "outgoing_request": null,
+       "subscribed": null,
+       "is_feed_favorite": false
+      },
+      "latest_reel_media": 0
+     },
+     "comments_disabled": null,
+     "like_and_view_counts_disabled": false,
+     "can_viewer_reshare": true,
+     "product_type": "clips",
+     "media_type": 2,
+     "usertags": {
+      "in": [
+       {
+        "user": {
+         "pk": "90001376",
+         "full_name": "p1377x",
+         "username": "p1378",
+         "profile_pic_url": "https://example.invalid/1379",
+         "is_verified": true,
+         "id": "90001376"
+        }
+       },
+       {
+        "user": {
+         "pk": "900001380",
+         "full_name": "p1381xxxxxxx",
+         "username": "p1382xxxxxx",
+         "profile_pic_url": "https://example.invalid/1383",
+         "is_verified": true,
+         "id": "900001380"
+        }
+       }
+      ]
+     },
+     "media_overlay_info": null,
+     "carousel_media": null,
+     "location": null,
+     "has_audio": true,
+     "clips_metadata": {
+      "audio_type": "p1356xxxxxxxxxx",
+      "achievements_info": {
+       "show_achievements": false
+      },
+      "music_info": null,
+      "original_sound_info": {
+       "original_audio_title": "p22xxxxxxxxxxx",
+       "should_mute_audio": false,
+       "audio_asset_id": "90000000000001384",
+       "consumption_info": {
+        "should_mute_audio_reason": "",
+        "should_mute_audio_reason_type": null
+       },
+       "ig_artist": {
+        "username": "p1373xxxxxxxx",
+        "id": "90001360"
+       }
+      }
+     },
+     "clips_attribution_info": null,
+     "caption": {
+      "text": "p1385xxxxxxxxxxxxxxx"
+     },
+     "main_feed_carousel_starting_media_id": null,
+     "has_liked": false,
+     "commenting_disabled_for_viewer": null,
+     "comment_count": 0,
+     "media_level_comment_controls": null,
+     "ig_media_sharing_disabled": false,
+     "audience": null,
+     "is_shared_from_basel": null,
+     "visibility": null,
+     "photo_of_you": false,
+     "invited_coauthor_producers": [],
+     "carousel_media_count": null,
+     "view_count": null,
+     "like_count": 0,
+     "logging_info_token": null,
+     "sharing_friction_info": {
+      "should_have_sharing_friction": false,
+      "bloks_app_url": null
+     }
+    }
+   ]
+  }
+ },
+ "status": "ok"
+}

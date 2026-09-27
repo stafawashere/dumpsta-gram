@@ -54,10 +54,13 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
-| `post CODE` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, with its `pk` and the viewer's like state |
+| `post CODE`, `post --by-id PK` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, or by its `pk`, with its `pk` and the viewer's like state |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
 | `follow USER_ID`, `unfollow USER_ID` | 1 write, plus 1 read if the session has no token yet | Follows or unfollows one account. Writes to the account, and the account is notified of a follow |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
+| `replies PK COMMENT_ID` | 1 per page, plus 1 if the session has no token yet | Reads pages of the replies under one comment, oldest first |
+| `likers PK` | 1, plus 1 if the session has no token yet | Lists the accounts the likes dialog shows for one post, a sample on a popular post |
+| `more-from-author AUTHOR_ID` | 1, plus 1 if the session has no token yet | Lists the posts a post page shows from its author |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
@@ -65,7 +68,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
 | `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
-| `doctor` | 0 without `--live`. With it, 2 documents and at most 17 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 22 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -384,8 +387,19 @@ DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unlike PK
 
 `post CODE` reads the post whose web address carries `CODE`. The text form prints the code, the
 `pk`, the author and the time, then `has_liked` with the like and comment counts, then the first
-caption line. The JSON form is `{"command": "post", "post": {...}}` with the keys `feed` uses for
-a post, less `is_seen`, which this read does not carry.
+caption line. The JSON form is `{"command": "post", "by_id": false, "post": {...}}` with the keys
+`feed` uses for a post, less `is_seen`, which this read does not carry.
+
+`post --by-id PK` reads the post by its `pk` instead, as `profile --by-id` reads a profile by its
+id, and refuses anything but digits with exit code 2 before anything is sent. `by_id` is true in
+its JSON form. Its answer carries less than the shortcode read's: `carousel_media_count` counts
+the slides while the slides themselves are not listed, and `accessibility_caption` and
+`collaborators` are null because the answer does not carry them (W63).
+
+Since E2 batch 4 a post's JSON form, in `feed`, `posts` and `post`, also carries `location`
+(`id`, `name`, `lat`, `lng`, or null), `user_tags` (each an `account` in the form `suggested`
+prints one, and a `position` of two numbers or null) and `collaborators` (accounts in the same
+form). The two lists are empty when the post has none and null when the read does not say (W65).
 
 `like PK` and `unlike PK` write to the account. The target is the post's `pk`, digits only, and
 an explicit argument: there is no default and no prompt. The `<pk>_<author id>` form is refused
@@ -424,6 +438,37 @@ delete the upstream answers as having deleted nothing ends with exit code 6, `Up
 code `comment_not_deleted`.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
+
+### `replies`, `likers` and `more-from-author`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta replies PK COMMENT_ID --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json likers PK
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta more-from-author AUTHOR_ID
+```
+
+`replies PK COMMENT_ID` reads the replies under one comment, a comment `comments PK` lists with a
+`reply_count` above zero, one line per reply in the `comments` form, oldest first, then
+`pages_read`, `replies` and `more_available`, and `next_cursor` when more exist. `--pages N` reads
+at most `N` pages, default 1, and stops earlier on the page's own `has_next_page`. `--after CURSOR`
+takes a `next_cursor` an earlier run printed for the same comment. The JSON form carries
+`command`, `pk`, `comment_id`, `pages_read`, `reply_count`, `more_available`, `end_cursor` and
+`replies`, each in the form `comments` prints a comment, with `reply_count` null (W61).
+
+`likers PK` lists the accounts the likes dialog shows, in the form `suggested` prints them, then
+how many. The JSON form is `command`, `pk`, `account_count` and `accounts`. The count is the
+list's length, not the post's likes: on a popular post the list is a sample (W62).
+
+`more-from-author AUTHOR_ID` lists the strip of posts a post page shows from its author, one line
+per post with its code, `pk`, counts and first caption line, then how many. It takes the author's
+numeric id, `author.id` in a post's JSON form, and refuses a username with exit 2. The JSON form
+is `command`, `author_id`, `post_count` and `posts`, each with `id`, `pk`, `code`, `author_id`,
+`author_username`, `media_type`, `product_type`, `like_count`, `comment_count`,
+`like_and_view_counts_disabled`, `caption`, `carousel_media_count` and `images` (W64).
+
+Every post and comment id is digits only, and anything else is refused by the parser with exit
+code 2 before a client is opened. All three take `--user-agent` and `--no-session-writeback`.
+The live acceptance, `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log `logs/e2-post-depth-cli-2026-09-27-033207.json`.
 
 ### `publish-photo`, `publish-carousel` and `delete-post`
 
@@ -510,8 +555,8 @@ reads and the home document, collects every bundle on `static.cdninstagram.com` 
 and reads each for the `doc_id` its operations compile to, stopping once every stored operation
 is found or at `--bundle-limit N`, 1000 by default. Then it replays each capability read once
 through that capability's own request builder and mapper, taking a thread from the inbox, a post
-from the timeline and a username from the viewer's own profile, and skipping a read whose
-argument never turned up. The documents and reads pass the account's pacer. The bundles go
+and its author from the timeline, a comment with replies from that post's comments and a
+username from the viewer's own profile, and skipping a read whose argument never turned up. The documents and reads pass the account's pacer. The bundles go
 through a cookieless transport pinned to the static host and take no pacer slot. Nothing is
 retried, and a checkpoint ends the run with exit code 4 and no report.
 
@@ -587,7 +632,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

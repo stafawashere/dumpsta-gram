@@ -63,6 +63,11 @@ from dumpstagram._cli.commands.media import (
    run_post,
 )
 from dumpstagram._cli.commands.notes import add_note_parser, run_note_list, run_note_write
+from dumpstagram._cli.commands.post_depth import (
+   POST_DEPTH_COMMANDS,
+   add_post_depth_parsers,
+   run_post_depth_command,
+)
 from dumpstagram._cli.commands.posting import (
    POSTING_COMMANDS,
    add_posting_parsers,
@@ -125,6 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_follow_parsers(commands)
    add_message_write_parsers(commands)
    add_comment_parsers(commands)
+   add_post_depth_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
    add_posting_parsers(commands)
@@ -190,6 +196,9 @@ def main(
 
       if arguments.command in ("comments", "comment", "delete-comment"):
          return run_comment_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in POST_DEPTH_COMMANDS:
+         return run_post_depth_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)

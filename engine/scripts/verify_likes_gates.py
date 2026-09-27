@@ -103,8 +103,11 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_MEDIA,
-            'has_liked=_required_flag(node, "has_liked", path),\n      caption=',
-            "has_liked=False,\n      caption=",
+            'has_liked=_required_flag(node, "has_liked", path),\n'
+            "      caption=_caption_text(node, path),\n"
+            "      accessibility_caption=_optional_string(",
+            "has_liked=False,\n      caption=_caption_text(node, path),\n"
+            "      accessibility_caption=_optional_string(",
          )
       ],
    },
@@ -116,10 +119,14 @@ MUTATIONS: list[dict[str, object]] = [
             PARSE_MEDIA,
             'like_count=_required_integer(node, "like_count", path),\n'
             '      comment_count=_required_integer(node, "comment_count", path),\n'
-            '      has_liked=_required_flag(node, "has_liked", path),\n      caption=',
+            '      has_liked=_required_flag(node, "has_liked", path),\n'
+            "      caption=_caption_text(node, path),\n"
+            "      accessibility_caption=_optional_string(",
             'like_count=_required_integer(node, "comment_count", path),\n'
             '      comment_count=_required_integer(node, "comment_count", path),\n'
-            '      has_liked=_required_flag(node, "has_liked", path),\n      caption=',
+            '      has_liked=_required_flag(node, "has_liked", path),\n'
+            "      caption=_caption_text(node, path),\n"
+            "      accessibility_caption=_optional_string(",
          )
       ],
    },
@@ -129,8 +136,12 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_MEDIA,
-            "is_exactly_one_item = isinstance(items, list) and len(items) == 1",
-            "is_exactly_one_item = isinstance(items, list)",
+            'root = _object_at(payload, POST_PATH)\n   root_path = ".".join(POST_PATH)\n'
+            '   items = _required(root, "items", root_path)\n'
+            "   is_exactly_one_item = isinstance(items, list) and len(items) == 1",
+            'root = _object_at(payload, POST_PATH)\n   root_path = ".".join(POST_PATH)\n'
+            '   items = _required(root, "items", root_path)\n'
+            "   is_exactly_one_item = isinstance(items, list)",
          )
       ],
    },
@@ -140,8 +151,9 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             REQUESTS_MEDIA,
+            '         "shortcode": code,\n'
             '         "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,\n',
-            "",
+            '         "shortcode": code,\n',
          )
       ],
    },

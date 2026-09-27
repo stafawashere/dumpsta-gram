@@ -74,8 +74,10 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_MEDIA,
-            'like_count=_required_integer(node, "comment_like_count", path)',
-            'like_count=_required_integer(node, "child_comment_count", path)',
+            'like_count=_required_integer(node, "comment_like_count", path),\n'
+            '      reply_count=_required_integer(node, "child_comment_count", path),',
+            'like_count=_required_integer(node, "child_comment_count", path),\n'
+            '      reply_count=_required_integer(node, "child_comment_count", path),',
          )
       ],
    },
@@ -85,8 +87,10 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_MEDIA,
-            'has_liked=_required_flag(node, "has_liked_comment", path)',
-            "has_liked=False",
+            'parent_comment_id=_optional_string(node, "parent_comment_id", path),\n'
+            '      has_liked=_required_flag(node, "has_liked_comment", path)',
+            'parent_comment_id=_optional_string(node, "parent_comment_id", path),\n'
+            "      has_liked=False",
          )
       ],
    },
@@ -131,7 +135,17 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_page_read_sends_the_request_the_engine_replayed"),
       "defect": "the cursor is not passed on",
-      "edits": [(REQUESTS_MEDIA, '         "after": after,\n', '         "after": None,\n')],
+      "edits": [
+         (
+            REQUESTS_MEDIA,
+            '         "after": after,\n'
+            '         "before": None,\n'
+            '         "first": COMMENT_PAGE_SIZE,\n',
+            '         "after": None,\n'
+            '         "before": None,\n'
+            '         "first": COMMENT_PAGE_SIZE,\n',
+         )
+      ],
    },
    {
       "gate": gate("test_the_comment_sends_the_request_the_engine_replayed"),

@@ -13,6 +13,10 @@ children across seven feed pages, plus one reel and one carousel read again thro
 query, logged in `engine/logs/media-shape-2026-09-23-*.json`. No carousel child that was a video
 was seen, so a video child is mapped by the same rules as a reel and that mapping is unmeasured.
 
+The location, the tagged accounts and the collaborators were added on 2026-09-27 for E2 batch 4,
+from the 37 distinct posts of the home timeline and grid captures the E2 probes kept that day,
+the one post read by its media pk, and the pseudonymised post query items of E1 item 6.
+
 Fields the upstream sends and these models do not carry are named in
 `dumpstagram/_private/web/parse/feed.py` and `parse/media.py` beside the mapping that drops
 them.
@@ -28,15 +32,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from dumpstagram.models.profiles import ProfileSummary
+
 __all__ = [
    "AudioKind",
    "CarouselChild",
    "FeedItem",
    "FeedItemKind",
+   "Location",
    "MediaAudio",
    "MediaImage",
    "Post",
    "PostAuthor",
+   "UserTag",
    "VideoRendition",
 ]
 
@@ -130,12 +138,49 @@ class MediaAudio:
 
 
 @dataclass(frozen=True)
+class UserTag:
+   """One account tagged in a post or a slide, and where on the picture the tag sits.
+
+   ``account`` is the tagged account as a list row reads it. Every tag read on 2026-09-27 carried
+   its ``id``, ``username``, ``full_name``, ``is_verified`` and ``profile_pic_url``, and
+   ``account.is_private`` is ``None`` where the tag does not say, which no post's tag did. A tag
+   carries no relationship, so ``account.friendship_status`` is ``None``.
+
+   ``position`` is the tag's ``x`` and ``y`` as fractions of the picture's width and height, the
+   upstream's two numbers in its order. It is ``None`` where the read does not carry it, which the
+   post read by media pk does not, on its post or on its slides.
+   """
+
+   account: ProfileSummary
+   position: tuple[float, float] | None = None
+
+
+@dataclass(frozen=True)
+class Location:
+   """The place a post is tagged at.
+
+   ``id`` is the upstream's ``pk`` for the place, which arrived as a string on the home timeline
+   and as a number on a profile's grid and in the post query, and is carried as a string either
+   way. ``lat`` and ``lng`` are its coordinates. All four were present on all 39 locations the
+   E2 probes kept on 2026-09-27. Some locations outside posts carried an address and a city as
+   well; no post's location did, so neither is modelled.
+   """
+
+   id: str
+   name: str
+   lat: float
+   lng: float
+
+
+@dataclass(frozen=True)
 class CarouselChild:
    """One slide of a carousel, with its own kind.
 
    ``media_type`` is the upstream's enumeration for the slide, ``1`` for a photo and ``2`` for a
    video, and ``product_type`` its own, ``carousel_item`` on every slide measured. ``id`` is
    ``"<pk>_<author id>"`` as on :class:`Post`. A slide has no shortcode of its own.
+
+   ``user_tags`` are the accounts tagged on this slide, the same rule as :attr:`Post.user_tags`.
 
    ``images`` holds the slide's crops, and on a video slide its cover frames. ``videos`` and
    ``video_duration`` are empty and ``None`` on a photo. Every one of the thirty-one slides
@@ -153,6 +198,7 @@ class CarouselChild:
    images: tuple[MediaImage, ...] = ()
    videos: tuple[VideoRendition, ...] = ()
    video_duration: float | None = None
+   user_tags: tuple[UserTag, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -223,6 +269,15 @@ class Post:
    ``is_seen`` is whether the viewer has seen the post in the home timeline. A profile's grid
    returns the same model, and there the upstream sends null for it on every post, which reads
    as False and carries no information.
+
+   ``location`` is the place the post is tagged at, ``None`` when it has none. ``user_tags`` are
+   the accounts tagged on the post itself, in the upstream's order; a tag on one slide is on that
+   slide's :attr:`CarouselChild.user_tags`. ``collaborators`` are the accounts that share the
+   post with its author, each with the viewer's relationship to it, and the author is not among
+   them. Each of the two tuples is empty when the upstream sends null or an empty list, and
+   ``None`` only when the read does not carry the field at all, so ``None`` means unknown rather
+   than none. Collaborators were seen on one of the 37 distinct timeline and grid posts read on
+   2026-09-27.
    """
 
    id: str
@@ -249,6 +304,9 @@ class Post:
    has_audio: bool | None = None
    audio: MediaAudio | None = None
    carousel_children: tuple[CarouselChild, ...] = ()
+   location: Location | None = None
+   user_tags: tuple[UserTag, ...] | None = None
+   collaborators: tuple[ProfileSummary, ...] | None = None
 
 
 @dataclass(frozen=True)

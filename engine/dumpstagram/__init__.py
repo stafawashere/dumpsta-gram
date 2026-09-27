@@ -49,6 +49,7 @@ from dumpstagram.models import (
    HighlightTray,
    ListenerStopped,
    ListFriendshipStatus,
+   Location,
    MediaAudio,
    MediaImage,
    Message,
@@ -61,6 +62,7 @@ from dumpstagram.models import (
    Post,
    PostAuthor,
    PostDetail,
+   PostThumbnail,
    Profile,
    ProfileSummary,
    PublishedPost,
@@ -69,6 +71,7 @@ from dumpstagram.models import (
    SuggestedAccount,
    ThreadParticipant,
    UnreadCounts,
+   UserTag,
    VideoRendition,
 )
 from dumpstagram.session import SCHEMA_VERSION, ProxyConfig, Session, SpinParameters
@@ -101,6 +104,7 @@ __all__ = [
    "HighlightTray",
    "ListFriendshipStatus",
    "ListenerStopped",
+   "Location",
    "MediaAudio",
    "MediaImage",
    "Message",
@@ -116,6 +120,7 @@ __all__ = [
    "Post",
    "PostAuthor",
    "PostDetail",
+   "PostThumbnail",
    "Profile",
    "ProfileRoute",
    "ProfileSummary",
@@ -135,6 +140,7 @@ __all__ = [
    "TransportFailure",
    "UnreadCounts",
    "UpstreamRejected",
+   "UserTag",
    "VideoRendition",
 ]
 

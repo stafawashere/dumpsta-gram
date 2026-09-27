@@ -24,10 +24,15 @@ from dumpstagram._private.web.documents.direct import (
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
 from dumpstagram._private.web.documents.media import (
    COMMENT_PAGE,
+   COMMENT_REPLIES,
+   COMMENT_REPLIES_NEXT_PAGE,
    CREATE_COMMENT,
    DELETE_COMMENT,
    LIKE_MEDIA,
+   MORE_FROM_AUTHOR,
+   POST_BY_MEDIA_ID,
    POST_BY_SHORTCODE,
+   POST_LIKERS,
    UNLIKE_MEDIA,
 )
 from dumpstagram._private.web.documents.notes import CREATE_NOTE, DELETE_NOTE, INBOX_TRAY
@@ -76,6 +81,11 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    PROFILE_HIGHLIGHTS,
    SUGGESTED_BESIDE_PROFILE,
    SUGGESTED_ACCOUNTS,
+   COMMENT_REPLIES,
+   COMMENT_REPLIES_NEXT_PAGE,
+   POST_LIKERS,
+   POST_BY_MEDIA_ID,
+   MORE_FROM_AUTHOR,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

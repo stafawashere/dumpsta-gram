@@ -9,6 +9,7 @@ from typing import TextIO
 from dumpstagram._cli.commands.common import (
    ClientFactory,
    Subcommands,
+   UsageError,
    add_request_options,
    emit,
    resolve_session_path,
@@ -28,6 +29,7 @@ __all__ = [
    "add_post_parser",
    "comment_id",
    "media_pk",
+   "media_pk_argument",
    "run_comment_command",
    "run_like_write",
    "run_post",
@@ -54,6 +56,15 @@ def comment_id(value: str) -> str:
    return value
 
 
+def media_pk_argument(value: str) -> str:
+   """The ``--by-id`` argument, checked as :func:`media_pk` checks a positional one."""
+
+   try:
+      return media_pk(value)
+   except argparse.ArgumentTypeError as refusal:
+      raise UsageError(str(refusal)) from refusal
+
+
 def run_post(
    arguments: argparse.Namespace,
    environment: Mapping[str, str],
@@ -65,7 +76,10 @@ def run_post(
    token_before_the_read = client.session.fb_dtsg
 
    try:
-      post = client.post(arguments.code)
+      if arguments.by_id:
+         post = client.media.by_id(media_pk_argument(arguments.code))
+      else:
+         post = client.post(arguments.code)
 
       harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
       may_write_back = not arguments.no_session_writeback
@@ -75,7 +89,7 @@ def run_post(
    finally:
       client.close()
 
-   payload = {"command": "post", "post": describe_post_detail(post)}
+   payload = {"command": "post", "by_id": arguments.by_id, "post": describe_post_detail(post)}
 
    emit(payload, render_post_detail(post), as_json=arguments.json, stream=stdout)
 
@@ -164,13 +178,23 @@ def run_comment_command(
 def add_post_parser(commands: Subcommands) -> None:
    post = commands.add_parser(
       "post",
-      help="read one post by its shortcode, one live request",
+      help="read one post by its shortcode, or by its pk with --by-id, one live request",
       description=(
          "Reads the post whose web address carries CODE and prints its pk, which like and "
-         "unlike take, and whether the viewer likes it."
+         "unlike take, and whether the viewer likes it. --by-id reads it by its pk instead, "
+         "whose answer carries no slides, no image description and no collaborators."
       ),
    )
-   post.add_argument("code", metavar="CODE", help="the shortcode from the post's web address")
+   post.add_argument(
+      "code",
+      metavar="CODE",
+      help="the shortcode from the post's web address, or the post's pk when --by-id is passed",
+   )
+   post.add_argument(
+      "--by-id",
+      action="store_true",
+      help="treat the argument as the post's pk, digits only, and read the post by it",
+   )
    add_request_options(post)
 
 

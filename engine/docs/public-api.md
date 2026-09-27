@@ -407,7 +407,7 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
-| `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, downloading its renditions, and publishing and deleting the viewer's own |
+| `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 
@@ -456,6 +456,7 @@ only there, with no flat twin:
 | `direct.inbox(*, after)` | `direct.iter_inbox(*, limit, after=None)` | `DirectThread`, newest activity first |
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
+| `media.replies(post_pk, comment_id, *, after)` | `media.iter_replies(post_pk, comment_id, *, limit, after=None)` | `Comment`, oldest first |
 | `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
 | `profiles.followers(user_id, *, after)` | `profiles.iter_followers(user_id, *, limit, after=None)` | `ProfileSummary`, in the upstream's order |
 
@@ -717,6 +718,65 @@ halves the requests, and leaves every `friendship_status` `None`.
 Only the viewer's own followers have been read. The list's referer is the site root rather than
 the profile page, a departure recorded in [web-request-contract.md](web-request-contract.md).
 Following and mutual followers have no method: no request for either has been observed.
+
+### Post depth
+
+Landed 2026-09-27, E2 batch 4 of [web-parity-plan.md](web-parity-plan.md), rulings W61 to W67.
+Five methods on `media`, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `media.replies(post_pk, comment_id, *, after=None)` | `Page[Comment]` | one |
+| `media.iter_replies(post_pk, comment_id, *, limit, after=None)` | iterator of `Comment` | one per page read |
+| `media.likers(post_pk)` | `tuple[ProfileSummary, ...]` | one |
+| `media.by_id(post_pk)` | `PostDetail` | one |
+| `media.more_from_author(author_id)` | `tuple[PostThumbnail, ...]` | one |
+
+```python
+page = client.media.comments(post.pk)
+threaded = next(comment for comment in page.items if comment.reply_count)
+for reply in client.media.iter_replies(post.pk, threaded.id, limit=None):
+   print(reply.author.username, reply.text)
+
+likers = client.media.likers(post.pk)          # a sample on a popular post, not every like
+strip = client.media.more_from_author(post.author.id)
+detail = client.media.by_id(strip[0].pk)
+```
+
+**Replies.** The first page and every later one are two different queries, as the website sends
+them, and `has_next_page` is the only terminator: the upstream decides a page's length, 9 and
+then 11 replies came back for the same request. A reply is a `Comment` whose `parent_comment_id`
+is the comment it answers and whose `reply_count` is `None`, because a reply carries no count of
+its own (W61). The post pk and the comment id are digits, and anything else raises `ValueError`
+before anything is sent.
+
+**Likers.** Each account is a `ProfileSummary` with the viewer's relationship and all eight of its
+flags. The answer has no cursor and no count, and on a popular post it is a sample: 98 accounts
+for 193647 likes. Compare its length with `like_count` rather than read it as every liker (W62).
+
+**A post by its pk.** `by_id` returns the `PostDetail` that `by_code` does, from an item that
+carries less, and what it lacks is left empty rather than guessed: `carousel_children` is empty
+while `carousel_media_count` still counts the slides, `accessibility_caption`, the author's
+`hd_profile_pic_url` and `collaborators` are `None`, tags carry no position, and a reel's original sound, sent without its explicit flag, leaves `audio` `None`. `by_code` with the
+returned `code` reads the rest (W63).
+
+**More posts from the author.** The strip under a post is keyed on the author alone, so the method
+takes the author's id and no post. Each item is a `PostThumbnail`: identifiers, kind, counts,
+caption, slide count and renditions, and the author's id and username, because the upstream
+sends nothing more, and `by_id` reads one in full. Six are asked for (W64).
+
+**Location, tags and collaborators.** Every post read now carries three fields more, on `Post`
+and `PostDetail`, and `user_tags` on each `CarouselChild` too:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `location` | `Location \| None` | `id`, `name`, `lat` and `lng`, or `None` when the post has none |
+| `user_tags` | `tuple[UserTag, ...] \| None` | each tag's `account`, a `ProfileSummary` read by id, and its `position` as two fractions of the picture, or `None` where the read does not carry it |
+| `collaborators` | `tuple[ProfileSummary, ...] \| None` | the accounts sharing the post with its author, each with the viewer's relationship |
+
+A tuple is empty when the post has none, and `None` only when the read that produced the post
+does not carry the field, which today means `by_id`'s collaborators (W65). The post modal's
+context query backs no method (W66).
 
 ## Stability contract
 
