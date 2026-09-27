@@ -1,0 +1,33 @@
+{
+ "big_list": false,
+ "page_size": 1,
+ "next_max_id": null,
+ "friend_requests": {},
+ "sections": null,
+ "global_blacklist_sample": null,
+ "users": [
+  {
+   "latest_reel_media": 0,
+   "strong_id__": "90000000001",
+   "pk": 0,
+   "pk_id": "90000000001",
+   "username": "u2uuuuuuuuuuuuuuuu",
+   "full_name": "p3xxxxxxxxxxxx",
+   "is_private": false,
+   "is_verified": false,
+   "profile_pic_url": "https://example.invalid/4",
+   "has_anonymous_profile_picture": true,
+   "account_badges": [],
+   "id": "90000000001",
+   "fbid_v2": 0,
+   "third_party_downloads_enabled": 0
+  }
+ ],
+ "suggested_users": {
+  "netego_type": "suggested_users",
+  "suggestions": []
+ },
+ "truncate_follow_requests_at_index": 5,
+ "follow_ranking_token": "p5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+ "status": "ok"
+}

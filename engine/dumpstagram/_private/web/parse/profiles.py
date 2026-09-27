@@ -381,14 +381,16 @@ def _read_list_friendship_status(raw: Any, status_path: str) -> ListFriendshipSt
    )
 
 
-def parse_profile_summary(row: Any, path: str) -> ProfileSummary:
+def parse_profile_summary(row: Any, path: str, *, id_key: str = "pk") -> ProfileSummary:
    """One account row of a list, mapped field by field.
 
    ``pk`` is the id read, the key a row is built around, and ``id`` held the same value on all
-   138 rows read on 2026-09-27. ``is_private``, ``hd_profile_pic_url_info`` and
-   ``friendship_status`` are read where the row carries them and are ``None`` where it does not:
-   no row of the suggested accounts list carried ``is_private``. Dropped: ``is_unpublished``,
-   false on every row, and ``supervision_info``, ``social_context``,
+   138 rows read on 2026-09-27. A list whose ``pk`` is a number, as the pending follow requests
+   send it, names another key that carries the same id as a string in ``id_key``.
+   ``is_private``, ``hd_profile_pic_url_info`` and ``friendship_status`` are read where the row
+   carries them and are ``None`` where it does not: no row of the suggested accounts list
+   carried ``is_private``. Dropped: ``is_unpublished``, false on every row, and
+   ``supervision_info``, ``social_context``,
    ``live_broadcast_visibility`` and ``live_broadcast_id``, null on every row.
    """
 
@@ -399,7 +401,7 @@ def parse_profile_summary(row: Any, path: str) -> ProfileSummary:
    hd_profile_pic_url = _hd_profile_pic_url(row, path) if carries_hd_picture else None
 
    return ProfileSummary(
-      id=_required_string(row, "pk", path),
+      id=_required_string(row, id_key, path),
       username=_required_string(row, "username", path),
       full_name=_required_string(row, "full_name", path),
       is_verified=_required_flag(row, "is_verified", path),

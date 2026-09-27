@@ -50,6 +50,7 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.account import AsyncAccount
 from dumpstagram.namespaces.direct import AsyncDirect
 from dumpstagram.namespaces.feeds import AsyncFeeds
 from dumpstagram.namespaces.media import AsyncMedia
@@ -197,6 +198,12 @@ class AsyncClient:
       owner_closed = self._owner is not None and self._owner.closed
 
       return self._closed or owner_closed
+
+   @property
+   def account(self) -> AsyncAccount:
+      """The viewer's own follow requests and activity feed, ``client.account``."""
+
+      return AsyncAccount._of(self)
 
    @property
    def direct(self) -> AsyncDirect:

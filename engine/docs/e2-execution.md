@@ -40,7 +40,7 @@ capture night that unblocks the rest.
 | 3 | Relationship lists, done 2026-09-27 | `probes/e2_follow_lists.py` | 6, spent 7 on each of 2 runs | 1, spent 1 on each |
 | 4 | Post depth, done 2026-09-27 | `probes/e2_post_depth.py` | 13, spent 13, and 4 of `e2_next_pages.py` | 7, spent 0 |
 | 5 | Stories, read only, done 2026-09-27 | `probes/e2_stories.py` | 8, spent 8 | 4, spent 0 |
-| 6 | Own account | `probes/e2_own_account.py` | 7 | 3 |
+| 6 | Own account, done 2026-09-27 | `probes/e2_own_account.py` | 7, spent 7 | 3, spent 0 |
 | 7 | Discovery feeds | `probes/e2_discovery_feeds.py` | 9 | 5 |
 | 8 | Search | `probes/e2_search.py` | 7 | 3 |
 | 9 | Page models, companions | `probes/e2_page_models.py` | 10 | 4 |
@@ -351,14 +351,46 @@ Also in the bundle: `REST /api/v1/feed/reels_media/`, an alternate reel route ne
 
 | Operation | Kind | Status |
 |---|---|---|
-| `REST GET /api/v1/friendships/pending/` | incoming follow requests | hypothesis, observed once |
-| `REST POST /api/v1/news/inbox/` | the activity feed | hypothesis, observed once |
+| `REST GET /api/v1/friendships/pending/` | incoming follow requests | verified 2026-09-27, public as `account.follow_requests` |
+| `REST POST /api/v1/news/inbox/` | the activity feed | verified 2026-09-27, public as `account.activity` |
+| `REST POST /api/v1/news/inbox_seen/` | mark the activity feed seen | hypothesis, observed once, never sent (W74) |
 | `PolarisActivityFeedStoriesViewQuery` | the activity feed and requests over GraphQL | hypothesis, lazy, capture first |
 | `usePolarisNotificationsNavItemQuery` | the notifications badge | hypothesis, capture first |
-| `PolarisSavedCollectionPickerQuery` | saved collections | hypothesis |
+| `PolarisSavedCollectionPickerQuery` | saved collections | verified 2026-09-27, both answers empty, not shipped (W75) |
 | `PolarisSavedCollectionPickerPaginationQuery` | saved collections, next pages | hypothesis |
 | `PolarisProfileSavedTabContentQuery` and its `_connection` | saved posts | hypothesis, capture first |
 | archive, close friends list, blocked list | | capture first |
+
+**Status: done on 2026-09-27 for the follow requests and the activity feed, rulings W73 to
+W76.** `probes/e2_own_account.py` ran once with 7 requests and no conditional one, in run
+`run-2026-09-27-014102`: the pending follow requests twice with 1 account each, the activity
+feed twice with 0 new and 69 earlier items, 264 KB each, and the saved collections list twice,
+empty. The reads shipped as `client.account.follow_requests() -> FollowRequests` and
+`client.account.activity() -> ActivityFeed`, on both clients with no flat twin, opening the
+`account` namespace (W20), with the new public models `FollowRequests`, `ActivityFeed`,
+`ActivityItem`, `ActivityLink`, `ActivityMedia`, `ActivityCounts` and `ActivitySection`, and as
+`dumpsta follow-requests` and `activity`. The CLI acceptance,
+`probes/e2_own_account_cli_acceptance.py`, ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log `logs/e2-own-account-cli-2026-09-27-042111.json`. What the run found that
+the plan did not know:
+
+- The owner's account is private, so the follow requests were not empty: one account on both
+  reads, with `next_max_id` null and `big_list` false. A row's `pk` is a number there where the
+  followers list sends a string, so the row is read from `id` (W73).
+- The activity feed answered `is_last_page` true and `continuation_token` 0 on both reads, so it
+  is one read and carries the flag; how a next page would be asked for is not observed (W74).
+- The second feed read answered a `last_checked` that falls on the first read's send, inside
+  the probe's 17 s run, where the first answered one 26 minutes older, so the read itself may
+  record a check (INFERENCE, W74).
+- An item's `rich_text` is its `text` with each link written in as markup, on all 69, and
+  `images` repeats `media`, so neither is modelled (W74).
+- The saved collections list answered an empty `viewer` both times, 230 bytes, no edge, because
+  the owner has no collection, so no collection row has been seen and nothing ships (W75).
+
+The activity feed does not mark anything seen, by the orchestrator's ruling on the owner's
+delegation: `news/inbox_seen` is never sent until a verified finding exists, a named departure
+from ADR-0013 in the style of W68 (W74). Saved posts, the archive, the close friends and blocked
+lists, the notifications badge and the GraphQL activity view wait on the capture night, and
+saved collections on a non-empty observation (W75).
 
 Variables. The two REST reads take nothing but the session and, for the POST, `fb_dtsg` and
 `jazoest`, which the bootstrap gives. The collections take `first` and `after`. The GraphQL
@@ -366,11 +398,12 @@ activity view takes two request objects never observed and `mark_as_seen`; the b
 `device_id` whose origin is not observed; saved posts take `collection_types` values never
 observed.
 
-Methods. `client.account.activity() -> ActivityFeed`, `client.account.follow_requests() ->
+Methods, as planned. `client.account.activity() -> ActivityFeed`, `client.account.follow_requests() ->
 tuple[ProfileSummary, ...]`, `client.account.badges()`, `client.account.saved(*, after=None)`
 and `iter_saved`, `client.account.collections()` and `iter_collections`,
 `client.account.archive()`, `client.account.close_friends()`, `client.account.blocked()`. This
-batch opens the `account` namespace (W20).
+batch opens the `account` namespace (W20). The first two shipped, `follow_requests` returning
+`FollowRequests` with the upstream's more flag rather than a bare tuple (W73); the rest wait.
 
 Pagination. Collections on `page_info.has_next_page`; the activity feed is one read.
 

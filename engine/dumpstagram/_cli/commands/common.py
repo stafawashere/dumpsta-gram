@@ -22,6 +22,7 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.account import SyncAccount
 from dumpstagram.namespaces.direct import SyncDirect
 from dumpstagram.namespaces.media import SyncMedia
 from dumpstagram.namespaces.profiles import SyncProfiles
@@ -72,6 +73,9 @@ class Client(Protocol):
 
    @property
    def stories(self) -> SyncStories: ...
+
+   @property
+   def account(self) -> SyncAccount: ...
 
    def thread_messages(
       self,

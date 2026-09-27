@@ -64,6 +64,8 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `stories-tray` | 1, plus 1 if the session has no token yet | Lists the accounts in the stories tray. Reads no items and marks nothing seen |
 | `story USER_ID` | 1, plus 1 if the session has no token yet | Reads one account's live stories, every item. Marks nothing seen |
 | `highlight HIGHLIGHT_ID` | 1, plus 1 if the session has no token yet | Reads one highlight, every item. Marks nothing seen |
+| `follow-requests` | 1 | Lists the accounts asking to follow the viewer, the first page, and whether more exist |
+| `activity` | 1, plus 1 if the session has no token yet | Reads the viewer's activity feed. Marks nothing seen |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
@@ -507,6 +509,32 @@ opened. All three take `--user-agent` and `--no-session-writeback`. The live acc
 `probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
 highlight, four requests, and no other account's reel; it ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`.
 
+### `follow-requests` and `activity`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta follow-requests
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json activity
+```
+
+`follow-requests` prints one line per account asking to follow you, its id, username and full
+name, then `accounts: N  more_available: B`. Only a private account receives requests, and no
+next page is read (W73). The JSON form is `command`, `account_count`, `more_available` and
+`accounts`, each in the `followers` row form.
+
+`activity` prints one line per item, its time, kind and text as the website shows it, then `new:
+N  earlier: N  priority: N  last_page: B`. It does not mark the feed seen, so your notifications
+badge is left as it was (W74). The JSON form is `command`, `new_count`, `earlier_count`,
+`priority_count`, `is_last_page`, `last_checked_at`, `counts` (the fifteen counters), `sections`
+(`title`, `first_index`), and `new_items`, `earlier_items` and `priority_items`, each item with
+`id`, `kind`, `story_type`, `created_at`, `text`, `links` (`start`, `end`, `kind`, `id`,
+`username`), `media` (`id`, `shortcode`, `image_url`), `account_id`, `account_username`,
+`account_pic_url`, `second_account_id`, `second_account_pic_url`, `follow_account` in the row
+form or null, `comment_id` and `destination`.
+
+Both take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_own_account_cli_acceptance.py`, runs both on the owner's own account, two requests,
+and checks each sent exactly one API request; it ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log `logs/e2-own-account-cli-2026-09-27-042111.json`.
+
 ### `publish-photo`, `publish-carousel` and `delete-post`
 
 ```bash
@@ -669,7 +697,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

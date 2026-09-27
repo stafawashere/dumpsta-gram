@@ -1,4 +1,10 @@
 module dumpstagram
+alias dumpstagram.ActivityCounts -> dumpstagram.models.account.ActivityCounts
+alias dumpstagram.ActivityFeed -> dumpstagram.models.account.ActivityFeed
+alias dumpstagram.ActivityItem -> dumpstagram.models.account.ActivityItem
+alias dumpstagram.ActivityLink -> dumpstagram.models.account.ActivityLink
+alias dumpstagram.ActivityMedia -> dumpstagram.models.account.ActivityMedia
+alias dumpstagram.ActivitySection -> dumpstagram.models.account.ActivitySection
 alias dumpstagram.AsyncClient -> dumpstagram.aio.AsyncClient
 alias dumpstagram.AudioKind -> dumpstagram.models.feed.AudioKind
 alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFailed
@@ -18,6 +24,7 @@ alias dumpstagram.FAST -> dumpstagram.behavior.FAST
 alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.FollowRequests -> dumpstagram.models.account.FollowRequests
 alias dumpstagram.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
 alias dumpstagram.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.HighlightTray -> dumpstagram.models.highlights.HighlightTray
@@ -76,6 +83,7 @@ class dumpstagram.aio.AsyncClient()
 def dumpstagram.aio.AsyncClient.__aenter__(self) -> AsyncClient
 def dumpstagram.aio.AsyncClient.__aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None) -> None
 def dumpstagram.aio.AsyncClient.__init__(self, session: Session, *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> None
+property dumpstagram.aio.AsyncClient.account -> AsyncAccount
 def dumpstagram.aio.AsyncClient.aclose(self) -> None
 property dumpstagram.aio.AsyncClient.behavior -> Behavior
 property dumpstagram.aio.AsyncClient.closed -> bool
@@ -140,6 +148,7 @@ class dumpstagram.client.SyncClient()
 def dumpstagram.client.SyncClient.__enter__(self) -> SyncClient
 def dumpstagram.client.SyncClient.__exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None) -> None
 def dumpstagram.client.SyncClient.__init__(self, session: Session, *, user_agent: str | None = None, behavior: Behavior = <dumpstagram.behavior.Behavior>) -> None
+property dumpstagram.client.SyncClient.account -> SyncAccount
 property dumpstagram.client.SyncClient.behavior -> Behavior
 def dumpstagram.client.SyncClient.close(self) -> None
 property dumpstagram.client.SyncClient.closed -> bool
@@ -198,6 +207,12 @@ def dumpstagram.listener.EventListener.start(self) -> None
 def dumpstagram.listener.EventListener.stop(self) -> None
 def dumpstagram.listener.EventListener.wait_for_events(self, timeout: float | None) -> list[Event]
 module dumpstagram.models
+alias dumpstagram.models.ActivityCounts -> dumpstagram.models.account.ActivityCounts
+alias dumpstagram.models.ActivityFeed -> dumpstagram.models.account.ActivityFeed
+alias dumpstagram.models.ActivityItem -> dumpstagram.models.account.ActivityItem
+alias dumpstagram.models.ActivityLink -> dumpstagram.models.account.ActivityLink
+alias dumpstagram.models.ActivityMedia -> dumpstagram.models.account.ActivityMedia
+alias dumpstagram.models.ActivitySection -> dumpstagram.models.account.ActivitySection
 alias dumpstagram.models.AudioKind -> dumpstagram.models.feed.AudioKind
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.CarouselChild -> dumpstagram.models.feed.CarouselChild
@@ -208,6 +223,7 @@ alias dumpstagram.models.Event -> dumpstagram.models.events.Event
 alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDropped
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
+alias dumpstagram.models.FollowRequests -> dumpstagram.models.account.FollowRequests
 alias dumpstagram.models.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
 alias dumpstagram.models.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.models.HighlightTray -> dumpstagram.models.highlights.HighlightTray
@@ -244,6 +260,64 @@ alias dumpstagram.models.TrayReel -> dumpstagram.models.stories.TrayReel
 alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.models.UserTag -> dumpstagram.models.feed.UserTag
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
+module dumpstagram.models.account
+class dumpstagram.models.account.ActivityCounts()
+field dumpstagram.models.account.ActivityCounts.activity_feed_dot_badge: int
+field dumpstagram.models.account.ActivityCounts.activity_feed_dot_badge_only: int
+field dumpstagram.models.account.ActivityCounts.campaign_notification: int
+field dumpstagram.models.account.ActivityCounts.comment_likes: int
+field dumpstagram.models.account.ActivityCounts.comments: int
+field dumpstagram.models.account.ActivityCounts.fundraiser: int
+field dumpstagram.models.account.ActivityCounts.likes: int
+field dumpstagram.models.account.ActivityCounts.media_to_approve: int
+field dumpstagram.models.account.ActivityCounts.new_posts: int
+field dumpstagram.models.account.ActivityCounts.photos_of_you: int
+field dumpstagram.models.account.ActivityCounts.promotional: int
+field dumpstagram.models.account.ActivityCounts.relationships: int
+field dumpstagram.models.account.ActivityCounts.requests: int
+field dumpstagram.models.account.ActivityCounts.shopping_notification: int
+field dumpstagram.models.account.ActivityCounts.usertags: int
+class dumpstagram.models.account.ActivityFeed()
+field dumpstagram.models.account.ActivityFeed.counts: ActivityCounts
+field dumpstagram.models.account.ActivityFeed.earlier_items: tuple[ActivityItem, ...]
+field dumpstagram.models.account.ActivityFeed.is_last_page: bool
+property dumpstagram.models.account.ActivityFeed.items -> tuple[ActivityItem, ...]
+field dumpstagram.models.account.ActivityFeed.last_checked_at: datetime
+field dumpstagram.models.account.ActivityFeed.new_items: tuple[ActivityItem, ...]
+field dumpstagram.models.account.ActivityFeed.priority_items: tuple[ActivityItem, ...]
+field dumpstagram.models.account.ActivityFeed.sections: tuple[ActivitySection, ...]
+class dumpstagram.models.account.ActivityItem()
+field dumpstagram.models.account.ActivityItem.account_id: str | None = None
+field dumpstagram.models.account.ActivityItem.account_pic_url: str | None = None
+field dumpstagram.models.account.ActivityItem.account_username: str | None = None
+field dumpstagram.models.account.ActivityItem.comment_id: str | None = None
+field dumpstagram.models.account.ActivityItem.created_at: datetime
+field dumpstagram.models.account.ActivityItem.destination: str | None = None
+field dumpstagram.models.account.ActivityItem.follow_account: ProfileSummary | None = None
+field dumpstagram.models.account.ActivityItem.id: str
+field dumpstagram.models.account.ActivityItem.kind: str
+field dumpstagram.models.account.ActivityItem.links: tuple[ActivityLink, ...]
+field dumpstagram.models.account.ActivityItem.media: tuple[ActivityMedia, ...]
+field dumpstagram.models.account.ActivityItem.second_account_id: str | None = None
+field dumpstagram.models.account.ActivityItem.second_account_pic_url: str | None = None
+field dumpstagram.models.account.ActivityItem.story_type: int
+field dumpstagram.models.account.ActivityItem.text: str
+class dumpstagram.models.account.ActivityLink()
+field dumpstagram.models.account.ActivityLink.end: int
+field dumpstagram.models.account.ActivityLink.id: str
+field dumpstagram.models.account.ActivityLink.kind: str
+field dumpstagram.models.account.ActivityLink.start: int
+field dumpstagram.models.account.ActivityLink.username: str
+class dumpstagram.models.account.ActivityMedia()
+field dumpstagram.models.account.ActivityMedia.id: str
+field dumpstagram.models.account.ActivityMedia.image_url: str
+field dumpstagram.models.account.ActivityMedia.shortcode: str
+class dumpstagram.models.account.ActivitySection()
+field dumpstagram.models.account.ActivitySection.first_index: int
+field dumpstagram.models.account.ActivitySection.title: str
+class dumpstagram.models.account.FollowRequests()
+field dumpstagram.models.account.FollowRequests.accounts: tuple[ProfileSummary, ...]
+field dumpstagram.models.account.FollowRequests.has_more: bool
 module dumpstagram.models.comments
 class dumpstagram.models.comments.Comment()
 field dumpstagram.models.comments.Comment.author: CommentAuthor
@@ -618,6 +692,15 @@ field dumpstagram.models.threads.UnreadCounts.inbox_has_more: bool
 field dumpstagram.models.threads.UnreadCounts.pending: int
 field dumpstagram.models.threads.UnreadCounts.pending_has_more: bool
 module dumpstagram.namespaces
+module dumpstagram.namespaces.account
+class dumpstagram.namespaces.account.AsyncAccount()
+def dumpstagram.namespaces.account.AsyncAccount.__init__(self) -> None
+def dumpstagram.namespaces.account.AsyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.AsyncAccount.follow_requests(self) -> FollowRequests
+class dumpstagram.namespaces.account.SyncAccount()
+def dumpstagram.namespaces.account.SyncAccount.__init__(self) -> None
+def dumpstagram.namespaces.account.SyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.SyncAccount.follow_requests(self) -> FollowRequests
 module dumpstagram.namespaces.direct
 class dumpstagram.namespaces.direct.AsyncDirect()
 def dumpstagram.namespaces.direct.AsyncDirect.__init__(self) -> None

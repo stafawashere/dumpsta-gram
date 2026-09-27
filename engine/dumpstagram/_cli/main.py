@@ -22,6 +22,11 @@ import sys
 from collections.abc import Mapping
 from typing import TextIO
 
+from dumpstagram._cli.commands.account import (
+   ACCOUNT_COMMANDS,
+   add_account_parsers,
+   run_account_command,
+)
 from dumpstagram._cli.commands.common import (
    SESSION_PATH_ENV,
    ClientFactory,
@@ -137,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_comment_parsers(commands)
    add_post_depth_parsers(commands)
    add_stories_parsers(commands)
+   add_account_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
    add_posting_parsers(commands)
@@ -208,6 +214,9 @@ def main(
 
       if arguments.command in STORIES_COMMANDS:
          return run_stories_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in ACCOUNT_COMMANDS:
+         return run_account_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)

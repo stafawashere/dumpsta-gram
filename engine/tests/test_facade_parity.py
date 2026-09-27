@@ -749,6 +749,8 @@ def test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_blo
 
 
 CORE_FUNCTION_FOR_ALIAS = {
+   "account.activity": "dumpstagram._core.account.read_activity_feed",
+   "account.follow_requests": "dumpstagram._core.account.read_follow_requests",
    "direct.delete_note": "dumpstagram._core.writes.notes.delete_note",
    "direct.inbox": "dumpstagram._core.inbox.read_inbox_page",
    "direct.message_requests": "dumpstagram._core.inbox.read_message_requests",

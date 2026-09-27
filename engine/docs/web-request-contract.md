@@ -620,6 +620,41 @@ token, so a read without the statuses spends no bootstrap.
 - A later page's statuses were not observed in a browser; sending them per page is an INFERENCE
   (W59). `Behavior.follow_list_statuses` set to False leaves them out.
 
+## The viewer's own account reads, 2026-09-27
+
+E2 batch 6 added the second REST family, in `_private/web/requests/account.py`, sent by
+`read_follow_requests` and `read_activity_feed` in `_core/account.py`, each alone, and answered
+through `parse_follow_requests` and `parse_activity_feed`. Both reuse the follow list's header
+set and its `x-web-session-id`, drawn fresh per read. Findings `pending-follow-requests` and
+`activity-feed-inbox`, each replayed twice in run `run-2026-09-27-014102` by
+`probes/e2_own_account.py`, both first seen on the direct inbox load of
+`run-2026-09-23-022159`. Rulings W73 to W76.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Pending follow requests | `GET https://www.instagram.com/api/v1/friendships/pending/` | none | the followers page's, with `referer` the direct inbox, `https://www.instagram.com/direct/inbox/` |
+| Activity feed | `POST https://www.instagram.com/api/v1/news/inbox/` | form: `fb_dtsg`, `jazoest`, and nothing else | the pending requests', plus `content-type: application/x-www-form-urlencoded`, `origin` and `x-instagram-ajax` (the spin revision) |
+
+Both answers are REST and report failure in `status`, refused unless `ok` with posting's check.
+The GET carries no page token, so it spends no bootstrap; the POST bootstraps first when the
+session holds no `fb_dtsg`. The browser's feed body was 110 bytes whose field names the capture
+did not keep, so the two fields and their order are the replay's, which answered both times.
+
+**Recorded departures.**
+
+- A browser sent both inside its direct inbox load, 0.4 ms apart. The engine sends each alone,
+  from no page, with the inbox as referer as the replays did.
+- The browser's inbox load followed the feed with `POST
+  https://www.instagram.com/api/v1/news/inbox_seen/`, empty body, which clears the viewer's own
+  notifications badge and nothing another person sees. It is a hypothesis finding,
+  `activity-feed-mark-seen`, never sent and never observed answering, so the engine does not
+  build or send it, and no `Behavior` setting exists for it yet (W74). The feed read itself may
+  move `last_checked`: of two replays seconds apart, the second answered a last check that falls
+  on the first's send (INFERENCE).
+- Neither read's next page is sent. The pending requests answered `next_max_id` null and the
+  feed `is_last_page` true with `continuation_token` 0 on both replays, so no next page request
+  has been observed (W73, W74).
+
 ## What is not implemented here
 
 - Writes other than the ones above and those in the GraphQL registry. A video upload, a reel, a

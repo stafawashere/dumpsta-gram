@@ -37,6 +37,7 @@ from dumpstagram.models import (
    Profile,
    SentMessage,
 )
+from dumpstagram.namespaces.account import SyncAccount
 from dumpstagram.namespaces.direct import SyncDirect
 from dumpstagram.namespaces.feeds import SyncFeeds
 from dumpstagram.namespaces.media import SyncMedia
@@ -134,6 +135,12 @@ class SyncClient:
       """Whether :meth:`close` has run, on this client or on the one that owns its pool."""
 
       return self._closed or self._impl.closed
+
+   @property
+   def account(self) -> SyncAccount:
+      """The viewer's own follow requests and activity feed, ``client.account``."""
+
+      return SyncAccount._of(self)
 
    @property
    def direct(self) -> SyncDirect:

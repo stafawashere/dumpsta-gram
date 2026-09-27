@@ -898,7 +898,7 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   parity tables gained `followers` and `iter_followers`. The surface grew from 631 lines to 636,
   five added and none removed or changed. Live traffic: `probes/e2_follow_lists.py` ran twice,
   7 requests each, 14; the CLI acceptance, `probes/e2_follow_lists_cli_acceptance.py`, is written
-  and not yet run, five requests planned.
+  and ran on 2026-09-27, 5 requests, both steps exit 0.
 
 - **W61. The replies are `media.replies(post_pk, comment_id, *, after=None) -> Page[Comment]` and
   `iter_replies`, two queries, and a reply is a `Comment`.** Ruled 2026-09-27 for E2 batch 4. The
@@ -1147,6 +1147,91 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   highlight through `dumpsta highlights` then `highlight`, four requests, and no other account's
   reel; it ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log
   `logs/e2-stories-cli-2026-09-27-035531.json`.
+- **W73. The pending follow requests are `account.follow_requests() -> FollowRequests`, the
+  first page with the upstream's more flag, and they open the `account` namespace.** Ruled
+  2026-09-27 for E2 batch 6. `GET https://www.instagram.com/api/v1/friendships/pending/` (finding
+  `pending-follow-requests`, verified twice in run `run-2026-09-27-014102`) with the follow list's
+  header set of W58 and the direct inbox as referer, as `probes/e2_own_account.py` sent it through
+  `E2Replay.rest`. FACT over both answers: status `ok`, one user, and the keys `big_list` false,
+  `page_size` 1, `next_max_id` null, `friend_requests` an empty object, `sections` and
+  `global_blacklist_sample` null, `suggested_users` with no suggestion,
+  `truncate_follow_requests_at_index` and `follow_ranking_token`. The list pages in the followers
+  family's way, since it carries `next_max_id`, but no next page was observed, so under W45 it
+  ships as the first page only: `FollowRequests(accounts, has_more)`, `has_more` true when
+  `next_max_id` is present and not null (INFERENCE from the followers list, where a cursor came
+  with every page that said more), rather than the plan's bare tuple, which could not say it was
+  cut short. `big_list` is not the flag, since a big list and a further page are different claims.
+  The row is batch 3's `ProfileSummary` through batch 3's mapper, except that `pk` is a number
+  here where the followers list sends a string, so `parse_profile_summary` gained an `id_key`
+  parameter and this read names `id`, the same value as a string on both rows. A row carries no
+  relationship, so `friendship_status` is `None`. The GET carries no page token, so it spends no
+  bootstrap, as the followers page does. The `account` namespace opens with this and W74's read
+  on both clients with no flat twin, under W1 and W20. Departure: sent alone from no page, where
+  the browser sent it inside its direct inbox load.
+- **W74. The activity feed is `account.activity() -> ActivityFeed`, one read that marks nothing
+  seen.** Ruled 2026-09-27 for E2 batch 6, the seen marking by the orchestrator on the owner's
+  delegation. `POST https://www.instagram.com/api/v1/news/inbox/` (finding `activity-feed-inbox`,
+  verified twice) with only `fb_dtsg` and `jazoest` in the body, in that order, as the replays
+  sent it and as both answered; the browser's body was 110 bytes whose field names the capture
+  did not keep. Headers are W73's with the three a form POST adds. FACT over both answers, 264 KB
+  each: status `ok`, `new_stories` and `priority_stories` empty, 69 `old_stories`, newest first,
+  `counts` of fifteen zero counters, `last_checked`, `is_last_page` true, `continuation_token` 0,
+  `subscription` null, and `partition.time_bucket` pairing five headings with five indices. So
+  the model is `ActivityFeed(new_items, earlier_items, priority_items, counts, sections,
+  last_checked_at, is_last_page)` with an `items` property joining the three lists, priority, new
+  and earlier, an ASSUMPTION about the page's order. New and priority items were never read and
+  are ASSUMED to share the earlier items' shape, as W70 assumed of a live reel. No pagination
+  ships, since no next page request was observed, and `is_last_page` is carried. An
+  `ActivityItem` is built only from what the 69 carried: `pk` as `id`, `notif_name` as `kind`
+  (nine kinds, 41 story likes, 9 post likes, 8 follows, 6 comment likes and one each of a
+  follow request, a comment mention and three notices), `story_type`, `args.timestamp` as
+  `created_at`, `args.text` as `text`, `args.links` as `ActivityLink(start, end, kind, id,
+  username)`, where `text[start:end]` was the username on all 116 and `type` was `user` on
+  every one, `args.media` as `ActivityMedia(id, shortcode, image_url)`, zero or one per item,
+  and where carried the main account's id, username and picture (67), the second account's id
+  and picture (50), the follow button's account as a `ProfileSummary` with its relationship (9),
+  a `comment_id` (1) and the upstream's app route as `destination` (68). Dropped, listed on the
+  mapper: `rich_text`, which is `text` with each link written in as markup on all 69, `images`,
+  equal to `media` on all 69, `type`, one per `story_type`, the follow button's own three flags,
+  which repeat the relationship, the menu of extra actions, the story ring, the icons, and the
+  tracking fields. `ActivityCounts` names the fifteen counters; which event moves which was not
+  observed, since all were zero. The seen marking: a browser's inbox load followed the feed with
+  `POST https://www.instagram.com/api/v1/news/inbox_seen/` (finding `activity-feed-mark-seen`,
+  hypothesis, observed once, empty body), which clears the viewer's own badge and nothing another
+  person sees. It has never been sent or observed answering, so `account.activity()` reads
+  without marking seen, a named departure from ADR-0013 parity until a verified finding exists,
+  in the style of W68, and no `Behavior` setting for it ships yet. Nothing in the engine builds
+  that request, and a gate holds `activity` to its one POST. INFERENCE: the read itself may
+  record a check, since the second replay answered a `last_checked` falling on the first
+  replay's send, inside the probe's 17 s run, where the first answered one 26 minutes older;
+  nothing else is known to have been sent then. The feed's text names other accounts and quotes
+  comments, so `scripts/build_account_fixtures.py` rebuilds each line from its links, the
+  pseudonymous username inside each span and every other letter and digit masked, keeping every
+  offset true. Departure: sent alone from no page with the inbox as referer, where the browser
+  sent it inside its direct inbox load.
+- **W75. Saved collections do not ship, and wait for a non-empty observation.** Ruled 2026-09-27
+  for E2 batch 6 by the orchestrator on the owner's delegation. `PolarisSavedCollectionPickerQuery`
+  (finding `read-saved-collections`) was verified twice with `first` 12 and `after` null, but the
+  owner has no collection, so both answers were empty: root `viewer`, 230 bytes, no edge,
+  `has_next_page` false. A collection row was never seen, and a model cannot be built from an
+  empty list without guessing its fields, so neither `account.collections` nor its iterator
+  ships. It waits for a read of a non-empty list, beside saved posts, the archive, the close
+  friends and blocked lists and the notifications badge, which wait on the capture night, and the
+  GraphQL activity view, which is lazy and capture first.
+- **W76. The doctor does not replay the account reads, and the commands are `follow-requests` and
+  `activity`.** Ruled 2026-09-27 for E2 batch 6. Neither read has a `doc_id`, so the canary does
+  not replay them, W60's rule, and `REPLAY_STEPS`, `tests/test_doctor.py` and the doctor's counts
+  are unchanged. The commands are `dumpsta follow-requests` and `activity`, text and JSON, both
+  taking no argument since both read the viewer's own account. The gate fixtures are the recorded
+  answers, pseudonymised by `scripts/build_account_fixtures.py`, 678 values checked absent.
+  `tests/test_account.py` holds 17 gates and `scripts/verify_account_gates.py` 31 mutations, each
+  seen red then green. `tests/test_facade_parity.py` gained the two methods in its core table.
+  The surface grew from 767 lines to 850, 83 added and none removed or changed. Live traffic for
+  the discovery: `probes/e2_own_account.py` 7 requests. The CLI acceptance,
+  `probes/e2_own_account_cli_acceptance.py`, runs both commands on the owner's own account, two
+  requests, four at most, and checks from the counter's log that each sent exactly one API
+  request; it ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log
+  `logs/e2-own-account-cli-2026-09-27-042111.json`.
 
 ## Standing rules for every phase
 

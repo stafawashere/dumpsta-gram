@@ -5,6 +5,15 @@ credential, or touches the network, and no model carries an extras bag of unmapp
 fields, because an extras bag reopens the boundary this package exists to close.
 """
 
+from dumpstagram.models.account import (
+   ActivityCounts,
+   ActivityFeed,
+   ActivityItem,
+   ActivityLink,
+   ActivityMedia,
+   ActivitySection,
+   FollowRequests,
+)
 from dumpstagram.models.comments import Comment, CommentAuthor
 from dumpstagram.models.events import Event, EventsDropped, ListenerStopped, NewMessage
 from dumpstagram.models.feed import (
@@ -50,6 +59,13 @@ from dumpstagram.models.threads import (
 )
 
 __all__ = [
+   "ActivityCounts",
+   "ActivityFeed",
+   "ActivityItem",
+   "ActivityLink",
+   "ActivityMedia",
+   "ActivitySection",
+   "FollowRequests",
    "AudioKind",
    "BioLink",
    "CarouselChild",

@@ -405,6 +405,7 @@ client.media.like(post.pk)
 
 | Property | Awaitable class | Blocking class | Covers |
 |---|---|---|---|
+| `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests and activity feed, read without marking anything seen |
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
@@ -414,8 +415,9 @@ client.media.like(post.pk)
 
 The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
 namespace holding both twins, and are not re-exported. A namespace is reached through its
-client and is not built directly: its `__init__` raises `TypeError`. `search` and `account`
-appear with their first capability, not before (W20), as `stories` did in E2 batch 5. `events` stays on the client.
+client and is not built directly: its `__init__` raises `TypeError`. `search` appears with its
+first capability, not before (W20), as `stories` did in E2 batch 5 and `account` in E2 batch 6.
+`events` stays on the client.
 
 The seventeen flat methods of `1.0.0` stay for good. Each answers through its alias, with the
 same parameters, the same defaults and the same return type:
@@ -828,6 +830,52 @@ Only highlights have been read live; a live reel's items are ASSUMED to share th
 `media.download` is typed for `MediaImage` and `VideoRendition`, so a story's image downloads
 through it and a `StoryVideo` has no typed download yet.
 The stories gallery query backs no method (W71).
+
+### The viewer's own account
+
+Landed 2026-09-27, E2 batch 6 of [web-parity-plan.md](web-parity-plan.md), rulings W73 to W76.
+The `account` namespace, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `account.follow_requests()` | `FollowRequests` | one |
+| `account.activity()` | `ActivityFeed` | one, plus a bootstrap when the session holds no token |
+
+```python
+waiting = client.account.follow_requests()
+for account in waiting.accounts:
+   print(account.id, account.username)
+
+feed = client.account.activity()
+for item in feed.items:
+   print(item.created_at, item.kind, item.text, [link.username for link in item.links])
+```
+
+**The follow requests.** `FollowRequests` holds the first page as `accounts`, `ProfileSummary`
+rows with no relationship, and `has_more`, true when the answer carries a `next_max_id`. Only a
+private account receives requests. No next page has been observed, so nothing reads one, the
+`MessageRequests` pattern of W45 (W73).
+
+**Reading the activity feed through the engine does not mark it seen.** A browser opening the
+notifications page follows the read with a second request that clears the viewer's own
+notifications badge, which nobody else sees. That request has never been sent or observed
+answering, so the engine sends none, a named departure from browser parity with no `Behavior`
+setting yet (W74). The read itself may move `last_checked_at` (INFERENCE).
+
+**The feed.** `ActivityFeed` holds `new_items`, `earlier_items` and `priority_items`, each newest
+first, and `items` joining them; the fifteen `counts` (`ActivityCounts`); the `sections` the
+page heads parts of the feed with (`ActivitySection`: `title`, `first_index`);
+`last_checked_at`; and `is_last_page`, the upstream's flag. No next page is read. An
+`ActivityItem` carries `id`, `kind` (the upstream's name, such as `story_like`, `post_like`,
+`user_followed` or `comment_like`), `story_type`, `created_at`, the line as `text` with the
+accounts it names as `links` (`ActivityLink`: `start`, `end`, `kind`, `id`, `username`, where
+`text[start:end]` is the username), the thumbnails it shows as `media` (`ActivityMedia`: `id`,
+`shortcode`, `image_url`), and where the item carries them the main and second account, the
+account a follow button acts on with the viewer's relationship to it (`follow_account`), a
+`comment_id` and the upstream's app route as `destination`. Only earlier items have been read;
+new and priority items are ASSUMED to share their shape. Saved collections, saved posts, the
+archive, the close friends and blocked lists and the notifications badge are not part of it
+(W75).
 
 ## Stability contract
 
