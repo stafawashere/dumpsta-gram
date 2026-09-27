@@ -125,6 +125,25 @@ between routes and there is only one route here. Modelling the inbox load, from 
 `direct-inbox-thread-list`, `direct-inbox-unread-thread-count`, the six empty-variable direct
 findings and this one, would make it the parity route and add the setting.
 
+**The inbox pages, the message requests and the unread counts are each sent alone, a recorded
+departure.** Added 2026-09-24 with E2 batch 1, rulings W45 to W48. `DIRECT_INBOX_NEXT_PAGE`
+(`28000787896268887`, `IGDThreadListOffMsysPaginationQuery`), `MESSAGE_REQUESTS`
+(`27525641663781745`, `IGDMessageRequestLeftRailStandaloneQuery`) and `FOLDER_UNREAD_ROWS`
+(`27437959689223570`, `useIGDSystemFolderUnreadThreadCountQuery`) all answer on
+`API_GRAPHQL_URL`, with the inbox page as their referer. The next page takes `count` 15, the
+first page's compiled size and not a value any browser was seen sending (W44), the cursor, folder
+`INBOX`, a null `newer_than_timestamp_ms`, the mailbox id as `id`, and the three thread list
+provider flags the first page sends. The requests take a fresh device id, the same three flags,
+and the 30 day provider as an integer of milliseconds, a type no browser was seen sending and both
+engine replays sent. The unread rows are sent twice, folder `INBOX` and then folder `PENDING`
+with `newer_than_timestamp_ms` a string 2592000000 ms before now, one device id between them, as
+both captured inbox loads sent them. A browser sends all of these inside an inbox load, where the
+first page, both unread reads and the tray go out within milliseconds of each other and the
+requests are read when the requests view opens. The engine sends each read's own queries alone,
+for the reason the notes tray gives above. Findings `direct-inbox-thread-list-next-page`,
+`direct-message-requests` and `direct-inbox-unread-thread-count`, each verified by engine
+replays on 2026-09-24.
+
 **A post read, a like and an unlike are each sent alone, a recorded departure.** Added
 2026-09-23 with Step 15. `POST_BY_SHORTCODE` (`27830990013244856`, `PolarisPostRootQuery`),
 `LIKE_MEDIA` (`27182485238052618`, `usePolarisLikeMediaXIGLikeMutation`) and `UNLIKE_MEDIA`

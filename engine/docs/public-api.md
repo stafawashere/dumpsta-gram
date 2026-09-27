@@ -404,7 +404,7 @@ client.media.like(post.pk)
 
 | Property | Awaitable class | Blocking class | Covers |
 |---|---|---|---|
-| `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, and the notes tray on the inbox |
+| `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
 | `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles |
@@ -452,6 +452,7 @@ only there, with no flat twin:
 | Page read | Iterator | Yields |
 |---|---|---|
 | `direct.messages(thread_fbid, *, after, newer_than_message_id)` | `direct.iter_messages(thread_fbid, *, limit, after=None, newer_than_message_id=None)` | `Message`, newest first |
+| `direct.inbox(*, after)` | `direct.iter_inbox(*, limit, after=None)` | `DirectThread`, newest activity first |
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
 
@@ -568,6 +569,56 @@ deleted. A delete answered without `did_delete` raises `UpstreamRejected` with c
 the read of a deleted post was refused with `UpstreamRejected` code `1675030`, a generic query
 error, and the profile's `media_count` fell back. That code carries no meaning of its own, so it
 confirms a delete only after the delete answered `did_delete` true.
+
+### The inbox, the message requests and the unread counts
+
+Landed 2026-09-24, E2 batch 1 of [web-parity-plan.md](web-parity-plan.md), rulings W45 to W48.
+Four methods on `direct`, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `direct.inbox(*, after=None)` | `Page[DirectThread]` | one |
+| `direct.iter_inbox(*, limit, after=None)` | iterator of `DirectThread` | one per page read |
+| `direct.message_requests()` | `MessageRequests` | one |
+| `direct.unread_counts()` | `UnreadCounts` | two |
+
+```python
+page = client.direct.inbox()
+for thread in client.direct.iter_inbox(limit=50):
+   if thread.is_unread:
+      messages = client.direct.messages(thread.thread_fbid)
+
+counts = await aclient.direct.unread_counts()              # UnreadCounts(inbox=1, pending=0, ...)
+requests = client.direct.message_requests()                # MessageRequests(pending=(), spam=(), ...)
+```
+
+`DirectThread` carries `thread_fbid`, which `direct.messages` takes, `title`, `is_group`,
+`participants`, `last_activity_at`, `last_message_id` and `snippet` from the newest message the
+row carries, and the flags `is_unread`, `is_marked_unread`, `is_muted` and `is_pinned`. The rows
+keep the upstream's order, newest activity first with pinned threads in place.
+`ThreadParticipant` carries `user_id`, the numeric account id `profiles.by_id` takes, and
+`username`, `full_name` and `is_verified`, and the viewer is never among them.
+
+The cursor an inbox page hands out carries the mailbox id the next page is keyed on beside the
+upstream's own cursor, so `after` takes only an `end_cursor` from `direct.inbox`, and anything
+else raises `ValueError` before anything is sent (W46). `has_next_page` is the only terminator.
+
+`is_unread` and the counts are the engine's reading of the rows, an INFERENCE: the upstream sends
+each row's read receipts and no number, and a row counts as unread when it is marked unread or
+the viewer's receipt is older than its last activity or absent. `UnreadCounts` holds `inbox` and
+`pending`, each counted over the first page of its folder that an inbox load reads, and
+`inbox_has_more` and `pending_has_more` say the folder has rows past that page. Muted threads
+count (W47).
+
+`MessageRequests` holds the pending and the spam folder as tuples, one page each, with the
+upstream's `has_next_page` for each, since no query that reads a request folder further has been
+observed. No request row has been seen, because the account had none; one is mapped as an inbox
+row, and a row that differs raises `SchemaChanged`.
+
+Nothing here opens a thread, so nothing is marked read to anyone, and no request thread is
+opened, which would mark it seen to its sender (W43). A browser reads all of this inside an inbox
+page load. Each method sends its own queries alone, a departure recorded in
+[web-request-contract.md](web-request-contract.md).
 
 ## Stability contract
 

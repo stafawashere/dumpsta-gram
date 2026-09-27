@@ -8,6 +8,7 @@ alias dumpstagram.CarouselChild -> dumpstagram.models.feed.CarouselChild
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
+alias dumpstagram.DirectThread -> dumpstagram.models.threads.DirectThread
 alias dumpstagram.DumpstagramError -> dumpstagram.errors.DumpstagramError
 alias dumpstagram.EXPORT -> dumpstagram.behavior.EXPORT
 alias dumpstagram.Event -> dumpstagram.models.events.Event
@@ -22,6 +23,7 @@ alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
@@ -49,7 +51,9 @@ alias dumpstagram.Spacing -> dumpstagram.behavior.Spacing
 alias dumpstagram.SpinParameters -> dumpstagram.session.SpinParameters
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
 alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
+alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.TransportFailure -> dumpstagram.errors.TransportFailure
+alias dumpstagram.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.UpstreamRejected -> dumpstagram.errors.UpstreamRejected
 alias dumpstagram.VideoRendition -> dumpstagram.models.feed.VideoRendition
 module dumpstagram.aio
@@ -181,6 +185,7 @@ alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.CarouselChild -> dumpstagram.models.feed.CarouselChild
 alias dumpstagram.models.Comment -> dumpstagram.models.comments.Comment
 alias dumpstagram.models.CommentAuthor -> dumpstagram.models.comments.CommentAuthor
+alias dumpstagram.models.DirectThread -> dumpstagram.models.threads.DirectThread
 alias dumpstagram.models.Event -> dumpstagram.models.events.Event
 alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDropped
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
@@ -190,6 +195,7 @@ alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerSt
 alias dumpstagram.models.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.models.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.models.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.models.Note -> dumpstagram.models.notes.Note
@@ -202,6 +208,8 @@ alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
+alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
+alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
 module dumpstagram.models.comments
 class dumpstagram.models.comments.Comment()
@@ -429,25 +437,61 @@ field dumpstagram.models.profiles.Profile.media_count: int
 field dumpstagram.models.profiles.Profile.profile_pic_url: str
 field dumpstagram.models.profiles.Profile.total_clips_count: int
 field dumpstagram.models.profiles.Profile.username: str
+module dumpstagram.models.threads
+class dumpstagram.models.threads.DirectThread()
+field dumpstagram.models.threads.DirectThread.is_group: bool
+field dumpstagram.models.threads.DirectThread.is_marked_unread: bool
+field dumpstagram.models.threads.DirectThread.is_muted: bool
+field dumpstagram.models.threads.DirectThread.is_pinned: bool
+field dumpstagram.models.threads.DirectThread.is_unread: bool
+field dumpstagram.models.threads.DirectThread.last_activity_at: datetime
+field dumpstagram.models.threads.DirectThread.last_message_id: str | None
+field dumpstagram.models.threads.DirectThread.participants: tuple[ThreadParticipant, ...]
+field dumpstagram.models.threads.DirectThread.snippet: str | None
+field dumpstagram.models.threads.DirectThread.thread_fbid: str
+field dumpstagram.models.threads.DirectThread.title: str
+class dumpstagram.models.threads.MessageRequests()
+field dumpstagram.models.threads.MessageRequests.pending: tuple[DirectThread, ...]
+field dumpstagram.models.threads.MessageRequests.pending_has_more: bool
+field dumpstagram.models.threads.MessageRequests.spam: tuple[DirectThread, ...]
+field dumpstagram.models.threads.MessageRequests.spam_has_more: bool
+class dumpstagram.models.threads.ThreadParticipant()
+field dumpstagram.models.threads.ThreadParticipant.full_name: str
+field dumpstagram.models.threads.ThreadParticipant.is_verified: bool
+field dumpstagram.models.threads.ThreadParticipant.user_id: str
+field dumpstagram.models.threads.ThreadParticipant.username: str
+class dumpstagram.models.threads.UnreadCounts()
+field dumpstagram.models.threads.UnreadCounts.inbox: int
+field dumpstagram.models.threads.UnreadCounts.inbox_has_more: bool
+field dumpstagram.models.threads.UnreadCounts.pending: int
+field dumpstagram.models.threads.UnreadCounts.pending_has_more: bool
 module dumpstagram.namespaces
 module dumpstagram.namespaces.direct
 class dumpstagram.namespaces.direct.AsyncDirect()
 def dumpstagram.namespaces.direct.AsyncDirect.__init__(self) -> None
 def dumpstagram.namespaces.direct.AsyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.AsyncDirect.inbox(self, *, after: str | None = None) -> Page[DirectThread]
+def dumpstagram.namespaces.direct.AsyncDirect.iter_inbox(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[DirectThread]
 def dumpstagram.namespaces.direct.AsyncDirect.iter_messages(self, thread_fbid: str, *, limit: int | None, after: str | None = None, newer_than_message_id: str | None = None) -> AsyncIterator[Message]
+def dumpstagram.namespaces.direct.AsyncDirect.message_requests(self) -> MessageRequests
 def dumpstagram.namespaces.direct.AsyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.namespaces.direct.AsyncDirect.notes(self) -> tuple[Note, ...]
 def dumpstagram.namespaces.direct.AsyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
 def dumpstagram.namespaces.direct.AsyncDirect.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+def dumpstagram.namespaces.direct.AsyncDirect.unread_counts(self) -> UnreadCounts
 def dumpstagram.namespaces.direct.AsyncDirect.unsend(self, thread_fbid: str, message_id: str) -> None
 class dumpstagram.namespaces.direct.SyncDirect()
 def dumpstagram.namespaces.direct.SyncDirect.__init__(self) -> None
 def dumpstagram.namespaces.direct.SyncDirect.delete_note(self, note_id: str) -> None
+def dumpstagram.namespaces.direct.SyncDirect.inbox(self, *, after: str | None = None) -> Page[DirectThread]
+def dumpstagram.namespaces.direct.SyncDirect.iter_inbox(self, *, limit: int | None, after: str | None = None) -> Iterator[DirectThread]
 def dumpstagram.namespaces.direct.SyncDirect.iter_messages(self, thread_fbid: str, *, limit: int | None, after: str | None = None, newer_than_message_id: str | None = None) -> Iterator[Message]
+def dumpstagram.namespaces.direct.SyncDirect.message_requests(self) -> MessageRequests
 def dumpstagram.namespaces.direct.SyncDirect.messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.namespaces.direct.SyncDirect.notes(self) -> tuple[Note, ...]
 def dumpstagram.namespaces.direct.SyncDirect.send(self, thread_fbid: str, text: str) -> SentMessage
 def dumpstagram.namespaces.direct.SyncDirect.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
+def dumpstagram.namespaces.direct.SyncDirect.unread_counts(self) -> UnreadCounts
 def dumpstagram.namespaces.direct.SyncDirect.unsend(self, thread_fbid: str, message_id: str) -> None
 module dumpstagram.namespaces.feeds
 class dumpstagram.namespaces.feeds.AsyncFeeds()

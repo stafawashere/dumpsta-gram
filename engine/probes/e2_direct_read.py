@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Eight requests, and up to three more, conditional.
+"""Read only. Nine requests, and up to three more, conditional.
 
 E2 batch 1, the direct read side: the inbox listing made public with its pagination, the
 message requests, and a thread's details panel. Each hypothesis read is replayed twice, the
@@ -9,6 +9,7 @@ standing rule for a read entering the package.
    3  the thread list's next page, IGDThreadListOffMsysPaginationQuery, twice
    5  the message requests, IGDMessageRequestLeftRailStandaloneQuery, twice
    7  the details panel of the ruling 30 thread, IGDInboxInfoOffMsysQuery, twice
+   9  the pending folder's unread rows, useIGDSystemFolderUnreadThreadCountQuery, verified, once
 
 Conditional: each hypothesis query's first replay is sent once more on the other GraphQL path
 when it answers with every root null, three at most. Steps 3 and 4 are skipped when the inbox
@@ -19,7 +20,9 @@ visible to another person. Findings: ``direct-inbox-thread-list`` (verified),
 ``direct-inbox-thread-list-next-page``, ``direct-message-requests`` and
 ``direct-thread-details-panel`` (hypotheses). The session comes from the session file and the
 thread from ``IG_THREAD_FBID`` in the root ``.env``, falling back to the measured thread.
-Only key unions, counts and lengths are logged.
+Only key unions, counts and lengths are logged. Each answer's full body is kept beside the
+skill's captures, under ``var/captures/``, which the capture exemption of 2026-09-23 covers, so
+the gates' fixtures can be pseudonymised from it offline.
 
 Run it from `engine/` with:
 
@@ -29,16 +32,19 @@ Run it from `engine/` with:
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 import time
+from datetime import datetime
+from typing import Any
 
 from _e2_support import E2Replay, dig, id_prefix, page_info_of, run_probe
-from _probe_support import THREAD_FBID
+from _probe_support import ENGINE_ROOT, THREAD_FBID
 
 from dumpstagram._private.web.bootstrap import ORIGIN
 from dumpstagram._private.web.requests.direct import build_inbox_listing_request, thread_url
 
-PLANNED = 8
+PLANNED = 9
 CONDITIONAL = 3
 INBOX = f"{ORIGIN}/direct/inbox/"
 PROVIDERS = {
@@ -47,6 +53,17 @@ PROVIDERS = {
    "__relay_internal__pv__IGDThreadListActionsEnabledGKrelayprovider": True,
 }
 THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+CAPTURES = ENGINE_ROOT.parent / "skills" / "reverse-engineer" / "var" / "captures"
+STAMP = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+
+
+def keep_body(label: str, parsed: Any) -> None:
+   if parsed is None:
+      return
+
+   CAPTURES.mkdir(parents=True, exist_ok=True)
+   path = CAPTURES / f"e2-direct-read-{STAMP}-{label}.json"
+   path.write_text(json.dumps(parsed), encoding="utf-8")
 
 
 async def body(replay: E2Replay) -> None:
@@ -55,6 +72,7 @@ async def body(replay: E2Replay) -> None:
    listing = await replay.engine_read(
       "inbox listing", build_inbox_listing_request(replay.session, device_id=replay.device_id)
    )
+   keep_body("inbox-listing", listing)
    mailbox = dig(listing, "data", "get_slide_mailbox_for_iris_subscription")
    connection = dig(mailbox, "threads_by_folder")
    first_page = page_info_of(connection)
@@ -92,6 +110,7 @@ async def body(replay: E2Replay) -> None:
 
          if page is not None:
             replay.shape("thread_list_next_page", next_connection)
+            keep_body(f"next-page-{attempt}", page)
 
    thirty_days_ago = int(time.time() * 1000) - THIRTY_DAYS_MS
    request_variables = {
@@ -111,6 +130,7 @@ async def body(replay: E2Replay) -> None:
 
       if requests_page is not None:
          replay.shape("message_requests", dig(requests_page, "data"))
+         keep_body(f"message-requests-{attempt}", requests_page)
 
    thread_fbid = replay.environment.get("IG_THREAD_FBID") or THREAD_FBID
    detail_variables = {
@@ -130,6 +150,23 @@ async def body(replay: E2Replay) -> None:
 
       if details is not None:
          replay.shape("thread_details", dig(details, "data"))
+         keep_body(f"thread-details-{attempt}", details)
+
+   pending_variables = {
+      "device_id_for_iris_subscription": replay.device_id,
+      "folder": "PENDING",
+      "newer_than_timestamp_ms": str(thirty_days_ago),
+   }
+   pending = await replay.graphql(
+      "direct-inbox-unread-thread-count",
+      pending_variables,
+      referer=INBOX,
+      label="pending unread rows",
+   )
+
+   if pending is not None:
+      replay.shape("pending_unread_rows", dig(pending, "data"))
+      keep_body("pending-unread-rows", pending)
 
 
 if __name__ == "__main__":

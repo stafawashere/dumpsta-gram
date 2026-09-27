@@ -1,0 +1,14 @@
+{
+ "data": {
+  "get_slide_mailbox_for_iris_subscription": {
+   "threads_by_folder": {
+    "edges": [],
+    "page_info": {
+     "end_cursor": null,
+     "has_next_page": false
+    }
+   },
+   "id": "90000000000000008"
+  }
+ }
+}

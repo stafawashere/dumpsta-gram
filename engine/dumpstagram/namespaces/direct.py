@@ -1,4 +1,4 @@
-"""``client.direct``, direct threads and the notes on the direct inbox."""
+"""``client.direct``, direct threads, the inbox and its requests, and the notes on the inbox."""
 
 from __future__ import annotations
 
@@ -6,11 +6,21 @@ from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.direct import read_thread_messages
+from dumpstagram._core.inbox import read_inbox_page, read_message_requests, read_unread_counts
 from dumpstagram._core.notes import read_notes
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._core.writes.notes import delete_note, set_note
-from dumpstagram.models import Message, Note, NoteAudience, Page, SentMessage
+from dumpstagram.models import (
+   DirectThread,
+   Message,
+   MessageRequests,
+   Note,
+   NoteAudience,
+   Page,
+   SentMessage,
+   UnreadCounts,
+)
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -238,6 +248,81 @@ class AsyncDirect:
          )
       )
 
+   async def inbox(self, *, after: str | None = None) -> Page[DirectThread]:
+      """Read one page of the direct inbox, newest activity first. One live request.
+
+      The first page is what an inbox load lists, pinned threads at their activity position.
+      ``after`` is the ``end_cursor`` of a page this method returned, and nothing else: it
+      carries the mailbox the next page is keyed on beside the upstream's cursor, so a cursor
+      from another read raises :class:`ValueError` before anything is sent. The page's
+      ``has_next_page`` is the only thing that says whether more exist.
+
+      Listing marks nothing read, to the viewer or to anyone. A thread's messages are read with
+      :meth:`messages`, which takes :attr:`DirectThread.thread_fbid
+      <dumpstagram.models.DirectThread.thread_fbid>`.
+
+      A browser reads the first page inside an inbox load, beside the document and nine other
+      queries. This sends the listing alone, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_inbox_page(
+            client._sender,
+            client._session,
+            after=after,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def message_requests(self) -> MessageRequests:
+      """Read the message requests, the pending and the spam folder, one page of each. One live
+      request.
+
+      Only the listing is read. Opening a request thread would mark it seen to its sender, so
+      nothing here opens one, and reading one's messages is left to the caller's choice.
+
+      Both folders were empty on every live read so far, so a request row has not been seen. It
+      is mapped as an inbox row is, and a row that lacks what an inbox row carries raises
+      :class:`~dumpstagram.errors.SchemaChanged` rather than being guessed at.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_message_requests(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def unread_counts(self) -> UnreadCounts:
+      """Count the unread threads in the inbox and in the pending requests. Two live requests.
+
+      The upstream answers each folder's first page of rows with their read receipts and no
+      number, as it does for a browser, and the count is taken over those rows: a thread is
+      unread when it is marked unread, or when the viewer's receipt is earlier than its last
+      activity or absent. That rule is the engine's reading of the rows (INFERENCE), since the
+      browser's own has not been read. Muted threads count. A folder with rows past its first
+      page says so in :class:`~dumpstagram.models.UnreadCounts`, and those rows are not counted.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_unread_counts(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
    def iter_messages(
       self,
       thread_fbid: str,
@@ -272,6 +357,27 @@ class AsyncDirect:
          limit=limit,
          after=after,
       )
+
+   def iter_inbox(
+      self, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[DirectThread]:
+      """Walk the direct inbox thread by thread, newest activity first, reading a page with
+      :meth:`inbox` each time the one before it is used up. Use it with ``async for``, and do not
+      await it.
+
+      ``limit`` is required and counts threads. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks to the oldest thread,
+      one read per page. ``after`` starts the walk from a cursor :meth:`inbox` handed out.
+
+      Each page is one read with everything :meth:`inbox` sends for it, paced as any read is,
+      and never read ahead of the caller. A page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`, and a negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(lambda cursor: self.inbox(after=cursor), limit=limit, after=after)
 
 
 class SyncDirect:
@@ -403,6 +509,62 @@ class SyncDirect:
                newer_than_message_id=newer_than_message_id,
             ),
             operation="SyncClient.direct.iter_messages",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)
+
+   def inbox(self, *, after: str | None = None) -> Page[DirectThread]:
+      """Read one page of the direct inbox. Blocks until it has one.
+
+      The same call as :meth:`AsyncDirect.inbox`, with the same arguments and the same result,
+      run on the shared loop thread. One live request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.direct.inbox(after=after),
+         operation="SyncClient.direct.inbox",
+      )
+
+   def message_requests(self) -> MessageRequests:
+      """Read the pending and spam message requests. Blocks until it has them.
+
+      The same call as :meth:`AsyncDirect.message_requests`, run on the shared loop thread. One
+      live request, and no request thread is opened.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.direct.message_requests(),
+         operation="SyncClient.direct.message_requests",
+      )
+
+   def unread_counts(self) -> UnreadCounts:
+      """Count the unread threads in the inbox and the pending requests. Blocks until it has
+      both.
+
+      The same call as :meth:`AsyncDirect.unread_counts`, run on the shared loop thread. Two
+      live requests.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.direct.unread_counts(),
+         operation="SyncClient.direct.unread_counts",
+      )
+
+   def iter_inbox(self, *, limit: int | None, after: str | None = None) -> Iterator[DirectThread]:
+      """Walk the direct inbox thread by thread. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncDirect.iter_inbox`, with the same ``limit``, each page read on
+      the shared loop thread. Exceptions cross back as themselves, with a note naming this
+      method. Closing the iterator early leaves nothing running, because no page is read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[DirectThread]:
+         return client._loop.run(
+            client._impl.direct.inbox(after=cursor),
+            operation="SyncClient.direct.iter_inbox",
          )
 
       return iterate_pages_blocking(read_page, limit=limit, after=after)

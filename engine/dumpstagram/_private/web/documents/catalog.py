@@ -12,8 +12,11 @@ from __future__ import annotations
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import (
    DIRECT_INBOX,
+   DIRECT_INBOX_NEXT_PAGE,
    DIRECT_TEXT_SEND,
    DIRECT_UNSEND,
+   FOLDER_UNREAD_ROWS,
+   MESSAGE_REQUESTS,
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
@@ -63,6 +66,9 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    COMMENT_PAGE,
    PROFILE_BY_ID,
    PROFILE_POSTS,
+   DIRECT_INBOX_NEXT_PAGE,
+   MESSAGE_REQUESTS,
+   FOLDER_UNREAD_ROWS,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

@@ -19,6 +19,7 @@ operation's answer does not depend on it.
 
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
@@ -311,7 +312,11 @@ class RotationDoctor:
       return response if arrived else None
 
    async def _replay_reads(self, device_id: str) -> tuple[dict[str, _ReplayOutcome], int]:
-      arguments = ReplayArguments(device_id=device_id, viewer_id=self._session.ds_user_id)
+      arguments = ReplayArguments(
+         device_id=device_id,
+         viewer_id=self._session.ds_user_id,
+         now_ms=int(time.time() * 1000),
+      )
       outcomes: dict[str, _ReplayOutcome] = {}
       sent = 0
 

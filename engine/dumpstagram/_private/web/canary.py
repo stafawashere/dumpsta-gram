@@ -20,6 +20,9 @@ from dumpstagram._private.transport import Request
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import (
    DIRECT_INBOX,
+   DIRECT_INBOX_NEXT_PAGE,
+   FOLDER_UNREAD_ROWS,
+   MESSAGE_REQUESTS,
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
@@ -29,7 +32,11 @@ from dumpstagram._private.web.documents.media import COMMENT_PAGE, POST_BY_SHORT
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
 from dumpstagram._private.web.documents.profiles import PROFILE_BY_ID, PROFILE_POSTS
 from dumpstagram._private.web.parse.direct import (
+   parse_folder_unread_rows,
+   parse_inbox_continuation,
    parse_inbox_listing,
+   parse_inbox_next_page,
+   parse_message_requests,
    parse_thread_detail,
    parse_thread_message_page,
 )
@@ -38,7 +45,11 @@ from dumpstagram._private.web.parse.media import parse_comment_page, parse_post_
 from dumpstagram._private.web.parse.notes import parse_inbox_tray
 from dumpstagram._private.web.parse.profiles import parse_profile, parse_user_id
 from dumpstagram._private.web.requests.direct import (
+   INBOX_FOLDER,
+   build_folder_unread_rows_request,
    build_inbox_listing_request,
+   build_inbox_next_page_request,
+   build_message_requests_request,
    build_thread_detail_request,
    build_thread_older_page_request,
    build_thread_page_request,
@@ -64,13 +75,17 @@ class ReplayArguments:
    """What the replays so far have learned, which later replays are keyed on.
 
    ``device_id`` is the inbox document's own iris device id, as the poller sends it, and
-   ``viewer_id`` is the session's ``ds_user_id``. The rest start empty and are filled by the
+   ``viewer_id`` is the session's ``ds_user_id``. ``now_ms`` is the run's clock, which the
+   requests and unread reads count 30 days back from. The rest start empty and are filled by the
    step that reads them.
    """
 
    device_id: str
    viewer_id: str
+   now_ms: int = 0
    thread_fbid: str | None = None
+   mailbox_id: str | None = None
+   inbox_cursor: str | None = None
    post_code: str | None = None
    post_pk: str | None = None
    username: str | None = None
@@ -96,6 +111,12 @@ def _learn_first_thread(payload: Any, arguments: ReplayArguments) -> None:
 
    if listing.items:
       arguments.thread_fbid = listing.items[0].thread_fbid
+
+   mailbox_id, end_cursor = parse_inbox_continuation(payload)
+
+   if end_cursor is not None:
+      arguments.mailbox_id = mailbox_id
+      arguments.inbox_cursor = end_cursor
 
 
 def _learn_first_post(payload: Any, arguments: ReplayArguments) -> None:
@@ -209,6 +230,37 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, _required(arguments.username), user_agent=user_agent
       ),
       read=_mapped_by(parse_user_id),
+   ),
+   ReplayStep(
+      query=DIRECT_INBOX_NEXT_PAGE,
+      requires="inbox_cursor",
+      build=lambda session, arguments, user_agent: build_inbox_next_page_request(
+         session,
+         mailbox_id=_required(arguments.mailbox_id),
+         cursor=_required(arguments.inbox_cursor),
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_inbox_next_page),
+   ),
+   ReplayStep(
+      query=MESSAGE_REQUESTS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_message_requests_request(
+         session, iris_device_id=arguments.device_id, now_ms=arguments.now_ms, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_message_requests),
+   ),
+   ReplayStep(
+      query=FOLDER_UNREAD_ROWS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_folder_unread_rows_request(
+         session,
+         iris_device_id=arguments.device_id,
+         folder=INBOX_FOLDER,
+         now_ms=arguments.now_ms,
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_folder_unread_rows),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

@@ -1,0 +1,2983 @@
+{
+ "data": {
+  "fetch__SlideMailbox": {
+   "threads_by_folder": {
+    "edges": [
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000445",
+        "last_activity_timestamp_ms": "1664455891409",
+        "thread_key": "90000000000000181",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000445",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000180",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000181",
+          "full_name": "p182xxxxxxxxxxxxxxxxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p183xxxxxxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/446",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000181",
+          "watermark_timestamp_ms": "1656285165612"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664455891409"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000447",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664455891409",
+            "id": "mid.$m00000448qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p449xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p450xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p449xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000451ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000181",
+            "timestamp_ms": "1664455867922",
+            "id": "mid.$m00000452qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p45",
+            "igd_snippet": "p45",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p45"
+            }
+           },
+           "cursor": "C000454ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664455857326",
+            "id": "mid.$m00000455qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p45",
+            "igd_snippet": "p457xxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p45"
+            }
+           },
+           "cursor": "C000458ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000181",
+            "timestamp_ms": "1664455844489",
+            "id": "mid.$m00000459qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "94",
+            "igd_snippet": "94",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "94"
+            }
+           },
+           "cursor": "C000461ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664455834407",
+            "id": "mid.$m00000462qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p463xxxxxx",
+            "igd_snippet": "p464xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p463xxxxxx"
+            }
+           },
+           "cursor": "C000465ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000466ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p182xxxxxxxxxxxxxxxxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000180"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000445",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000468ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "9000000000000469",
+        "last_activity_timestamp_ms": "1664453411729",
+        "thread_key": "90000000000000470",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "9000000000000469",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000471",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000470",
+          "full_name": "p472xxxxxxx",
+          "ai_agent_type": null,
+          "username": "p473xxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/474",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664453411730"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000475",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000470",
+            "timestamp_ms": "1664453411729",
+            "id": "mid.$m00000476qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p477xx",
+            "igd_snippet": "p477xx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p477xx"
+            }
+           },
+           "cursor": "C000478ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000470",
+            "timestamp_ms": "1664453401967",
+            "id": "mid.$m00000479qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "REACTION_LOG_XMAT",
+            "text_body": null,
+            "igd_snippet": "p279xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageAdminText"
+            }
+           },
+           "cursor": "C000480ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664452990919",
+            "id": "mid.$m00000481qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p482xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p483xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p482xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000484ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000470",
+            "timestamp_ms": "1664445511415",
+            "id": "mid.$m00000485qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p486xxxxxx",
+            "igd_snippet": "p486xxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000487ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000488ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": false
+         }
+        },
+        "thread_title": "p472xxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000471"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "9000000000000469",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000489ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000490",
+        "last_activity_timestamp_ms": "1664453033032",
+        "thread_key": "90000000000000491",
+        "thread_subtype": "IG_BUSINESS_ACCOUNT_ONE_TO_ONE",
+        "thread_fbid": "90000000000000490",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000492",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000491",
+          "full_name": "p493xx",
+          "ai_agent_type": null,
+          "username": "p494xxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/495",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000491",
+          "watermark_timestamp_ms": "1664453027256"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664453033033"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000496",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000491",
+            "timestamp_ms": "1664453033032",
+            "id": "mid.$m00000497qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p498xxxxxxxxxxx",
+            "igd_snippet": "p498xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p498xxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000499ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664453027255",
+            "id": "mid.$m00000500qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p501xxxxxxxxxxxxxx",
+            "igd_snippet": "p502xxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p501xxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000503ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664453018761",
+            "id": "mid.$m00000504qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p505xxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p506xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p505xxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000507ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664453013849",
+            "id": "mid.$m00000508qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p509xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p510xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p509xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000511ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000491",
+            "timestamp_ms": "1664446376749",
+            "id": "mid.$m00000512qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p513xxxxxxxxxxxxxx",
+            "igd_snippet": "p513xxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000514ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000515ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p493xx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000492"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000490",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000516ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "9000000000000517",
+        "last_activity_timestamp_ms": "1664448485671",
+        "thread_key": "900000000000518",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "9000000000000517",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000519",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "900000000000518",
+          "full_name": "p520xxxx",
+          "ai_agent_type": null,
+          "username": "p521xxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/522",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "900000000000518",
+          "watermark_timestamp_ms": "1664631995893"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664658743968"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000523",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664448485671",
+            "id": "mid.$m00000524qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p525xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p526xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p525xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000527ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "900000000000518",
+            "timestamp_ms": "1664447723601",
+            "id": "mid.$m00000528qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p529xxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p529xxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p529xxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000530ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "900000000000518",
+            "timestamp_ms": "1664447722703",
+            "id": "mid.$m00000531qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "IMAGES",
+            "text_body": "",
+            "igd_snippet": "p532xxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageImageContent"
+            }
+           },
+           "cursor": "C000533ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "900000000000518",
+            "timestamp_ms": "1664447716649",
+            "id": "mid.$m00000534qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p53",
+            "igd_snippet": "p53",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p53"
+            }
+           },
+           "cursor": "C000536ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "900000000000518",
+            "timestamp_ms": "1664433669697",
+            "id": "mid.$m00000537qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p538xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p538xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p538xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000539ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000540ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p520xxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000519"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "9000000000000517",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000541ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000542",
+        "last_activity_timestamp_ms": "1664445330361",
+        "thread_key": "90000000000000543",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000542",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000544",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000543",
+          "full_name": "p545xx",
+          "ai_agent_type": null,
+          "username": "p546xxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/547",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000543",
+          "watermark_timestamp_ms": "1664445291114"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664445330362"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000548",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000543",
+            "timestamp_ms": "1664445330361",
+            "id": "mid.$m00000549qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p550xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p550xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p550xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000551ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000543",
+            "timestamp_ms": "1664445324744",
+            "id": "mid.$m00000552qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p553xxxx",
+            "igd_snippet": "p553xxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p553xxxx"
+            }
+           },
+           "cursor": "C000554ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1664445291113",
+            "id": "mid.$m00000555qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p556xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p557xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p556xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000558ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000543",
+            "timestamp_ms": "1664445267906",
+            "id": "mid.$m00000559qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p560xxxxxxxxxxx",
+            "igd_snippet": "p560xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p560xxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000561ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000543",
+            "timestamp_ms": "1664445265627",
+            "id": "mid.$m00000562qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p563xxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p563xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p563xxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000564ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000565ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p545xx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000544"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000542",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000566ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "9000000000000567",
+        "last_activity_timestamp_ms": "1663695959763",
+        "thread_key": "9000000000000567",
+        "thread_subtype": "IGD_GROUP",
+        "thread_fbid": "9000000000000567",
+        "is_group": true,
+        "users": [
+         {
+          "id": "90000000568",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000569",
+          "full_name": "p570xxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p571xxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/572",
+          "latest_reel_media": null,
+          "latest_besties_reel_media": null,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000573",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000574",
+          "full_name": "p575xxxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p576xxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/577",
+          "latest_reel_media": null,
+          "latest_besties_reel_media": null,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000090",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000089",
+          "full_name": "p91xx",
+          "ai_agent_type": null,
+          "username": "p92xxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/578",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000089",
+          "watermark_timestamp_ms": "1663695959763"
+         },
+         {
+          "participant_fbid": "90000000000000574",
+          "watermark_timestamp_ms": "1663695959763"
+         },
+         {
+          "participant_fbid": "90000000000000569",
+          "watermark_timestamp_ms": "1663695959763"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1663695959763"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000579",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1663695959763",
+            "id": "mid.$m00000580qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p581xxxxxxxxxxxxxx",
+            "igd_snippet": "p582xxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p581xxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000583ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1663695954202",
+            "id": "mid.$m00000584qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p585xxxxxxxxxxx",
+            "igd_snippet": "p586xxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p585xxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000587ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1663695948471",
+            "id": "mid.$m00000588qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p589xxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p590xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p589xxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000591ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000574",
+            "timestamp_ms": "1663664154755",
+            "id": "mid.$m00000592qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p593xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p594xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p593xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000595ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000574",
+            "timestamp_ms": "1663509706926",
+            "id": "mid.$m00000596qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p597xxx",
+            "igd_snippet": "p598xxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p597xxx"
+            }
+           },
+           "cursor": "C000599ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000600ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p601xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000568"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000573"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000090"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "9000000000000567",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000602cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000603",
+        "last_activity_timestamp_ms": "1663403412723",
+        "thread_key": "90000000000000216",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000603",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000215",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000216",
+          "full_name": "p217xxx",
+          "ai_agent_type": null,
+          "username": "p218xxxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/604",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000216",
+          "watermark_timestamp_ms": "1663403412724"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1663403412723"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000605",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1663403412723",
+            "id": "mid.$m00000606qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "",
+            "igd_snippet": "p607xxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000608ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1660306299113",
+            "id": "mid.$m00000609qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p610xxx",
+            "igd_snippet": "p611xxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p610xxx"
+            }
+           },
+           "cursor": "C000612ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000216",
+            "timestamp_ms": "1660304941821",
+            "id": "mid.$m00000613qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p614xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000615ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000216",
+            "timestamp_ms": "1660202878758",
+            "id": "mid.$m00000616qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p614xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000617ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000216",
+            "timestamp_ms": "1660005805692",
+            "id": "mid.$m00000618qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p614xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000619ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000620ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p217xxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000215"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000603",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000621ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000622",
+        "last_activity_timestamp_ms": "1663219577180",
+        "thread_key": "90000000000000623",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000622",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000624",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000623",
+          "full_name": "p625",
+          "ai_agent_type": null,
+          "username": "p626xxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/627",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000623",
+          "watermark_timestamp_ms": "1663219580537"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1663219577180"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000628",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1663219577180",
+            "id": "mid.$m00000629qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p6",
+            "igd_snippet": "p631xxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p6"
+            }
+           },
+           "cursor": "C000632ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000623",
+            "timestamp_ms": "1663159952955",
+            "id": "mid.$m00000633qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p634xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p634xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000635ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000623",
+            "timestamp_ms": "1650190318943",
+            "id": "mid.$m00000636qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p",
+            "igd_snippet": "p",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000638ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000623",
+            "timestamp_ms": "1643902222144",
+            "id": "mid.$m00000639qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": null,
+            "igd_snippet": "p640xxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageAdminText"
+            }
+           },
+           "cursor": "C000641ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1643900948076",
+            "id": "mid.$m00000642qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p643xxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p644xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p643xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000645ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000646ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p625",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000624"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000622",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000647ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000648",
+        "last_activity_timestamp_ms": "1662796850156",
+        "thread_key": "90000000000000649",
+        "thread_subtype": "IG_BUSINESS_ACCOUNT_ONE_TO_ONE",
+        "thread_fbid": "90000000000000648",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000650",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000649",
+          "full_name": "p651xxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p651xxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/652",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000649",
+          "watermark_timestamp_ms": "1577836800000"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1662796850157"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000653",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000649",
+            "timestamp_ms": "1662796850156",
+            "id": "mid.$m00000654qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p655xxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p655xxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p655xxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000656ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1662793337773",
+            "id": "mid.$m00000657qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p658xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p659xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p658xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000660ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000649",
+            "timestamp_ms": "1662773956327",
+            "id": "mid.$m00000661qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p662xxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p662xxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000663ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1625633316783",
+            "id": "mid.$m00000664qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p665xx",
+            "igd_snippet": "p666xxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p665xx"
+            }
+           },
+           "cursor": "C000667ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000649",
+            "timestamp_ms": "1625633276155",
+            "id": "mid.$m00000668qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p669xxxxxxxxxxxx",
+            "igd_snippet": "p669xxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000670ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000671ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p651xxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000650"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000648",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000672ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000673",
+        "last_activity_timestamp_ms": "1662508195928",
+        "thread_key": "90000000000000674",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000673",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000675",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000674",
+          "full_name": "p676xxxxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p676xxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/677",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000674",
+          "watermark_timestamp_ms": "1662508195929"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1662508195928"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000678",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1662508195928",
+            "id": "mid.$m00000679qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p680xxxxxxxxxxxxxxx",
+            "igd_snippet": "p681xxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000682ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000674",
+            "timestamp_ms": "1652067969215",
+            "id": "mid.$m00000683qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p684xx",
+            "igd_snippet": "p684xx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p684xx"
+            }
+           },
+           "cursor": "C000685ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000674",
+            "timestamp_ms": "1652067963154",
+            "id": "mid.$m00000686qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p4",
+            "igd_snippet": "p4",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p4"
+            }
+           },
+           "cursor": "C000687ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000674",
+            "timestamp_ms": "1645275137743",
+            "id": "mid.$m00000688qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p689xxxxxx",
+            "igd_snippet": "p689xxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p689xxxxxx"
+            }
+           },
+           "cursor": "C000690ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1645169193685",
+            "id": "mid.$m00000691qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p692xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p693xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p692xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000694ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000695ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p676xxxxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000675"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000673",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000696ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "9000000000000697",
+        "last_activity_timestamp_ms": "1662025273469",
+        "thread_key": "9000000000000697",
+        "thread_subtype": "IGD_GROUP",
+        "thread_fbid": "9000000000000697",
+        "is_group": true,
+        "users": [
+         {
+          "id": "90000000035",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000034",
+          "full_name": "p36xx",
+          "ai_agent_type": null,
+          "username": "p37xxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/698",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000146",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000145",
+          "full_name": "p147xxxxxxx",
+          "ai_agent_type": null,
+          "username": "p148xxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/699",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000185",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000186",
+          "full_name": "p187xxxxxxx",
+          "ai_agent_type": null,
+          "username": "p188xxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/700",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000190",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000191",
+          "full_name": "p192x",
+          "ai_agent_type": null,
+          "username": "p193xx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/701",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000195",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000196",
+          "full_name": "p197xxxxxx",
+          "ai_agent_type": null,
+          "username": "p198xxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/702",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000200",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000201",
+          "full_name": "p202xxxxxxx",
+          "ai_agent_type": null,
+          "username": "p203xxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/703",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000205",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000206",
+          "full_name": "p207xxxxxxxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p208xxxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/704",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000367",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000366",
+          "full_name": "p368xx",
+          "ai_agent_type": null,
+          "username": "p369xxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/705",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000215",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000216",
+          "full_name": "p217xxx",
+          "ai_agent_type": null,
+          "username": "p218xxxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/604",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         },
+         {
+          "id": "90000000119",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000118",
+          "full_name": "p120xxxxx",
+          "ai_agent_type": null,
+          "username": "p121xxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/706",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000090",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000089",
+          "full_name": "p91xx",
+          "ai_agent_type": null,
+          "username": "p92xxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/578",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000225",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000226",
+          "full_name": "p22",
+          "ai_agent_type": null,
+          "username": "p228xxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/707",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000196",
+          "watermark_timestamp_ms": "1661765635559"
+         },
+         {
+          "participant_fbid": "90000000000000089",
+          "watermark_timestamp_ms": "1661767246772"
+         },
+         {
+          "participant_fbid": "90000000000000186",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000216",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000206",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000201",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000145",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000366",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000118",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000191",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000034",
+          "watermark_timestamp_ms": "1662025273469"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1662025273469"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000708",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1662025273469",
+            "id": "mid.$m00000709qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000711ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661767246772",
+            "id": "mid.$m00000712qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000713ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661767172714",
+            "id": "mid.$m00000714qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p715xxxxxxx",
+            "igd_snippet": "p716xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p715xxxxxxx"
+            }
+           },
+           "cursor": "C000717ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661767172544",
+            "id": "mid.$m00000718qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000719ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661767115061",
+            "id": "mid.$m00000720qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MESSAGE_INLINE_SHARE",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000721ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000722ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p723xxxxxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000035"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000146"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000185"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000190"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000195"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000200"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000205"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000367"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000215"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000119"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000090"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000225"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": "https://example.invalid/724",
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "9000000000000697",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000725cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000726",
+        "last_activity_timestamp_ms": "1661767916001",
+        "thread_key": "90000000000000196",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000726",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000195",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000196",
+          "full_name": "p197xxxxxx",
+          "ai_agent_type": null,
+          "username": "p198xxxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/702",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": null
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000196",
+          "watermark_timestamp_ms": "1657874574756"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1661767916002"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000727",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661767916001",
+            "id": "mid.$m00000728qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "VIDEOS",
+            "text_body": "",
+            "igd_snippet": "p729xxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageVideosContent"
+            }
+           },
+           "cursor": "C000730ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661765467946",
+            "id": "mid.$m00000731qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "INSTAGRAM_MESSAGING_MEDIA_NOTE",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000732ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1661686386158",
+            "id": "mid.$m00000733qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "MONTAGE_SHARE_XMA",
+            "text_body": "p",
+            "igd_snippet": "p",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000735ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000196",
+            "timestamp_ms": "1659020644590",
+            "id": "mid.$m00000736qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "INSTAGRAM_MESSAGING_NOTE_XMA",
+            "text_body": "",
+            "igd_snippet": "p710xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000737ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1657874574755",
+            "id": "mid.$m00000738qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "INSTAGRAM_MESSAGING_NOTE_XMA",
+            "text_body": "p80xxxxxxxx",
+            "igd_snippet": "p739xxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageXMAContent"
+            }
+           },
+           "cursor": "C000740ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000741ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p197xxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000195"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": true,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000726",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000742ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "90000000000000743",
+        "last_activity_timestamp_ms": "1661476003723",
+        "thread_key": "90000000000000744",
+        "thread_subtype": "IG_ONLY_ONE_TO_ONE",
+        "thread_fbid": "90000000000000743",
+        "is_group": false,
+        "users": [
+         {
+          "id": "90000000745",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000744",
+          "full_name": "p746xxxxxxxxx",
+          "ai_agent_type": null,
+          "username": "p747xxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/748",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000744",
+          "watermark_timestamp_ms": "1661472869838"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1661476003724"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000749",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000744",
+            "timestamp_ms": "1661476003723",
+            "id": "mid.$m00000750qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p751xxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p751xxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p751xxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000752ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661472869837",
+            "id": "mid.$m00000753qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p754xxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p755xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p754xxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000756ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661472863229",
+            "id": "mid.$m00000757qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p758xxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p759xxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p758xxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000760ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661472854828",
+            "id": "mid.$m00000761qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p762xxxx",
+            "igd_snippet": "p763xxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p762xxxx"
+            }
+           },
+           "cursor": "C000764ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661472806949",
+            "id": "mid.$m00000765qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "IG_VIDEO_CALL_XMAT",
+            "text_body": null,
+            "igd_snippet": "p766xxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageAdminText"
+            }
+           },
+           "cursor": "C000767ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000768ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p746xxxxxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000745"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "90000000000000743",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000769ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "9000000000000770",
+        "last_activity_timestamp_ms": "1661131066082",
+        "thread_key": "9000000000000770",
+        "thread_subtype": "IGD_GROUP",
+        "thread_fbid": "9000000000000770",
+        "is_group": true,
+        "users": [
+         {
+          "id": "90000000200",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000201",
+          "full_name": "p202xxxxxxx",
+          "ai_agent_type": null,
+          "username": "p203xxxxxxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/703",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         },
+         {
+          "id": "90000000090",
+          "friendship_status": {
+           "blocking": false,
+           "is_restricted": false
+          },
+          "supervision_info": null,
+          "interop_messaging_user_fbid": "90000000000000089",
+          "full_name": "p91xx",
+          "ai_agent_type": null,
+          "username": "p92xxxxx",
+          "is_verified": false,
+          "aigm_account_label_info": {
+           "attribution_label_text": null,
+           "is_auto_detected": false,
+           "is_enabled": false,
+           "is_manually_enabled": false
+          },
+          "profile_pic_url": "https://example.invalid/578",
+          "latest_reel_media": 0,
+          "latest_besties_reel_media": 0,
+          "reel_media_seen_timestamp": 0
+         }
+        ],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000089",
+          "watermark_timestamp_ms": "1661115688188"
+         },
+         {
+          "participant_fbid": "90000000000000201",
+          "watermark_timestamp_ms": "1661131066082"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1661131066082"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 0,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000771",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000089",
+            "timestamp_ms": "1661131066082",
+            "id": "mid.$m00000772qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p773xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p774xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p773xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000775ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000201",
+            "timestamp_ms": "1661115688188",
+            "id": "mid.$m00000776qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "CUTOUT_STICKER_XMA",
+            "text_body": "",
+            "igd_snippet": "p777xxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageCutoutStickerXMAContent"
+            }
+           },
+           "cursor": "C000778ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661115672126",
+            "id": "mid.$m00000779qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p780xxxxxxxxxxxxx",
+            "igd_snippet": "p781xxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p780xxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000782ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000201",
+            "timestamp_ms": "1661115665467",
+            "id": "mid.$m00000783qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p784xxxxxxx",
+            "igd_snippet": "p785xxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p784xxxxxxx"
+            }
+           },
+           "cursor": "C000786ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000008",
+            "timestamp_ms": "1661115646862",
+            "id": "mid.$m00000787qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p788xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p789xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p788xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000790ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000791ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p792xxxxxx",
+        "usersWithoutViewer": [
+         {
+          "is_internal_user": null,
+          "id": "90000000200"
+         },
+         {
+          "is_internal_user": null,
+          "id": "90000000090"
+         }
+        ],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": "https://example.invalid/793",
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": false,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "9000000000000770",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000794cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "id": "900000000000795",
+        "last_activity_timestamp_ms": "1660870595838",
+        "thread_key": "900000000000795",
+        "thread_subtype": "IGD_GROUP",
+        "thread_fbid": "900000000000795",
+        "is_group": true,
+        "users": [],
+        "marked_as_unread": false,
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000796",
+          "watermark_timestamp_ms": "1658058943301"
+         },
+         {
+          "participant_fbid": "90000000000000003",
+          "watermark_timestamp_ms": "1660870595838"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1660870602342"
+         }
+        ],
+        "is_pin": false,
+        "thread_label": 0,
+        "input_mode": 1,
+        "viewer_id": "90000000009",
+        "nicknames": [],
+        "thread_id": "900000000000000000000000000000000000797",
+        "slide_messages": {
+         "edges": [
+          {
+           "node": {
+            "sender_fbid": "90000000000000316",
+            "timestamp_ms": "1660870595838",
+            "id": "mid.$m00000798qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p79",
+            "igd_snippet": "p800xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p79"
+            }
+           },
+           "cursor": "C000801ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000003",
+            "timestamp_ms": "1660870592158",
+            "id": "mid.$m00000802qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p803xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p804xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p803xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000805ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000003",
+            "timestamp_ms": "1660870583457",
+            "id": "mid.$m00000806qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p807xxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p808xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p807xxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000809ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000316",
+            "timestamp_ms": "1660870559178",
+            "id": "mid.$m00000810qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "IMAGES",
+            "text_body": "",
+            "igd_snippet": "p811xxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageImageContent"
+            }
+           },
+           "cursor": "C000812ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          {
+           "node": {
+            "sender_fbid": "90000000000000316",
+            "timestamp_ms": "1660870551962",
+            "id": "mid.$m00000813qqqqqqqqqqqqqqqqqqqq",
+            "__typename": "SlideMessage",
+            "content_type": "TEXT",
+            "text_body": "p814xxxxxxxxxxxxxxxxxxx",
+            "igd_snippet": "p815xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "expiration_timestamp_ms": null,
+            "view_expiration_timestamp_ms": null,
+            "content": {
+             "__typename": "SlideMessageText",
+             "text_body": "p814xxxxxxxxxxxxxxxxxxx"
+            }
+           },
+           "cursor": "C000816ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+         ],
+         "page_info": {
+          "end_cursor": "C000817ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "has_next_page": true
+         }
+        },
+        "thread_title": "p818xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "usersWithoutViewer": [],
+        "viewer": {
+         "id": "90000000009",
+         "interop_messaging_user_fbid": "90000000000000008",
+         "profile_pic_url": "https://example.invalid/467"
+        },
+        "thread_image_url": null,
+        "messaging_folder_tag": "INBOX",
+        "event_chat_info": null,
+        "is_muted": true,
+        "takedown_data": null,
+        "system_folder": "INBOX",
+        "folder": "PRIMARY"
+       },
+       "id": "900000000000795",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000819cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "page_info": {
+     "end_cursor": "C000820cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "has_next_page": true
+    }
+   },
+   "id": "90000000000000008",
+   "__token": "p434xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+ }
+}

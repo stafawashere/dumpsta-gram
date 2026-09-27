@@ -1,5 +1,5 @@
-"""The direct requests: a thread's pages, opening a thread, the inbox listing, and a text send
-and its unsend.
+"""The direct requests: a thread's pages, opening a thread, the inbox listing and its next pages,
+the message requests, a folder's unread rows, and a text send and its unsend.
 """
 
 from __future__ import annotations
@@ -10,8 +10,11 @@ from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents.direct import (
    DIRECT_INBOX,
+   DIRECT_INBOX_NEXT_PAGE,
    DIRECT_TEXT_SEND,
    DIRECT_UNSEND,
+   FOLDER_UNREAD_ROWS,
+   MESSAGE_REQUESTS,
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
@@ -20,12 +23,19 @@ from dumpstagram._private.web.requests.common import _USER_ID, build_graphql_req
 from dumpstagram.session import Session
 
 __all__ = [
+   "INBOX_FOLDER",
+   "INBOX_PAGE_SIZE",
    "INBOX_ROW_MESSAGES",
    "PAGE_SIZE",
+   "PENDING_FOLDER",
+   "REQUESTS_WINDOW_MS",
    "SEND_ATTRIBUTION",
    "build_direct_text_send_request",
    "build_direct_unsend_request",
+   "build_folder_unread_rows_request",
    "build_inbox_listing_request",
+   "build_inbox_next_page_request",
+   "build_message_requests_request",
    "build_thread_detail_request",
    "build_thread_older_page_request",
    "build_thread_page_request",
@@ -53,6 +63,32 @@ _OFFLINE_THREADING_RANDOM_BITS = 22
 
 INBOX_ROW_MESSAGES = 5
 """How many of its newest messages each inbox row carries, as every captured inbox load asked."""
+
+INBOX_PAGE_SIZE = 15
+"""The inbox's next page size, the first page's compiled size.
+
+No browser was seen asking for a next page, so this is the value the neighbouring verified query
+uses rather than an observed one (W44). Both engine replays with it answered 15 rows.
+"""
+
+INBOX_FOLDER = "INBOX"
+
+PENDING_FOLDER = "PENDING"
+
+REQUESTS_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+"""How far back the pending requests are read, 30 days, 2592000000 ms.
+
+Both captured inbox loads sent the pending folder's unread rows query with the document time
+less exactly this, and the requests view compiles a provider named for it.
+"""
+
+_ROW_MESSAGES_PROVIDER = "__relay_internal__pv__IGDMaxUnreadMessagesCountrelayprovider"
+
+_THREAD_LIST_PROVIDERS = {
+   "__relay_internal__pv__IGDPinnedThreadsRenderEnabledGKrelayprovider": True,
+   _ROW_MESSAGES_PROVIDER: INBOX_ROW_MESSAGES,
+   "__relay_internal__pv__IGDThreadListActionsEnabledGKrelayprovider": True,
+}
 
 
 def build_thread_page_request(
@@ -198,6 +234,106 @@ def build_inbox_listing_request(
    return build_graphql_request(
       session,
       DIRECT_INBOX,
+      variables,
+      referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def build_inbox_next_page_request(
+   session: Session,
+   *,
+   mailbox_id: str,
+   cursor: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The inbox page after the one whose ``end_cursor`` is ``cursor``.
+
+   ``mailbox_id`` is the ``id`` of the mailbox root the first page answered under, which is the
+   viewer's messaging id. The three provider flags are the first page's, and the page size is
+   :data:`INBOX_PAGE_SIZE`.
+
+   Finding: ``direct-inbox-thread-list-next-page`` in the knowledge base.
+   """
+
+   variables = {
+      "count": INBOX_PAGE_SIZE,
+      "cursor": cursor,
+      "folder": INBOX_FOLDER,
+      "newer_than_timestamp_ms": None,
+      "id": mailbox_id,
+      **_THREAD_LIST_PROVIDERS,
+   }
+
+   return build_graphql_request(
+      session,
+      DIRECT_INBOX_NEXT_PAGE,
+      variables,
+      referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def build_message_requests_request(
+   session: Session,
+   *,
+   iris_device_id: str,
+   now_ms: int,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The pending and spam request folders, one page of each.
+
+   The 30 day provider is sent as an integer of milliseconds, :data:`REQUESTS_WINDOW_MS` before
+   ``now_ms``. Its type was never seen from a browser, and both engine replays sent it this way.
+
+   Finding: ``direct-message-requests`` in the knowledge base.
+   """
+
+   variables = {
+      "device_id_for_iris_subscription": iris_device_id,
+      "__relay_internal__pv__IGD30DayAgoTimestampMsrelayprovider": now_ms - REQUESTS_WINDOW_MS,
+      **_THREAD_LIST_PROVIDERS,
+   }
+
+   return build_graphql_request(
+      session,
+      MESSAGE_REQUESTS,
+      variables,
+      referer=BOOTSTRAP_URL,
+      user_agent=user_agent,
+   )
+
+
+def build_folder_unread_rows_request(
+   session: Session,
+   *,
+   iris_device_id: str,
+   folder: str,
+   now_ms: int,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The rows a folder's unread count is taken over, for :data:`INBOX_FOLDER` or
+   :data:`PENDING_FOLDER`.
+
+   A browser sends the inbox folder with no time and the pending folder with
+   ``newer_than_timestamp_ms``, a string of milliseconds :data:`REQUESTS_WINDOW_MS` before the
+   document time, and this sends both the same way.
+
+   Finding: ``direct-inbox-unread-thread-count`` in the knowledge base.
+   """
+
+   variables: dict[str, Any] = {
+      "device_id_for_iris_subscription": iris_device_id,
+      "folder": folder,
+   }
+   is_the_pending_folder = folder == PENDING_FOLDER
+
+   if is_the_pending_folder:
+      variables["newer_than_timestamp_ms"] = str(now_ms - REQUESTS_WINDOW_MS)
+
+   return build_graphql_request(
+      session,
+      FOLDER_UNREAD_ROWS,
       variables,
       referer=BOOTSTRAP_URL,
       user_agent=user_agent,

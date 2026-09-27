@@ -23,6 +23,12 @@ from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import PostDetail, PublishedPost
 from dumpstagram.models.profiles import BioLink, FriendshipStatus, Profile
+from dumpstagram.models.threads import (
+   DirectThread,
+   MessageRequests,
+   ThreadParticipant,
+   UnreadCounts,
+)
 
 __all__ = [
    "AudioKind",
@@ -30,6 +36,7 @@ __all__ = [
    "CarouselChild",
    "Comment",
    "CommentAuthor",
+   "DirectThread",
    "Event",
    "EventsDropped",
    "FeedItem",
@@ -39,6 +46,7 @@ __all__ = [
    "MediaAudio",
    "MediaImage",
    "Message",
+   "MessageRequests",
    "MessageSender",
    "NewMessage",
    "Note",
@@ -51,5 +59,7 @@ __all__ = [
    "Profile",
    "Reaction",
    "SentMessage",
+   "ThreadParticipant",
+   "UnreadCounts",
    "VideoRendition",
 ]

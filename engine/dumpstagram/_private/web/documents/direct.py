@@ -1,5 +1,5 @@
-"""The direct queries: a thread's pages, opening a thread, the inbox listing, and a text send and
-its unsend.
+"""The direct queries: a thread's pages, opening a thread, the inbox listing and its next pages,
+the message requests, a folder's unread rows, and a text send and its unsend.
 """
 
 from __future__ import annotations
@@ -8,8 +8,11 @@ from dumpstagram._private.web.documents.common import PersistedQuery
 
 __all__ = [
    "DIRECT_INBOX",
+   "DIRECT_INBOX_NEXT_PAGE",
    "DIRECT_TEXT_SEND",
    "DIRECT_UNSEND",
+   "FOLDER_UNREAD_ROWS",
+   "MESSAGE_REQUESTS",
    "THREAD_DETAIL",
    "THREAD_MESSAGE_PAGE",
    "THREAD_OLDER_PAGE",
@@ -65,6 +68,44 @@ through another query whose id has not been observed. The notes tray is not in i
 Verified by two browser loads and a page replay on 2026-09-23, and by two engine reads 60 s
 apart the same night, under ruling 23, which found every row identical with nothing done
 between them. What a new message does to a row has not been observed yet.
+"""
+
+DIRECT_INBOX_NEXT_PAGE = PersistedQuery(
+   doc_id="28000787896268887",
+   friendly_name="IGDThreadListOffMsysPaginationQuery",
+   finding_id="direct-inbox-thread-list-next-page",
+)
+"""Every inbox page after the first, keyed on the mailbox id and the previous page's cursor.
+
+It answers under ``fetch__SlideMailbox`` with rows of the same 26 keys the first page carries.
+The mailbox id is the ``id`` every mailbox root carries, equal to the viewer's messaging id.
+Replayed twice by the engine on 2026-09-24 with a page size of 15, the first page's compiled
+size and not a value any browser was seen sending, and both answers listed the same 15 threads,
+none of them on the first page.
+"""
+
+MESSAGE_REQUESTS = PersistedQuery(
+   doc_id="27525641663781745",
+   friendly_name="IGDMessageRequestLeftRailStandaloneQuery",
+   finding_id="direct-message-requests",
+)
+"""The pending and spam request folders, one page of each, as the requests view reads them.
+
+It answers under two roots, ``pendingMailbox`` and ``spamMailbox``. Replayed twice by the engine
+on 2026-09-24, when both folders were empty, so a row in either has not been observed.
+"""
+
+FOLDER_UNREAD_ROWS = PersistedQuery(
+   doc_id="27437959689223570",
+   friendly_name="useIGDSystemFolderUnreadThreadCountQuery",
+   finding_id="direct-inbox-unread-thread-count",
+)
+"""The rows a folder's unread count is taken over, sent for the inbox and then for the pending
+requests in every inbox load.
+
+Each row carries its last activity, its read receipts and the marked unread and muted flags, and
+no count: the browser counts. Seen in two inbox loads and replayed on 2026-09-23, and replayed by
+the engine for the pending folder on 2026-09-24.
 """
 
 DIRECT_TEXT_SEND = PersistedQuery(

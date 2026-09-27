@@ -35,7 +35,7 @@ capture night that unblocks the rest.
 
 | Order | Batch | Probe | Requests | Conditional |
 |---|---|---|---|---|
-| 1 | Direct read side | `probes/e2_direct_read.py` | 8 | 3 |
+| 1 | Direct read side, done 2026-09-24 | `probes/e2_direct_read.py` | 9, spent 9 | 3, spent 0 |
 | 2 | Profile tabs over GraphQL | `probes/e2_profile_tabs.py` | 12 | 4 |
 | 3 | Relationship lists | `probes/e2_follow_lists.py` | 6 | 1 |
 | 4 | Post depth | `probes/e2_post_depth.py` | 13 | 7 |
@@ -62,12 +62,32 @@ night.
 
 | Operation | Kind | Status |
 |---|---|---|
-| `PolarisDirectInboxQuery` | first page | verified, private since Step 20 |
-| `IGDThreadListOffMsysPaginationQuery` | next pages | hypothesis |
-| `IGDMessageRequestLeftRailStandaloneQuery` | pending and spam folders | hypothesis |
-| `useIGDSystemFolderUnreadThreadCountQuery` | unread counts per folder | verified |
-| `IGDBadgeCountOffMsysQuery` | the direct badge | verified, a shipped companion |
-| `IGDInboxInfoOffMsysQuery` | a thread's details panel | hypothesis |
+| `PolarisDirectInboxQuery` | first page | verified, public as `direct.inbox` |
+| `IGDThreadListOffMsysPaginationQuery` | next pages | verified 2026-09-24, public as `direct.inbox` with a cursor |
+| `IGDMessageRequestLeftRailStandaloneQuery` | pending and spam folders | verified 2026-09-24, public as `direct.message_requests` |
+| `useIGDSystemFolderUnreadThreadCountQuery` | unread counts per folder | verified, public as `direct.unread_counts` |
+| `IGDBadgeCountOffMsysQuery` | the direct badge | verified, a shipped companion, no capability (W47) |
+| `IGDInboxInfoOffMsysQuery` | a thread's details panel | verified 2026-09-24, no capability (W47) |
+
+**Status: done on 2026-09-24, rulings W45 to W48.** The probe ran with 9 requests and no
+conditional one, every hypothesis read replayed twice with a 200 and no null root, and the three
+findings were promoted to verified. The reads shipped as `client.direct.inbox(*, after=None) ->
+Page[DirectThread]`, `client.direct.iter_inbox(*, limit, after=None)`,
+`client.direct.message_requests() -> MessageRequests` and `client.direct.unread_counts() ->
+UnreadCounts`, on both clients with no flat twin, and as `dumpsta inbox`, `dumpsta
+message-requests` and `dumpsta unread`. The live acceptance through `dumpsta` spent 5 requests
+more, 14 in all, and no browser page load. What the run found that the plan did not know:
+
+- The next page's `id` is the mailbox id, which every mailbox root carries and which equals the
+  viewer's messaging id. Only the first page's answer carries it beside the cursor, so the cursor
+  `direct.inbox` hands out joins the two (W46).
+- Neither unread query answers with a number. Each answers a folder's first page of rows with
+  their read receipts, and the browser counts. The engine counts a row unread when it is marked
+  unread or the viewer's receipt is older than its last activity or absent, an INFERENCE (W47).
+- Both request folders were empty, so a request row has not been seen. It is mapped as an inbox
+  row, loudly, and its non-empty verification moves to E6 under W44.
+- The details panel answers admin ids, capability bitmasks and the members, with no activity and
+  no receipts, so it adds nothing a `DirectThread` lacks and backs no capability (W47).
 
 Variables. The iris device id is a fresh uuid per client, as the poller already sends. The next
 page takes the mailbox `id` and the `end_cursor` from the first page, `folder` INBOX, and
@@ -75,10 +95,12 @@ page takes the mailbox `id` and the `end_cursor` from the first page, `folder` I
 query takes the device id and a "30 days ago" timestamp in milliseconds, whose type is not
 observed. The details panel takes a `thread_fbid`, which `direct.threads` rows carry.
 
-Methods. `client.direct.threads(*, after=None) -> Page[Thread]` and `iter_threads(*, limit)`,
-the private inbox listing made public; `client.direct.requests() -> Page[Thread]` for pending,
-with spam as a folder argument if the answer separates them; `client.direct.unread_counts()`;
-`client.direct.thread_info(thread_fbid)`. The `Thread` model is new and public.
+Methods, as planned. `client.direct.threads(*, after=None) -> Page[Thread]` and
+`iter_threads(*, limit)`, the private inbox listing made public; `client.direct.requests() ->
+Page[Thread]` for pending, with spam as a folder argument if the answer separates them;
+`client.direct.unread_counts()`; `client.direct.thread_info(thread_fbid)`. The `Thread` model is
+new and public. W45 renamed them as shipped: `inbox`, `iter_inbox`, `message_requests`,
+`unread_counts` and the `DirectThread` model, and W47 dropped `thread_info`.
 
 Pagination. `threads_by_folder.page_info.has_next_page`, cursor `end_cursor`.
 

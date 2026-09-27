@@ -42,6 +42,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `adopt` | 0 | Builds a session from cookie material and saves it |
 | `session` | 0 | Prints what the saved session holds, redacted |
 | `thread FBID` | 1 per page, plus 1 if the session has no token yet | Reads pages of one direct thread |
+| `inbox` | 1 per page, plus 1 if the session has no token yet | Lists the direct inbox, newest activity first, with each thread's `FBID`. Opens no thread, so marks nothing read |
+| `message-requests` | 1, plus 1 if the session has no token yet | Lists the pending and spam message requests, one page each. Opens no request thread |
+| `unread` | 2, plus 1 if the session has no token yet | Counts the unread threads in the inbox and the pending requests |
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
@@ -57,7 +60,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
 | `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
-| `doctor` | 0 without `--live`. With it, 2 documents and at most 10 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 13 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -136,6 +139,36 @@ generated, which is how `send-message` output is matched to the message it creat
 
 Tokens harvested during a read are written back to the session file by default. Without it
 every invocation pays a bootstrap request the previous one already paid for.
+
+### `inbox`, `message-requests` and `unread`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta inbox --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json message-requests
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unread
+```
+
+`inbox` prints one entry per thread in the upstream's order: the last activity, the `FBID`
+`thread` takes, the title, the flags that apply (`unread`, `pinned`, `muted`, `group`) and the
+upstream's one-line preview. `--pages N` reads at most `N` pages, default 1, and stops earlier on
+the page's own `has_next_page`. `--after CURSOR` takes a `next_cursor` an earlier `inbox` run
+printed and no other, because that cursor carries the mailbox the next page is keyed on (W46).
+The JSON form carries `pages_read`, `thread_count`, `more_available`, `end_cursor` and every
+thread with its participants.
+
+`message-requests` prints the pending and the spam folder, one page each, with
+`more_available` on a folder that has more. No request thread is opened, because opening one
+marks it seen to its sender.
+
+`unread` prints `unread inbox: N  pending requests: M`, and marks a count with `+` when its
+folder has rows past the first page the count is taken over. A thread counts as unread when it is
+marked unread or the viewer's read receipt is older than its last activity, the engine's reading
+of the rows rather than the website's own rule (W47).
+
+All three take `--user-agent` and `--no-session-writeback`, and write harvested tokens back by
+default. Live on 2026-09-24 through `probes/e2_direct_read_cli_acceptance.py`, 5 requests: two
+inbox pages of 15 threads each, both request folders empty, and one unread thread that the
+listing and the count agreed on.
 
 ### `profile`
 
@@ -497,7 +530,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

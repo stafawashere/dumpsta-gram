@@ -1,0 +1,420 @@
+{
+ "data": {
+  "get_slide_mailbox_for_iris_subscription": {
+   "threads_by_folder": {
+    "edges": [
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665254858494",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000034",
+          "watermark_timestamp_ms": "1665222092317"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665254858494"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000033"
+       },
+       "id": "90000000000000033",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000821ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665254718445",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000059",
+          "watermark_timestamp_ms": "1665236480013"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665254718445"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000058"
+       },
+       "id": "90000000000000058",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000822ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665238507828",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000226",
+          "watermark_timestamp_ms": "1617658741475"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665238507828"
+         }
+        ],
+        "is_muted": true,
+        "id": "90000000000000273"
+       },
+       "id": "90000000000000273",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000823ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665237197012",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000003",
+          "watermark_timestamp_ms": "1665233487499"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665237197012"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000002"
+       },
+       "id": "90000000000000002",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000824ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665236416320",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000206",
+          "watermark_timestamp_ms": "1664936607251"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665236416320"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000294"
+       },
+       "id": "90000000000000294",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000825ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665235280369",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000316",
+          "watermark_timestamp_ms": "1636930225104"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665235280370"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000315"
+       },
+       "id": "90000000000000315",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000826ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665229299601",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000089",
+          "watermark_timestamp_ms": "1665129643500"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665229299601"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000088"
+       },
+       "id": "90000000000000088",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000827ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665226400697",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000226",
+          "watermark_timestamp_ms": "1618119387889"
+         },
+         {
+          "participant_fbid": "90000000000000221",
+          "watermark_timestamp_ms": "1656805273217"
+         },
+         {
+          "participant_fbid": "90000000000000211",
+          "watermark_timestamp_ms": "1657336954918"
+         },
+         {
+          "participant_fbid": "90000000000000231",
+          "watermark_timestamp_ms": "1658063500876"
+         },
+         {
+          "participant_fbid": "90000000000000181",
+          "watermark_timestamp_ms": "1658225122942"
+         },
+         {
+          "participant_fbid": "90000000000000089",
+          "watermark_timestamp_ms": "1665099317963"
+         },
+         {
+          "participant_fbid": "90000000000000196",
+          "watermark_timestamp_ms": "1665132214405"
+         },
+         {
+          "participant_fbid": "90000000000000034",
+          "watermark_timestamp_ms": "1665217754722"
+         },
+         {
+          "participant_fbid": "90000000000000216",
+          "watermark_timestamp_ms": "1665219866798"
+         },
+         {
+          "participant_fbid": "90000000000000145",
+          "watermark_timestamp_ms": "1665222362357"
+         },
+         {
+          "participant_fbid": "90000000000000186",
+          "watermark_timestamp_ms": "1665226252791"
+         },
+         {
+          "participant_fbid": "90000000000000118",
+          "watermark_timestamp_ms": "1665226400697"
+         },
+         {
+          "participant_fbid": "90000000000000191",
+          "watermark_timestamp_ms": "1665226400697"
+         },
+         {
+          "participant_fbid": "90000000000000206",
+          "watermark_timestamp_ms": "1665226400697"
+         },
+         {
+          "participant_fbid": "90000000000000201",
+          "watermark_timestamp_ms": "1665226400697"
+         },
+         {
+          "participant_fbid": "900000000000171",
+          "watermark_timestamp_ms": "1665226400697"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665226400697"
+         }
+        ],
+        "is_muted": false,
+        "id": "9000000000000169"
+       },
+       "id": "9000000000000169",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000828cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665201954115",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000201",
+          "watermark_timestamp_ms": "1665121512727"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665201954116"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000258"
+       },
+       "id": "90000000000000258",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000829ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1665148176421",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000341",
+          "watermark_timestamp_ms": "1665148157589"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1665148176422"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000340"
+       },
+       "id": "90000000000000340",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000830ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1664779777126",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000366",
+          "watermark_timestamp_ms": "1664776600345"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664779777127"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000365"
+       },
+       "id": "90000000000000365",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000831ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1664713809255",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000191",
+          "watermark_timestamp_ms": "1664713379737"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664713809256"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000392"
+       },
+       "id": "90000000000000392",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000832ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1664655463575",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000186",
+          "watermark_timestamp_ms": "1664657713594"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664655463576"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000411"
+       },
+       "id": "90000000000000411",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000833ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1664570859202",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000118",
+          "watermark_timestamp_ms": "1664570859203"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664570859202"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000117"
+       },
+       "id": "90000000000000117",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000834ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     },
+     {
+      "node": {
+       "as_ig_direct_thread": {
+        "marked_as_unread": false,
+        "last_activity_timestamp_ms": "1664464798604",
+        "slide_read_receipts": [
+         {
+          "participant_fbid": "90000000000000145",
+          "watermark_timestamp_ms": "1663306189526"
+         },
+         {
+          "participant_fbid": "90000000000000008",
+          "watermark_timestamp_ms": "1664464798605"
+         }
+        ],
+        "is_muted": false,
+        "id": "90000000000000144"
+       },
+       "id": "90000000000000144",
+       "__typename": "SlideThread"
+      },
+      "cursor": "C000835ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "page_info": {
+     "end_cursor": "C000836ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+     "has_next_page": true
+    }
+   },
+   "id": "90000000000000008"
+  }
+ }
+}

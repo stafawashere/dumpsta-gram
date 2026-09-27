@@ -1,4 +1,5 @@
-"""Map a direct payload: a thread's messages, the inbox listing, and a send and unsend answer.
+"""Map a direct payload: a thread's messages, the inbox listing and its public pages, the message
+requests, a folder's unread rows, and a send and unsend answer.
 
 What the upstream sends and this module drops, from the twenty-node capture on 2026-09-21 in
 `engine/logs/message-node-shape-2026-09-21-022957.json`:
@@ -36,25 +37,39 @@ from dumpstagram._private.web.parse.common import (
 )
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
+   DirectThread,
    Message,
+   MessageRequests,
    MessageSender,
    Page,
    Reaction,
    SentMessage,
+   ThreadParticipant,
 )
 
 __all__ = [
    "DIRECT_TEXT_SEND_ROOT",
    "DIRECT_UNSEND_ROOT",
    "INBOX_LISTING_PATH",
+   "INBOX_MAILBOX_PATH",
+   "INBOX_NEXT_PAGE_MAILBOX_PATH",
+   "PENDING_REQUESTS_PATH",
+   "SPAM_REQUESTS_PATH",
    "THREAD_DETAIL_PATH",
    "THREAD_DETAIL_THREAD_PATH",
    "THREAD_PAGE_PATH",
+   "FolderUnreadRows",
    "InboxMessage",
+   "InboxPage",
    "InboxThread",
    "parse_direct_text_send_answer",
    "parse_direct_unsend_answer",
+   "parse_folder_unread_rows",
+   "parse_inbox_continuation",
    "parse_inbox_listing",
+   "parse_inbox_next_page",
+   "parse_inbox_page",
+   "parse_message_requests",
    "parse_inbox_recent_messages",
    "parse_thread_detail",
    "parse_thread_id",
@@ -481,3 +496,277 @@ def parse_thread_id(payload: Any) -> str:
    thread = _object_at(payload, THREAD_DETAIL_THREAD_PATH)
 
    return _required_string(thread, "thread_id", ".".join(THREAD_DETAIL_THREAD_PATH))
+
+
+INBOX_MAILBOX_PATH = ("data", "get_slide_mailbox_for_iris_subscription")
+"""The mailbox root of the inbox's first page and of a folder's unread rows."""
+
+INBOX_NEXT_PAGE_MAILBOX_PATH = ("data", "fetch__SlideMailbox")
+"""The mailbox root of every inbox page after the first."""
+
+PENDING_REQUESTS_PATH = ("data", "pendingMailbox")
+
+SPAM_REQUESTS_PATH = ("data", "spamMailbox")
+
+
+@dataclass(frozen=True)
+class InboxPage:
+   """One inbox page and the id of the mailbox it came from, which the next page is keyed on."""
+
+   page: Page[DirectThread]
+   mailbox_id: str
+
+
+@dataclass(frozen=True)
+class FolderUnreadRows:
+   """How many of one folder's rows are unread, and whether the folder has rows past them."""
+
+   unread: int
+   has_more: bool
+
+
+def _receipt_watermarks(thread: dict[str, Any], participant_fbid: str, path: str) -> list[int]:
+   receipts_path = f"{path}.slide_read_receipts"
+   receipts = _required(thread, "slide_read_receipts", path)
+
+   if not isinstance(receipts, list):
+      raise SchemaChanged(f"{receipts_path} is not a list", path=receipts_path)
+
+   watermarks: list[int] = []
+
+   for index, receipt in enumerate(receipts):
+      receipt_path = f"{receipts_path}[{index}]"
+      participant = _required_string(receipt, "participant_fbid", receipt_path)
+      is_the_participant = participant == participant_fbid
+
+      if is_the_participant:
+         watermarks.append(_milliseconds(receipt, "watermark_timestamp_ms", receipt_path))
+
+   return watermarks
+
+
+def _is_unread(thread: dict[str, Any], viewer_fbid: str, path: str) -> bool:
+   """Whether ``thread`` is unread to the viewer whose messaging id is ``viewer_fbid``.
+
+   A thread is unread when it is marked unread, or when the viewer's read receipt is earlier than
+   its last activity or absent. The browser's own rule has not been read, so this is the
+   engine's reading of the row (INFERENCE). On 2026-09-24, 29 of the 30 rows of two inbox pages
+   carried the viewer's receipt at or after the last activity, and one carried it 166 s before,
+   the one row this calls unread.
+   """
+
+   is_marked_unread = _required_flag(thread, "marked_as_unread", path)
+   last_activity_ms = _milliseconds(thread, "last_activity_timestamp_ms", path)
+   watermarks = _receipt_watermarks(thread, viewer_fbid, path)
+   has_read_to_the_end = bool(watermarks) and max(watermarks) >= last_activity_ms
+
+   return is_marked_unread or not has_read_to_the_end
+
+
+def _participant(user: Any, path: str) -> ThreadParticipant:
+   return ThreadParticipant(
+      user_id=_required_string(user, "id", path),
+      username=_required_string(user, "username", path),
+      full_name=_required_string(user, "full_name", path),
+      is_verified=_required_flag(user, "is_verified", path),
+   )
+
+
+def _participants(thread: dict[str, Any], path: str) -> tuple[ThreadParticipant, ...]:
+   users_path = f"{path}.users"
+   users = _required(thread, "users", path)
+
+   if not isinstance(users, list):
+      raise SchemaChanged(f"{users_path} is not a list", path=users_path)
+
+   return tuple(_participant(user, f"{users_path}[{index}]") for index, user in enumerate(users))
+
+
+def _newest_message(thread: dict[str, Any], path: str) -> dict[str, Any] | None:
+   messages_path = f"{path}.slide_messages"
+   messages = _required(thread, "slide_messages", path)
+   edges = _required(messages, "edges", messages_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{messages_path}.edges is not a list", path=f"{messages_path}.edges")
+
+   if not edges:
+      return None
+
+   newest_edge = edges[0]
+   node_path = f"{messages_path}.edges[0].node"
+   node = _required(newest_edge, "node", f"{messages_path}.edges[0]")
+
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{node_path} is not an object", path=node_path)
+
+   return node
+
+
+def _direct_thread(edge: Any, path: str) -> DirectThread:
+   """One listing row mapped into a :class:`~dumpstagram.models.DirectThread`.
+
+   ``users`` holds the people other than the viewer: on every measured row it was as long as
+   ``usersWithoutViewer``, one on each one-to-one row and seventeen on the one group. The viewer
+   is named by the row's own ``viewer.interop_messaging_user_fbid``, the id the read receipts use.
+   """
+
+   row_path = f"{path}.node.as_ig_direct_thread"
+   row = _required(_required(edge, "node", path), "as_ig_direct_thread", f"{path}.node")
+
+   if not isinstance(row, dict):
+      raise SchemaChanged(f"{row_path} is not an object", path=row_path)
+
+   viewer_path = f"{row_path}.viewer"
+   viewer_fbid = _required_string(
+      _required(row, "viewer", row_path), "interop_messaging_user_fbid", viewer_path
+   )
+   newest = _newest_message(row, row_path)
+   newest_path = f"{row_path}.slide_messages.edges[0].node"
+   last_activity_ms = _milliseconds(row, "last_activity_timestamp_ms", row_path)
+
+   return DirectThread(
+      thread_fbid=_required_string(row, "thread_fbid", row_path),
+      title=_required_string(row, "thread_title", row_path),
+      is_group=_required_flag(row, "is_group", row_path),
+      participants=_participants(row, row_path),
+      last_activity_at=datetime.fromtimestamp(last_activity_ms / MILLISECONDS_PER_SECOND, tz=UTC),
+      last_message_id=None if newest is None else _required_string(newest, "id", newest_path),
+      snippet=None if newest is None else _optional_string(newest, "igd_snippet", newest_path),
+      is_unread=_is_unread(row, viewer_fbid, row_path),
+      is_marked_unread=_required_flag(row, "marked_as_unread", row_path),
+      is_muted=_required_flag(row, "is_muted", row_path),
+      is_pinned=_required_flag(row, "is_pin", row_path),
+   )
+
+
+def _connection_of(
+   mailbox: dict[str, Any], mailbox_path: str
+) -> tuple[list[Any], bool, str | None]:
+   connection_path = f"{mailbox_path}.threads_by_folder"
+   connection = _required(mailbox, "threads_by_folder", mailbox_path)
+
+   if not isinstance(connection, dict):
+      raise SchemaChanged(f"{connection_path} is not an object", path=connection_path)
+
+   edges = _required(connection, "edges", connection_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{connection_path}.edges is not a list", path=f"{connection_path}.edges")
+
+   page_info_path = f"{connection_path}.page_info"
+   page_info = _required(connection, "page_info", connection_path)
+
+   if not isinstance(page_info, dict):
+      raise SchemaChanged(f"{page_info_path} is not an object", path=page_info_path)
+
+   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   return edges, has_next_page, end_cursor
+
+
+def _thread_page(payload: Any, mailbox_path: tuple[str, ...]) -> InboxPage:
+   mailbox = _object_at(payload, mailbox_path)
+   joined = ".".join(mailbox_path)
+   edges, has_next_page, end_cursor = _connection_of(mailbox, joined)
+   connection_path = f"{joined}.threads_by_folder"
+   threads = tuple(
+      _direct_thread(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
+   )
+
+   return InboxPage(
+      page=Page(items=threads, has_next_page=has_next_page, end_cursor=end_cursor),
+      mailbox_id=_required_string(mailbox, "id", joined),
+   )
+
+
+def parse_inbox_page(payload: Any) -> InboxPage:
+   """The inbox's first page, one ``PolarisDirectInboxQuery`` payload, as public threads.
+
+   The rows keep the upstream's order, newest activity first with pinned threads in place, as
+   :func:`parse_inbox_listing` keeps them. The page's ``end_cursor`` is the upstream's own, and
+   the mailbox id beside it is what the next page is keyed on.
+
+   Finding: ``direct-inbox-thread-list`` in the knowledge base.
+   """
+
+   return _thread_page(payload, INBOX_MAILBOX_PATH)
+
+
+def parse_inbox_continuation(payload: Any) -> tuple[str, str | None]:
+   """The mailbox id and the upstream's ``end_cursor`` of the inbox's first page, the two values
+   the next page is keyed on, with ``None`` for the cursor when the page says it is the last.
+   Nothing else in the payload is read.
+   """
+
+   mailbox = _object_at(payload, INBOX_MAILBOX_PATH)
+   mailbox_path = ".".join(INBOX_MAILBOX_PATH)
+   _, has_next_page, end_cursor = _connection_of(mailbox, mailbox_path)
+
+   return _required_string(mailbox, "id", mailbox_path), end_cursor if has_next_page else None
+
+
+def parse_inbox_next_page(payload: Any) -> InboxPage:
+   """One inbox page after the first, one ``IGDThreadListOffMsysPaginationQuery`` payload.
+
+   Its rows carry the same keys as the first page's and map the same way.
+
+   Finding: ``direct-inbox-thread-list-next-page`` in the knowledge base.
+   """
+
+   return _thread_page(payload, INBOX_NEXT_PAGE_MAILBOX_PATH)
+
+
+def parse_message_requests(payload: Any) -> MessageRequests:
+   """One ``IGDMessageRequestLeftRailStandaloneQuery`` payload, both folders.
+
+   A request row is mapped as an inbox row is. Both folders were empty on every read so far, so
+   whether a request row carries the same keys has not been observed, and a row that does not
+   raises :class:`~dumpstagram.errors.SchemaChanged` naming the key it lacked.
+
+   Finding: ``direct-message-requests`` in the knowledge base.
+   """
+
+   pending = _thread_page(payload, PENDING_REQUESTS_PATH).page
+   spam = _thread_page(payload, SPAM_REQUESTS_PATH).page
+
+   return MessageRequests(
+      pending=pending.items,
+      spam=spam.items,
+      pending_has_more=pending.has_next_page,
+      spam_has_more=spam.has_next_page,
+   )
+
+
+def parse_folder_unread_rows(payload: Any) -> FolderUnreadRows:
+   """How many rows of one ``useIGDSystemFolderUnreadThreadCountQuery`` payload are unread.
+
+   The rows carry no viewer, so the viewer is the mailbox's own ``id``, which equalled the
+   ``viewer.interop_messaging_user_fbid`` of every listing row read beside it on 2026-09-24 and
+   the one participant on every row's receipts on 2026-09-23.
+
+   Finding: ``direct-inbox-unread-thread-count`` in the knowledge base.
+   """
+
+   mailbox = _object_at(payload, INBOX_MAILBOX_PATH)
+   mailbox_path = ".".join(INBOX_MAILBOX_PATH)
+   viewer_fbid = _required_string(mailbox, "id", mailbox_path)
+   edges, has_next_page, _ = _connection_of(mailbox, mailbox_path)
+   connection_path = f"{mailbox_path}.threads_by_folder"
+   unread = 0
+
+   for index, edge in enumerate(edges):
+      edge_path = f"{connection_path}.edges[{index}]"
+      thread_path = f"{edge_path}.node.as_ig_direct_thread"
+      thread = _required(
+         _required(edge, "node", edge_path), "as_ig_direct_thread", f"{edge_path}.node"
+      )
+
+      if not isinstance(thread, dict):
+         raise SchemaChanged(f"{thread_path} is not an object", path=thread_path)
+
+      if _is_unread(thread, viewer_fbid, thread_path):
+         unread += 1
+
+   return FolderUnreadRows(unread=unread, has_more=has_next_page)

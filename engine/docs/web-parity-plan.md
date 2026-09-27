@@ -617,6 +617,59 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   translation, a player's thumbnails, an alternate compiled route of an action with a chosen
   route, or chrome. Items whose non-empty answer needs another person's action, incoming follow
   requests and the blocked list, are verified empty in E2 and non-empty in E6.
+
+- **W45. The inbox reads are `direct.inbox`, `iter_inbox`, `message_requests` and
+  `unread_counts`, and the row is a `DirectThread`.** Ruled 2026-09-24 by the orchestrator on the
+  owner's delegation, for E2 batch 1. The plan's `threads` became `inbox`, because a row of the
+  message requests is a thread too and the read is of one folder, the one the website calls the
+  inbox. `requests` became `message_requests`, because in a library that sends requests the bare
+  word reads as HTTP. The model is `DirectThread` rather than `Thread`, which would shadow
+  `threading.Thread` in any caller that imports both and sits beside the private `InboxThread` the
+  poller reads. Each lives on `client.direct` only, with no flat twin, under W1 and W24, and
+  `iter_inbox` is the one iterator, since `message_requests` is not a `Page`: no query that reads
+  a request folder past its first page has been observed, so `MessageRequests` holds two tuples
+  and the upstream's `has_next_page` for each rather than a cursor nothing can follow.
+  `ThreadParticipant` carries the account id, not the messaging id, so it feeds
+  `profiles.by_id`. The surface grew from 536 lines to 580, 44 added and none removed or changed.
+- **W46. The cursor `direct.inbox` hands out carries the mailbox id.** Ruled 2026-09-24 for E2
+  batch 1. The next page query is keyed on the mailbox id beside the upstream's cursor, and only
+  the first page's answer carries the id. So a page's `end_cursor` is `<mailbox id>:<upstream
+  cursor>`, and `inbox(after=...)` splits it and refuses with `ValueError`, before anything is
+  sent, any cursor it did not hand out. `Page.end_cursor` was already opaque, so no promise
+  changes. Keeping the id on the client instead would be hidden state a second client could not
+  resume from, against ADR-0004, and re-reading the first page for it would spend a request per
+  page.
+- **W47. The unread counts are counted by the engine, and two verified operations back no
+  capability.** Ruled 2026-09-24 for E2 batch 1. Both unread queries answer a folder's first page
+  of rows with their read receipts and no number, and the browser counts. `unread_counts` sends
+  the inbox folder and then the pending one with one device id, as an inbox load does, and counts
+  a row unread when it is marked unread or the viewer's receipt is older than its last activity
+  or absent. The viewer is the mailbox id, the one value both answers carry that equals the
+  viewer's messaging id, which the rows name in their receipts. The rule is an INFERENCE, since
+  the browser's is not read, and one live unread row agreed across the listing and the count
+  query. Muted threads count, and a folder with rows past its first page says so rather than
+  being called whole. `IGDBadgeCountOffMsysQuery` backs no capability: it answers the inbox
+  folder's rows with no folder argument, which `unread_counts` already reads, and it stays the
+  page-load companion it was. `IGDInboxInfoOffMsysQuery` backs none either: it answers admin ids,
+  two capability bitmasks and the members, with no activity and no receipts, nothing a
+  `DirectThread` lacks. A message request row has not been observed, since both folders were
+  empty on every read; it is mapped as an inbox row and raises `SchemaChanged` where it differs,
+  and its non-empty check waits for E6 under W44, which needs a second account to send one.
+- **W48. The canary replays thirteen reads, and four doctor gates followed.** Ruled 2026-09-24
+  for E2 batch 1. The three new queries are in `READ_QUERIES`, so the catalog gate holds them and
+  the doctor replays each once: the next page on the cursor the listing step learns, skipped when
+  the first page is the last, and the requests and the inbox folder's unread rows keyed on
+  nothing learned. That takes a live doctor run from at most 12 paced requests to at most 15.
+  `tests/test_doctor.py` followed in three literals, each checked red before the edit and green
+  after it: the registry count, 30 to 33, the stated plan, 10 reads to 13, and the dry run's
+  paced total, 12 to 15. The skip gate was strengthened to require the next page skipped too
+  when the inbox lists nothing, four reads rather than three, and a new gate holds every read to
+  replaying ok against an answer its mapper accepts, which no gate did before. The parity tables
+  gained the three methods and the iterator, which puts them under every namespace gate. The gate
+  fixtures are the recorded answers, pseudonymised by `scripts/build_direct_read_fixtures.py`,
+  and `scripts/verify_direct_read_gates.py` holds 34 mutations, each seen red then green. Live
+  traffic: 9 probe requests and 5 through `dumpsta`, 14 of the 25 the batch allowed, and no
+  browser page load.
 - **W49. Account B is the second account, and it is the owner's to spend.** Ruled by the owner on
   2026-09-27, recorded by the orchestrator. The owner made a new account for the engine's tests,
   called account B here. Its cookies are in `.env.account-b` at the repository root, gitignored,

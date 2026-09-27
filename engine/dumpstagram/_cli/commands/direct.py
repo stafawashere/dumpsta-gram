@@ -1,4 +1,5 @@
-"""The direct commands: read a thread's pages, and send or unsend a text message."""
+"""The direct commands: read a thread's pages, list the inbox and the message requests, count
+the unread threads, and send or unsend a text message."""
 
 from __future__ import annotations
 
@@ -17,25 +18,39 @@ from dumpstagram._cli.commands.common import (
 )
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.direct import (
+   describe_inbox_pages,
    describe_message,
+   describe_message_requests,
    describe_pages,
    describe_sent_message,
+   describe_thread,
+   describe_unread_counts,
+   render_inbox,
+   render_message_requests,
    render_messages,
+   render_unread_counts,
 )
 from dumpstagram.models import (
+   DirectThread,
    Message,
    Page,
 )
 
 __all__ = [
+   "INBOX_COMMANDS",
+   "add_inbox_parsers",
    "add_message_write_parsers",
    "add_thread_parser",
    "message_id",
+   "read_inbox_pages",
    "read_pages",
    "run_direct_write",
+   "run_inbox_command",
    "run_thread",
    "thread_fbid",
 ]
+
+INBOX_COMMANDS = ("inbox", "message-requests", "unread")
 
 
 def thread_fbid(value: str) -> str:
@@ -223,3 +238,113 @@ def add_message_write_parsers(commands: Subcommands) -> None:
       "message_id", metavar="MESSAGE_ID", type=message_id, help="the message's id, a mid. string"
    )
    add_request_options(unsend)
+
+
+def read_inbox_pages(client: Client, arguments: argparse.Namespace) -> list[Page[DirectThread]]:
+   """Read up to ``--pages`` inbox pages, stopping on the page's own terminator."""
+
+   pages: list[Page[DirectThread]] = []
+   cursor = arguments.after
+
+   for _ in range(arguments.pages):
+      page = client.direct.inbox(after=cursor)
+      pages.append(page)
+
+      if not page.has_next_page:
+         break
+
+      cursor = page.end_cursor
+
+   return pages
+
+
+def _inbox_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
+   if arguments.command == "inbox":
+      pages = read_inbox_pages(client, arguments)
+      payload: dict[str, Any] = {
+         "command": "inbox",
+         **describe_inbox_pages(pages),
+         "threads": [describe_thread(thread) for page in pages for thread in page.items],
+      }
+
+      return payload, render_inbox(pages)
+
+   if arguments.command == "message-requests":
+      requests = client.direct.message_requests()
+      payload = {"command": "message-requests", **describe_message_requests(requests)}
+
+      return payload, render_message_requests(requests)
+
+   counts = client.direct.unread_counts()
+   payload = {"command": "unread", **describe_unread_counts(counts)}
+
+   return payload, render_unread_counts(counts)
+
+
+def run_inbox_command(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_read = client.session.fb_dtsg
+
+   try:
+      payload, text = _inbox_result(client, arguments)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   emit(payload, text, as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
+def add_inbox_parsers(commands: Subcommands) -> None:
+   inbox = commands.add_parser(
+      "inbox",
+      help="list the direct inbox, newest activity first, one live request per page",
+      description=(
+         "Lists direct threads without opening any, so nothing is marked read. The FBID each "
+         "thread prints is what dumpsta thread takes. --after takes a next_cursor this command "
+         "printed, and no other cursor."
+      ),
+   )
+   inbox.add_argument(
+      "--pages",
+      type=page_count,
+      default=1,
+      metavar="N",
+      help="how many pages to read at most, default 1",
+   )
+   inbox.add_argument("--after", metavar="CURSOR", help="a next_cursor from an earlier inbox run")
+   add_request_options(inbox)
+
+   requests = commands.add_parser(
+      "message-requests",
+      help="list the pending and spam message requests, one live request",
+      description=(
+         "Lists both request folders, one page of each. No request thread is opened, because "
+         "opening one marks it seen to its sender."
+      ),
+   )
+   add_request_options(requests)
+
+   unread = commands.add_parser(
+      "unread",
+      help="count the unread threads in the inbox and the pending requests, two live requests",
+      description=(
+         "Counts over the first page of each folder that an inbox load reads, and marks a "
+         "count with + when the folder has rows past that page. A thread is unread when it is "
+         "marked unread or the viewer's read receipt is older than its last activity, the "
+         "engine's reading of the rows rather than the website's own rule."
+      ),
+   )
+   add_request_options(unread)

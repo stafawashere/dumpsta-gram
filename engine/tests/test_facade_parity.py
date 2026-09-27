@@ -748,10 +748,13 @@ def test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_blo
 
 CORE_FUNCTION_FOR_ALIAS = {
    "direct.delete_note": "dumpstagram._core.writes.notes.delete_note",
+   "direct.inbox": "dumpstagram._core.inbox.read_inbox_page",
+   "direct.message_requests": "dumpstagram._core.inbox.read_message_requests",
    "direct.messages": "dumpstagram._core.direct.read_thread_messages",
    "direct.notes": "dumpstagram._core.notes.read_notes",
    "direct.send": "dumpstagram._core.writes.direct.send_message",
    "direct.set_note": "dumpstagram._core.writes.notes.set_note",
+   "direct.unread_counts": "dumpstagram._core.inbox.read_unread_counts",
    "direct.unsend": "dumpstagram._core.writes.direct.unsend_message",
    "feeds.home": "dumpstagram._core.feed.read_feed_page",
    "media.by_code": "dumpstagram._core.posts.read_post",
@@ -826,6 +829,7 @@ async def test_a_namespace_method_reaches_the_core_capability_the_table_names(
 
 
 PAGE_METHOD_FOR_ITERATOR = {
+   "direct.iter_inbox": "direct.inbox",
    "direct.iter_messages": "direct.messages",
    "feeds.iter_home": "feeds.home",
    "media.iter_comments": "media.comments",

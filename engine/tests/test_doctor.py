@@ -55,6 +55,7 @@ from dumpstagram.aio import AsyncClient, _rotation_doctor
 from dumpstagram.errors import CheckpointRequired
 from dumpstagram.session import Session
 from tests.test_comments import page_payload as comment_page_payload
+from tests.test_direct_read import recorded as recorded_direct_read
 from tests.test_feed import item as feed_item
 from tests.test_feed import payload as feed_payload
 from tests.test_inbox_listing import listing_payload, listing_row, message_edge
@@ -175,6 +176,9 @@ def answers_for_every_read() -> dict[str, Any]:
       ),
       "PolarisProfilePageContentQuery": profile_payload(),
       "PolarisProfilePostsQuery": timeline_payload(),
+      "IGDThreadListOffMsysPaginationQuery": recorded_direct_read("inbox_next_page.json"),
+      "IGDMessageRequestLeftRailStandaloneQuery": recorded_direct_read("message_requests.json"),
+      "useIGDSystemFolderUnreadThreadCountQuery": recorded_direct_read("inbox_unread_rows.json"),
    }
 
 
@@ -391,7 +395,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 30
+   assert len(registry) == 33
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -418,6 +422,20 @@ def test_a_checkpoint_on_a_replay_ends_the_run_and_nothing_departs_after_it() ->
    ]
 
 
+def test_every_read_replays_ok_when_each_answer_is_one_its_mapper_accepts() -> None:
+   """Catches a replay step read with another capability's mapper, or built without the argument
+   an earlier step learned, which reports a query that still answers as failed. The inbox's next
+   page, the requests and the unread rows are answered from recorded payloads."""
+
+   bundles = every_query_compiled()
+   report = run_doctor(a_site(bundles), FakeBundles(bundles))
+   reads = [check for check in report.checks if check.role is QueryRole.READ]
+
+   assert [check.operation for check in reads] == [query.friendly_name for query in READ_QUERIES]
+   assert [check.replay for check in reads] == [ReplayVerdict.OK] * len(READ_QUERIES)
+   assert report.reads_sent == len(READ_QUERIES)
+
+
 def test_a_failed_replay_is_reported_with_its_classified_error_and_the_run_goes_on() -> None:
    """Catches an error envelope reported as a passing replay, and one failure ending the run."""
 
@@ -436,7 +454,8 @@ def test_a_failed_replay_is_reported_with_its_classified_error_and_the_run_goes_
 
 
 def test_a_read_whose_argument_was_never_learned_is_skipped_and_not_sent() -> None:
-   """Catches a thread read sent with no thread to read, when the inbox listed none."""
+   """Catches a thread read sent with no thread to read, when the inbox listed none, and an
+   inbox next page sent when the first page said it was the last."""
 
    bundles = every_query_compiled()
    answers = answers_for_every_read()
@@ -444,12 +463,12 @@ def test_a_read_whose_argument_was_never_learned_is_skipped_and_not_sent() -> No
    site = a_site(bundles, answers=answers)
    report = run_doctor(site, FakeBundles(bundles))
    thread_reads = ("IGDThreadDetailQuery", "IGDMessageListOffMsysQuery")
-   thread_reads += ("useIGDMessageListPaginationQuery",)
+   thread_reads += ("useIGDMessageListPaginationQuery", "IGDThreadListOffMsysPaginationQuery")
    skipped = [check for check in report.checks if check.operation in thread_reads]
 
-   assert [check.replay for check in skipped] == [ReplayVerdict.SKIPPED] * 3
+   assert [check.replay for check in skipped] == [ReplayVerdict.SKIPPED] * 4
    assert set(thread_reads).isdisjoint(site.sent)
-   assert report.reads_sent == len(READ_QUERIES) - 3
+   assert report.reads_sent == len(READ_QUERIES) - 4
 
 
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
@@ -518,7 +537,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 12
+   assert payload["plan"]["paced_requests_at_most"] == 15
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -614,5 +633,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 10 reads" in stated
+   assert "2 documents and at most 13 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated

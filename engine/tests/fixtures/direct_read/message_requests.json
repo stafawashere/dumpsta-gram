@@ -1,0 +1,26 @@
+{
+ "data": {
+  "pendingMailbox": {
+   "threads_by_folder": {
+    "edges": [],
+    "page_info": {
+     "end_cursor": null,
+     "has_next_page": false
+    }
+   },
+   "id": "90000000000000008",
+   "__token": "p434xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "spamMailbox": {
+   "threads_by_folder": {
+    "edges": [],
+    "page_info": {
+     "end_cursor": null,
+     "has_next_page": false
+    }
+   },
+   "id": "90000000000000008",
+   "__token": "p434xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+ }
+}

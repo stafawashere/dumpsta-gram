@@ -29,9 +29,12 @@ from dumpstagram._cli.commands.common import (
    open_client,
 )
 from dumpstagram._cli.commands.direct import (
+   INBOX_COMMANDS,
+   add_inbox_parsers,
    add_message_write_parsers,
    add_thread_parser,
    run_direct_write,
+   run_inbox_command,
    run_thread,
 )
 from dumpstagram._cli.commands.doctor import (
@@ -106,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_adopt_parser(commands)
    add_session_parser(commands)
    add_thread_parser(commands)
+   add_inbox_parsers(commands)
    add_feed_parser(commands)
    add_profile_parser(commands)
    add_note_parser(commands)
@@ -179,6 +183,9 @@ def main(
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in INBOX_COMMANDS:
+         return run_inbox_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in ("send-message", "unsend-message"):
          return run_direct_write(arguments, chosen_environment, out, client_factory)
