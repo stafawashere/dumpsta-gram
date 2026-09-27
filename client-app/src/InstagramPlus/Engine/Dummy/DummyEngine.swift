@@ -94,6 +94,7 @@ actor DummyEngine: AppEngine {
 
    static let writeBudgetPerHour = 30
    static let feedPageSize = 4
+   static let messagePageSize = 20
 
    var world: DummyWorld
    private(set) var timing: Timing

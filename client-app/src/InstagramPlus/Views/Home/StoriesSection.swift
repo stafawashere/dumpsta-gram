@@ -31,7 +31,7 @@ struct StoriesSection: View {
          ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 22) {
                AddStoryBubble {
-                  navigation.route = .create
+                  navigation.isComposingStory = true
                }
 
                if home.stories.isEmpty {

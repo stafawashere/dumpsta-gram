@@ -350,17 +350,87 @@ final class HomeStore {
 
    // MARK: Publishing and stories
 
-   func publish(imageURL: URL, caption: String) async -> Bool {
+   func publish(imageURLs: [URL], caption: String) async -> Bool {
+      guard let firstURL = imageURLs.first else {
+         return false
+      }
+
       isPublishing = true
       defer { isPublishing = false }
 
       let engine = engine
-      let outcome = await gateway.write("the post") { () async throws(EngineError) in try await engine.publishPhoto(imageURL: imageURL, caption: caption) }
+      let isCarousel = imageURLs.count > 1
+      let outcome = await gateway.write("the post") { () async throws(EngineError) in
+         if isCarousel {
+            return try await engine.publishCarousel(imageURLs: imageURLs, caption: caption)
+         }
+
+         return try await engine.publishPhoto(imageURL: firstURL, caption: caption)
+      }
+
+      switch outcome {
+         case .success, .failure(.outcomeUnknown):
+            feedOrdering = .latest
+            await load()
+            return true
+
+         case .failure, .halted:
+            return false
+      }
+   }
+
+   func publishStory(imageURL: URL) async -> Bool {
+      let engine = engine
+      let outcome = await gateway.write("the story") { () async throws(EngineError) in try await engine.publishStory(imageURL: imageURL) }
+
+      switch outcome {
+         case .success, .failure(.outcomeUnknown):
+            await loadStories()
+            return true
+
+         case .failure, .halted:
+            return false
+      }
+   }
+
+   func likeStory(authorID: Account.ID) async {
+      let engine = engine
+      _ = await gateway.write("the story like") { () async throws(EngineError) in try await engine.likeStory(userID: authorID) }
+   }
+
+   // MARK: Post actions
+
+   func hide(postPK: String) async {
+      guard let position = feedPKs.firstIndex(of: postPK) else {
+         return
+      }
+
+      feedPKs.remove(at: position)
+
+      let engine = engine
+      let outcome = await gateway.write("hiding the post") { () async throws(EngineError) in try await engine.hidePost(postPK: postPK) }
+
+      switch outcome {
+         case .success, .failure(.outcomeUnknown):
+            break
+
+         case .failure, .halted:
+            feedPKs.insert(postPK, at: min(position, feedPKs.count))
+      }
+   }
+
+   func delete(postPK: String) async -> Bool {
+      guard let post = postsByPK[postPK] else {
+         return false
+      }
+
+      let engine = engine
+      let outcome = await gateway.write("the post delete") { () async throws(EngineError) in try await engine.deletePost(postPK: postPK, code: post.code) }
 
       switch outcome {
          case .success:
-            feedOrdering = .latest
-            await load()
+            feedPKs.removeAll { $0 == postPK }
+            postsByPK[postPK] = nil
             return true
 
          case .failure(.outcomeUnknown):
@@ -369,6 +439,91 @@ final class HomeStore {
 
          case .failure, .halted:
             return false
+      }
+   }
+
+   func share(postPK: String, to threadIDs: [DirectThread.ID]) async -> Bool {
+      let engine = engine
+      let outcome = await gateway.write("the share") { () async throws(EngineError) in try await engine.sharePost(postPK: postPK, threadFBIDs: threadIDs) }
+
+      if case .success = outcome {
+         return true
+      }
+
+      return false
+   }
+
+   func download(_ post: Post, to destination: URL) async -> Bool {
+      guard let imageURL = post.imageURL else {
+         return false
+      }
+
+      let engine = engine
+      let image = Engine.MediaImage(url: imageURL, width: 1080, height: 1080)
+      let outcome = await gateway.read("the download") { () async throws(EngineError) in try await engine.download(image: image, to: destination) }
+
+      if case .success = outcome {
+         return true
+      }
+
+      return false
+   }
+
+   func toggleCommentLike(_ commentID: PostComment.ID, on postPK: String) async {
+      guard let index = comments[postPK]?.firstIndex(where: { $0.id == commentID }) else {
+         return
+      }
+
+      let willLike = !comments[postPK]![index].isLiked
+      comments[postPK]![index].isLiked = willLike
+      comments[postPK]![index].likeCount += willLike ? 1 : -1
+
+      let engine = engine
+      let outcome = await gateway.write(willLike ? "the comment like" : "the comment unlike") { () async throws(EngineError) in
+         try await engine.likeComment(postPK: postPK, commentID: commentID, liked: willLike)
+      }
+
+      switch outcome {
+         case .success:
+            break
+
+         case .failure(.outcomeUnknown):
+            await loadComments(postPK: postPK)
+
+         case .failure, .halted:
+            guard let revertIndex = comments[postPK]?.firstIndex(where: { $0.id == commentID }) else {
+               return
+            }
+
+            comments[postPK]![revertIndex].isLiked = !willLike
+            comments[postPK]![revertIndex].likeCount += willLike ? -1 : 1
+      }
+   }
+
+   func reply(_ text: String, to parentID: PostComment.ID, on postPK: String, viewer: Account) async {
+      let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !trimmedText.isEmpty else {
+         return
+      }
+
+      let pendingID = "pending." + UUID().uuidString
+      let pending = PostComment(id: pendingID, author: viewer, text: trimmedText, postedAt: .now, likeCount: 0, isLiked: false, isPending: true, parentID: parentID)
+      comments[postPK, default: []].append(pending)
+
+      let engine = engine
+      let outcome = await gateway.write("the reply") { () async throws(EngineError) in
+         try await engine.replyToComment(postPK: postPK, parentCommentID: parentID, text: trimmedText)
+      }
+
+      switch outcome {
+         case .success(let created):
+            replaceComment(pendingID, in: postPK, with: PostComment(created))
+
+         case .failure(.outcomeUnknown):
+            await loadComments(postPK: postPK)
+
+         case .failure, .halted:
+            comments[postPK]?.removeAll { $0.id == pendingID }
       }
    }
 

@@ -11,8 +11,8 @@ protocols the bridge wrapper will conform to, so no store knows which one it is 
 
 | Protocol | File | Contents |
 |---|---|---|
-| `EngineClient` | `Engine/EngineClient.swift` | The 1.1.0 surface: feed, profiles, post, comments, likes, follows, publish, delete, inbox, messages, requests, unread counts, send, unsend, notes, and the event listener |
-| `ProposedEngineSurface` | same file | 19 capabilities the interface needs and the engine does not have. Every one is an engine gap, listed below |
+| `EngineClient` | `Engine/EngineClient.swift` | The 1.1.0 surface: feed, profiles, post, comments, likes, follows, photo and carousel publishing, post delete, media download, inbox, messages, requests, unread counts, send, unsend, notes, and the event listener |
+| `ProposedEngineSurface` | same file | 42 capabilities the interface needs and the engine does not have. Every one is an engine gap, listed below |
 
 The models in `Engine/EngineModels.swift` mirror the engine's public models field for field.
 Fields and types marked proposed have no engine counterpart.
@@ -74,11 +74,14 @@ confirm it.
 4. **Search spends a paced request per query.** The store waits for 350 ms of quiet typing
    before asking. Even so, a person typing a name in three bursts spends three requests.
 5. **The engine cannot start a conversation.** `send` takes a `thread_fbid`, and nothing in
-   1.1.0 creates a thread. The Message button on a profile only works when a thread already
-   exists, and says so otherwise.
-6. **Several controls have no write behind them.** Comment likes, message reactions, muting a
-   thread, marking one unread, editing a profile, and the post settings on Create (location,
-   hidden counts, comments off) are shown and explain that the engine lacks them.
+   1.1.0 creates a thread. The interface creates one through the proposed `createThread`, so
+   the Message button, the new message sheet and story replies all depend on that gap.
+6. **Most of the interface is proposed surface.** Of the 69 capabilities the interface calls,
+   27 exist in the engine and 42 do not. Comment likes and replies, message reactions, replies
+   and photos, thread muting, message requests, sharing, hiding a post, stories, highlights,
+   the archive, profile editing, close friends, blocking, muting, search beyond accounts,
+   hashtag and place pages, follower lists and saved posts are all dummy-only today. The post
+   settings on Create (location, hidden counts, comments off) are not sent at all.
 7. **`publish_photo` needs an image.** Create will not share a caption on its own.
 8. **The engine's `Post` has no location, share count or save count.** The mockup shows all
    three. The dummy carries location as a proposed field and the interface shows no count
@@ -103,27 +106,29 @@ Reads and writes name the protocol method. P marks a proposed method.
 | Settings | the dummy engine's status each second | timing, faults, resume writes | none | none |
 | Session setup, checkpoint, revoked | none | connect, resume after the browser check, log out | `ListenerStopped` with a checkpoint | all three are session states, not errors |
 
-## Views still to build
+## Views built on 2026-09-27
 
-Ordered by what the engine can back today, then by how much of the interface depends on it.
+An audit of every control found 26 gaps: eleven buttons with no action, nine labelled as not
+in the engine, and six views that did not exist. All 26 are built. Each goes through the
+engine protocols like every other call, so each is paced, can fail in every way the gateway
+handles, and is visible in the request log.
 
-| View | Engine support | Needs |
+| Area | Built | Engine support |
 |---|---|---|
-| Message requests tab | `message_requests` exists | A list view reusing thread rows, and accept or delete, which the engine lacks |
-| Inbox pagination and older messages | `inbox(after:)` and `messages(after:)` exist | Load more at the list ends |
-| Post delete, own posts | `delete_post` exists | A confirm dialog in the post menu |
-| Media download | `media.download` exists | Save to disk from the post menu |
-| Carousel paging and video playback | renditions exist on `Post` | A pager in the media view, and an AVPlayer for `VideoRendition` |
-| Highlight viewer | none | Engine highlights read, then the story viewer reused |
-| Story creation | none | Engine story publish |
-| New conversation and group creation | none | Engine thread create |
-| Message reactions, replies, photos | none | Engine writes for each |
-| Comment likes and replies | reply ids exist on `Comment`, no write | Engine writes |
-| Edit profile, archive, close friends, blocked and muted | none | Engine reads and writes |
-| Hashtag and place pages, search tabs | none | Engine search beyond users |
-| Account switcher | the engine is instance scoped already | One `EngineGateway` per account, and a switcher in the sidebar. Dual-account testing wants this first |
-| Share sheet | none | Sending a post into a thread, an engine write |
-| Live, insights | none | Out of scope for now |
+| Posts | Carousel paging, video play and pause, Share sheet to threads, Copy link, Download with a save panel, Go to post, About this account, Not interested, Delete own post with confirmation, place links, `#tag` and `@mention` links in captions | Download, delete and carousel publish are real. The rest is proposed |
+| Comments | Likes, replies threaded under their parent, delete own | Proposed except delete |
+| Create | Two to ten images publish as a carousel | Real |
+| Stories | Composer from Add story, like, reply as a direct message | Proposed, the reply uses `send` |
+| Highlights | Viewer with progress and pause | Proposed |
+| Messages | New message sheet with multi-select, Requests tab with accept and delete, reply with a quoted bubble, double-click and context-menu reactions, photo messages, heart message, mute switch, load earlier messages, emoji palette | Requests read and older pages are real, the rest proposed |
+| Profile | Edit profile sheet, archive page, menu with close friends, mute, block and copy link, blocked state, highlight taps, remove follower from your own list | Proposed |
+| Search | Accounts, Tags and Places tabs, switching to the first tab with results | Proposed |
+| Hashtag and place pages | Header with count and a grid that opens posts | Proposed |
+| Settings | Accounts, Privacy lists (close friends, blocked, muted), archive link | Proposed |
+| Account switcher | Sidebar menu and Settings. One `AccountSession` per account, each with its own `EngineGateway` and stores, and the whole window rebuilt on switch | The engine is instance scoped, so this is the intended shape. The dummy offers a second seeded account, `vera.studio` |
+
+Left out deliberately: calls and voice messages, which have no plausible engine path, and
+live video and insights.
 
 ## Events
 
@@ -152,17 +157,21 @@ Instagram+.app/Contents/MacOS/Instagram+ --exercise
 Instagram+.app/Contents/MacOS/Instagram+ --snapshot-dir <path>
 ```
 
-`--exercise` drives 13 interactions through the stores and prints one PASS or FAIL line
-each: feed, pagination, a like reaching the engine, an uncertain unlike read back rather than
-resent, a failed like rolled back, the inbox and listener, a send settling, a reply arriving
-through the event buffer, a write stop, a checkpoint halting the session, nothing sent while
-checkpointed, resuming, and parity spacing two reads. Run 2026-09-27: 13 pass. Two checks were
-proven able to fail by removing the read-back on an uncertain write and the gateway's refusal
-while checkpointed: both went red, and one other check went red with them, then all 13
-passed again once restored. `DUMMY_ENGINE_TRACE=1` prints every request to standard error.
+`--exercise` drives 23 interactions through the stores and prints one PASS or FAIL line
+each. The first 13 cover feed, pagination, likes, uncertain and failed writes, the inbox and
+listener, sending, a reply through the event buffer, the write stop, checkpoints and parity
+spacing. The other 10 cover carousel publishing, accepting a message request, a reaction, older
+messages, creating a conversation, a comment like, a threaded reply, blocking removing an
+author from the feed, a hashtag page, and adding and switching accounts. Run 2026-09-27: 23
+pass. Five checks were proven able to fail by breaking the code each guards: the read-back on
+an uncertain write, the refusal while checkpointed, request acceptance, the blocked-author
+filter and loading older messages. Each went red and all 23 passed once restored.
+`DUMMY_ENGINE_TRACE=1` prints every request to standard error.
 
-`--snapshot-dir` writes 19 captures: every page, both themes where it matters, a notice, and
-the checkpoint, revoked and session setup states.
+`--snapshot-dir` writes 31 captures: every page, both themes where it matters, the hashtag,
+place, archive, close friends, highlight, conversation and request views, the share, new
+message and edit profile sheets, a notice, the checkpoint, revoked and session setup states,
+and the second account.
 
 Both probes start from the app's initialiser rather than from a view. A view's task never ran
 while the display was asleep on 2026-09-27, which hung the first probe runs with nothing

@@ -69,6 +69,18 @@ struct RootView: View {
          await profiles.load(gateway.viewerID, includingContent: false)
          await direct.loadInbox()
       }
+      .sheet(item: $navigation.sharing) { target in
+         ShareSheet(postPK: target.postPK)
+      }
+      .sheet(isPresented: $navigation.isComposingMessage) {
+         NewMessageSheet()
+      }
+      .sheet(isPresented: $navigation.isComposingStory) {
+         StoryComposer()
+      }
+      .sheet(isPresented: $navigation.isEditingProfile) {
+         EditProfileSheet()
+      }
       .alert("Log out of Instagram+?", isPresented: $navigation.isConfirmingLogOut) {
          Button("Log out", role: .destructive) {
             navigation.dismissOverlays()
@@ -96,12 +108,19 @@ struct RootView: View {
          case .create: CreateView()
          case .settings: SettingsView()
          case .profile(let accountID): ProfileView(accountID: accountID).id(accountID)
+         case .hashtag(let name): CollectionPageView(kind: .hashtag(name)).id("tag:" + name)
+         case .place(_, let name): CollectionPageView(kind: .place(name)).id("place:" + name)
+         case .archive: ArchiveView()
+         case .relationships(let list): RelationshipListView(list: list).id(list)
       }
    }
 
    @ViewBuilder
    private var overlays: some View {
-      if let authorID = navigation.presentedStoryAuthorID {
+      if let highlight = navigation.presentedHighlight {
+         HighlightViewer(presented: highlight)
+            .transition(.opacity)
+      } else if let authorID = navigation.presentedStoryAuthorID {
          StoryViewer(initialAuthorID: authorID)
             .transition(.opacity)
       } else if let postCode = navigation.presentedPostCode {

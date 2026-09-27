@@ -3,6 +3,7 @@ import SwiftUI
 struct SidebarView: View {
    @Environment(NavigationStore.self) private var navigation
    @Environment(ProfileStore.self) private var profiles
+   @Environment(AccountsStore.self) private var accounts
    @Environment(DirectStore.self) private var direct
    @Environment(ActivityStore.self) private var activity
 
@@ -90,6 +91,9 @@ struct SidebarView: View {
             .contentShape(Rectangle())
          }
          .buttonStyle(.plain)
+
+         AccountSwitcher()
+            .padding(.top, 6)
 
          HStack(spacing: 0) {
             ProfileStat(value: stats.postCount, label: "Posts")
@@ -182,5 +186,42 @@ private struct SidebarRow: View {
       }
       .buttonStyle(.plain)
       .onHover { isHovered = $0 }
+   }
+}
+
+
+private struct AccountSwitcher: View {
+   @Environment(AccountsStore.self) private var accounts
+
+   var body: some View {
+      Menu {
+         ForEach(accounts.sessions) { session in
+            Button {
+               Task { await accounts.switchTo(session.id) }
+            } label: {
+               let isActive = session.id == accounts.activeID
+               Text(isActive ? "\(session.profiles.viewerAccount.username), current" : session.profiles.viewerAccount.username)
+            }
+         }
+
+         if accounts.canAddAccount {
+            Divider()
+
+            Button("Add account") {
+               Task { await accounts.addAccount() }
+            }
+         }
+      } label: {
+         HStack(spacing: 4) {
+            Text(accounts.sessions.count > 1 ? "Switch account" : "Add account")
+            Image(systemName: "chevron.down")
+               .font(.system(size: 8, weight: .bold))
+         }
+         .font(.system(size: 11, weight: .medium))
+         .foregroundStyle(Palette.link)
+      }
+      .menuStyle(.borderlessButton)
+      .menuIndicator(.hidden)
+      .fixedSize()
    }
 }

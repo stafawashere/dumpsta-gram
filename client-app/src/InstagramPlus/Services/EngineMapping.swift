@@ -66,7 +66,9 @@ extension Post {
          isSaved: post.hasSaved ?? false,
          mediaURL: localImageURL,
          hidesLikeCount: post.likeAndViewCountsDisabled,
-         commentsDisabled: post.commentsDisabled ?? false
+         commentsDisabled: post.commentsDisabled ?? false,
+         imageURL: post.images.first?.url,
+         carouselCount: post.carouselMediaCount
       )
    }
 }
@@ -79,7 +81,8 @@ extension PostComment {
          text: comment.text,
          postedAt: comment.createdAt,
          likeCount: comment.likeCount ?? 0,
-         isLiked: comment.hasLiked ?? false
+         isLiked: comment.hasLiked ?? false,
+         parentID: comment.parentCommentID
       )
    }
 }
@@ -101,7 +104,10 @@ extension ProfileDetails {
          isPrivate: profile.isPrivate,
          followsViewer: profile.friendshipStatus?.followedBy ?? false,
          isFollowing: profile.friendshipStatus?.following ?? false,
-         hasRequestedFollow: profile.friendshipStatus?.outgoingRequest ?? false
+         hasRequestedFollow: profile.friendshipStatus?.outgoingRequest ?? false,
+         isBlocking: profile.friendshipStatus?.blocking ?? false,
+         isMuting: profile.friendshipStatus?.muting ?? false,
+         isCloseFriend: profile.friendshipStatus?.isBestie ?? false
       )
    }
 }
@@ -123,14 +129,33 @@ extension DirectThread {
 }
 
 extension DirectMessage {
-   init(_ message: Engine.Message) {
+   init(_ message: Engine.Message, viewerFBID: String?) {
+      let senderID = message.sender.igid ?? message.sender.fbid
+      let imageURL = message.mediaURL.flatMap(URL.init(string:))
+      let fallbackText = imageURL == nil ? "Unsupported message" : ""
+
       self.init(
          id: message.id,
-         senderID: message.sender.igid ?? message.sender.fbid,
-         text: message.text ?? "Unsupported message",
+         senderID: senderID,
+         text: message.text ?? fallbackText,
          sentAt: message.sentAt,
-         reactionCount: message.reactions.count
+         reactionCount: message.reactions.count,
+         viewerReacted: message.reactions.contains { $0.senderFBID == viewerFBID },
+         repliedToID: message.repliedToMessageID,
+         imageURL: imageURL
       )
+   }
+}
+
+extension Hashtag {
+   init(_ hashtag: Engine.Hashtag) {
+      self.init(name: hashtag.name, postCount: hashtag.postCount)
+   }
+}
+
+extension Place {
+   init(_ place: Engine.Place) {
+      self.init(id: place.id, name: place.name, postCount: place.postCount)
    }
 }
 

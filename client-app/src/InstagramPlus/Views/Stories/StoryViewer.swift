@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StoryViewer: View {
    @Environment(HomeStore.self) private var home
+   @Environment(DirectStore.self) private var direct
    @Environment(NavigationStore.self) private var navigation
 
    let initialAuthorID: Account.ID
@@ -11,6 +12,7 @@ struct StoryViewer: View {
    @State private var progress: Double = 0
    @State private var isPaused = false
    @State private var reply = ""
+   @State private var likedAuthorIDs: Set<Account.ID> = []
 
    private struct Frame: Hashable {
       let authorID: Account.ID
@@ -98,10 +100,26 @@ struct StoryViewer: View {
                   .padding(.horizontal, 18)
                   .frame(height: 44)
                   .overlay(Capsule().strokeBorder(.white.opacity(0.6)))
-                  .onSubmit { reply = "" }
+                  .onSubmit { sendReply(to: story) }
 
-               Image(systemName: "heart")
-               Image(systemName: "paperplane")
+               Button {
+                  likedAuthorIDs.insert(story.id)
+                  Task { await home.likeStory(authorID: story.id) }
+               } label: {
+                  let isLiked = likedAuthorIDs.contains(story.id)
+                  Image(systemName: isLiked ? "heart.fill" : "heart")
+                     .foregroundStyle(isLiked ? Color(hex: 0xED4956) : .white)
+               }
+               .buttonStyle(.plain)
+               .accessibilityLabel("Like story")
+
+               Button {
+                  sendReply(to: story)
+               } label: {
+                  Image(systemName: "paperplane")
+               }
+               .buttonStyle(.plain)
+               .accessibilityLabel("Send reply")
             }
             .font(.system(size: 20))
             .foregroundStyle(.white)
@@ -109,6 +127,24 @@ struct StoryViewer: View {
          }
          .aspectRatio(9 / 16, contentMode: .fit)
          .frame(maxHeight: 760)
+   }
+
+   // A story reply is a direct message to the author, so it goes through the same thread.
+   private func sendReply(to story: Story) {
+      let text = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+      reply = ""
+
+      guard !text.isEmpty else {
+         return
+      }
+
+      Task {
+         guard await direct.openThread(with: story.author), let threadID = direct.selectedThreadID else {
+            return
+         }
+
+         await direct.send("Replied to your story: \(text)", to: threadID)
+      }
    }
 
    private func segmentFill(_ segment: Int) -> Double {
@@ -188,7 +224,7 @@ struct StoryViewer: View {
    }
 }
 
-private struct ProgressSegment: View {
+struct ProgressSegment: View {
    let fill: Double
 
    var body: some View {
@@ -205,7 +241,7 @@ private struct ProgressSegment: View {
    }
 }
 
-private struct StepButton: View {
+struct StepButton: View {
    let symbolName: String
    let isHidden: Bool
    let action: () -> Void

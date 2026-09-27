@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
    @Environment(ProfileStore.self) private var profiles
    @Environment(NavigationStore.self) private var navigation
+   @Environment(AccountsStore.self) private var accounts
 
    @AppStorage(Appearance.storageKey) private var appearance = Appearance.system
    @AppStorage("showsMessagePreviews") private var showsMessagePreviews = true
@@ -35,6 +36,56 @@ struct SettingsView: View {
                }
 
                SettingsRow(title: "Session", value: "Adopted, served by the dummy engine")
+            }
+
+            SettingsCard(title: "Accounts") {
+               ForEach(accounts.sessions) { session in
+                  let isActive = session.id == accounts.activeID
+                  let account = session.profiles.viewerAccount
+
+                  HStack(spacing: 12) {
+                     Avatar(account: account, diameter: 36, style: .soft)
+
+                     Text(account.username)
+                        .font(.system(size: 14, weight: .medium))
+
+                     Spacer()
+
+                     if isActive {
+                        Text("Current")
+                           .foregroundStyle(Palette.textSecondary)
+                     } else {
+                        PrimaryButton(title: "Switch", isProminent: false) {
+                           Task { await accounts.switchTo(session.id) }
+                        }
+
+                        PrimaryButton(title: "Remove", isProminent: false) {
+                           Task { await accounts.remove(session.id) }
+                        }
+                     }
+                  }
+               }
+
+               if accounts.canAddAccount {
+                  Button("Add account") {
+                     Task { await accounts.addAccount() }
+                  }
+                  .buttonStyle(.plain)
+                  .font(.system(size: 14, weight: .semibold))
+                  .foregroundStyle(Palette.link)
+               }
+            }
+
+            SettingsCard(title: "Privacy") {
+               ForEach(RelationshipList.allCases) { list in
+                  SettingsLink(title: list.title) {
+                     navigation.route = .relationships(list)
+                  }
+               }
+
+               SettingsLink(title: "Stories archive") {
+                  navigation.route = .archive
+               }
             }
 
             SettingsCard(title: "Appearance") {
@@ -121,5 +172,27 @@ private struct SettingsRow: View {
          Text(value)
             .foregroundStyle(Palette.textSecondary)
       }
+   }
+}
+
+
+private struct SettingsLink: View {
+   let title: String
+   let action: () -> Void
+
+   var body: some View {
+      Button(action: action) {
+         HStack {
+            Text(title)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+               .font(.system(size: 11, weight: .semibold))
+               .foregroundStyle(Palette.textTertiary)
+         }
+         .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
    }
 }

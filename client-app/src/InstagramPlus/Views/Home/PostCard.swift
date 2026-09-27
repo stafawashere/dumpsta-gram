@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import SwiftUI
 
 struct PostCard: View {
@@ -12,13 +13,10 @@ struct PostCard: View {
       VStack(alignment: .leading, spacing: 0) {
          PostHeader(post: post)
 
-         Button {
+         PostMedia(post: post) {
             navigation.showPost(code: post.code)
-         } label: {
-            MediaView(seed: post.mediaSeed, url: post.mediaURL, label: post.mediaDescription.isEmpty ? nil : post.mediaDescription)
-               .frame(height: 288)
          }
-         .buttonStyle(.plain)
+         .frame(height: 288)
          .padding(.top, 16)
 
          PostActionBar(post: post)
@@ -27,10 +25,8 @@ struct PostCard: View {
          Hairline()
 
          if !post.caption.isEmpty {
-            Text(post.caption)
-               .font(.system(size: 15))
+            CaptionText(text: post.caption)
                .lineSpacing(5)
-               .foregroundStyle(Palette.textPrimary)
                .fixedSize(horizontal: false, vertical: true)
                .padding(.top, 16)
                .padding(.horizontal, 2)
@@ -55,9 +51,17 @@ struct PostCard: View {
 }
 
 struct PostHeader: View {
+   @Environment(HomeStore.self) private var home
+   @Environment(NavigationStore.self) private var navigation
+   @Environment(EngineGateway.self) private var gateway
+
    let post: Post
 
+   @State private var isConfirmingDelete = false
+
    var body: some View {
+      let isOwnPost = post.author.id == gateway.viewerID
+
       HStack(spacing: 12) {
          AvatarLink(account: post.author, diameter: 40)
 
@@ -66,7 +70,11 @@ struct PostHeader: View {
 
             HStack(spacing: 6) {
                if let location = post.location {
-                  Text(location)
+                  Button(location) {
+                     navigation.dismissOverlays()
+                     navigation.route = .place(id: location, name: location)
+                  }
+                  .buttonStyle(.plain)
                }
 
                Text(RelativeTime.short(since: post.postedAt))
@@ -79,15 +87,39 @@ struct PostHeader: View {
          Spacer()
 
          Menu {
+            Button("Go to post") {
+               navigation.showPost(code: post.code)
+            }
+
+            Button("Share to") {
+               navigation.share(postPK: post.id)
+            }
+
             Button("Copy link") {
                NSPasteboard.general.clearContents()
                NSPasteboard.general.setString("https://www.instagram.com/p/\(post.code)/", forType: .string)
             }
 
-            Button("Go to post") {}
-            Button("About this account") {}
+            Button("Download") {
+               download()
+            }
+
+            Button("About this account") {
+               navigation.openProfile(post.author.id)
+            }
+
             Divider()
-            Button("Not interested") {}
+
+            if isOwnPost {
+               Button("Delete", role: .destructive) {
+                  isConfirmingDelete = true
+               }
+            } else {
+               Button("Not interested") {
+                  navigation.dismissOverlays()
+                  Task { await home.hide(postPK: post.id) }
+               }
+            }
          } label: {
             Image(systemName: "ellipsis")
                .font(.system(size: 16, weight: .bold))
@@ -98,6 +130,32 @@ struct PostHeader: View {
          .fixedSize()
          .frame(width: 32, height: 32)
          .accessibilityLabel("More options")
+      }
+      .confirmationDialog("Delete this post?", isPresented: $isConfirmingDelete) {
+         Button("Delete", role: .destructive) {
+            navigation.dismissOverlays()
+            Task { _ = await home.delete(postPK: post.id) }
+         }
+      } message: {
+         Text("It will be removed from your profile and everyone's feed.")
+      }
+   }
+
+   private func download() {
+      let panel = NSSavePanel()
+      panel.nameFieldStringValue = "\(post.author.username)-\(post.code).png"
+      panel.allowedContentTypes = [.png]
+
+      guard panel.runModal() == .OK, let destination = panel.url else {
+         return
+      }
+
+      Task {
+         let didSave = await home.download(post, to: destination)
+
+         if didSave {
+            gateway.post(Notice(tone: .info, title: "Saved", message: destination.lastPathComponent))
+         }
       }
    }
 }
@@ -131,7 +189,9 @@ struct PostActionBar: View {
 
          Spacer()
 
-         PostAction(symbolName: "square.and.arrow.up", count: post.shareCount, title: "Share", isActive: false, isCompact: isCompact) {}
+         PostAction(symbolName: "square.and.arrow.up", count: post.shareCount, title: "Share", isActive: false, isCompact: isCompact) {
+            navigation.share(postPK: post.id)
+         }
 
          Spacer()
 

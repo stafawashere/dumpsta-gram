@@ -1,8 +1,26 @@
 import SwiftUI
 
+enum SearchTab: String, CaseIterable, Identifiable {
+   case accounts
+   case tags
+   case places
+
+   var id: String { rawValue }
+
+   var title: String {
+      switch self {
+         case .accounts: "Accounts"
+         case .tags: "Tags"
+         case .places: "Places"
+      }
+   }
+}
+
 struct SearchView: View {
    @Environment(NavigationStore.self) private var navigation
    @Environment(SearchStore.self) private var search
+
+   @State private var tab = SearchTab.accounts
 
    var body: some View {
       let query = navigation.searchQuery
@@ -26,6 +44,19 @@ struct SearchView: View {
       .task(id: query) {
          await search.search(query)
       }
+      .onChange(of: search.resultsQuery) {
+         let hasNoAccounts = search.results.isEmpty
+         let hasTags = !search.tagResults.isEmpty
+         let hasPlaces = !search.placeResults.isEmpty
+
+         if hasNoAccounts, hasTags {
+            tab = .tags
+         } else if hasNoAccounts, hasPlaces {
+            tab = .places
+         } else {
+            tab = .accounts
+         }
+      }
       .task {
          await search.loadExplore()
       }
@@ -33,24 +64,63 @@ struct SearchView: View {
 
    private func results(for query: String) -> some View {
       VStack(alignment: .leading, spacing: 18) {
-         SectionTitle(text: "Results for \"\(query)\"")
+         HStack {
+            SectionTitle(text: "Results for \"\(query)\"")
+
+            Spacer()
+
+            SegmentedPills(options: SearchTab.allCases, selection: $tab) { $0.title }
+         }
 
          LoadStateContainer(state: search.resultsState, loadingLabel: "Searching", retry: { Task { await search.search(query) } }) {
-            if search.results.isEmpty {
-               EmptyStateView(symbolName: "magnifyingglass", title: "No results found", message: "Try a different name or username.")
-                  .frame(height: 320)
-            } else {
-               VStack(spacing: 4) {
-                  ForEach(search.results) { account in
-                     AccountRow(account: account) {
-                        search.remember(account)
-                        navigation.openProfile(account.id)
+            switch tab {
+               case .accounts:
+                  if search.results.isEmpty {
+                     noResults
+                  } else {
+                     VStack(spacing: 4) {
+                        ForEach(search.results) { account in
+                           AccountRow(account: account) {
+                              search.remember(account)
+                              navigation.openProfile(account.id)
+                           }
+                        }
                      }
                   }
-               }
+
+               case .tags:
+                  if search.tagResults.isEmpty {
+                     noResults
+                  } else {
+                     VStack(spacing: 4) {
+                        ForEach(search.tagResults) { hashtag in
+                           CollectionRow(symbolName: "number", title: "#" + hashtag.name, subtitle: "\(CompactCount.format(hashtag.postCount)) posts") {
+                              navigation.route = .hashtag(hashtag.name)
+                           }
+                        }
+                     }
+                  }
+
+               case .places:
+                  if search.placeResults.isEmpty {
+                     noResults
+                  } else {
+                     VStack(spacing: 4) {
+                        ForEach(search.placeResults) { place in
+                           CollectionRow(symbolName: "mappin.and.ellipse", title: place.name, subtitle: "\(CompactCount.format(place.postCount)) posts") {
+                              navigation.route = .place(id: place.id, name: place.name)
+                           }
+                        }
+                     }
+                  }
             }
          }
       }
+   }
+
+   private var noResults: some View {
+      EmptyStateView(symbolName: "magnifyingglass", title: "No results found", message: "Try a different spelling.")
+         .frame(height: 320)
    }
 
    private var recent: some View {
@@ -147,6 +217,45 @@ private struct AccountRow: View {
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
       .background(isHovered ? Palette.raised : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      .onHover { isHovered = $0 }
+   }
+}
+
+
+private struct CollectionRow: View {
+   let symbolName: String
+   let title: String
+   let subtitle: String
+   let action: () -> Void
+
+   @State private var isHovered = false
+
+   var body: some View {
+      Button(action: action) {
+         HStack(spacing: 12) {
+            Image(systemName: symbolName)
+               .font(.system(size: 18))
+               .frame(width: 44, height: 44)
+               .overlay(Circle().strokeBorder(Palette.hairline))
+
+            VStack(alignment: .leading, spacing: 2) {
+               Text(title)
+                  .font(.system(size: 14, weight: .semibold))
+
+               Text(subtitle)
+                  .font(.system(size: 13))
+                  .foregroundStyle(Palette.textSecondary)
+            }
+
+            Spacer()
+         }
+         .foregroundStyle(Palette.textPrimary)
+         .padding(.horizontal, 12)
+         .padding(.vertical, 8)
+         .background(isHovered ? Palette.raised : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+         .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
       .onHover { isHovered = $0 }
    }
 }

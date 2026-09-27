@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ReelsView: View {
@@ -140,13 +141,36 @@ private struct ReelPlayer: View {
             navigation.showPost(code: reel.code)
          }
 
-         ReelAction(symbolName: "paperplane", label: nil, isActive: false) {}
+         ReelAction(symbolName: "paperplane", label: nil, isActive: false) {
+            navigation.share(postPK: reel.id)
+         }
 
          ReelAction(symbolName: reel.isSaved ? "bookmark.fill" : "bookmark", label: nil, isActive: reel.isSaved) {
             Task { await reels.toggleSave(reelID: reel.id) }
          }
 
-         ReelAction(symbolName: "ellipsis", label: nil, isActive: false) {}
+         Menu {
+            Button("Go to post") {
+               navigation.showPost(code: reel.code)
+            }
+
+            Button("Copy link") {
+               NSPasteboard.general.clearContents()
+               NSPasteboard.general.setString("https://www.instagram.com/reel/\(reel.code)/", forType: .string)
+            }
+
+            Button("About this account") {
+               navigation.openProfile(reel.author.id)
+            }
+         } label: {
+            Image(systemName: "ellipsis")
+               .font(.system(size: 22))
+               .foregroundStyle(Palette.textPrimary)
+         }
+         .menuStyle(.borderlessButton)
+         .menuIndicator(.hidden)
+         .fixedSize()
+         .frame(width: 44)
 
          MediaView(seed: reel.code + ".audio", cornerRadius: 6)
             .frame(width: 26, height: 26)

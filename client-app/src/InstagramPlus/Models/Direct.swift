@@ -26,6 +26,9 @@ struct DirectMessage: Identifiable, Hashable, Sendable {
    let sentAt: Date
    var reactionCount: Int
    var delivery: Delivery = .sent
+   var viewerReacted = false
+   var repliedToID: String?
+   var imageURL: URL?
 }
 
 struct Note: Identifiable, Hashable, Sendable {

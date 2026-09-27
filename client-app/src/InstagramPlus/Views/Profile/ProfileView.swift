@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ProfileView: View {
@@ -133,11 +134,13 @@ struct ProfileView: View {
    @ViewBuilder
    private func actionButtons(_ details: ProfileDetails, isViewer: Bool) -> some View {
       if isViewer {
-         PrimaryButton(title: "Edit profile", isProminent: false) {}
-            .help("Editing a profile is not in the engine yet")
+         PrimaryButton(title: "Edit profile", isProminent: false) {
+            navigation.isEditingProfile = true
+         }
 
-         PrimaryButton(title: "View archive", isProminent: false) {}
-            .help("The archive is not in the engine yet")
+         PrimaryButton(title: "View archive", isProminent: false) {
+            navigation.route = .archive
+         }
 
          Button {
             navigation.route = .settings
@@ -154,21 +157,60 @@ struct ProfileView: View {
          let isPending = profiles.isPending(details.account.id)
          let title = isFollowing ? "Following" : (isRequested ? "Requested" : "Follow")
 
-         PrimaryButton(title: title, isProminent: !isFollowing && !isRequested) {
-            Task { await profiles.toggleFollow(details.account.id) }
+         if !details.isBlocking {
+            PrimaryButton(title: title, isProminent: !isFollowing && !isRequested) {
+               Task { await profiles.toggleFollow(details.account.id) }
+            }
+            .disabled(isPending)
+            .opacity(isPending ? 0.6 : 1)
          }
-         .disabled(isPending)
-         .opacity(isPending ? 0.6 : 1)
 
-         PrimaryButton(title: "Message", isProminent: false) {
-            Task {
-               let didOpen = await direct.openThread(with: details.account)
+         if !details.isBlocking {
+            PrimaryButton(title: "Message", isProminent: false) {
+               Task {
+                  let didOpen = await direct.openThread(with: details.account)
 
-               if didOpen {
-                  navigation.route = .messages
+                  if didOpen {
+                     navigation.route = .messages
+                  }
                }
             }
          }
+
+         Menu {
+            if details.isBlocking {
+               Button("Unblock") {
+                  Task { await profiles.setBlocked(details.account.id, blocked: false) }
+               }
+            } else {
+               Button(details.isCloseFriend ? "Remove from close friends" : "Add to close friends") {
+                  Task { await profiles.setCloseFriend(details.account.id, included: !details.isCloseFriend) }
+               }
+
+               Button(details.isMuting ? "Unmute" : "Mute") {
+                  Task { await profiles.setMuted(details.account.id, muted: !details.isMuting) }
+               }
+
+               Button("Copy profile link") {
+                  NSPasteboard.general.clearContents()
+                  NSPasteboard.general.setString("https://www.instagram.com/\(details.account.username)/", forType: .string)
+               }
+
+               Divider()
+
+               Button("Block", role: .destructive) {
+                  Task { await profiles.setBlocked(details.account.id, blocked: true) }
+               }
+            }
+         } label: {
+            Image(systemName: "ellipsis")
+               .font(.system(size: 16, weight: .bold))
+               .foregroundStyle(Palette.textPrimary)
+         }
+         .menuStyle(.borderlessButton)
+         .menuIndicator(.hidden)
+         .fixedSize()
+         .accessibilityLabel("More options")
       }
    }
 
@@ -181,6 +223,13 @@ struct ProfileView: View {
    private func highlights(_ highlights: [Highlight]) -> some View {
       HStack(spacing: 36) {
          ForEach(highlights) { highlight in
+            Button {
+               guard let owner = profiles.details(for: accountID)?.account else {
+                  return
+               }
+
+               navigation.presentedHighlight = PresentedHighlight(owner: owner, highlight: highlight, itemCount: 4)
+            } label: {
             VStack(spacing: 10) {
                MediaView(seed: highlight.id, cornerRadius: 40)
                   .frame(width: 70, height: 70)
@@ -191,7 +240,8 @@ struct ProfileView: View {
                   .font(.system(size: 12, weight: .semibold))
                   .foregroundStyle(Palette.textPrimary)
             }
-            .help("Viewing highlights is not built yet")
+            }
+            .buttonStyle(.plain)
          }
 
          Spacer(minLength: 0)
@@ -201,7 +251,8 @@ struct ProfileView: View {
 
    private func isLocked(_ details: ProfileDetails) -> Bool {
       let isViewer = profiles.isViewer(details.account.id)
-      return details.isPrivate && !isViewer && !details.isFollowing
+      let isPrivateToViewer = details.isPrivate && !isViewer && !details.isFollowing
+      return isPrivateToViewer || details.isBlocking
    }
 
    private func showsHighlights(_ details: ProfileDetails) -> Bool {
@@ -213,7 +264,21 @@ struct ProfileView: View {
    private func content(_ details: ProfileDetails) -> some View {
       let isViewer = profiles.isViewer(details.account.id)
 
-      if isLocked(details) {
+      if details.isBlocking {
+         VStack(spacing: 0) {
+            Hairline()
+
+            EmptyStateView(
+               symbolName: "hand.raised",
+               title: "You blocked this account",
+               message: "They can't see your profile or contact you. Unblock them from the menu.",
+               actionTitle: "Unblock"
+            ) {
+               Task { await profiles.setBlocked(details.account.id, blocked: false) }
+            }
+            .frame(height: 360)
+         }
+      } else if isLocked(details) {
          VStack(spacing: 0) {
             Hairline()
 
@@ -347,7 +412,17 @@ private struct FollowListSheet: View {
 
                         Spacer()
 
-                        if !profiles.isViewer(account.id) {
+                        let canRemoveFollower = kind == .followers && profiles.isViewer(accountID)
+
+                        if canRemoveFollower {
+                           PrimaryButton(title: "Remove", isProminent: false) {
+                              Task {
+                                 if await profiles.removeFollower(account.id) {
+                                    accounts.removeAll { $0.id == account.id }
+                                 }
+                              }
+                           }
+                        } else if !profiles.isViewer(account.id) {
                            let isFollowing = profiles.isFollowing(account.id)
 
                            PrimaryButton(title: isFollowing ? "Following" : "Follow", isProminent: !isFollowing) {

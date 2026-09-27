@@ -81,9 +81,9 @@ extension DummyWorld {
       }
 
       addPost("p.castle", by: "masudur.rahman", caption: "Apply for a feature following the link in our bio and we will publish your photos in our account: @travelsfever", minutesAgo: 180, likes: 28_500, location: "Bremen, Germany", alt: "coastal castle ruins")
-      addPost("p.rooftops", by: "shea.lewis", caption: "Golden hour from the Alfama rooftops. Three days in and I already want to move here.", minutesAgo: 45, likes: 12_100, location: "Lisbon, Portugal", alt: "rooftops at sunset")
-      addPost("p.harbour", by: "ben.schade", caption: "Morning ferry across the Elbe. The fog lifted right as we left the dock.", minutesAgo: 600, likes: 4_870, location: "Hamburg, Germany", alt: "harbour in morning fog", liked: true)
-      addPost("p.roast", by: "perdana", caption: "New Flores lot on the roaster today. Notes of cacao and plum.", minutesAgo: 900, likes: 1_320, location: "Jakarta, Indonesia", alt: "coffee beans cooling", kind: .carousel)
+      addPost("p.rooftops", by: "shea.lewis", caption: "Golden hour from the Alfama rooftops. Three days in and I already want to move here. #lisbon #travel", minutesAgo: 45, likes: 12_100, location: "Lisbon, Portugal", alt: "rooftops at sunset")
+      addPost("p.harbour", by: "ben.schade", caption: "Morning ferry across the Elbe. The fog lifted right as we left the dock. #film #35mm", minutesAgo: 600, likes: 4_870, location: "Hamburg, Germany", alt: "harbour in morning fog", liked: true)
+      addPost("p.roast", by: "perdana", caption: "New Flores lot on the roaster today. Notes of cacao and plum. #coffee", minutesAgo: 900, likes: 1_320, location: "Jakarta, Indonesia", alt: "coffee beans cooling", kind: .carousel)
       addPost("p.tram", by: "tomas.vidal", caption: "Saturday ride group, 22 of us this week.", minutesAgo: 1_500, likes: 640, location: "Valencia, Spain", alt: "cyclists by the beach")
       addPost("p.zine", by: "ilse.brandt", caption: "Issue four is at the printer.", minutesAgo: 2_100, likes: 980, location: "Vienna, Austria", alt: "stack of printed zines")
       addPost("p.dunes", by: "noor.aziz", caption: "Wadi Rum at first light.", minutesAgo: 2_900, likes: 3_400, location: "Wadi Rum, Jordan", alt: "red sand dunes")
@@ -98,13 +98,16 @@ extension DummyWorld {
       addPost("r.type", by: "mais.designer", caption: "Kerning is a feeling. Here is how I check it.", minutesAgo: 2_000, likes: 5_430, kind: .video, reelAudio: "Original audio")
 
       let gridKinds: [Engine.GridTile.Kind] = [.photo, .photo, .carousel, .video, .photo, .carousel]
+      let gridTags = ["#travel #film", "#streetphotography", "#coffee #morning", "#lisbon #travel", "#film #35mm", "#architecture"]
+      let gridPlaces: [String?] = ["Lisbon, Portugal", nil, "Hamburg, Germany", nil, "Prague, Czechia", "Bremen, Germany", nil]
       for person in people {
          let count = person.id == "viewer" ? 15 : 9
 
          for index in 0..<count {
             let pk = "g.\(person.id).\(index)"
             let likes = 120 + (index * 7_919 + person.id.count * 131) % 30_000
-            addPost(pk, by: person.id, caption: "", minutesAgo: Double(3_000 + index * 2_400), likes: likes, kind: gridKinds[(index + person.id.count) % gridKinds.count])
+            let tags = gridTags[(index + person.id.count) % gridTags.count]
+            addPost(pk, by: person.id, caption: tags, minutesAgo: Double(3_000 + index * 2_400), likes: likes, location: gridPlaces[(index * 3 + person.id.count) % gridPlaces.count], kind: gridKinds[(index + person.id.count) % gridKinds.count])
          }
       }
 
@@ -178,6 +181,26 @@ extension DummyWorld {
       thread("t.lina", with: ["lina.park"], [
          ("lina.park", "Hey! Saw you in the travelsfever feature.", 20_000),
       ])
+
+      thread("t.req.web", with: ["webuistylist"], [
+         ("webuistylist", "Hi! We feature photographers every week. Interested?", 600),
+      ])
+      world.threads["t.req.web"]?.isRequest = true
+      thread("t.req.josh", with: ["josh.esport"], [
+         ("josh.esport", "yo, can I use your desk photo in a video", 3_000),
+      ])
+      world.threads["t.req.josh"]?.isRequest = true
+
+      let olderLines = (0..<30).map { index -> (String, String, Double) in
+         let senders = ["tomas.vidal", "noor.aziz", "shea.lewis", "viewer"]
+         return (senders[index % senders.count], "Planning message \(index + 1)", Double(9_000 - index * 200))
+      }
+      let lisbonLines = world.messages["t.lisbon"] ?? []
+      thread("t.lisbon", with: ["shea.lewis", "noor.aziz", "tomas.vidal"], name: "Weekend in Lisbon", olderLines)
+      world.messages["t.lisbon"]? += lisbonLines
+
+      world.closeFriendIDs = ["shea.lewis", "noor.aziz"]
+      world.archivedStoryCount = 12
 
       if let heartIndex = world.messages["t.shea"]?.firstIndex(where: { $0.text?.hasPrefix("Manteigaria") == true }) {
          let original = world.messages["t.shea"]![heartIndex]

@@ -152,6 +152,9 @@ enum Engine {
       let reactions: [Reaction]
       let repliedToMessageID: String?
       let offlineThreadingID: String?
+
+      // Proposed. Not in the 1.1.0 surface.
+      var mediaURL: String? = nil
    }
 
    struct SentMessage: Sendable, Hashable {
@@ -265,5 +268,22 @@ enum Engine {
    struct ProfileActivity: Sendable, Hashable {
       let recentFollowers: [UserSummary]
       let activeFollowerCount: Int
+   }
+
+   struct Hashtag: Sendable, Hashable {
+      let name: String
+      let postCount: Int
+   }
+
+   struct Place: Sendable, Hashable {
+      let id: String
+      let name: String
+      let postCount: Int
+   }
+
+   struct Relationships: Sendable, Hashable {
+      let closeFriendIDs: [String]
+      let blockedIDs: [String]
+      let mutedIDs: [String]
    }
 }

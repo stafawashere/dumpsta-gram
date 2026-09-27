@@ -18,6 +18,8 @@ protocol EngineClient: Sendable {
    func follow(userID: String) async throws(EngineError) -> EngineResult<Void>
    func unfollow(userID: String) async throws(EngineError) -> EngineResult<Void>
    func publishPhoto(imageURL: URL, caption: String) async throws(EngineError) -> EngineResult<Engine.PublishedPost>
+   func publishCarousel(imageURLs: [URL], caption: String) async throws(EngineError) -> EngineResult<Engine.PublishedPost>
+   func download(image: Engine.MediaImage, to destination: URL) async throws(EngineError) -> EngineResult<URL>
    func deletePost(postPK: String, code: String) async throws(EngineError) -> EngineResult<Void>
 
    func inbox(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>>
@@ -57,6 +59,33 @@ protocol ProposedEngineSurface: Sendable {
    func following(userID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.UserSummary>>
    func save(postPK: String) async throws(EngineError) -> EngineResult<Void>
    func unsave(postPK: String) async throws(EngineError) -> EngineResult<Void>
+   func hidePost(postPK: String) async throws(EngineError) -> EngineResult<Void>
+   func sharePost(postPK: String, threadFBIDs: [String]) async throws(EngineError) -> EngineResult<Void>
+   func likeComment(postPK: String, commentID: String, liked: Bool) async throws(EngineError) -> EngineResult<Void>
+   func replyToComment(postPK: String, parentCommentID: String, text: String) async throws(EngineError) -> EngineResult<Engine.Comment>
+
+   func resolveMessageRequest(threadFBID: String, accept: Bool) async throws(EngineError) -> EngineResult<Void>
+   func createThread(userIDs: [String]) async throws(EngineError) -> EngineResult<Engine.DirectThread>
+   func react(threadFBID: String, messageID: String, emoji: String?) async throws(EngineError) -> EngineResult<Void>
+   func sendReply(threadFBID: String, text: String, replyingTo messageID: String) async throws(EngineError) -> EngineResult<Engine.SentMessage>
+   func sendPhoto(threadFBID: String, imageURL: URL) async throws(EngineError) -> EngineResult<Engine.SentMessage>
+   func setThreadMuted(threadFBID: String, muted: Bool) async throws(EngineError) -> EngineResult<Void>
+
+   func publishStory(imageURL: URL) async throws(EngineError) -> EngineResult<Void>
+   func likeStory(userID: String) async throws(EngineError) -> EngineResult<Void>
+   func archivedStories() async throws(EngineError) -> EngineResult<[Engine.GridTile]>
+
+   func editProfile(fullName: String, biography: String, externalURL: String?) async throws(EngineError) -> EngineResult<Engine.Profile>
+   func removeFollower(userID: String) async throws(EngineError) -> EngineResult<Void>
+   func relationships() async throws(EngineError) -> EngineResult<Engine.Relationships>
+   func setCloseFriend(userID: String, included: Bool) async throws(EngineError) -> EngineResult<Void>
+   func setBlocked(userID: String, blocked: Bool) async throws(EngineError) -> EngineResult<Void>
+   func setMuted(userID: String, muted: Bool) async throws(EngineError) -> EngineResult<Void>
+
+   func searchTags(query: String) async throws(EngineError) -> EngineResult<[Engine.Hashtag]>
+   func searchPlaces(query: String) async throws(EngineError) -> EngineResult<[Engine.Place]>
+   func hashtagPosts(name: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+   func placePosts(placeID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
 }
 
 typealias AppEngine = EngineClient & ProposedEngineSurface

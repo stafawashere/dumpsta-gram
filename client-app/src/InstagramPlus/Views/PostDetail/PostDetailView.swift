@@ -8,6 +8,8 @@ struct PostDetailView: View {
 
    let postCode: String
 
+   @State private var replyTarget: PostComment?
+
    var body: some View {
       ZStack(alignment: .topTrailing) {
          Color.black.opacity(0.7)
@@ -16,7 +18,7 @@ struct PostDetailView: View {
          Group {
             if let post = home.post(code: postCode) {
                HStack(spacing: 0) {
-                  MediaView(seed: post.mediaSeed, url: post.mediaURL, label: post.mediaDescription.isEmpty ? nil : post.mediaDescription, cornerRadius: 0)
+                  PostMedia(post: post, cornerRadius: 0)
                      .frame(minWidth: 420, maxWidth: 620)
 
                   sidePanel(for: post)
@@ -47,6 +49,23 @@ struct PostDetailView: View {
       Task { await home.loadPost(code: postCode) }
    }
 
+   private func commentRow(_ comment: PostComment, post: Post) -> some View {
+      CommentRow(comment: comment) {
+         Task { await home.toggleCommentLike(comment.id, on: post.id) }
+      } reply: {
+         replyTarget = comment
+      }
+      .contextMenu {
+         let isOwnComment = comment.author.id == gateway.viewerID
+
+         if isOwnComment, !comment.isPending {
+            Button("Delete comment", role: .destructive) {
+               Task { await home.deleteComment(comment.id, from: post.id) }
+            }
+         }
+      }
+   }
+
    private func sidePanel(for post: Post) -> some View {
       VStack(alignment: .leading, spacing: 0) {
          PostHeader(post: post)
@@ -57,7 +76,12 @@ struct PostDetailView: View {
          ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                if !post.caption.isEmpty {
-                  CommentRow(author: post.author, text: post.caption, postedAt: post.postedAt, likeCount: nil, isLiked: false, isPending: false)
+                  HStack(alignment: .top, spacing: 12) {
+                     AvatarLink(account: post.author, diameter: 32)
+
+                     CaptionText(text: post.caption, leadingUsername: post.author.username, size: 13)
+                        .fixedSize(horizontal: false, vertical: true)
+                  }
                }
 
                switch home.commentState(for: post.id) {
@@ -70,17 +94,16 @@ struct PostDetailView: View {
                      }
 
                   default:
-                     ForEach(home.comments(for: post.id)) { comment in
-                        CommentRow(author: comment.author, text: comment.text, postedAt: comment.postedAt, likeCount: comment.likeCount, isLiked: comment.isLiked, isPending: comment.isPending)
-                           .contextMenu {
-                              let isOwnComment = comment.author.id == gateway.viewerID
+                     let all = home.comments(for: post.id)
+                     let topLevel = all.filter { $0.parentID == nil }
 
-                              if isOwnComment, !comment.isPending {
-                                 Button("Delete comment", role: .destructive) {
-                                    Task { await home.deleteComment(comment.id, from: post.id) }
-                                 }
-                              }
-                           }
+                     ForEach(topLevel) { comment in
+                        commentRow(comment, post: post)
+
+                        ForEach(all.filter { $0.parentID == comment.id }) { reply in
+                           commentRow(reply, post: post)
+                              .padding(.leading, 44)
+                        }
                      }
                }
             }
@@ -107,10 +130,41 @@ struct PostDetailView: View {
                .foregroundStyle(Palette.textSecondary)
                .padding(16)
          } else {
-            CommentComposer(viewer: profiles.viewerAccount, placeholder: "Add a comment") { text in
-               Task { await home.addComment(text, to: post.id, viewer: profiles.viewerAccount) }
+            VStack(spacing: 0) {
+               if let replyTarget {
+                  HStack {
+                     Text("Replying to \(replyTarget.author.username)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Palette.textSecondary)
+
+                     Spacer()
+
+                     Button {
+                        self.replyTarget = nil
+                     } label: {
+                        Image(systemName: "xmark")
+                           .font(.system(size: 10, weight: .bold))
+                     }
+                     .buttonStyle(.plain)
+                  }
+                  .padding(.horizontal, 16)
+                  .padding(.top, 10)
+               }
+
+               CommentComposer(viewer: profiles.viewerAccount, placeholder: replyTarget == nil ? "Add a comment" : "Add a reply") { text in
+                  let target = replyTarget
+                  replyTarget = nil
+
+                  Task {
+                     if let target {
+                        await home.reply(text, to: target.parentID ?? target.id, on: post.id, viewer: profiles.viewerAccount)
+                     } else {
+                        await home.addComment(text, to: post.id, viewer: profiles.viewerAccount)
+                     }
+                  }
+               }
+               .padding(12)
             }
-            .padding(12)
          }
       }
       .background(Palette.card)
@@ -118,36 +172,29 @@ struct PostDetailView: View {
 }
 
 private struct CommentRow: View {
-   let author: Account
-   let text: String
-   let postedAt: Date
-   let likeCount: Int?
-   let isLiked: Bool
-   let isPending: Bool
+   let comment: PostComment
+   let toggleLike: () -> Void
+   let reply: () -> Void
 
    var body: some View {
       HStack(alignment: .top, spacing: 12) {
-         AvatarLink(account: author, diameter: 32)
+         AvatarLink(account: comment.author, diameter: 32)
 
          VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-               AccountLink(account: author, size: 13, usesUsername: true)
-
-               Text(text)
-                  .font(.system(size: 13))
-                  .foregroundStyle(Palette.textPrimary)
-                  .fixedSize(horizontal: false, vertical: true)
-            }
+            CaptionText(text: comment.text, leadingUsername: comment.author.username, size: 13)
+               .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 14) {
-               if isPending {
-                  Text("Posting")
-               } else {
-                  Text(RelativeTime.short(since: postedAt))
+               Text(comment.isPending ? "Posting" : RelativeTime.short(since: comment.postedAt))
+
+               if comment.likeCount > 0 {
+                  Text(comment.likeCount == 1 ? "1 like" : "\(CompactCount.format(comment.likeCount)) likes")
+                     .fontWeight(.semibold)
                }
 
-               if let likeCount, likeCount > 0 {
-                  Text(likeCount == 1 ? "1 like" : "\(CompactCount.format(likeCount)) likes")
+               if !comment.isPending {
+                  Button("Reply", action: reply)
+                     .buttonStyle(.plain)
                      .fontWeight(.semibold)
                }
             }
@@ -157,14 +204,17 @@ private struct CommentRow: View {
 
          Spacer(minLength: 0)
 
-         if likeCount != nil {
-            Image(systemName: isLiked ? "heart.fill" : "heart")
-               .font(.system(size: 11))
-               .foregroundStyle(isLiked ? Palette.accent : Palette.textSecondary)
-               .padding(.top, 4)
-               .help("Liking comments is not in the engine yet")
+         if !comment.isPending {
+            Button(action: toggleLike) {
+               Image(systemName: comment.isLiked ? "heart.fill" : "heart")
+                  .font(.system(size: 11))
+                  .foregroundStyle(comment.isLiked ? Palette.accent : Palette.textSecondary)
+                  .padding(.top, 4)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(comment.isLiked ? "Unlike comment" : "Like comment")
          }
       }
-      .opacity(isPending ? 0.55 : 1)
+      .opacity(comment.isPending ? 0.55 : 1)
    }
 }

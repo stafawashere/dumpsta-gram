@@ -24,6 +24,8 @@ struct Post: Identifiable, Hashable, Sendable {
    var mediaURL: URL?
    var hidesLikeCount = false
    var commentsDisabled = false
+   var imageURL: String?
+   var carouselCount: Int?
 
    var mediaSeed: String { code }
 }
@@ -36,4 +38,5 @@ struct PostComment: Identifiable, Hashable, Sendable {
    var likeCount: Int
    var isLiked: Bool
    var isPending = false
+   var parentID: String?
 }

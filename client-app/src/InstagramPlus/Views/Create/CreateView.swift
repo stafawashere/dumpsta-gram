@@ -6,7 +6,8 @@ struct CreateView: View {
    @Environment(ProfileStore.self) private var profiles
    @Environment(NavigationStore.self) private var navigation
 
-   @State private var mediaURL: URL?
+   @State private var mediaURLs: [URL] = []
+   @State private var previewIndex = 0
    @State private var caption = ""
    @State private var location = ""
    @State private var hidesLikeCount = false
@@ -15,6 +16,7 @@ struct CreateView: View {
    @State private var isDropTargeted = false
 
    private static let captionLimit = 2_200
+   private static let carouselLimit = 10
 
    var body: some View {
       ScrollView {
@@ -35,24 +37,16 @@ struct CreateView: View {
          .padding(.vertical, 36)
          .frame(maxWidth: .infinity)
       }
-      .fileImporter(isPresented: $isImporting, allowedContentTypes: [.image]) { result in
-         if case .success(let url) = result {
-            mediaURL = url
+      .fileImporter(isPresented: $isImporting, allowedContentTypes: [.image], allowsMultipleSelection: true) { result in
+         if case .success(let urls) = result {
+            add(urls)
          }
       }
    }
 
    private var mediaPane: some View {
       ZStack {
-         if let mediaURL {
-            MediaView(seed: "create", url: mediaURL, cornerRadius: 16)
-               .overlay(alignment: .bottomTrailing) {
-                  PrimaryButton(title: "Replace", isProminent: false) {
-                     isImporting = true
-                  }
-                  .padding(16)
-               }
-         } else {
+         if mediaURLs.isEmpty {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                .fill(isDropTargeted ? Palette.raised : Palette.card)
                .overlay(
@@ -65,29 +59,80 @@ struct CreateView: View {
                         .font(.system(size: 52, weight: .light))
                         .foregroundStyle(Palette.textPrimary)
 
-                     Text("Drag photos and videos here")
+                     Text("Drag photos here")
                         .font(.system(size: 18))
                         .foregroundStyle(Palette.textPrimary)
+
+                     Text("Choose two to ten to share a carousel.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Palette.textSecondary)
 
                      PrimaryButton(title: "Select from computer") {
                         isImporting = true
                      }
                   }
                }
+         } else {
+            let shownIndex = min(previewIndex, mediaURLs.count - 1)
+
+            MediaView(seed: "create", url: mediaURLs[shownIndex], cornerRadius: 16)
+               .overlay(alignment: .bottom) {
+                  HStack(spacing: 8) {
+                     ForEach(Array(mediaURLs.enumerated()), id: \.element) { position, url in
+                        MediaView(seed: "thumb", url: url, cornerRadius: 6)
+                           .frame(width: 48, height: 48)
+                           .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white, lineWidth: position == shownIndex ? 2 : 0))
+                           .overlay(alignment: .topTrailing) {
+                              Button {
+                                 remove(at: position)
+                              } label: {
+                                 Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.white, .black.opacity(0.6))
+                              }
+                              .buttonStyle(.plain)
+                              .offset(x: 5, y: -5)
+                           }
+                           .onTapGesture { previewIndex = position }
+                     }
+
+                     if mediaURLs.count < Self.carouselLimit {
+                        Button {
+                           isImporting = true
+                        } label: {
+                           Image(systemName: "plus")
+                              .font(.system(size: 16, weight: .semibold))
+                              .foregroundStyle(.white)
+                              .frame(width: 48, height: 48)
+                              .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add photos")
+                     }
+                  }
+                  .padding(12)
+                  .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
+                  .padding(16)
+               }
          }
       }
       .dropDestination(for: URL.self) { urls, _ in
-         guard let firstURL = urls.first else {
-            return false
-         }
-
-         mediaURL = firstURL
-         return true
+         add(urls)
+         return !urls.isEmpty
       } isTargeted: { isDropTargeted = $0 }
    }
 
+   private func add(_ urls: [URL]) {
+      let room = Self.carouselLimit - mediaURLs.count
+      mediaURLs.append(contentsOf: urls.prefix(max(0, room)))
+   }
+
+   private func remove(at position: Int) {
+      mediaURLs.remove(at: position)
+      previewIndex = 0
+   }
+
    private var detailsPane: some View {
-      let hasImage = mediaURL != nil
+      let hasImage = !mediaURLs.isEmpty
       let isWithinLimit = caption.count <= Self.captionLimit
       let canShare = hasImage && isWithinLimit && !home.isPublishing
 
@@ -182,14 +227,11 @@ struct CreateView: View {
    }
 
    private func share() {
-      guard let mediaURL else {
-         return
-      }
-
       let trimmedCaption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
+      let urls = mediaURLs
 
       Task {
-         let didPublish = await home.publish(imageURL: mediaURL, caption: trimmedCaption)
+         let didPublish = await home.publish(imageURLs: urls, caption: trimmedCaption)
 
          if didPublish {
             reset()
@@ -199,7 +241,8 @@ struct CreateView: View {
    }
 
    private func reset() {
-      mediaURL = nil
+      mediaURLs = []
+      previewIndex = 0
       caption = ""
       location = ""
       hidesLikeCount = false

@@ -3,9 +3,11 @@ import SwiftUI
 struct MessagesView: View {
    @Environment(DirectStore.self) private var direct
    @Environment(ProfileStore.self) private var profiles
+   @Environment(NavigationStore.self) private var navigation
 
    @State private var filter = ""
    @State private var isComposingNote = false
+   @State private var isShowingRequests = false
 
    var body: some View {
       HStack(spacing: 0) {
@@ -32,6 +34,7 @@ struct MessagesView: View {
          }
 
          await direct.loadNotes()
+         await direct.loadRequests()
       }
       .sheet(isPresented: $isComposingNote) {
          NoteComposer()
@@ -40,12 +43,13 @@ struct MessagesView: View {
 
    private var visibleThreads: [DirectThread] {
       let needle = filter.trimmingCharacters(in: .whitespaces).lowercased()
+      let source = isShowingRequests ? direct.requests : direct.orderedThreads
 
       guard !needle.isEmpty else {
-         return direct.orderedThreads
+         return source
       }
 
-      return direct.orderedThreads.filter { $0.title.lowercased().contains(needle) }
+      return source.filter { $0.title.lowercased().contains(needle) }
    }
 
    private var threadList: some View {
@@ -61,10 +65,15 @@ struct MessagesView: View {
 
             Spacer()
 
-            Image(systemName: "square.and.pencil")
-               .font(.system(size: 17))
-               .foregroundStyle(Palette.textTertiary)
-               .help("Starting a new conversation is not in the engine yet")
+            Button {
+               navigation.isComposingMessage = true
+            } label: {
+               Image(systemName: "square.and.pencil")
+                  .font(.system(size: 17))
+                  .foregroundStyle(Palette.textPrimary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("New message")
          }
          .padding(.horizontal, 22)
          .padding(.top, 24)
@@ -90,23 +99,48 @@ struct MessagesView: View {
          .padding(.top, 14)
 
          HStack {
-            Text("Messages")
-               .font(.system(size: 15, weight: .semibold))
-               .foregroundStyle(Palette.textPrimary)
+            Button("Messages") {
+               isShowingRequests = false
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(isShowingRequests ? Palette.textSecondary : Palette.textPrimary)
 
             Spacer()
 
-            Text("Requests")
-               .font(.system(size: 13, weight: .semibold))
-               .foregroundStyle(Palette.textSecondary)
+            Button {
+               isShowingRequests = true
+            } label: {
+               HStack(spacing: 4) {
+                  Text("Requests")
+
+                  if !direct.requests.isEmpty {
+                     Text(String(direct.requests.count))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .background(Palette.link, in: Capsule())
+                  }
+               }
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(isShowingRequests ? Palette.textPrimary : Palette.textSecondary)
          }
          .padding(.horizontal, 22)
          .padding(.top, 18)
          .padding(.bottom, 8)
 
-         LoadStateContainer(state: direct.inboxState, loadingLabel: "Loading inbox", retry: reload) {
+         LoadStateContainer(state: isShowingRequests ? direct.requestsState : direct.inboxState, loadingLabel: "Loading inbox", retry: reload) {
             ScrollView {
                LazyVStack(spacing: 0) {
+                  if isShowingRequests, visibleThreads.isEmpty {
+                     Text("No message requests.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Palette.textSecondary)
+                        .padding(24)
+                  }
+
                   ForEach(visibleThreads) { thread in
                      ThreadRow(
                         thread: thread,

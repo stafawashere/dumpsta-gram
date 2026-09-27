@@ -10,6 +10,38 @@ enum Route: Hashable {
    case create
    case settings
    case profile(Account.ID)
+   case hashtag(String)
+   case place(id: String, name: String)
+   case archive
+   case relationships(RelationshipList)
+}
+
+enum RelationshipList: String, Hashable, CaseIterable, Identifiable {
+   case closeFriends
+   case blocked
+   case muted
+
+   var id: String { rawValue }
+
+   var title: String {
+      switch self {
+         case .closeFriends: "Close friends"
+         case .blocked: "Blocked accounts"
+         case .muted: "Muted accounts"
+      }
+   }
+}
+
+struct ShareTarget: Identifiable, Hashable {
+   let postPK: Post.ID
+
+   var id: String { postPK }
+}
+
+struct PresentedHighlight: Hashable {
+   let owner: Account
+   let highlight: Highlight
+   let itemCount: Int
 }
 
 enum SidebarDestination: String, CaseIterable, Identifiable {
@@ -75,6 +107,11 @@ final class NavigationStore {
    var searchQuery = ""
    var presentedStoryAuthorID: Account.ID?
    var presentedPostCode: String?
+   var presentedHighlight: PresentedHighlight?
+   var sharing: ShareTarget?
+   var isComposingMessage = false
+   var isComposingStory = false
+   var isEditingProfile = false
    var isConfirmingLogOut = false
 
    var sidebarSelection: SidebarDestination? {
@@ -88,7 +125,8 @@ final class NavigationStore {
    var isShowingOverlay: Bool {
       let isShowingStory = presentedStoryAuthorID != nil
       let isShowingPost = presentedPostCode != nil
-      return isShowingStory || isShowingPost
+      let isShowingHighlight = presentedHighlight != nil
+      return isShowingStory || isShowingPost || isShowingHighlight
    }
 
    func open(_ destination: SidebarDestination) {
@@ -108,8 +146,13 @@ final class NavigationStore {
       presentedPostCode = code
    }
 
+   func share(postPK: Post.ID) {
+      sharing = ShareTarget(postPK: postPK)
+   }
+
    func dismissOverlays() {
       presentedStoryAuthorID = nil
       presentedPostCode = nil
+      presentedHighlight = nil
    }
 }

@@ -12,7 +12,15 @@ extension DummyEngine {
          }
 
          let start = Int(cursor ?? "0") ?? 0
-         let order = world.feedOrder
+         let order = world.feedOrder.filter { pk in
+            guard let record = world.posts[pk] else {
+               return false
+            }
+
+            let isHidden = world.hiddenPostPKs.contains(pk)
+            let authorIsHidden = world.isHiddenFromViewer(record.authorID)
+            return !isHidden && !authorIsHidden
+         }
          let end = min(start + Self.feedPageSize, order.count)
          let slice = start < end ? Array(order[start..<end]) : []
 
@@ -179,30 +187,7 @@ extension DummyEngine {
 
    func publishPhoto(imageURL: URL, caption: String) async throws(EngineError) -> EngineResult<Engine.PublishedPost> {
       try await perform("publish_photo", kind: .write) { () throws(EngineError) -> Engine.PublishedPost in
-         let pk = world.makeID("local.")
-         let code = "C" + String(pk.hashValueStable, radix: 36)
-
-         world.posts[pk] = DummyWorld.PostRecord(
-            pk: pk,
-            code: code,
-            authorID: viewerID,
-            caption: caption,
-            takenAt: .now,
-            location: nil,
-            accessibilityCaption: imageURL.lastPathComponent,
-            kind: .photo,
-            imageURL: imageURL.absoluteString,
-            likeCount: 0,
-            hasLiked: false,
-            hasSaved: false,
-            hidesCounts: false,
-            commentsDisabled: false,
-            isReel: false,
-            audioTitle: nil
-         )
-         world.feedOrder.insert(pk, at: 0)
-
-         return Engine.PublishedPost(id: pk + "_viewer", pk: pk, code: code, takenAt: .now)
+         insertOwnPost(imageURL: imageURL, caption: caption, kind: .photo)
       }
    }
 
@@ -221,8 +206,9 @@ extension DummyEngine {
 
    func inbox(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>> {
       try await perform("inbox", kind: .read) { () throws(EngineError) -> Engine.Page<Engine.DirectThread> in
-         let threads = world.threads.keys
-            .compactMap { world.engineThread($0) }
+         let threads = world.threads.values
+            .filter { !$0.isRequest }
+            .compactMap { world.engineThread($0.fbid) }
             .sorted { $0.lastActivityAt > $1.lastActivityAt }
 
          return Engine.Page(items: threads, hasNextPage: false, endCursor: nil)
@@ -240,20 +226,32 @@ extension DummyEngine {
             world.threads[threadFBID]?.isUnread = false
          }
 
-         return Engine.Page(items: world.messages[threadFBID] ?? [], hasNextPage: false, endCursor: nil)
+         let all = world.messages[threadFBID] ?? []
+         let end = cursor.flatMap(Int.init) ?? all.count
+         let start = max(0, end - Self.messagePageSize)
+         let page = start < end ? Array(all[start..<end]) : []
+         let hasOlder = start > 0
+
+         return Engine.Page(items: page, hasNextPage: hasOlder, endCursor: hasOlder ? String(start) : nil)
       }
    }
 
    func messageRequests() async throws(EngineError) -> EngineResult<Engine.MessageRequests> {
       try await perform("message_requests", kind: .read) { () throws(EngineError) -> Engine.MessageRequests in
-         Engine.MessageRequests(pending: [], spam: [])
+         let pending = world.threads.values
+            .filter(\.isRequest)
+            .compactMap { world.engineThread($0.fbid) }
+            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+
+         return Engine.MessageRequests(pending: pending, spam: [])
       }
    }
 
    func unreadCounts() async throws(EngineError) -> EngineResult<Engine.UnreadCounts> {
       try await perform("unread_counts", kind: .read) { () throws(EngineError) -> Engine.UnreadCounts in
-         let unread = world.threads.values.filter(\.isUnread).count
-         return Engine.UnreadCounts(inbox: unread, pending: 0)
+         let unread = world.threads.values.filter { $0.isUnread && !$0.isRequest }.count
+         let pending = world.threads.values.filter(\.isRequest).count
+         return Engine.UnreadCounts(inbox: unread, pending: pending)
       }
    }
 
@@ -347,7 +345,7 @@ extension DummyEngine {
 
          return world.users.values
             .filter { user in
-               let isOther = user.id != viewerID
+               let isOther = user.id != viewerID && !world.blockedIDs.contains(user.id)
                let matchesUsername = user.username.lowercased().contains(needle)
                let matchesName = user.fullName.lowercased().contains(needle)
                return isOther && (matchesUsername || matchesName)

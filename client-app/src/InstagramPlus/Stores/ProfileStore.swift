@@ -55,6 +55,13 @@ final class ProfileStore {
    private(set) var profileStates: [Account.ID: LoadState] = [:]
    private(set) var highlights: [Account.ID: [Highlight]] = [:]
    private(set) var pendingFollowIDs: Set<Account.ID> = []
+   private(set) var archive: [ProfileTile] = []
+   private(set) var archiveState = LoadState.idle
+   private(set) var closeFriendIDs: Set<Account.ID> = []
+   private(set) var blockedIDs: Set<Account.ID> = []
+   private(set) var mutedIDs: Set<Account.ID> = []
+   private(set) var relationshipsState = LoadState.idle
+   private var knownAccounts: [Account.ID: Account] = [:]
    private var tiles: [TileKey: [ProfileTile]] = [:]
    private var tileStates: [TileKey: LoadState] = [:]
    private var knownFollowing: [Account.ID: Bool] = [:]
@@ -115,7 +122,9 @@ final class ProfileStore {
       let engine = gateway.client
       switch await gateway.read("the profile", { () async throws(EngineError) in try await engine.profile(id: accountID) }) {
          case .success(let profile):
-            profiles[accountID] = ProfileDetails(profile)
+            let details = ProfileDetails(profile)
+            profiles[accountID] = details
+            knownAccounts[accountID] = details.account
             profileStates[accountID] = .loaded
 
          case .failure(.notFound):
@@ -254,6 +263,173 @@ final class ProfileStore {
       let engine = gateway.client
       if case .success(let profile) = await gateway.read("the profile", { () async throws(EngineError) in try await engine.profile(id: accountID) }) {
          profiles[accountID] = ProfileDetails(profile)
+      }
+   }
+
+   // MARK: Profile editing and relationships
+
+   func resolve(username: String) async -> Account.ID? {
+      if let known = knownAccounts.values.first(where: { $0.username == username }) {
+         return known.id
+      }
+
+      let engine = gateway.client
+      switch await gateway.read("the profile", { () async throws(EngineError) in try await engine.profile(username: username) }) {
+         case .success(let profile):
+            let details = ProfileDetails(profile)
+            profiles[profile.id] = details
+            knownAccounts[profile.id] = details.account
+            profileStates[profile.id] = .loaded
+            return profile.id
+
+         case .failure(.notFound):
+            gateway.post(Notice(tone: .info, title: "No account named \(username)", message: "It may have been renamed or removed."))
+            return nil
+
+         case .failure, .halted:
+            return nil
+      }
+   }
+
+   func account(_ accountID: Account.ID) -> Account? {
+      knownAccounts[accountID] ?? profiles[accountID]?.account
+   }
+
+   func remember(_ accounts: [Account]) {
+      for account in accounts {
+         knownAccounts[account.id] = account
+      }
+   }
+
+   func editProfile(fullName: String, biography: String, website: String?) async -> Bool {
+      let engine = gateway.client
+      let outcome = await gateway.write("the profile edit") { () async throws(EngineError) in
+         try await engine.editProfile(fullName: fullName, biography: biography, externalURL: website)
+      }
+
+      switch outcome {
+         case .success(let profile):
+            profiles[viewerID] = ProfileDetails(profile)
+            return true
+
+         case .failure(.outcomeUnknown):
+            await load(viewerID, includingContent: false)
+            return true
+
+         case .failure, .halted:
+            return false
+      }
+   }
+
+   func removeFollower(_ accountID: Account.ID) async -> Bool {
+      let engine = gateway.client
+      let outcome = await gateway.write("removing the follower") { () async throws(EngineError) in try await engine.removeFollower(userID: accountID) }
+
+      guard case .success = outcome else {
+         return false
+      }
+
+      profiles[viewerID]?.stats.followerCount -= 1
+      return true
+   }
+
+   func loadArchive() async {
+      archiveState = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("the archive", { () async throws(EngineError) in try await engine.archivedStories() }) {
+         case .success(let tiles):
+            archive = tiles.map(ProfileTile.init)
+            archiveState = .loaded
+
+         case .failure(let error):
+            archiveState = .failed(HomeStore.describe(error))
+
+         case .halted:
+            archiveState = .idle
+      }
+   }
+
+   func loadRelationships() async {
+      relationshipsState = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("your lists", { () async throws(EngineError) in try await engine.relationships() }) {
+         case .success(let relationships):
+            closeFriendIDs = Set(relationships.closeFriendIDs)
+            blockedIDs = Set(relationships.blockedIDs)
+            mutedIDs = Set(relationships.mutedIDs)
+
+            for accountID in relationships.closeFriendIDs + relationships.blockedIDs + relationships.mutedIDs where knownAccounts[accountID] == nil {
+               await load(accountID, includingContent: false)
+            }
+
+            relationshipsState = .loaded
+
+         case .failure(let error):
+            relationshipsState = .failed(HomeStore.describe(error))
+
+         case .halted:
+            relationshipsState = .idle
+      }
+   }
+
+   func setCloseFriend(_ accountID: Account.ID, included: Bool) async {
+      toggle(&closeFriendIDs, accountID, included)
+      profiles[accountID]?.isCloseFriend = included
+
+      let engine = gateway.client
+      let outcome = await gateway.write(included ? "adding a close friend" : "removing a close friend") { () async throws(EngineError) in
+         try await engine.setCloseFriend(userID: accountID, included: included)
+      }
+
+      if case .success = outcome {
+         return
+      }
+
+      await loadRelationships()
+   }
+
+   func setBlocked(_ accountID: Account.ID, blocked: Bool) async {
+      toggle(&blockedIDs, accountID, blocked)
+      profiles[accountID]?.isBlocking = blocked
+
+      let engine = gateway.client
+      let outcome = await gateway.write(blocked ? "the block" : "the unblock") { () async throws(EngineError) in
+         try await engine.setBlocked(userID: accountID, blocked: blocked)
+      }
+
+      switch outcome {
+         case .success, .failure(.outcomeUnknown):
+            await load(accountID, includingContent: !blocked)
+
+         case .failure, .halted:
+            await loadRelationships()
+            await load(accountID, includingContent: false)
+      }
+   }
+
+   func setMuted(_ accountID: Account.ID, muted: Bool) async {
+      toggle(&mutedIDs, accountID, muted)
+      profiles[accountID]?.isMuting = muted
+
+      let engine = gateway.client
+      let outcome = await gateway.write(muted ? "the mute" : "the unmute") { () async throws(EngineError) in
+         try await engine.setMuted(userID: accountID, muted: muted)
+      }
+
+      if case .success = outcome {
+         return
+      }
+
+      await loadRelationships()
+   }
+
+   private func toggle(_ set: inout Set<Account.ID>, _ accountID: Account.ID, _ isIncluded: Bool) {
+      if isIncluded {
+         set.insert(accountID)
+      } else {
+         set.remove(accountID)
       }
    }
 }
