@@ -61,6 +61,11 @@ from dumpstagram._private.web.documents.media import (
 )
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
 from dumpstagram._private.web.documents.profiles import PROFILE_POSTS, PROFILE_POSTS_NEXT_PAGE
+from dumpstagram._private.web.documents.search import (
+   HASHTAG_HEADER,
+   NON_PERSONALISED_TYPEAHEAD,
+   RECENT_SEARCHES,
+)
 from dumpstagram._private.web.documents.stories import STORY_REEL
 from dumpstagram._private.web.preload import HOME_DOCUMENT_URL
 from dumpstagram.aio import AsyncClient, _rotation_doctor
@@ -79,7 +84,9 @@ from tests.test_notes import tray_payload
 from tests.test_parse import payload as thread_page_payload
 from tests.test_post_depth import recorded as recorded_post_depth
 from tests.test_profile_tabs import recorded as recorded_profile_tabs
+from tests.test_profiles import USERNAME as PROFILE_USERNAME
 from tests.test_profiles import profile_payload
+from tests.test_search import recorded as recorded_search
 from tests.test_smoke import FakeClock
 from tests.test_stories import recorded as recorded_stories
 from tests.test_thread_route import detail_payload
@@ -231,6 +238,11 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisExploreLocationsContainerQuery": recorded_discovery("location_info.json"),
       "PolarisLocationPageTabContentQuery": recorded_discovery("location_posts.json"),
       "PolarisAPICheckNewFeedPostsExistQuery": recorded_discovery("new_feed_posts.json"),
+      "PolarisSearchNullStateQuery": recorded_search("recent_searches.json"),
+      "PolarisSearchBoxNonProfiledRefetchableQuery": recorded_search(
+         "non_personalised_typeahead.json"
+      ),
+      "PolarisHashtagHeaderActionButtonsQuery": recorded_search("hashtag_header.json"),
    }
 
 
@@ -452,7 +464,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 45
+   assert len(registry) == 48
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -649,6 +661,25 @@ def test_the_place_steps_read_the_first_place_a_post_names_and_are_skipped_witho
    assert bare_report.reads_sent == len(READ_QUERIES) - 2
 
 
+def test_the_search_steps_read_the_viewers_own_username_and_the_verified_tag() -> None:
+   """Catches the typeahead replayed on anything but the viewer's own username, which the profile
+   step learns, and the hashtag header on anything but the tag its finding was verified with."""
+
+   bundles = every_query_compiled()
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+
+   assert site.variables_of("PolarisSearchBoxNonProfiledRefetchableQuery") == {
+      "hasQuery": True,
+      "query": PROFILE_USERNAME,
+   }
+   assert site.variables_of("PolarisHashtagHeaderActionButtonsQuery") == {"tag_name": "instagram"}
+   assert site.variables_of("PolarisSearchNullStateQuery") == {}
+   assert check_for(report, RECENT_SEARCHES).replay is ReplayVerdict.OK
+   assert check_for(report, NON_PERSONALISED_TYPEAHEAD).replay is ReplayVerdict.OK
+   assert check_for(report, HASHTAG_HEADER).replay is ReplayVerdict.OK
+
+
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
    """Catches a scan that fetches every bundle a document names after it already has its
    answer. The home document names a bundle the scan never needs."""
@@ -715,7 +746,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 29
+   assert payload["plan"]["paced_requests_at_most"] == 32
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -811,5 +842,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 27 reads" in stated
+   assert "2 documents and at most 30 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated

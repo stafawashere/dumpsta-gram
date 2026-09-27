@@ -42,7 +42,7 @@ capture night that unblocks the rest.
 | 5 | Stories, read only, done 2026-09-27 | `probes/e2_stories.py` | 8, spent 8 | 4, spent 0 |
 | 6 | Own account, done 2026-09-27 | `probes/e2_own_account.py` | 7, spent 7 | 3, spent 0 |
 | 7 | Discovery feeds, done 2026-09-27 | `probes/e2_discovery_feeds.py` | 9, spent 11 | 5, spent 2 |
-| 8 | Search | `probes/e2_search.py` | 7 | 3 |
+| 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
 | 9 | Page models, companions | `probes/e2_page_models.py` | 10 | 4 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
 | 11 | Replays the capture unblocks | written after batch 10 | about 40, HYPOTHESIS | |
@@ -482,12 +482,38 @@ home feed.
 
 | Operation | Kind | Status |
 |---|---|---|
-| `PolarisSearchNullStateQuery` | recent searches | hypothesis |
-| `PolarisSearchBoxNonProfiledRefetchableQuery` | non-personalised typeahead | hypothesis |
-| `PolarisHashtagHeaderActionButtonsQuery` | a hashtag's header | hypothesis |
-| `PolarisSearchBoxContainerQuery` | typeahead across accounts, hashtags, places | hypothesis, capture first |
+| `PolarisSearchNullStateQuery` | recent searches | verified 2026-09-27, public as `search.recent` |
+| `PolarisSearchBoxNonProfiledRefetchableQuery` | non-personalised typeahead | verified 2026-09-27, public as `search.accounts`, accounts only |
+| `PolarisHashtagHeaderActionButtonsQuery` | a hashtag's header | verified 2026-09-27, public as `search.hashtag` |
+| `PolarisSearchBoxContainerQuery` | typeahead across accounts, hashtags, places | hypothesis, capture first, not registered (W83) |
 | `PolarisSearchBoxRefetchableQuery` | its refetch | alternate of the container, same root |
 | `PolarisKeywordSearchExplorePageRelayQuery` and its pagination | keyword results, which a hashtag page renders | hypothesis, capture first |
+
+**Status: done on 2026-09-27 for the recent searches, the non-personalised typeahead and a
+hashtag's header, rulings W82 to W85.** `probes/e2_search.py` ran once with 7 requests, none
+conditional, in run `run-2026-09-27-014102`: the recent searches twice, 15 entries each, the
+non-personalised typeahead twice on a nine character term, 18 accounts each, and a hashtag's
+header twice, 179 bytes. The reads shipped as `client.search.recent() -> tuple[RecentSearch,
+...]`, `client.search.accounts(query) -> tuple[ProfileSummary, ...]` and
+`client.search.hashtag(tag) -> Hashtag`, on both clients with no flat twin, opening the `search`
+namespace, with the new public models `RecentSearch`, `RecentSearchKind` and `Hashtag`, and as
+`dumpsta recent-searches`, `search` and `hashtag`. The CLI acceptance,
+`probes/e2_search_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 3 requests, each its own query: 15 recent searches (4 accounts, 11 keywords), 18 accounts for the query and the tag's id, log `logs/e2-search-cli-2026-09-27-051346.json`. What the run found that
+the plan did not know:
+
+- A recent search is a union of four slots, of which only accounts (4) and keywords (11) were
+  filled. A hashtag or a place entry is carried by its kind with no payload, and a broken union
+  raises (W82).
+- The non-personalised typeahead answers accounts only, no hashtags or places, so it is
+  `search.accounts` rather than `search.top`, which waits for the personalised typeahead. A
+  signed-in browser is believed to send the personalised one, so sending this is a named
+  departure (W83).
+- The hashtag header carries only the tag's id, so `Hashtag` is the id and the tag asked for.
+  A tag with a `#` is refused rather than stripped (W84).
+
+The personalised typeahead and the keyword grid, which is also the hashtag page's grid, wait on
+the capture night. The doctor replays thirty reads, the typeahead keyed on the viewer's own
+username and the header on the tag its finding was verified with (W85).
 
 Variables. Recent searches take nothing. The non-personalised typeahead takes the query text.
 The hashtag header takes the tag. The personalised typeahead's `data` object and the keyword

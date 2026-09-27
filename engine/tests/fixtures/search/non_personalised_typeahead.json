@@ -1,0 +1,423 @@
+{
+ "data": {
+  "xdt_api__v1__fbsearch__non_profiled_serp": {
+   "inform_module": null,
+   "users": [
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000033",
+     "username": "p34xxxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p35xxxxxx",
+     "search_social_context": "p36xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000033",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/37",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/38"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000039",
+     "username": "p40xxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p41xxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p42xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000039",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/43",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/44"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000045",
+     "username": "p46xxxxxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p47xxxxxxxxxxxxxxx",
+     "search_social_context": "p48xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000045",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/49",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/50"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "900000051",
+     "username": "p52xxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p53xxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p54xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "900000051",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/55",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/56"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000057",
+     "username": "p58xxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p59xxxxxxxxxxxxxxxxx",
+     "search_social_context": "p60xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000057",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/61",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/62"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000063",
+     "username": "p64xxxxxxxxxxxxxxxxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p65xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p66xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000063",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/67",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/68"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000069",
+     "username": "p70xxxxxxxxxxxxxxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p71xxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p72xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000069",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/73",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/74"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000075",
+     "username": "p76xxxxxxxxxxxxxxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p77xxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p78xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000075",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/79",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/80"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "900000081",
+     "username": "p82xxxxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p83xxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p84xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "900000081",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/85",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/86"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000087",
+     "username": "p88xxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p89xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p90xxxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000087",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/91",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/92"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000093",
+     "username": "p94xxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": "p95xxxxxxxxxxxxxxxxx",
+      "is_enabled": true
+     },
+     "full_name": "p96xxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p97xxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000093",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/98",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/99"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000100",
+     "username": "p101xxxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p102xxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p103xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000100",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/104",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/105"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000106",
+     "username": "p107xxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p108xxxxxxxxxxxx",
+     "search_social_context": "p109xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000106",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/110",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/111"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000112",
+     "username": "p113xxxxxxxxxxxxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p114xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p115xxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000112",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/116",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/117"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "900000118",
+     "username": "p119xxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p120xxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p121xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "900000118",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/122",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/123"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "9000000124",
+     "username": "p125xxxxxxxxxxx",
+     "is_verified": true,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p126xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p127xxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "9000000124",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/128",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/129"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000130",
+     "username": "p131xxxxxxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p132xxxxxxxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p133xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000130",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/134",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/135"
+     },
+     "is_unpublished": false
+    },
+    {
+     "__typename": "XDTUserDict",
+     "id": "90000000136",
+     "username": "p137xxxxxxxx",
+     "is_verified": false,
+     "ai_agent_owner_username": null,
+     "aigm_account_label_info": {
+      "attribution_label_text": null,
+      "is_enabled": false
+     },
+     "full_name": "p138xxxxxxxxxxxxxxxxxxx",
+     "search_social_context": "p139xxxxxxxxxxx",
+     "search_social_context_snippet_type": "non_profiled_serp_follow_count",
+     "unseen_count": 0,
+     "pk": "90000000136",
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "profile_pic_url": "https://example.invalid/140",
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/141"
+     },
+     "is_unpublished": false
+    }
+   ]
+  }
+ }
+}

@@ -6,7 +6,9 @@ uses, so a replay that passes is a query the capability would still get an answe
 that needs an argument takes it from an earlier one: a thread from the inbox listing, a post from
 the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid, a
 comment with replies from the post's comments, a highlight from the viewer's highlights tray, a
-place from the first post that names one on the timeline or the viewer's grid.
+place from the first post that names one on the timeline or the viewer's grid, and the search
+typeahead's query from the viewer's own username. The hashtag header is read for
+:data:`CANARY_HASHTAG`, the tag its finding was verified with, since no earlier read yields one.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -55,6 +57,11 @@ from dumpstagram._private.web.documents.profiles import (
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
+from dumpstagram._private.web.documents.search import (
+   HASHTAG_HEADER,
+   NON_PERSONALISED_TYPEAHEAD,
+   RECENT_SEARCHES,
+)
 from dumpstagram._private.web.documents.stories import STORY_REEL
 from dumpstagram._private.web.parse.direct import (
    parse_folder_unread_rows,
@@ -87,6 +94,11 @@ from dumpstagram._private.web.parse.profiles import (
    parse_suggested_accounts,
    parse_suggested_beside_profile,
    parse_user_id,
+)
+from dumpstagram._private.web.parse.search import (
+   parse_hashtag_header,
+   parse_non_personalised_typeahead,
+   parse_recent_searches,
 )
 from dumpstagram._private.web.parse.stories import parse_highlight_reel, parse_stories_tray
 from dumpstagram._private.web.requests.direct import (
@@ -121,6 +133,11 @@ from dumpstagram._private.web.requests.profiles import (
    build_suggested_accounts_request,
    build_suggested_beside_profile_request,
 )
+from dumpstagram._private.web.requests.search import (
+   build_hashtag_header_request,
+   build_non_personalised_typeahead_request,
+   build_recent_searches_request,
+)
 from dumpstagram._private.web.requests.stories import (
    build_highlight_request,
    build_stories_tray_request,
@@ -129,10 +146,15 @@ from dumpstagram.models import Post
 from dumpstagram.session import Session
 
 __all__ = [
+   "CANARY_HASHTAG",
    "REPLAY_STEPS",
    "ReplayArguments",
    "ReplayStep",
 ]
+
+CANARY_HASHTAG = "instagram"
+"""The tag the hashtag header is replayed for, the one ``probes/e2_search.py`` verified it with
+twice on 2026-09-27 (W85)."""
 
 
 @dataclass
@@ -511,6 +533,30 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, user_agent=user_agent
       ),
       read=_mapped_by(parse_new_feed_posts),
+   ),
+   ReplayStep(
+      query=RECENT_SEARCHES,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_recent_searches_request(
+         session, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_recent_searches),
+   ),
+   ReplayStep(
+      query=NON_PERSONALISED_TYPEAHEAD,
+      requires="username",
+      build=lambda session, arguments, user_agent: build_non_personalised_typeahead_request(
+         session, _required(arguments.username), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_non_personalised_typeahead),
+   ),
+   ReplayStep(
+      query=HASHTAG_HEADER,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_hashtag_header_request(
+         session, CANARY_HASHTAG, user_agent=user_agent
+      ),
+      read=_mapped_by(lambda payload: parse_hashtag_header(payload, CANARY_HASHTAG)),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

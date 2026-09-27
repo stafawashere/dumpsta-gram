@@ -70,6 +70,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `place LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads a place's header: name, category, address, coordinates and post count |
 | `location LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads the first page of the posts tagged at a place, and whether more exist |
 | `new-posts` | 1, plus 1 if the session has no token yet | Asks whether the home feed has new posts |
+| `recent-searches` | 1, plus 1 if the session has no token yet | Reads your recent searches, accounts and keywords |
+| `search QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts QUERY matches, ranked without your profile |
+| `hashtag TAG` | 1, plus 1 if the session has no token yet | Reads a hashtag's header, its id |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
@@ -573,6 +576,32 @@ live acceptance, `probes/e2_discovery_feeds_cli_acceptance.py`, runs `explore`, 
 `location` on the first place a post on the grid names, then `new-posts`, four requests, and
 checks that no next page query went out. It ran on 2026-09-27 with every step exit 0 and 4 requests, none a next page query: 4 explore sections and 20 posts, a place header, 21 posts on its grid and no new posts, log `logs/e2-discovery-feeds-cli-2026-09-27-045328.json`.
 
+### `recent-searches`, `search` and `hashtag`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta recent-searches
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json search cats
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta hashtag cats
+```
+
+`recent-searches` prints one line per entry in the upstream's order, `account` with the account's
+id, username and full name, `keyword` with the text searched, or the bare kind `hashtag` or
+`place`, whose shape has not been read, then `recent searches: N` (W82). The JSON form is
+`command`, `entry_count` and `entries`, each with `kind` (`user`, `keyword`, `hashtag` or
+`place`), `account` in the `followers` row form or null, and `keyword` or null.
+
+`search` prints one line per account the non-personalised typeahead answers, its id, username and
+full name, then `accounts: N`. Hashtags and places are not read, and nothing is added to your
+recent searches (W83). The JSON form is `command`, `query`, `account_count` and `accounts` in the
+`followers` row form. A blank query exits 2.
+
+`hashtag` prints `#TAG  id ID`, and its JSON form is `command` and `hashtag`, with `id` and `name`
+(W84). TAG is the name without its `#`, letters, digits and underscores, and anything else exits 2.
+
+All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_search_cli_acceptance.py`, runs the three commands, three requests, and checks that
+each sent its own query and none the personalised typeahead or the keyword grid. It ran on 2026-09-27 with every step exit 0 and 3 requests, each its own query: 15 recent searches (4 accounts, 11 keywords), 18 accounts for the query and the tag's id, log `logs/e2-search-cli-2026-09-27-051346.json`.
+
 ### `publish-photo`, `publish-carousel` and `delete-post`
 
 ```bash
@@ -735,7 +764,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`, and `scripts/verify_search_gates.py` for the seven `recent-searches`, `search` and `hashtag` mutations on the two command gates in `tests/test_search.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

@@ -42,6 +42,7 @@ from dumpstagram.namespaces.direct import SyncDirect
 from dumpstagram.namespaces.feeds import SyncFeeds
 from dumpstagram.namespaces.media import SyncMedia
 from dumpstagram.namespaces.profiles import SyncProfiles
+from dumpstagram.namespaces.search import SyncSearch
 from dumpstagram.namespaces.social import SyncSocial
 from dumpstagram.namespaces.stories import SyncStories
 from dumpstagram.session import Session
@@ -165,6 +166,12 @@ class SyncClient:
       """Profiles, ``client.profiles``."""
 
       return SyncProfiles._of(self)
+
+   @property
+   def search(self) -> SyncSearch:
+      """Recent searches, accounts matching a query and a hashtag's header, ``client.search``."""
+
+      return SyncSearch._of(self)
 
    @property
    def social(self) -> SyncSocial:

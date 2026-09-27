@@ -224,6 +224,22 @@ read as its first page only (W79). `NEW_FEED_POSTS` (`29095516470048516`,
 site root as referer, where a browser asks from the home page. Findings `read-a-location-s-info`,
 `read-a-location-page-tab`, `read-a-location-page-tab-next-page` and `check-for-new-feed-posts`.
 
+**The three search reads are each sent alone, and the accounts search sends the non-personalised
+query, both recorded departures.** Added 2026-09-27 with E2 batch 8, rulings W82 to W84. All three
+answer on `API_GRAPHQL_URL`. `RECENT_SEARCHES` (`38466302779627407`,
+`PolarisSearchNullStateQuery`) is sent with no variables and the site root as referer, where a
+browser reads it when its search panel opens. `NON_PERSONALISED_TYPEAHEAD` (`27634848489527274`,
+`PolarisSearchBoxNonProfiledRefetchableQuery`) is sent with `hasQuery` true and `query`, the site
+root as referer. INFERENCE from the census: a signed-in browser's search box sends the
+personalised `PolarisSearchBoxContainerQuery` instead, whose `data` object has not been observed,
+so the engine sends the one query verified until the capture night records what the box sends;
+neither that query, its refetch, nor the keyword grid `PolarisKeywordSearchExplorePageRelayQuery`
+is registered (W83). `HASHTAG_HEADER` (`35337906325853853`,
+`PolarisHashtagHeaderActionButtonsQuery`) is sent with `tag_name`, the tag without its `#`, and
+the tag's page, `https://www.instagram.com/explore/tags/<tag>/`, as referer, the tag
+percent-encoded there, where a browser reads it inside that page's load. Findings
+`read-recent-searches`, `search-typeahead-non-personalised` and `read-a-hashtag-header`.
+
 **A field error beside an answer does not fail the request.** Added 2026-09-27, W52. `classify`
 returns an answer whose every `errors` entry has a `path` of two elements or more under a `data`
 root that is present and not null, the errored fields null, and refuses any other `errors` array

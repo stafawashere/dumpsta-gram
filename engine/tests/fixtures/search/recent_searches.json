@@ -1,0 +1,215 @@
+{
+ "data": {
+  "xig_recent_searches": {
+   "recent_searches": [
+    {
+     "user": {
+      "username": "p1xxxxxxx",
+      "is_verified": false,
+      "ai_agent_owner_username": null,
+      "aigm_account_label_info": {
+       "attribution_label_text": null,
+       "is_enabled": false
+      },
+      "full_name": "p2xxxxxx",
+      "search_social_context": null,
+      "search_social_context_snippet_type": null,
+      "unseen_count": 0,
+      "pk": "9000000003",
+      "live_broadcast_visibility": null,
+      "live_broadcast_id": null,
+      "profile_pic_url": "https://example.invalid/4",
+      "hd_profile_pic_url_info": {
+       "url": "https://example.invalid/5"
+      },
+      "is_unpublished": false,
+      "id": "9000000003"
+     },
+     "hashtag": null,
+     "place": null,
+     "keyword": null
+    },
+    {
+     "user": {
+      "username": "p6xxxxxxxxxxxxx",
+      "is_verified": false,
+      "ai_agent_owner_username": null,
+      "aigm_account_label_info": {
+       "attribution_label_text": null,
+       "is_enabled": false
+      },
+      "full_name": "p7xxxxx",
+      "search_social_context": null,
+      "search_social_context_snippet_type": null,
+      "unseen_count": 0,
+      "pk": "90000000008",
+      "live_broadcast_visibility": null,
+      "live_broadcast_id": null,
+      "profile_pic_url": "https://example.invalid/9",
+      "hd_profile_pic_url_info": {
+       "url": "https://example.invalid/10"
+      },
+      "is_unpublished": false,
+      "id": "90000000008"
+     },
+     "hashtag": null,
+     "place": null,
+     "keyword": null
+    },
+    {
+     "user": {
+      "username": "p11xxxxxxxxxx",
+      "is_verified": false,
+      "ai_agent_owner_username": null,
+      "aigm_account_label_info": {
+       "attribution_label_text": null,
+       "is_enabled": false
+      },
+      "full_name": "p12",
+      "search_social_context": "p13xxxxxxxxxxxxxxxxx",
+      "search_social_context_snippet_type": "typeahead_mutual_followers",
+      "unseen_count": 0,
+      "pk": "90000000014",
+      "live_broadcast_visibility": null,
+      "live_broadcast_id": null,
+      "profile_pic_url": "https://example.invalid/15",
+      "hd_profile_pic_url_info": {
+       "url": "https://example.invalid/16"
+      },
+      "is_unpublished": false,
+      "id": "90000000014"
+     },
+     "hashtag": null,
+     "place": null,
+     "keyword": null
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p17xxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p18xxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p19xxxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": {
+      "username": "p17xxxxxxxxxx",
+      "is_verified": false,
+      "ai_agent_owner_username": null,
+      "aigm_account_label_info": {
+       "attribution_label_text": null,
+       "is_enabled": false
+      },
+      "full_name": "p20xxxx",
+      "search_social_context": "p21xxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "search_social_context_snippet_type": "typeahead_mutual_followers",
+      "unseen_count": 0,
+      "pk": "90000000022",
+      "live_broadcast_visibility": null,
+      "live_broadcast_id": null,
+      "profile_pic_url": "https://example.invalid/23",
+      "hd_profile_pic_url_info": {
+       "url": "https://example.invalid/24"
+      },
+      "is_unpublished": false,
+      "id": "90000000022"
+     },
+     "hashtag": null,
+     "place": null,
+     "keyword": null
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p25xxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p26xxxxxxxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p27xxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p28xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p29xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p30xxxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p31xxxxxxxxx",
+      "id": null
+     }
+    },
+    {
+     "user": null,
+     "hashtag": null,
+     "place": null,
+     "keyword": {
+      "name": "p32xx",
+      "id": null
+     }
+    }
+   ]
+  }
+ }
+}

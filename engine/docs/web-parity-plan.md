@@ -1346,6 +1346,96 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   of the first place a post on it is tagged at, or `IG_E2_LOCATION_ID`, then the new posts check,
   four requests, eight at most, and checks that no next page query went out; it ran on 2026-09-27, 4 requests, every step exit 0,
   log `logs/e2-discovery-feeds-cli-2026-09-27-045328.json`.
+- **W82. The recent searches are `search.recent() -> tuple[RecentSearch, ...]`, each entry reduced
+  to the one slot the upstream filled, and they open the `search` namespace.** Ruled 2026-09-27
+  for E2 batch 8. `PolarisSearchNullStateQuery` (finding `read-recent-searches`, replayed twice
+  in run `run-2026-09-27-014102` by `probes/e2_search.py`, 7335 bytes each) with no variables,
+  on `/api/graphql` with the site root as referer. FACT over both answers: root
+  `xig_recent_searches` carrying `recent_searches`, 15 entries, each an object with the four
+  sibling slots `user`, `keyword`, `hashtag` and `place`, exactly one non-null on all 30. Four
+  were accounts and eleven keywords, in the same order both times; `hashtag` and `place` were null
+  on every entry. An account slot is a user row with `pk` and `id` equal strings, `username`,
+  `full_name`, `is_verified`, `profile_pic_url` and `hd_profile_pic_url_info`, and no
+  `is_private` and no relationship, so it is batch 2's `ProfileSummary` through batch 2's mapper,
+  those two fields `None`. A keyword slot carried `name`, the text searched, and `id`, null on all
+  22. The model follows the timeline's `FeedItem`: `RecentSearch(kind,
+  account=None, keyword=None)` with `RecentSearchKind` naming all four slots the upstream declares,
+  its values the slot names, so `ACCOUNT` is `"user"`. A hashtag or a place entry is carried by
+  its kind with no payload rather than refused, because searching a tag or a place is an ordinary
+  thing to have done and one such entry would otherwise fail the whole list, and its shape was
+  never read, so a payload would be a guess; typed fields for it join as added lines once one is
+  observed. An entry filling no slot or two, or a slot outside the four, raises `SchemaChanged`,
+  as a timeline item does. Dropped: the row's `search_social_context` and its snippet type, a
+  line of mutual followers the box prints (it names other accounts), `unseen_count`,
+  `aigm_account_label_info`, `ai_agent_owner_username`, and the keyword's null `id`. The list is
+  whole as sent, with no cursor or count, so there is no paging. The `search` namespace opens with
+  this, W83's and W84's reads on both clients with no flat twin, under W1 and W20. Departure: sent
+  alone with the site root as referer, where a browser reads it when its search panel opens.
+- **W83. The non-personalised typeahead is `search.accounts(query) -> tuple[ProfileSummary,
+  ...]`, accounts only, a named departure, and the personalised typeahead and keyword grid are not
+  registered.** Ruled 2026-09-27 for E2 batch 8. `PolarisSearchBoxNonProfiledRefetchableQuery`
+  (finding `search-typeahead-non-personalised`, replayed twice, 27538 bytes each) with `hasQuery`
+  true and `query`, a nine character term, on `/api/graphql` with the site root as referer. FACT
+  over both answers: root `xdt_api__v1__fbsearch__non_profiled_serp` carrying `users`, 18
+  `XDTUserDict` rows with the recent searches' user keys plus `__typename`, the same accounts in
+  the same order both times, and `inform_module`, null on both, and nothing else: no hashtags, no
+  places, no cursor. So the execution list's `search.top(query) -> SearchResults` with accounts,
+  hashtags and places does not ship, since two of its three kinds are not in this answer. The
+  method is named for what it returns, `accounts`, and `top` stays free for the personalised
+  typeahead, `PolarisSearchBoxContainerQuery`, whose `data` object was never observed and which
+  the capture night records; its refetch and `PolarisKeywordSearchExplorePageRelayQuery`, the
+  keyword grid that is also a hashtag page's grid, wait with it. None of the three is registered
+  and nothing sends them, which a gate holds. The rows are `ProfileSummary` through the same
+  mapper, `is_private` and `friendship_status` `None`; the row's `search_social_context` was a
+  follower count string and is dropped as presentation. Departure: the census found the
+  personalised query in the search box a signed-in load compiles, so INFERENCE: a signed-in
+  browser typing sends the personalised query and not this one, which serves a viewer who turned
+  personalisation off or is signed out. The engine sends the non-personalised one because it is
+  the one verified, recorded in the namespace's docstring and in `web-request-contract.md` until
+  the capture night observes what the box sends. An empty or blank query raises `ValueError`
+  before sending, since what the typeahead answers for one is unobserved. INFERENCE, as the probe
+  records it: a typed query is not added to the recent searches until a result is opened, and
+  nothing is opened.
+- **W84. A hashtag's header is `search.hashtag(tag) -> Hashtag`, and a tag with a `#` is
+  refused.** Ruled 2026-09-27 for E2 batch 8. `PolarisHashtagHeaderActionButtonsQuery` (finding
+  `read-a-hashtag-header`, replayed twice, 179 bytes each) with `tag_name`, on `/api/graphql` with
+  the tag's page, `/explore/tags/<tag>/`, as referer. FACT: root `fetch__XDTTagInfo` carrying only
+  `id`, a 17 digit string, the same both times. The query's name says it feeds the header's action
+  buttons, but the answer carried no follow state, so `Hashtag(id, name)` carries the id and the
+  tag that was asked for as `name`, which the answer does not echo; follow state and a post count
+  join as added fields when a read carries them. A tag is refused with `ValueError` before sending
+  unless it is one or more word characters (Python's `\w`, letters, digits and underscores in any
+  script), so a leading `#` is refused rather than stripped: the tag a caller passes is the tag
+  that is sent, and a `/` or `?` could not reach the referer's path. ASSUMPTION: that rule is what
+  Instagram accepts as a tag; only a nine character ASCII tag was sent. The referer escapes the tag
+  as an address bar does, so a non-ASCII tag is percent-encoded there and sent as is in the
+  variables (INFERENCE from how browsers write a referer; no non-ASCII tag was sent). What a tag
+  that does not exist answers is unobserved, and its null root would raise `SchemaChanged`, not
+  `NotFound`. Departure: sent alone with the tag's page as referer, where a browser reads it inside
+  that page's load, and the page's grid is not read (W83).
+- **W85. The canary replays thirty reads, three doctor literals followed, and the commands are
+  `recent-searches`, `search` and `hashtag`.** Ruled 2026-09-27 for E2 batch 8. `READ_QUERIES`
+  gained the three search queries, so a live doctor run goes from at most 29 paced requests to at
+  most 32. The recent searches need nothing. The typeahead is keyed on the viewer's own username,
+  which the profile step already learns, W48's pattern, so the canary searches for nobody else.
+  The hashtag header is the one step keyed on a constant, `CANARY_HASHTAG`, `instagram`, the tag
+  its finding was verified with, because no earlier read yields a tag and parsing one out of a
+  caption would be a guess; a constant the finding answered twice is not. `tests/test_doctor.py`
+  followed in three literals, each seen red before the edit and green after: the registry count,
+  45 to 48 (`assert 48 == 45`), the dry run's paced total, 29 to 32 (`assert 32 == 29`), and the
+  stated plan, 27 reads to 30. A new gate holds the typeahead to the viewer's username and the
+  header to the verified tag. The commands are `dumpsta recent-searches`, `search QUERY` and
+  `hashtag TAG`, text and JSON; `hashtag` refuses a `#` or anything outside W84's rule and `search`
+  a blank query, both with exit 2. `Client` in `_cli/commands/common.py` gained `search`. The gate
+  fixtures are the recorded answers, pseudonymised by `scripts/build_search_fixtures.py`, every
+  username, full name, keyword, social context line and id replaced, 141 values checked absent.
+  `tests/test_search.py` holds 10 gates and `scripts/verify_search_gates.py` 33 mutations, each
+  seen red then green. `ARGUMENT_FOR_PARAMETER` in `tests/test_facade_parity.py` gained `query` and
+  `tag` and the core table the three methods. The surface grew from 895 lines to 927, 32 added and
+  none removed or changed. Live traffic for the discovery: `probes/e2_search.py` 7 requests. The
+  CLI acceptance, `probes/e2_search_cli_acceptance.py`, runs the three commands, three requests,
+  six at most, and checks that each sent its own query and none an unobserved search query; it
+  ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-search-cli-2026-09-27-051346.json`.
 
 ## Standing rules for every phase
 

@@ -90,6 +90,11 @@ from dumpstagram._cli.commands.profiles import (
    run_profile,
    run_profile_tab_command,
 )
+from dumpstagram._cli.commands.search import (
+   SEARCH_COMMANDS,
+   add_search_parsers,
+   run_search_command,
+)
 from dumpstagram._cli.commands.session import (
    add_adopt_parser,
    add_session_parser,
@@ -149,6 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_stories_parsers(commands)
    add_account_parsers(commands)
    add_discovery_parsers(commands)
+   add_search_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
    add_posting_parsers(commands)
@@ -226,6 +232,9 @@ def main(
 
       if arguments.command in DISCOVERY_COMMANDS:
          return run_discovery_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in SEARCH_COMMANDS:
+         return run_search_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)

@@ -60,6 +60,11 @@ from dumpstagram._private.web.documents.profiles import (
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
+from dumpstagram._private.web.documents.search import (
+   HASHTAG_HEADER,
+   NON_PERSONALISED_TYPEAHEAD,
+   RECENT_SEARCHES,
+)
 from dumpstagram._private.web.documents.social import FOLLOW_USER, UNFOLLOW_USER
 from dumpstagram._private.web.documents.stories import STORY_REEL
 
@@ -97,6 +102,9 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    LOCATION_INFO,
    LOCATION_POSTS,
    NEW_FEED_POSTS,
+   RECENT_SEARCHES,
+   NON_PERSONALISED_TYPEAHEAD,
+   HASHTAG_HEADER,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

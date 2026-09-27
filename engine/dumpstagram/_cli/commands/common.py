@@ -27,6 +27,7 @@ from dumpstagram.namespaces.direct import SyncDirect
 from dumpstagram.namespaces.feeds import SyncFeeds
 from dumpstagram.namespaces.media import SyncMedia
 from dumpstagram.namespaces.profiles import SyncProfiles
+from dumpstagram.namespaces.search import SyncSearch
 from dumpstagram.namespaces.stories import SyncStories
 from dumpstagram.session import Session
 
@@ -80,6 +81,9 @@ class Client(Protocol):
 
    @property
    def feeds(self) -> SyncFeeds: ...
+
+   @property
+   def search(self) -> SyncSearch: ...
 
    def thread_messages(
       self,

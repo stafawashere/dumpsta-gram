@@ -410,13 +410,15 @@ client.media.like(post.pk)
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, and whether the home feed has new posts |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
+| `search` | `AsyncSearch` | `SyncSearch` | The viewer's recent searches, the accounts a query matches, and a hashtag's header |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 | `stories` | `AsyncStories` | `SyncStories` | The stories tray, an account's live stories and one highlight, read without marking anything seen |
 
 The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
 namespace holding both twins, and are not re-exported. A namespace is reached through its
-client and is not built directly: its `__init__` raises `TypeError`. `search` appears with its
-first capability, not before (W20), as `stories` did in E2 batch 5 and `account` in E2 batch 6.
+client and is not built directly: its `__init__` raises `TypeError`. A namespace appears with its
+first capability, not before (W20), as `stories` did in E2 batch 5, `account` in E2 batch 6 and
+`search` in E2 batch 8.
 `events` stays on the client.
 
 The seventeen flat methods of `1.0.0` stay for good. Each answers through its alias, with the
@@ -920,6 +922,49 @@ only tab observed.
 
 **New posts.** `has_new_posts()` returns the upstream's flag for whether the home feed has posts
 newer than the viewer last loaded; only `False` has been observed (W80).
+
+### Search
+
+Landed 2026-09-27, E2 batch 8 of [web-parity-plan.md](web-parity-plan.md), rulings W82 to W85.
+Three methods opening the `search` namespace, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `search.recent()` | `tuple[RecentSearch, ...]` | one, plus a bootstrap when the session holds no token |
+| `search.accounts(query)` | `tuple[ProfileSummary, ...]` | one, plus a bootstrap when the session holds no token |
+| `search.hashtag(tag)` | `Hashtag` | one, plus a bootstrap when the session holds no token |
+
+```python
+for entry in client.search.recent():
+   if entry.kind is RecentSearchKind.ACCOUNT:
+      print("account", entry.account.username)
+   elif entry.kind is RecentSearchKind.KEYWORD:
+      print("keyword", entry.keyword)
+
+for account in client.search.accounts("cats"):
+   print(account.id, account.username, account.is_verified)
+
+tag = client.search.hashtag("cats")
+print(tag.name, tag.id)
+```
+
+**Recent searches.** Each `RecentSearch` carries its `kind` and, for an account, `account`, a
+`ProfileSummary`, or, for a keyword, `keyword`, the text searched. `RecentSearchKind` names the
+four slots the upstream declares, `ACCOUNT`, `KEYWORD`, `HASHTAG` and `PLACE`; a hashtag or a place
+entry carries its kind and nothing else, because neither shape has been read (W82). The list is
+whole as sent.
+
+**Accounts.** `accounts(query)` reads the search box's non-personalised typeahead: the accounts
+the query matches, ranked without the viewer's profile, whole as sent. It carries accounts only.
+A signed-in browser is believed to send the personalised typeahead instead, whose accounts,
+hashtags and places are not read yet, so this is a recorded departure, and `search.top` is left
+for that query when the capture night observes it (W83). A blank query raises `ValueError`
+before anything is sent. A row carries no `is_private` and no relationship.
+
+**A hashtag.** `hashtag(tag)` takes the tag without its `#`, letters, digits and underscores; a
+`#` or anything else raises `ValueError` before anything is sent. `Hashtag` carries `id`, the one
+field the header answers, and `name`, the tag asked for (W84). The posts under a tag are not read
+yet.
 
 ## Stability contract
 

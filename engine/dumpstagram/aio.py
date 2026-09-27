@@ -55,6 +55,7 @@ from dumpstagram.namespaces.direct import AsyncDirect
 from dumpstagram.namespaces.feeds import AsyncFeeds
 from dumpstagram.namespaces.media import AsyncMedia
 from dumpstagram.namespaces.profiles import AsyncProfiles
+from dumpstagram.namespaces.search import AsyncSearch
 from dumpstagram.namespaces.social import AsyncSocial
 from dumpstagram.namespaces.stories import AsyncStories
 from dumpstagram.session import Session
@@ -228,6 +229,12 @@ class AsyncClient:
       """Profiles, ``client.profiles``."""
 
       return AsyncProfiles._of(self)
+
+   @property
+   def search(self) -> AsyncSearch:
+      """Recent searches, accounts matching a query and a hashtag's header, ``client.search``."""
+
+      return AsyncSearch._of(self)
 
    @property
    def social(self) -> AsyncSocial:
