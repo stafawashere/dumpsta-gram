@@ -1,0 +1,130 @@
+{
+ "data": {
+  "fetch__XDTUserDict": {
+   "clips_connection": {
+    "edges": [
+     {
+      "node": {
+       "media": {
+        "pk": "9000000000000000001",
+        "id": "9000000000000000001_90000000002",
+        "code": "p3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "media_overlay_info": null,
+        "carousel_media": null,
+        "boosted_status": null,
+        "boost_unavailable_identifier": null,
+        "boost_unavailable_reason": null,
+        "user": {
+         "pk": "90000000002",
+         "id": "90000000002",
+         "aigm_account_label_info": {
+          "attribution_label_text": null,
+          "is_auto_detected": false,
+          "is_enabled": false,
+          "is_manually_enabled": false
+         }
+        },
+        "product_type": "clips",
+        "play_count": 0,
+        "view_count": null,
+        "like_and_view_counts_disabled": false,
+        "comment_count": 0,
+        "like_count": 0,
+        "audience": null,
+        "clips_tab_pinned_user_ids": [],
+        "media_type": 2,
+        "image_versions2": {
+         "candidates": [
+          {
+           "height": 358,
+           "url": "https://example.invalid/4",
+           "width": 640
+          },
+          {
+           "height": 269,
+           "url": "https://example.invalid/5",
+           "width": 480
+          },
+          {
+           "height": 179,
+           "url": "https://example.invalid/6",
+           "width": 320
+          },
+          {
+           "height": 134,
+           "url": "https://example.invalid/7",
+           "width": 240
+          },
+          {
+           "height": 358,
+           "url": "https://example.invalid/8",
+           "width": 358
+          },
+          {
+           "height": 358,
+           "url": "https://example.invalid/8",
+           "width": 358
+          },
+          {
+           "height": 358,
+           "url": "https://example.invalid/8",
+           "width": 358
+          },
+          {
+           "height": 358,
+           "url": "https://example.invalid/8",
+           "width": 358
+          },
+          {
+           "height": 320,
+           "url": "https://example.invalid/9",
+           "width": 320
+          },
+          {
+           "height": 240,
+           "url": "https://example.invalid/10",
+           "width": 240
+          },
+          {
+           "height": 150,
+           "url": "https://example.invalid/11",
+           "width": 150
+          }
+         ]
+        },
+        "preview": null,
+        "original_height": 574,
+        "original_width": 1024,
+        "ai_interactive_embodiment_attachment_style_info": null,
+        "coauthor_producers": [],
+        "is_fb_only": null,
+        "is_internal_only": null,
+        "longform_clip_metadata": null
+       },
+       "__typename": "XDTClipsItemDict"
+      },
+      "cursor": null
+     }
+    ],
+    "page_info": {
+     "end_cursor": null,
+     "has_next_page": false
+    }
+   },
+   "id": "90000000002",
+   "__token": "p12xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "xdt_viewer": {
+   "user": {
+    "id": "90000000002"
+   }
+  }
+ },
+ "extensions": {
+  "server_metadata": {
+   "request_start_time_ms": 0,
+   "time_at_flush_ms": 0
+  },
+  "is_final": true
+ }
+}

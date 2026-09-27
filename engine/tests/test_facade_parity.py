@@ -828,10 +828,13 @@ CORE_FUNCTION_FOR_ALIAS = {
    "profiles.by_id": "dumpstagram._core.profiles.read_profile_by_id",
    "profiles.by_username": "dumpstagram._core.profiles.read_profile",
    "profiles.followers": "dumpstagram._core.profiles.read_followers_page",
+   "profiles.following": "dumpstagram._core.profiles.read_following_page",
    "profiles.highlights": "dumpstagram._core.profiles.read_highlight_tray",
    "profiles.posts": "dumpstagram._core.profiles.read_profile_posts_page",
+   "profiles.reels": "dumpstagram._core.profiles.read_profile_reels",
    "profiles.suggested": "dumpstagram._core.profiles.read_suggested_beside_profile",
    "profiles.suggested_for_you": "dumpstagram._core.profiles.read_suggested_accounts",
+   "profiles.tagged": "dumpstagram._core.profiles.read_tagged_posts",
    "search.accounts": "dumpstagram._core.search.read_non_personalised_typeahead",
    "search.hashtag": "dumpstagram._core.search.read_hashtag_header",
    "search.recent": "dumpstagram._core.search.read_recent_searches",
@@ -906,6 +909,7 @@ PAGE_METHOD_FOR_ITERATOR = {
    "media.iter_replies": "media.replies",
    "profiles.iter_posts": "profiles.posts",
    "profiles.iter_followers": "profiles.followers",
+   "profiles.iter_following": "profiles.following",
 }
 """Every iterator and the page read it walks, E1 item 5 and ruling W23. Written out rather than
 read off the source, because it is what the iterator gates hold the code to."""

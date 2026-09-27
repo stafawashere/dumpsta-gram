@@ -1673,6 +1673,104 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   the second item, five requests of which two are seen mutations, eight at most. No live request
   was sent for the batch beyond the finding's two verifications.
 
+- **W97. The reels tab is `profiles.reels(user_id) -> ProfileReels`, its first page only, of a new
+  `ReelThumbnail`.** Ruled 2026-09-27 for E2 batch 11a, the orchestrator's delegation. Evidence:
+  finding `read-a-profile-s-reels-tab`, `PolarisProfileReelsTabContentQuery`, observed once in the
+  browser on clicking the owner's Reels tab (`run-2026-09-27-131354`, whose window closed before
+  the answer, read by one in-page replay) and replayed twice by `probes/e2_capture_replays.py
+  --stage profile` in `run-2026-09-27-151121`, log `logs/e2-capture-replays-2026-09-27-151227.json`,
+  8679 bytes each. The query takes the numeric account id twice, as `data.target_user_id` and
+  `user_id`, and no username, so the method takes `user_id` and refuses a username with
+  `ValueError` before anything is sent, as `highlights` does (W54). It answers on
+  `/graphql/query` under `fetch__XDTUserDict`, the account's user node, whose `clips_connection`
+  holds the reels beside `xdt_viewer`. FACT: both answers held the owner's one reel, per-edge
+  `cursor` null, `end_cursor` null and `has_next_page` false. No next page was observed or
+  replayed, so under W45 the read is a first page: `ProfileReels` carries `reels` and the
+  upstream's `has_next_page` as `has_more`, no cursor and no `iter_reels`. An item is
+  `node.media`, of `__typename` XDTClipsItemDict, and carries `pk`, `id`, `code`, a `user` of
+  `pk` and `id` only, `media_type`, `product_type`, `play_count`, `view_count` null,
+  `like_count`, `comment_count`, `like_and_view_counts_disabled`, `original_width`,
+  `original_height` and `image_versions2`, with no caption, no username and no time. So it is
+  neither `Post` nor `PostThumbnail`, which requires `author_username`, without guessing, and the
+  new `ReelThumbnail` carries exactly those fields. `play_count` was a number on the one reel and
+  is `int | None`, null reading as `None`, because whether other viewers see it is unobserved;
+  every other field is required, from one item, which is a narrow sample (FACT, one reel, two
+  answers). Dropped fields are listed on the mapper. Departures: a browser sends the tab's query
+  2 ms after `PolarisProfileSuggestedUsersWithPreloadableQuery` on the click, with a bootloader
+  fetch and `/ajax/navigation/`, and the engine sends the tab's query alone, as `posts` does (W53);
+  the referer is the site root rather than the profile page, for W54's reason, an ASSUMPTION until
+  the live acceptance.
+- **W98. The tagged tab is `profiles.tagged(user_id) -> TaggedPosts`, its first page only, of
+  `PostThumbnail`.** Ruled 2026-09-27 for E2 batch 11a. Evidence: finding
+  `read-a-profile-s-tagged-tab`, `PolarisProfileTaggedTabContentQuery`, observed once in the
+  browser on clicking the owner's Tagged tab and replayed twice in `run-2026-09-27-151121`, 54342
+  bytes each. Keyed on `user_id` with `count` 12, on `/graphql/query`, root
+  `xdt_api__v1__usertags__user_id__feed_connection`. FACT: both answers held four posts by other
+  accounts (a reel, a carousel of two, two photos), per-edge `cursor` null, `has_next_page` false
+  and `end_cursor` the four character string `None`, not null, which is why no cursor is read from
+  it. No next page was observed, so `TaggedPosts` carries `posts` and `has_more`, the
+  `LocationPosts` pattern of W79, and no iterator. A node carries every key of the strip item W64
+  mapped and ten more (`__typename` XDTMediaDict, the original size, `longform_title`,
+  `coauthor_producers`, two internal flags, `longform_clip_metadata` and two AI fields), so it is
+  read by the strip's own mapper into `PostThumbnail`, the ten dropped. Its author is the account
+  that posted it, never the tab's owner, which a gate holds. Captions were null on all four, so
+  the caption path is exercised only by the strip's fixtures. Departures as W97.
+- **W99. The following list is `profiles.following(user_id, *, after=None) ->
+  Page[ProfileSummary]` and `iter_following`, the followers list's twin, and one setting governs
+  both lists' statuses.** Ruled 2026-09-27 for E2 batch 11a. Evidence: finding
+  `read-an-account-s-following`, `GET /api/v1/friendships/<id>/following/`, the browser's first
+  page twice and its page at `max_id` 24 once in `run-2026-09-27-131354`, each followed within 0.6
+  to 0.7 s by `show_many` naming exactly that page's twelve ids with the same web session id, then
+  four engine replays in `run-2026-09-27-151121`: the first page twice and the next page at the
+  first page's `next_max_id` twice, zero overlap with the first page on both. That meets the
+  standing rule, so the read pages. The request differs from the followers page only in its path
+  and in sending `count` 12 without `search_surface`, as the browser did. `next_max_id` is a
+  numeric offset as a string, `12` then `24`, handed out unchanged as `end_cursor` and sent back
+  as `max_id`; the terminator is `has_more`, true on every page read, so as for followers no last
+  page has been read and `has_more` false ending the walk is an INFERENCE (W58). The answer is the
+  followers page's keys plus `hidden_following_account_count`, 0 on all four, and the rows fit
+  `ProfileSummary` unchanged, so the page mapper and the action are shared code with the followers
+  read, one private helper each, with the path label naming the list in a `SchemaChanged`. FACT:
+  the two engine first pages about 3 s apart held 11 of the same 12 accounts with four positions
+  different, and the browser's first page about 90 minutes earlier shared 11 of 12 with the engine's, so
+  the list is ranked and an offset walk can meet an account twice or skip one; nothing
+  deduplicates, since dropping a repeat would hide what the upstream sent, and the docstring says
+  so. The setting: `Behavior.follow_list_statuses` now governs both lists rather than a second
+  setting, because the browser sends the same `show_many` after a page of either list (FACT, three
+  following pages and one followers page observed) and the field's name is the follow list's, not
+  the followers'; the docstring was widened and no snapshot line changed. A caller who wants the
+  statuses on one list and not the other builds a second client with `with_behavior`. Departures
+  are the followers read's (W58, W59): the site root as referer where the browser sent the profile
+  tab it was on, and the statuses sent as soon as the page is mapped. `dumpsta following USER_ID`
+  shares `followers`' page loop, options and output with `"command": "following"`. Mutual
+  followers were not captured, since both followed accounts the capture night opened showed a
+  count of 0, and they still wait for an account with a non-zero line; nothing for them ships.
+- **W100. Gates, the canary, the harness and the surface for batch 11a.** Ruled 2026-09-27. Both
+  tab queries joined `READ_QUERIES`, and the canary replays them on the viewer's own id, like the
+  highlights tray, so a live doctor run goes from at most 30 reads to 32 and from at most 32 paced
+  requests to 34; the following read is REST and not replayed (W60). `tests/test_doctor.py`
+  followed in three literals the W48 way, each seen red before the edit and green after: the
+  registry count, `assert 57 == 55`, the dry run's paced total, `assert 34 == 32`, and the stated
+  plan, `'2 documents and at most 30 reads' in '... at most 32 reads ...'`. It gained the two
+  recorded answers and one gate holding both steps to the viewer's id. The new
+  `tests/test_profile_tabs_more.py` holds 15 gates, 17 cases, on fixtures pseudonymised by
+  `scripts/build_profile_tabs_more_fixtures.py` from the engine replays and, for the statuses, the
+  browser's own first page and `show_many` pair, whose redacted `pk` the builder restores from the
+  row's `id`, equal on every engine row. `scripts/verify_profile_tabs_more_gates.py` holds 31
+  mutations, 31 of 31 fired. The shared follow list code moved three anchors: in
+  `scripts/verify_follow_lists_gates.py` the terminator anchor now names the helper's path
+  argument and the setting anchor is lengthened to the followers call, and in
+  `scripts/verify_profile_tabs_gates.py` the tray's flag anchor is lengthened to its return,
+  since the two tab mappers repeat its line; both harnesses were rerun, the
+  follow lists one 31 of 31 and the profile tabs one 43 of 43, each exit 0. The parity tables gained `reels`, `tagged`, `following` and `iter_following`. The CLI
+  commands are `following`, `profile-reels` and `tagged`; the reels tab's command is not `reels`,
+  which stays free for the reels feed of the capture night's reels stage. The surface grew from
+  936 lines to 970, 34 added and none removed or changed. Live traffic for the batch: the profile
+  stage's 10 requests on 2026-09-27, the bootstrap and the owner's profile included, and no other;
+  `probes/e2_profile_tabs_more_cli_acceptance.py` is written, six requests on the owner's own
+  account, nine at most, and ran on 2026-09-27 with every step exit 0 and 6 requests, the site root referer answering all three reads: 1 reel, 4 tagged posts, 24 accounts followed over two pages with no overlap, log
+  `logs/e2-profile-tabs-more-cli-2026-09-27-160153.json`.
+
 ## Standing rules for every phase
 
 - Every capability starts with a `reverse-engineer` run and a verified finding, per the

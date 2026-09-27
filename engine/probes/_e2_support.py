@@ -321,6 +321,12 @@ class E2Replay:
       if parsed is None:
          return
 
+      errors = parsed.get("errors") if isinstance(parsed, dict) else None
+
+      for error in errors if isinstance(errors, list) else []:
+         if isinstance(error, dict) and "debug_link" in error:
+            error["debug_link"] = "<redacted>"
+
       CAPTURES.mkdir(parents=True, exist_ok=True)
       slug = "-".join(label.lower().split())
       path = CAPTURES / f"{self.kind}-{self._stamp}-{self.spent:02d}-{slug}.json"

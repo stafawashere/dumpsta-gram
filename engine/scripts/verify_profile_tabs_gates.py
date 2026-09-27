@@ -265,8 +265,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE,
-            "   has_more, _ = _page_info(connection, connection_path)",
-            "   has_more = False",
+            "   has_more, _ = _page_info(connection, connection_path)\n\n   return HighlightTray(",
+            "   has_more = False\n\n   return HighlightTray(",
          )
       ],
    },

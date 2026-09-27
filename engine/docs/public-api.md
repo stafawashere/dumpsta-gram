@@ -431,7 +431,7 @@ client.media.like(post.pk)
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, and whether the home feed has new posts |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
-| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
+| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, reels and tagged tabs, highlights tray, followers and following, and the suggested accounts |
 | `search` | `AsyncSearch` | `SyncSearch` | The viewer's recent searches, the accounts a query matches, and a hashtag's header |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 | `stories` | `AsyncStories` | `SyncStories` | The stories tray, an account's live stories and one highlight, read without marking anything seen |
@@ -486,6 +486,7 @@ only there, with no flat twin:
 | `media.replies(post_pk, comment_id, *, after)` | `media.iter_replies(post_pk, comment_id, *, limit, after=None)` | `Comment`, oldest first |
 | `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
 | `profiles.followers(user_id, *, after)` | `profiles.iter_followers(user_id, *, limit, after=None)` | `ProfileSummary`, in the upstream's order |
+| `profiles.following(user_id, *, after)` | `profiles.iter_following(user_id, *, limit, after=None)` | `ProfileSummary`, in the upstream's order |
 
 ```python
 for message in client.direct.iter_messages(thread_fbid, limit=200):
@@ -745,7 +746,56 @@ halves the requests, and leaves every `friendship_status` `None`.
 
 Only the viewer's own followers have been read. The list's referer is the site root rather than
 the profile page, a departure recorded in [web-request-contract.md](web-request-contract.md).
-Following and mutual followers have no method: no request for either has been observed.
+Following landed with E2 batch 11a, below. Mutual followers have no method: no request for them
+has been observed.
+
+### Reels tab, tagged tab and following
+
+Landed 2026-09-27, E2 batch 11a of [web-parity-plan.md](web-parity-plan.md), rulings W97 to
+W100, from the capture night's findings. Four methods on `profiles`, on both clients, with no
+flat twin, and three new models:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `profiles.reels(user_id)` | `ProfileReels` | one |
+| `profiles.tagged(user_id)` | `TaggedPosts` | one |
+| `profiles.following(user_id, *, after=None)` | `Page[ProfileSummary]` | two, one with `follow_list_statuses` off |
+| `profiles.iter_following(user_id, *, limit, after=None)` | iterator of `ProfileSummary` | two per page read |
+
+```python
+me = client.session.ds_user_id
+tab = client.profiles.reels(me)
+for reel in tab.reels:
+   print(reel.code, reel.play_count, reel.like_count)
+
+for post in client.profiles.tagged(me).posts:
+   print(post.code, post.author_username)                # the account that posted it
+
+for account in client.profiles.iter_following(me, limit=30):
+   print(account.username)
+```
+
+Each takes the numeric account id and raises `ValueError` for a username before anything is
+sent. `reels` and `tagged` read the tab's first page only, because no query that reads either
+further has been observed; `has_more` on `ProfileReels` and `TaggedPosts` is the upstream's own
+`has_next_page` and says when the tuple is not the whole tab, the `HighlightTray` pattern (W97,
+W98). A reel is a `ReelThumbnail`, its own model: the tab's item carries the author's id and no
+username, no caption, and a `play_count` that a `PostThumbnail` has no field for. A tagged post is
+the strip's `PostThumbnail`, whose author is the account that posted it, not the one tagged.
+
+`following` is `followers`' twin in every step: the list's REST page, twelve asked for, then the
+relationship statuses of the accounts on it inside the same action, filling each row's
+`friendship_status`. Its cursor is `next_max_id`, on this list a numeric offset as a string, `12`
+then `24`, sent back as `max_id`. `Behavior.follow_list_statuses` governs both lists: False
+leaves the statuses out of each (W99). The list is ranked by the upstream, and two first pages
+read seconds apart held 11 of the same 12 accounts in a different order, so an offset walk may
+meet an account twice or miss one; nothing here deduplicates, since dropping a repeat would hide
+what the upstream sent.
+
+A browser reads each tab when it is clicked on the profile page, beside the suggested accounts
+query, and opens the following list from the profile page. Each method here sends its read alone
+with the site root as its referer, departures recorded in
+[web-request-contract.md](web-request-contract.md).
 
 ### Post depth
 

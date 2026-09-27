@@ -1,5 +1,6 @@
-"""``client.profiles``, reading one account's profile, its posts grid, its highlights tray, its
-followers, and the accounts suggested beside it or to the viewer."""
+"""``client.profiles``, reading one account's profile, its posts grid, its reels and tagged tabs,
+its highlights tray, its followers and the accounts it follows, and the accounts suggested beside
+it or to the viewer."""
 
 from __future__ import annotations
 
@@ -9,20 +10,25 @@ from typing import TYPE_CHECKING
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.profiles import (
    read_followers_page,
+   read_following_page,
    read_highlight_tray,
    read_profile,
    read_profile_by_id,
    read_profile_posts_page,
+   read_profile_reels,
    read_suggested_accounts,
    read_suggested_beside_profile,
+   read_tagged_posts,
 )
 from dumpstagram.models import (
    HighlightTray,
    Page,
    Post,
    Profile,
+   ProfileReels,
    ProfileSummary,
    SuggestedAccount,
+   TaggedPosts,
 )
 
 if TYPE_CHECKING:
@@ -241,6 +247,102 @@ class AsyncProfiles:
          )
       )
 
+   async def following(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]:
+      """Read one page of the accounts an account follows, in the upstream's order. Two live
+      requests.
+
+      ``user_id`` is the numeric account id, :attr:`Profile.id
+      <dumpstagram.models.Profile.id>`, and a username raises :class:`ValueError` before
+      anything is sent. ``after`` is the ``end_cursor`` of a page this method returned, and the
+      page's ``has_next_page`` is the upstream's own ``has_more``, the only thing that says
+      whether more exist. Twelve are asked for, and the upstream decides a page's length. The
+      list is ranked by the upstream, and two first pages read seconds apart held 11 of the same
+      12 accounts, so a walk may meet an account twice or miss one.
+
+      Each account's ``friendship_status`` is the viewer's relationship to it, read by the
+      request a browser's list sends beside each page, inside the same action, as
+      :meth:`followers` does. :attr:`~dumpstagram.behavior.Behavior.follow_list_statuses` set to
+      False leaves that request out for both lists, one live request a page, and every
+      ``friendship_status`` is then ``None``.
+
+      A browser opens the list from the profile page, so its referer is that page. This sends
+      the site root, because the method has an id and no username, a departure recorded in
+      ``docs/web-request-contract.md``. Only the viewer's own list has been read.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_following_page(
+            client._sender,
+            client._session,
+            user_id,
+            after=after,
+            with_statuses=client._behavior.follow_list_statuses,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def reels(self, user_id: str) -> ProfileReels:
+      """Read an account's reels tab, its first page, newest first. One live request.
+
+      ``user_id`` is the numeric account id, :attr:`Profile.id
+      <dumpstagram.models.Profile.id>`, and a username raises :class:`ValueError` before
+      anything is sent. Each item is a :class:`~dumpstagram.models.ReelThumbnail`, the cover and
+      counts the tab shows; :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` reads one
+      whole.
+
+      Only the first page is read, because no query that reads the tab further has been
+      observed. ``has_more`` on the result is the upstream's own flag and says when the tuple is
+      not the whole tab.
+
+      A browser reads the tab when it is clicked on the profile page, beside the suggested
+      accounts query. This sends the tab's query alone, with the site root as its referer rather
+      than the profile page, departures recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_profile_reels(
+            client._sender,
+            client._session,
+            user_id,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def tagged(self, user_id: str) -> TaggedPosts:
+      """Read an account's tagged tab, its first page: the posts other accounts tagged it in. One
+      live request.
+
+      ``user_id`` is the numeric account id, and a username raises :class:`ValueError` before
+      anything is sent. Each item is a :class:`~dumpstagram.models.PostThumbnail`, whose author
+      is the account that posted it, not the one tagged.
+
+      Only the first page is read, because no query that reads the tab further has been
+      observed. ``has_more`` on the result is the upstream's own flag and says when the tuple is
+      not the whole tab.
+
+      A browser reads the tab when it is clicked on the profile page, beside the suggested
+      accounts query. This sends the tab's query alone, with the site root as its referer rather
+      than the profile page, departures recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_tagged_posts(
+            client._sender,
+            client._session,
+            user_id,
+            user_agent=client._user_agent,
+         )
+      )
+
    def iter_posts(
       self, username: str, *, limit: int | None, after: str | None = None
    ) -> AsyncIterator[Post]:
@@ -285,6 +387,29 @@ class AsyncProfiles:
 
       return iterate_pages(
          lambda next_max_id: self.followers(user_id, after=next_max_id), limit=limit, after=after
+      )
+
+   def iter_following(
+      self, user_id: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[ProfileSummary]:
+      """Walk the accounts an account follows one at a time, reading a page with
+      :meth:`following` each time the one before it is used up. Use it with ``async for``, and
+      do not await it.
+
+      ``limit`` is required and counts accounts. The walk stops once that many have been
+      yielded, without reading a page it would not use, and ``limit=None`` walks until a page
+      says no more exist. ``after`` starts the walk from a cursor :meth:`following` handed out.
+
+      Each page is one read with everything :meth:`following` sends for it, paced as any read
+      is, and never read ahead of the caller. A page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`, and a negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda offset: self.following(user_id, after=offset), limit=limit, after=after
       )
 
 
@@ -390,6 +515,43 @@ class SyncProfiles:
          operation="SyncClient.profiles.followers",
       )
 
+   def following(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]:
+      """Read one page of the accounts an account follows. Blocks until it has one.
+
+      The same call as :meth:`AsyncProfiles.following`, with the same arguments and the same
+      result, run on the shared loop thread. Two live requests, one when
+      :attr:`~dumpstagram.behavior.Behavior.follow_list_statuses` is off.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.following(user_id, after=after),
+         operation="SyncClient.profiles.following",
+      )
+
+   def reels(self, user_id: str) -> ProfileReels:
+      """Read an account's reels tab, its first page. Blocks until it has it.
+
+      The same call as :meth:`AsyncProfiles.reels`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.reels(user_id),
+         operation="SyncClient.profiles.reels",
+      )
+
+   def tagged(self, user_id: str) -> TaggedPosts:
+      """Read an account's tagged tab, its first page. Blocks until it has it.
+
+      The same call as :meth:`AsyncProfiles.tagged`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.tagged(user_id),
+         operation="SyncClient.profiles.tagged",
+      )
+
    def iter_posts(
       self, username: str, *, limit: int | None, after: str | None = None
    ) -> Iterator[Post]:
@@ -432,3 +594,25 @@ class SyncProfiles:
          )
 
       return iterate_pages_blocking(read_followers_of, limit=limit, after=after)
+
+   def iter_following(
+      self, user_id: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[ProfileSummary]:
+      """Walk the accounts an account follows one at a time. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncProfiles.iter_following`, with the same ``limit``, each page
+      read on the shared loop thread. Exceptions cross back as themselves, with a note naming
+      this method. Closing the iterator early leaves nothing running, because no page is read
+      ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_following_of(offset: str | None) -> Page[ProfileSummary]:
+         return client._loop.run(
+            client._impl.profiles.following(user_id, after=offset),
+            operation="SyncClient.profiles.iter_following",
+         )
+
+      return iterate_pages_blocking(read_following_of, limit=limit, after=after)

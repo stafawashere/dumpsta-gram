@@ -51,6 +51,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `suggested USER_ID` | 1, plus 1 if the session has no token yet | Lists the accounts suggested beside an account's profile |
 | `suggested-for-you` | 1, plus 1 if the session has no token yet | Lists the accounts suggested to the viewer, each with the reason the website shows |
 | `followers USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of an account's followers with the viewer's relationship to each |
+| `following USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of the accounts an account follows with the viewer's relationship to each |
+| `profile-reels USER_ID` | 1, plus 1 if the session has no token yet | Lists an account's reels tab, its first page |
+| `tagged USER_ID` | 1, plus 1 if the session has no token yet | Lists the posts an account is tagged in, the tab's first page |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | an inbox page load, up to 31 | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
@@ -248,6 +251,35 @@ the statuses the list reads do not carry them (W59). Each page is two requests, 
 relationship statuses a browser's list sends beside it (W58, W59). It takes the numeric account
 id and refuses a username with exit 2 before anything is sent. There is no `--limit` (W60). The
 live acceptance, `probes/e2_follow_lists_cli_acceptance.py`, ran on 2026-09-27, 5 requests, both steps exit 0.
+
+### `following`, `profile-reels` and `tagged`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta following 1234567890 --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json profile-reels 1234567890
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta tagged 1234567890
+```
+
+`following` is `followers` for the accounts an account follows, with the same output forms,
+options and exit codes, and `"command": "following"` in its JSON. Its `next_cursor` is a numeric
+offset such as `12`, which `--after` takes back (W99).
+
+`profile-reels` prints one line per reel on the tab: the shortcode `post` takes, then the play,
+like and comment counts, then `reels: N  more_available: B`. The JSON form carries `reel_count`,
+`more_available` and each reel's `id`, `pk`, `code`, `author_id`, `media_type`, `product_type`,
+the three counts, `like_and_view_counts_disabled`, the original size and `images`. The name is
+not `reels`, which is left for the reels feed.
+
+`tagged` prints one line per post the account is tagged in: the shortcode, the username of the
+account that posted it, the counts and the caption's first line, then `posts: N
+more_available: B`. The JSON form carries `post_count`, `more_available` and each post in the
+form `more-from-author` prints one.
+
+Both tabs are the first page only, since no next page query has been observed, and
+`more_available` says when there is more (W97, W98). All three take the numeric account id,
+which `profile` prints, and refuse a username with exit 2 before anything is sent. The live
+acceptance, `probes/e2_profile_tabs_more_cli_acceptance.py`, is written for the owner's own
+account, six requests, nine at most, and ran on 2026-09-27 with every step exit 0 and 6 requests, the site root referer answering all three reads: 1 reel, 4 tagged posts, 24 accounts followed over two pages with no overlap, log `logs/e2-profile-tabs-more-cli-2026-09-27-160153.json`.
 
 ### `profile`
 

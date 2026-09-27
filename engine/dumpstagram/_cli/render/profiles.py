@@ -1,5 +1,5 @@
 """A profile and the viewer's relationship to it, a profile's posts grid, its highlights tray, its
-followers, and the suggested accounts, in both output forms."""
+followers and the accounts it follows, and the suggested accounts, in both output forms."""
 
 from __future__ import annotations
 

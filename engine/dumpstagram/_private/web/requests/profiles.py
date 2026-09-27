@@ -1,8 +1,9 @@
 """The profile requests: one account by id, a username resolved to one, a profile page's six
-queries, a page of a profile's posts grid, its highlights tray, the suggested accounts, and a page
-of an account's followers with the viewer's relationship to each.
+queries, a page of a profile's posts grid, its reels and tagged tabs, its highlights tray, the
+suggested accounts, and a page of an account's followers or of the accounts it follows, with the
+viewer's relationship to each.
 
-The followers page and the relationship statuses are the first REST reads on the web API, not
+The follow list pages and the relationship statuses are the first REST reads on the web API, not
 GraphQL. They carry the header set the browser's follow list sent, the posting publishes' set
 with ``x-ig-max-touch-points`` and ``x-web-session-id`` added, and the page, a GET, without the
 three a form body brings.
@@ -26,8 +27,10 @@ from dumpstagram._private.web.documents.profiles import (
    PROFILE_NOTE_BUBBLE,
    PROFILE_POSTS,
    PROFILE_POSTS_NEXT_PAGE,
+   PROFILE_REELS,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
+   PROFILE_TAGGED,
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
@@ -37,15 +40,20 @@ from dumpstagram.session import Session
 
 __all__ = [
    "FOLLOWERS_PAGE_SIZE",
+   "FOLLOWING_PAGE_SIZE",
    "PROFILE_PAGE_POSTS",
+   "PROFILE_TAB_PAGE_SIZE",
    "RESOLUTION_PAGE_SIZE",
    "SUGGESTED_ACCOUNTS_SHOWN",
    "build_followers_request",
+   "build_following_request",
    "build_friendship_statuses_request",
    "build_highlight_tray_request",
    "build_profile_page_requests",
    "build_profile_posts_request",
+   "build_profile_reels_request",
    "build_profile_request",
+   "build_profile_tagged_request",
    "build_suggested_accounts_request",
    "build_suggested_beside_profile_request",
    "build_username_resolution_request",
@@ -67,9 +75,19 @@ SUGGESTED_ACCOUNTS_SHOWN = 5
 FOLLOWERS_PAGE_SIZE = 12
 """``count`` on a followers page, the value the browser's follow list sent."""
 
+FOLLOWING_PAGE_SIZE = 12
+"""``count`` on a page of the accounts an account follows, the value the browser's list sent on
+every page."""
+
+PROFILE_TAB_PAGE_SIZE = 12
+"""``page_size`` on the reels tab and ``count`` on the tagged tab, the value a browser sent on
+clicking each."""
+
 _USERNAME = re.compile(r"[A-Za-z0-9._]{1,30}")
 
 _FOLLOWERS_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/followers/"
+
+_FOLLOWING_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/following/"
 
 _FRIENDSHIP_STATUSES_URL = "https://www.instagram.com/api/v1/friendships/show_many/"
 
@@ -414,15 +432,121 @@ def build_followers_request(
 
    params = {"count": str(FOLLOWERS_PAGE_SIZE), "search_surface": _FOLLOW_LIST_SURFACE}
 
+   return _follow_list_page_request(
+      session,
+      _FOLLOWERS_URL.format(user_id=user_id),
+      params,
+      after=after,
+      web_session_id=web_session_id,
+      user_agent=user_agent,
+   )
+
+
+def build_following_request(
+   session: Session,
+   user_id: str,
+   *,
+   web_session_id: str,
+   after: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """One page of the accounts an account follows, keyed on the numeric account id in the path.
+
+   The followers page's twin with one difference the browser made: ``count`` alone, and no
+   ``search_surface``. A later page carries ``max_id``, the previous page's ``next_max_id``,
+   which on this list is a numeric offset as a string. The referer is the site root, for the
+   reason :func:`build_followers_request` gives. The account id is not checked here.
+
+   Finding: ``read-an-account-s-following``.
+   """
+
+   params = {"count": str(FOLLOWING_PAGE_SIZE)}
+
+   return _follow_list_page_request(
+      session,
+      _FOLLOWING_URL.format(user_id=user_id),
+      params,
+      after=after,
+      web_session_id=web_session_id,
+      user_agent=user_agent,
+   )
+
+
+def _follow_list_page_request(
+   session: Session,
+   url: str,
+   params: dict[str, str],
+   *,
+   after: str | None,
+   web_session_id: str,
+   user_agent: str,
+) -> Request:
    if after is not None:
       params["max_id"] = after
 
    return Request(
       method="GET",
-      url=_FOLLOWERS_URL.format(user_id=user_id),
+      url=url,
       headers=_rest_read_headers(session, web_session_id, user_agent),
       params=params,
       follow_redirects=False,
+   )
+
+
+def build_profile_reels_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The first page of a profile's reels tab, keyed on the numeric account id.
+
+   The variables are the ones a browser sent on clicking the tab: the id twice, as
+   ``data.target_user_id`` and as ``user_id``, a page size of twelve, and two constants. A
+   browser's referer is the profile page, which needs the username the caller did not give, so the
+   site root is sent, as :func:`build_highlight_tray_request` does. The account id is not checked
+   here; the capability refuses anything but digits first.
+
+   Finding: ``read-a-profile-s-reels-tab``.
+   """
+
+   variables = {
+      "data": {
+         "include_feed_video": True,
+         "page_size": PROFILE_TAB_PAGE_SIZE,
+         "target_user_id": user_id,
+      },
+      "user_id": user_id,
+      "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+   }
+
+   return build_graphql_request(
+      session, PROFILE_REELS, variables, referer=f"{ORIGIN}/", user_agent=user_agent
+   )
+
+
+def build_profile_tagged_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The first page of a profile's tagged tab, keyed on the numeric account id.
+
+   The variables are the ones a browser sent on clicking the tab, and the referer is the site
+   root for the reason :func:`build_profile_reels_request` gives.
+
+   Finding: ``read-a-profile-s-tagged-tab``.
+   """
+
+   variables = {
+      "count": PROFILE_TAB_PAGE_SIZE,
+      "user_id": user_id,
+      "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+   }
+
+   return build_graphql_request(
+      session, PROFILE_TAGGED, variables, referer=f"{ORIGIN}/", user_agent=user_agent
    )
 
 

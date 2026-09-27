@@ -1,5 +1,6 @@
 """The profile command, by username or by numeric account id, and the profile tab commands: the
-posts grid, the highlights tray, the followers, and the suggested accounts."""
+posts grid, the reels and tagged tabs, the highlights tray, the followers and the accounts
+followed, and the suggested accounts."""
 
 from __future__ import annotations
 
@@ -18,6 +19,12 @@ from dumpstagram._cli.commands.common import (
 )
 from dumpstagram._cli.commands.social import account_id
 from dumpstagram._cli.exits import EXIT_OK
+from dumpstagram._cli.render.profile_tabs import (
+   describe_profile_reels,
+   describe_tagged_posts,
+   render_profile_reels,
+   render_tagged_posts,
+)
 from dumpstagram._cli.render.profiles import (
    describe_follower_pages,
    describe_grid_pages,
@@ -44,7 +51,16 @@ __all__ = [
    "run_profile_tab_command",
 ]
 
-PROFILE_TAB_COMMANDS = ("posts", "highlights", "followers", "suggested", "suggested-for-you")
+PROFILE_TAB_COMMANDS = (
+   "posts",
+   "highlights",
+   "followers",
+   "following",
+   "profile-reels",
+   "tagged",
+   "suggested",
+   "suggested-for-you",
+)
 
 
 def run_profile(
@@ -134,13 +150,18 @@ def read_grid_pages(client: Client, arguments: argparse.Namespace) -> list[Page[
 def read_follower_pages(
    client: Client, arguments: argparse.Namespace
 ) -> list[Page[ProfileSummary]]:
-   """Read up to ``--pages`` followers pages, stopping on the page's own ``has_more``."""
+   """Read up to ``--pages`` pages of the followers, or under ``following`` of the accounts
+   followed, stopping on the page's own ``has_more``."""
 
+   lists_the_accounts_followed = arguments.command == "following"
+   read_page = (
+      client.profiles.following if lists_the_accounts_followed else client.profiles.followers
+   )
    pages: list[Page[ProfileSummary]] = []
    next_max_id = arguments.after
 
    while len(pages) < arguments.pages:
-      page = client.profiles.followers(arguments.user_id, after=next_max_id)
+      page = read_page(arguments.user_id, after=next_max_id)
       pages.append(page)
       reached_the_last_page = not page.has_next_page
 
@@ -167,11 +188,23 @@ def _profile_tab_result(
 
       return payload, render_highlight_tray(tray)
 
-   if arguments.command == "followers":
+   if arguments.command in ("followers", "following"):
       follower_pages = read_follower_pages(client, arguments)
-      payload = {"command": "followers", **describe_follower_pages(follower_pages)}
+      payload = {"command": arguments.command, **describe_follower_pages(follower_pages)}
 
       return payload, render_followers(follower_pages)
+
+   if arguments.command == "profile-reels":
+      reels = client.profiles.reels(arguments.user_id)
+      payload = {"command": "profile-reels", **describe_profile_reels(reels)}
+
+      return payload, render_profile_reels(reels)
+
+   if arguments.command == "tagged":
+      tagged = client.profiles.tagged(arguments.user_id)
+      payload = {"command": "tagged", **describe_tagged_posts(tagged)}
+
+      return payload, render_tagged_posts(tagged)
 
    if arguments.command == "suggested":
       accounts = client.profiles.suggested(arguments.user_id)
@@ -273,6 +306,57 @@ def add_profile_tab_parsers(commands: Subcommands) -> None:
       "--after", metavar="CURSOR", help="a next_cursor from an earlier followers run"
    )
    add_request_options(followers)
+
+   following = commands.add_parser(
+      "following",
+      help="list the accounts an account follows with your relationship to each, two live "
+      "requests a page",
+      description=(
+         "Reads the list a profile's following count opens, in the upstream's order, and asks "
+         "for your relationship to the accounts on each page, as the website does. --after "
+         "takes a next_cursor this command printed for the same account."
+      ),
+   )
+   following.add_argument(
+      "user_id", metavar="USER_ID", type=account_id, help="the account's numeric id"
+   )
+   following.add_argument(
+      "--pages",
+      type=page_count,
+      default=1,
+      metavar="N",
+      help="how many pages to read at most, default 1",
+   )
+   following.add_argument(
+      "--after", metavar="CURSOR", help="a next_cursor from an earlier following run"
+   )
+   add_request_options(following)
+
+   profile_reels = commands.add_parser(
+      "profile-reels",
+      help="list an account's reels tab, its first page, one live request",
+      description=(
+         "Lists each reel's code and counts. Only the tab's first page can be read, and "
+         "more_available says when there is more."
+      ),
+   )
+   profile_reels.add_argument(
+      "user_id", metavar="USER_ID", type=account_id, help="the account's numeric id"
+   )
+   add_request_options(profile_reels)
+
+   tagged = commands.add_parser(
+      "tagged",
+      help="list the posts an account is tagged in, the tab's first page, one live request",
+      description=(
+         "Lists each post's code and the account that posted it. Only the tab's first page "
+         "can be read, and more_available says when there is more."
+      ),
+   )
+   tagged.add_argument(
+      "user_id", metavar="USER_ID", type=account_id, help="the account's numeric id"
+   )
+   add_request_options(tagged)
 
    suggested = commands.add_parser(
       "suggested",

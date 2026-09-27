@@ -61,8 +61,10 @@ from dumpstagram._private.web.documents.profiles import (
    PROFILE_NOTE_BUBBLE,
    PROFILE_POSTS,
    PROFILE_POSTS_NEXT_PAGE,
+   PROFILE_REELS,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
+   PROFILE_TAGGED,
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
@@ -111,6 +113,8 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    RECENT_SEARCHES,
    NON_PERSONALISED_TYPEAHEAD,
    HASHTAG_HEADER,
+   PROFILE_REELS,
+   PROFILE_TAGGED,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

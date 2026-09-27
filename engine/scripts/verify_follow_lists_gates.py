@@ -94,7 +94,7 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE,
-            'has_more = _required_flag(payload, "has_more", _FOLLOWERS)',
+            'has_more = _required_flag(payload, "has_more", follow_list_path)',
             "has_more = len(users) == 12",
          )
       ],
@@ -282,8 +282,18 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             NAMESPACE,
-            "with_statuses=client._behavior.follow_list_statuses,",
-            "with_statuses=True,",
+            "         read_followers_page(\n"
+            "            client._sender,\n"
+            "            client._session,\n"
+            "            user_id,\n"
+            "            after=after,\n"
+            "            with_statuses=client._behavior.follow_list_statuses,",
+            "         read_followers_page(\n"
+            "            client._sender,\n"
+            "            client._session,\n"
+            "            user_id,\n"
+            "            after=after,\n"
+            "            with_statuses=True,",
          )
       ],
    },

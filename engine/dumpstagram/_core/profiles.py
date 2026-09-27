@@ -23,15 +23,21 @@ tray, and the accounts suggested beside the profile or on the suggested accounts
 one query sent alone, and the departures that makes are recorded in W53 to W55. Since E2 batch 3
 an account's followers are read a page at a time, each page followed inside its action by the
 viewer's relationship to the accounts on it, as the browser's follow list does (W58 to W60).
+Since E2 batch 11a the reels and tagged tabs are read the same way as the grid's first page, one
+query sent alone, and the accounts an account follows are read as its followers are (W97 to W100).
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
 
 from dumpstagram._core.cookie_sync import CookieSync
 from dumpstagram._core.pacer import run_with_retries
 from dumpstagram._core.page_load import raise_only_what_concerns_the_account, send_companions
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
+from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import (
    DEFAULT_USER_AGENT,
    apply_tokens,
@@ -43,23 +49,29 @@ from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.profiles import (
    attach_friendship_statuses,
    parse_followers_page,
+   parse_following_page,
    parse_friendship_statuses,
    parse_highlight_tray,
    parse_profile,
    parse_profile_posts_page,
+   parse_profile_reels,
    parse_suggested_accounts,
    parse_suggested_beside_profile,
+   parse_tagged_posts,
    parse_user_id,
 )
 from dumpstagram._private.web.preload import read_iris_device_id, read_profile_id
 from dumpstagram._private.web.requests.page_load import build_profile_page_load_companions
 from dumpstagram._private.web.requests.profiles import (
    build_followers_request,
+   build_following_request,
    build_friendship_statuses_request,
    build_highlight_tray_request,
    build_profile_page_requests,
    build_profile_posts_request,
+   build_profile_reels_request,
    build_profile_request,
+   build_profile_tagged_request,
    build_suggested_accounts_request,
    build_suggested_beside_profile_request,
    build_username_resolution_request,
@@ -69,18 +81,30 @@ from dumpstagram._private.web.requests.profiles import (
 )
 from dumpstagram.behavior import ProfileRoute
 from dumpstagram.errors import NotFound
-from dumpstagram.models import HighlightTray, Page, Post, Profile, ProfileSummary, SuggestedAccount
+from dumpstagram.models import (
+   HighlightTray,
+   Page,
+   Post,
+   Profile,
+   ProfileReels,
+   ProfileSummary,
+   SuggestedAccount,
+   TaggedPosts,
+)
 from dumpstagram.session import Session
 
 __all__ = [
    "read_followers_page",
+   "read_following_page",
    "read_highlight_tray",
    "read_profile",
    "read_profile_by_id",
    "read_profile_from_page",
    "read_profile_posts_page",
+   "read_profile_reels",
    "read_suggested_accounts",
    "read_suggested_beside_profile",
+   "read_tagged_posts",
    "resolve_username",
 ]
 
@@ -377,6 +401,57 @@ async def read_followers_page(
    A bootstrap is needed only for the second request, which carries the page token.
    """
 
+   return await _read_follow_list_page(
+      sender,
+      session,
+      user_id,
+      build_page=build_followers_request,
+      parse_page=parse_followers_page,
+      after=after,
+      with_statuses=with_statuses,
+      user_agent=user_agent,
+      deadline=deadline,
+   )
+
+
+async def read_following_page(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   after: str | None = None,
+   with_statuses: bool = True,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> Page[ProfileSummary]:
+   """One page of the accounts an account follows, one action of one or two live requests, the
+   followers page's twin in every step (W99)."""
+
+   return await _read_follow_list_page(
+      sender,
+      session,
+      user_id,
+      build_page=build_following_request,
+      parse_page=parse_following_page,
+      after=after,
+      with_statuses=with_statuses,
+      user_agent=user_agent,
+      deadline=deadline,
+   )
+
+
+async def _read_follow_list_page(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   build_page: Callable[..., Request],
+   parse_page: Callable[[Any], Page[ProfileSummary]],
+   after: str | None,
+   with_statuses: bool,
+   user_agent: str,
+   deadline: float | None,
+) -> Page[ProfileSummary]:
    refuse_what_is_not_a_user_id(user_id)
 
    async def attempt() -> Page[ProfileSummary]:
@@ -388,10 +463,10 @@ async def read_followers_page(
       web_session_id = new_web_session_id()
 
       async with sender.action() as action:
-         page_request = build_followers_request(
+         page_request = build_page(
             session, user_id, after=after, web_session_id=web_session_id, user_agent=user_agent
          )
-         page = parse_followers_page(classify(await action.send(page_request)))
+         page = parse_page(classify(await action.send(page_request)))
          asks_for_statuses = with_statuses and bool(page.items)
 
          if not asks_for_statuses:
@@ -406,5 +481,53 @@ async def read_followers_page(
          statuses = parse_friendship_statuses(classify(await action.send(statuses_request)))
 
       return attach_friendship_statuses(page, statuses)
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_profile_reels(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> ProfileReels:
+   """One account's reels tab, its first page, one live request, sent alone (W97)."""
+
+   refuse_what_is_not_a_user_id(user_id)
+
+   async def attempt() -> ProfileReels:
+      if not session.fb_dtsg:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_profile_reels_request(session, user_id, user_agent=user_agent)
+      response = await sender.send(request)
+
+      return parse_profile_reels(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_tagged_posts(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> TaggedPosts:
+   """One account's tagged tab, its first page, one live request, sent alone (W98)."""
+
+   refuse_what_is_not_a_user_id(user_id)
+
+   async def attempt() -> TaggedPosts:
+      if not session.fb_dtsg:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_profile_tagged_request(session, user_id, user_agent=user_agent)
+      response = await sender.send(request)
+
+      return parse_tagged_posts(classify(response))
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

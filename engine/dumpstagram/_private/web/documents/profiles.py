@@ -1,5 +1,6 @@
 """The profile queries: one account by id, a username resolved through its timeline, the
-companions a profile page sends, the posts grid past its first page, and the suggested accounts.
+companions a profile page sends, the posts grid past its first page, the suggested accounts, and
+the reels and tagged tabs.
 """
 
 from __future__ import annotations
@@ -13,7 +14,9 @@ __all__ = [
    "PROFILE_POSTS",
    "PROFILE_SCHOOL_BADGE",
    "PROFILE_POSTS_NEXT_PAGE",
+   "PROFILE_REELS",
    "PROFILE_SUGGESTED_USERS",
+   "PROFILE_TAGGED",
    "SUGGESTED_ACCOUNTS",
    "SUGGESTED_BESIDE_PROFILE",
 ]
@@ -126,4 +129,32 @@ SUGGESTED_ACCOUNTS = PersistedQuery(
 """The suggested accounts list the website shows under "Suggested for you", root ``ayml``.
 
 Replayed twice on 2026-09-27, one group of five accounts each time, with no cursor in the answer.
+"""
+
+PROFILE_REELS = PersistedQuery(
+   doc_id="29628758406714645",
+   friendly_name="PolarisProfileReelsTabContentQuery",
+   finding_id="read-a-profile-s-reels-tab",
+   url=GRAPHQL_QUERY_URL,
+   root_field="fetch__XDTUserDict",
+)
+"""The reels tab on a profile, keyed on the numeric account id, which it takes twice.
+
+The root is the account's user node rather than a connection, and the reels are its
+``clips_connection``, beside ``xdt_viewer``. A browser sent it once on clicking the tab, and two
+engine replays on 2026-09-27 answered the owner's one reel with ``has_next_page`` false. No next
+page query has been observed.
+"""
+
+PROFILE_TAGGED = PersistedQuery(
+   doc_id="28390247837269928",
+   friendly_name="PolarisProfileTaggedTabContentQuery",
+   finding_id="read-a-profile-s-tagged-tab",
+   url=GRAPHQL_QUERY_URL,
+   root_field="xdt_api__v1__usertags__user_id__feed_connection",
+)
+"""The tagged tab on a profile, the posts other accounts tagged it in, keyed on the numeric
+account id. A browser sent it once on clicking the tab, and two engine replays on 2026-09-27
+answered the owner's four tagged posts with ``has_next_page`` false. No next page query has been
+observed.
 """

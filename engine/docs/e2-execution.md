@@ -45,7 +45,7 @@ capture night that unblocks the rest.
 | 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
 | 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
-| 11 | Replays the capture unblocks | written after batch 10 | about 40, HYPOTHESIS | |
+| 11 | Replays the capture unblocks, 11a profile done 2026-09-27 | `probes/e2_capture_replays.py` | 27, profile stage spent 10 | 7 |
 | 12 | Story seen, done 2026-09-27 on the owner's own highlight | `probes/story_seen_own_highlight.py` | 4, spent 4 | |
 
 Batches 1 to 9 spend 80 requests, 114 at most, 9 of them bootstraps, at the probe spacing of
@@ -173,9 +173,8 @@ Side effect. None.
 W53 took a username only, W54 shipped the tray as a first page with no iterator, and W55 returned
 `SuggestedAccount` from the list.
 
-Needs capture first (batch 10), waiting on the capture night: the profile's reels tab and tagged
-tab. No page load compiled
-either, and neither is in the home document's lazy chunk map.
+The profile's reels tab and tagged tab, which no page load compiled, were captured on the capture
+night (batch 10) and shipped in batch 11a.
 
 ## Batch 3: relationship lists
 
@@ -183,8 +182,8 @@ either, and neither is in the home document's lazy chunk map.
 |---|---|---|
 | `REST GET /api/v1/friendships/{user_id}/followers/` | followers, a page | verified 2026-09-27, public as `profiles.followers`, next pages on `max_id` |
 | `REST POST /api/v1/friendships/show_many/` | the viewer's relationship to many ids | verified 2026-09-27, sent after each followers page, folded into the rows (W59) |
-| following | | capture first, waiting on the capture night |
-| mutual followers | | capture first, waiting on the capture night |
+| `REST GET /api/v1/friendships/{user_id}/following/` | following, a page | verified 2026-09-27, public as `profiles.following` in batch 11a (W99) |
+| mutual followers | | not captured, both accounts opened showed 0, still waiting |
 
 **Status: done on 2026-09-27 for the followers, rulings W58 to W60.** The probe ran twice at 7
 requests, 14, the conditional next page sent on both runs, and both findings were promoted to
@@ -206,8 +205,8 @@ ran on 2026-09-27 with both steps exit 0 and 5 requests: 19 followers over two p
   `blocking`, so batch 2's model fits as it was (W59).
 - Neither REST read has a `doc_id`, so the doctor's canary does not replay them (W60).
 
-Following and mutual followers are not implemented. No request for either was observed, so both
-wait on the capture night (batch 10), which opens a following list and a mutual followers line.
+Following shipped in batch 11a. Mutual followers are not implemented: the capture night opened
+two followed accounts whose mutual followers line read 0, so no request was observed.
 
 Variables. The followers page takes the account's numeric id in the path and the query
 `count` 12 and `search_surface` follow_list_page, observed on the owner's own followers. The
@@ -631,6 +630,37 @@ requests, not yet run. What it found:
   rendered). The story seen mutation and the blocked list with an entry were left out: both are
   writes, and the orchestrator's first attempt to include them was refused by the session's
   permission check, so they wait for the owner.
+
+## Batch 11a: profile tabs and following, from the capture night
+
+| Operation | Kind | Status |
+|---|---|---|
+| `PolarisProfileReelsTabContentQuery` | the reels tab's first page | verified 2026-09-27, public as `profiles.reels` |
+| `PolarisProfileTaggedTabContentQuery` | the tagged tab's first page | verified 2026-09-27, public as `profiles.tagged` |
+| `REST GET /api/v1/friendships/{user_id}/following/` | following, a page, `max_id` a numeric offset | verified 2026-09-27, public as `profiles.following` |
+| mutual followers | | not captured, still waiting |
+
+**Status: done on 2026-09-27, rulings W97 to W100.** The browser captured each read in
+`run-2026-09-27-131354`, and `probes/e2_capture_replays.py --stage profile` replayed each twice in
+`run-2026-09-27-151121`, 10 requests with the bootstrap and the owner's profile, log
+`logs/e2-capture-replays-2026-09-27-151227.json`. It shipped `client.profiles.reels(user_id) ->
+ProfileReels`, `client.profiles.tagged(user_id) -> TaggedPosts`,
+`client.profiles.following(user_id, *, after=None) -> Page[ProfileSummary]` and
+`client.profiles.iter_following(user_id, *, limit, after=None)`, on both clients with no flat
+twin, with the new models `ReelThumbnail`, `ProfileReels` and `TaggedPosts`, and as `dumpsta
+profile-reels`, `tagged` and `following`. The live acceptance,
+`probes/e2_profile_tabs_more_cli_acceptance.py`, is written for the owner's own account, six
+requests, nine at most, and ran on 2026-09-27 with every step exit 0 and 6 requests, the site root referer answering all three reads: 1 reel, 4 tagged posts, 24 accounts followed over two pages with no overlap, log `logs/e2-profile-tabs-more-cli-2026-09-27-160153.json`. What the batch found:
+
+- The reels tab roots at the account's user node, and its item carries no username and no
+  caption, so it is a new `ReelThumbnail` with `play_count` (W97).
+- The tagged tab's item is the strip's item with ten keys more, so it is `PostThumbnail`, and its
+  `end_cursor` is the string `None` beside `has_next_page` false (W98).
+- Neither tab had a next page on the owner's account, so both are first pages with `has_more`.
+- The following list is the followers list's twin without `search_surface`, its cursor a numeric
+  offset, and it is ranked: two first pages seconds apart shared 11 of 12 accounts in a different
+  order. `Behavior.follow_list_statuses` governs both lists (W99).
+- The doctor replays both tabs on the viewer's own id, thirty-two reads (W100).
 
 ## Batch 12: story seen
 

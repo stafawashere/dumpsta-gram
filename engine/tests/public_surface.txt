@@ -56,6 +56,7 @@ alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
+alias dumpstagram.ProfileReels -> dumpstagram.models.posts.ProfileReels
 alias dumpstagram.ProfileRoute -> dumpstagram.behavior.ProfileRoute
 alias dumpstagram.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
@@ -65,6 +66,7 @@ alias dumpstagram.RateLimited -> dumpstagram.errors.RateLimited
 alias dumpstagram.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.RecentSearch -> dumpstagram.models.search.RecentSearch
 alias dumpstagram.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
+alias dumpstagram.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
 data dumpstagram.SCHEMA_VERSION: int = 1
 alias dumpstagram.SchemaChanged -> dumpstagram.errors.SchemaChanged
 alias dumpstagram.SentMessage -> dumpstagram.models.messages.SentMessage
@@ -79,6 +81,7 @@ alias dumpstagram.StoryReel -> dumpstagram.models.stories.StoryReel
 alias dumpstagram.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
+alias dumpstagram.TaggedPosts -> dumpstagram.models.posts.TaggedPosts
 alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
 alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.TransportFailure -> dumpstagram.errors.TransportFailure
@@ -266,11 +269,13 @@ alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.models.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
+alias dumpstagram.models.ProfileReels -> dumpstagram.models.posts.ProfileReels
 alias dumpstagram.models.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
 alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.RecentSearch -> dumpstagram.models.search.RecentSearch
 alias dumpstagram.models.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
+alias dumpstagram.models.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.models.StoryItem -> dumpstagram.models.stories.StoryItem
 alias dumpstagram.models.StoryMention -> dumpstagram.models.stories.StoryMention
@@ -279,6 +284,7 @@ alias dumpstagram.models.StoryOwner -> dumpstagram.models.stories.StoryOwner
 alias dumpstagram.models.StoryReel -> dumpstagram.models.stories.StoryReel
 alias dumpstagram.models.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
+alias dumpstagram.models.TaggedPosts -> dumpstagram.models.posts.TaggedPosts
 alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.models.TrayReel -> dumpstagram.models.stories.TrayReel
 alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
@@ -582,6 +588,9 @@ field dumpstagram.models.posts.PostThumbnail.like_count: int
 field dumpstagram.models.posts.PostThumbnail.media_type: int
 field dumpstagram.models.posts.PostThumbnail.pk: str
 field dumpstagram.models.posts.PostThumbnail.product_type: str
+class dumpstagram.models.posts.ProfileReels()
+field dumpstagram.models.posts.ProfileReels.has_more: bool
+field dumpstagram.models.posts.ProfileReels.reels: tuple[ReelThumbnail, ...]
 class dumpstagram.models.posts.PublishedPost()
 field dumpstagram.models.posts.PublishedPost.code: str
 field dumpstagram.models.posts.PublishedPost.id: str
@@ -589,6 +598,23 @@ field dumpstagram.models.posts.PublishedPost.media_type: int
 field dumpstagram.models.posts.PublishedPost.pk: str
 field dumpstagram.models.posts.PublishedPost.taken_at: datetime
 field dumpstagram.models.posts.PublishedPost.upload_ids: tuple[str, ...]
+class dumpstagram.models.posts.ReelThumbnail()
+field dumpstagram.models.posts.ReelThumbnail.author_id: str
+field dumpstagram.models.posts.ReelThumbnail.code: str
+field dumpstagram.models.posts.ReelThumbnail.comment_count: int
+field dumpstagram.models.posts.ReelThumbnail.id: str
+field dumpstagram.models.posts.ReelThumbnail.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.posts.ReelThumbnail.like_and_view_counts_disabled: bool
+field dumpstagram.models.posts.ReelThumbnail.like_count: int
+field dumpstagram.models.posts.ReelThumbnail.media_type: int
+field dumpstagram.models.posts.ReelThumbnail.original_height: int
+field dumpstagram.models.posts.ReelThumbnail.original_width: int
+field dumpstagram.models.posts.ReelThumbnail.pk: str
+field dumpstagram.models.posts.ReelThumbnail.play_count: int | None = None
+field dumpstagram.models.posts.ReelThumbnail.product_type: str
+class dumpstagram.models.posts.TaggedPosts()
+field dumpstagram.models.posts.TaggedPosts.has_more: bool
+field dumpstagram.models.posts.TaggedPosts.posts: tuple[PostThumbnail, ...]
 module dumpstagram.models.profiles
 class dumpstagram.models.profiles.BioLink()
 field dumpstagram.models.profiles.BioLink.is_pinned: bool
@@ -853,23 +879,31 @@ def dumpstagram.namespaces.profiles.AsyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_username(self, username: str) -> Profile
 def dumpstagram.namespaces.profiles.AsyncProfiles.followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
+def dumpstagram.namespaces.profiles.AsyncProfiles.following(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.highlights(self, user_id: str) -> HighlightTray
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[ProfileSummary]
+def dumpstagram.namespaces.profiles.AsyncProfiles.iter_following(self, user_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
 def dumpstagram.namespaces.profiles.AsyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.profiles.AsyncProfiles.reels(self, user_id: str) -> ProfileReels
 def dumpstagram.namespaces.profiles.AsyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.profiles.AsyncProfiles.suggested_for_you(self) -> tuple[SuggestedAccount, ...]
+def dumpstagram.namespaces.profiles.AsyncProfiles.tagged(self, user_id: str) -> TaggedPosts
 class dumpstagram.namespaces.profiles.SyncProfiles()
 def dumpstagram.namespaces.profiles.SyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.SyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.SyncProfiles.by_username(self, username: str) -> Profile
 def dumpstagram.namespaces.profiles.SyncProfiles.followers(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
+def dumpstagram.namespaces.profiles.SyncProfiles.following(self, user_id: str, *, after: str | None = None) -> Page[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.highlights(self, user_id: str) -> HighlightTray
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> Iterator[ProfileSummary]
+def dumpstagram.namespaces.profiles.SyncProfiles.iter_following(self, user_id: str, *, limit: int | None, after: str | None = None) -> Iterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> Iterator[Post]
 def dumpstagram.namespaces.profiles.SyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.profiles.SyncProfiles.reels(self, user_id: str) -> ProfileReels
 def dumpstagram.namespaces.profiles.SyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.profiles.SyncProfiles.suggested_for_you(self) -> tuple[SuggestedAccount, ...]
+def dumpstagram.namespaces.profiles.SyncProfiles.tagged(self, user_id: str) -> TaggedPosts
 module dumpstagram.namespaces.search
 class dumpstagram.namespaces.search.AsyncSearch()
 def dumpstagram.namespaces.search.AsyncSearch.__init__(self) -> None

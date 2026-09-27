@@ -1,5 +1,5 @@
-"""A post read on its own, by its shortcode or its media pk, and a post as the "more posts from"
-strip under a post shows it.
+"""A post read on its own, by its shortcode or its media pk, a post as the "more posts from"
+strip under a post shows it, and a profile's reels and tagged tabs.
 
 Every field below was present on the ``PolarisPostRootQuery`` item the engine read four times on
 2026-09-23, recorded in `skills/reverse-engineer/knowledge/endpoints/read-a-post-by-shortcode.md`
@@ -27,7 +27,14 @@ from dumpstagram.models.feed import (
 )
 from dumpstagram.models.profiles import ProfileSummary
 
-__all__ = ["PostDetail", "PostThumbnail", "PublishedPost"]
+__all__ = [
+   "PostDetail",
+   "PostThumbnail",
+   "ProfileReels",
+   "PublishedPost",
+   "ReelThumbnail",
+   "TaggedPosts",
+]
 
 
 @dataclass(frozen=True)
@@ -140,3 +147,63 @@ class PublishedPost:
    taken_at: datetime
    media_type: int
    upload_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReelThumbnail:
+   """One reel as a profile's reels tab shows it: a cover, the counts, and how to open it.
+
+   The tab answers with a thinner item than the strip under a post: of its author only the
+   ``pk``, no username, and no caption at all. So it is its own model rather than a
+   :class:`PostThumbnail` with guesses in it. Every field below was present on the one reel of the
+   two answers read on 2026-09-27, which is a narrow sample.
+
+   ``pk``, ``id`` and ``code`` mean what they mean on :class:`~dumpstagram.models.Post`, so
+   ``pk`` is what :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_id` takes and ``code`` what
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` takes. ``author_id`` is the posting
+   account's. ``play_count`` is the upstream's count of plays, the number the tab shows on the
+   cover; it was a number on the one reel read, and it is ``None`` when the upstream sends null,
+   since whether it is withheld on other accounts' reels is not observed. ``original_width`` and
+   ``original_height`` are the video's own size. ``images`` are the cover's renditions in the
+   upstream's order.
+   """
+
+   id: str
+   pk: str
+   code: str
+   author_id: str
+   media_type: int
+   product_type: str
+   like_count: int
+   comment_count: int
+   like_and_view_counts_disabled: bool
+   original_width: int
+   original_height: int
+   play_count: int | None = None
+   images: tuple[MediaImage, ...] = ()
+
+
+@dataclass(frozen=True)
+class ProfileReels:
+   """The first page of a profile's reels tab, newest first as the tab shows it.
+
+   ``has_more`` is the page's own ``has_next_page``. No query that reads the tab past its first
+   page has been observed, because the one account read had one reel, so nothing here hands out a
+   cursor.
+   """
+
+   reels: tuple[ReelThumbnail, ...]
+   has_more: bool
+
+
+@dataclass(frozen=True)
+class TaggedPosts:
+   """The first page of a profile's tagged tab: the posts other accounts tagged it in.
+
+   Each post is a :class:`PostThumbnail`, because the tab sends its author without a full name and
+   carries no time. ``has_more`` is the page's own ``has_next_page``. No query that reads the tab
+   past its first page has been observed, so nothing here hands out a cursor.
+   """
+
+   posts: tuple[PostThumbnail, ...]
+   has_more: bool

@@ -1,6 +1,7 @@
 """Map a profile payload, the account id read off a timeline's first post, a page of a profile's
-posts grid, its highlights tray, the two lists of suggested accounts, and a page of an account's
-followers with the viewer's relationship to each."""
+posts grid, its reels and tagged tabs, its highlights tray, the two lists of suggested accounts,
+and a page of an account's followers or of the accounts it follows, with the viewer's
+relationship to each."""
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from dumpstagram._private.web.parse.common import (
    _required_integer,
    _required_string,
 )
-from dumpstagram._private.web.parse.media import parse_post
+from dumpstagram._private.web.parse.media import _images, _post_thumbnail, parse_post
 from dumpstagram._private.web.parse.posting import _raise_unless_ok
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
@@ -31,25 +32,33 @@ from dumpstagram.models import (
    Page,
    Post,
    Profile,
+   ProfileReels,
    ProfileSummary,
+   ReelThumbnail,
    SuggestedAccount,
+   TaggedPosts,
 )
 
 __all__ = [
    "HIGHLIGHT_TRAY_PATH",
    "PROFILE_PATH",
+   "REELS_TAB_PATH",
    "SUGGESTED_ACCOUNTS_PATH",
    "SUGGESTED_BESIDE_PROFILE_PATH",
+   "TAGGED_TAB_PATH",
    "TIMELINE_PATH",
    "attach_friendship_statuses",
    "parse_followers_page",
+   "parse_following_page",
    "parse_friendship_statuses",
    "parse_highlight_tray",
    "parse_profile",
    "parse_profile_posts_page",
+   "parse_profile_reels",
    "parse_profile_summary",
    "parse_suggested_accounts",
    "parse_suggested_beside_profile",
+   "parse_tagged_posts",
    "parse_user_id",
 ]
 
@@ -69,6 +78,13 @@ SUGGESTED_BESIDE_PROFILE_PATH = ("data", "xdt_api__v1__discover__chaining")
 
 SUGGESTED_ACCOUNTS_PATH = ("data", "ayml")
 """The path to the suggested accounts list, which carries ``groups`` and nothing else."""
+
+REELS_TAB_PATH = ("data", "fetch__XDTUserDict", "clips_connection")
+"""The path to the reels connection in a ``PolarisProfileReelsTabContentQuery`` payload, under the
+account's user node."""
+
+TAGGED_TAB_PATH = ("data", "xdt_api__v1__usertags__user_id__feed_connection")
+"""The path to the tagged posts connection in a ``PolarisProfileTaggedTabContentQuery`` payload."""
 
 
 def _flag_or_default(node: Any, key: str, path: str, default: bool) -> bool:
@@ -476,6 +492,8 @@ def parse_suggested_accounts(payload: Any) -> tuple[SuggestedAccount, ...]:
 
 _FOLLOWERS = "<followers>"
 
+_FOLLOWING = "<following>"
+
 _STATUSES = "<friendship statuses>"
 
 
@@ -501,13 +519,36 @@ def parse_followers_page(payload: Any) -> Page[ProfileSummary]:
 
    _raise_unless_ok(payload, "followers page")
 
-   users = _list_of(payload, "users", _FOLLOWERS)
-   has_more = _required_flag(payload, "has_more", _FOLLOWERS)
+   return _follow_list_page(payload, _FOLLOWERS)
+
+
+def parse_following_page(payload: Any) -> Page[ProfileSummary]:
+   """One page of the accounts an account follows, the followers page's twin.
+
+   The answer carried the followers page's keys and ``hidden_following_account_count``, 0 on all
+   four pages read, which is dropped with the list's chrome. ``next_max_id`` was a numeric offset
+   as a string, ``12`` then ``24``, and every page read said ``has_more`` true, so no last page
+   has been read here either. Every row carried the keys a followers row does and
+   ``reel_media_seen_timestamp`` on some rows, which is not read.
+
+   Finding: ``read-an-account-s-following``.
+   """
+
+   _raise_unless_ok(payload, "following page")
+
+   return _follow_list_page(payload, _FOLLOWING)
+
+
+def _follow_list_page(payload: Any, follow_list_path: str) -> Page[ProfileSummary]:
+   users = _list_of(payload, "users", follow_list_path)
+   has_more = _required_flag(payload, "has_more", follow_list_path)
    carries_a_cursor = payload.get("next_max_id") is not None
-   next_max_id = _required_string(payload, "next_max_id", _FOLLOWERS) if carries_a_cursor else None
+   next_max_id = (
+      _required_string(payload, "next_max_id", follow_list_path) if carries_a_cursor else None
+   )
 
    accounts = tuple(
-      parse_profile_summary(user, f"{_FOLLOWERS}.users[{index}]")
+      parse_profile_summary(user, f"{follow_list_path}.users[{index}]")
       for index, user in enumerate(users)
    )
 
@@ -553,3 +594,96 @@ def attach_friendship_statuses(
    )
 
    return replace(page, items=accounts)
+
+
+def _reel_thumbnail(node: Any, path: str) -> ReelThumbnail:
+   """One reel of the tab, read from the edge node's ``media``.
+
+   Dropped, each null, empty or chrome on the one reel read: ``media_overlay_info``,
+   ``carousel_media``, the three boost fields, ``view_count``, ``audience``,
+   ``clips_tab_pinned_user_ids``, ``preview``, ``coauthor_producers``, ``is_fb_only``,
+   ``is_internal_only``, ``longform_clip_metadata``,
+   ``ai_interactive_embodiment_attachment_style_info``, and the author's
+   ``aigm_account_label_info``. The node's own ``__typename`` XDTClipsItemDict is not read.
+   """
+
+   media = _object_at(node, ("media",))
+   media_path = f"{path}.media"
+   author = _object_at(media, ("user",))
+   author_path = f"{media_path}.user"
+
+   return ReelThumbnail(
+      id=_required_string(media, "id", media_path),
+      pk=_required_string(media, "pk", media_path),
+      code=_required_string(media, "code", media_path),
+      author_id=_required_string(author, "pk", author_path),
+      media_type=_required_integer(media, "media_type", media_path),
+      product_type=_required_string(media, "product_type", media_path),
+      like_count=_required_integer(media, "like_count", media_path),
+      comment_count=_required_integer(media, "comment_count", media_path),
+      like_and_view_counts_disabled=_required_flag(
+         media, "like_and_view_counts_disabled", media_path
+      ),
+      original_width=_required_integer(media, "original_width", media_path),
+      original_height=_required_integer(media, "original_height", media_path),
+      play_count=_optional_integer(media, "play_count", media_path),
+      images=_images(media, media_path),
+   )
+
+
+def parse_profile_reels(payload: Any) -> ProfileReels:
+   """One ``PolarisProfileReelsTabContentQuery`` payload, the tab's first page in its order.
+
+   The reels are the ``clips_connection`` of the account's user node, whose ``id`` and
+   ``__token`` are dropped, as is ``xdt_viewer``. The per-edge ``cursor`` was null, and so was
+   ``page_info.end_cursor`` beside ``has_next_page`` false on both answers read, so the page's
+   ``has_next_page`` is carried as ``has_more`` and no cursor is.
+
+   Finding: ``read-a-profile-s-reels-tab``.
+   """
+
+   connection = _object_at(payload, REELS_TAB_PATH)
+   connection_path = ".".join(REELS_TAB_PATH)
+   edges = _list_of(connection, "edges", connection_path)
+
+   reels = tuple(
+      _reel_thumbnail(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
+   )
+   has_more, _ = _page_info(connection, connection_path)
+
+   return ProfileReels(reels=reels, has_more=has_more)
+
+
+def parse_tagged_posts(payload: Any) -> TaggedPosts:
+   """One ``PolarisProfileTaggedTabContentQuery`` payload, the tab's first page in its order.
+
+   A node carries every key of the strip under a post's item and ten more, so it is read as a
+   :class:`~dumpstagram.models.PostThumbnail` by the strip's mapper, and the ten are dropped:
+   ``__typename`` XDTMediaDict, ``original_width``, ``original_height``, ``longform_title``,
+   ``coauthor_producers``, ``is_fb_only``, ``is_internal_only``, ``longform_clip_metadata``,
+   ``ai_label_info`` and ``ai_interactive_embodiment_attachment_style_info``. The per-edge
+   ``cursor`` was null and ``page_info.end_cursor`` was the four character string ``None`` beside
+   ``has_next_page`` false on both answers read, so only ``has_next_page`` is carried, as
+   ``has_more``.
+
+   Finding: ``read-a-profile-s-tagged-tab``.
+   """
+
+   connection = _object_at(payload, TAGGED_TAB_PATH)
+   connection_path = ".".join(TAGGED_TAB_PATH)
+   edges = _list_of(connection, "edges", connection_path)
+
+   posts = tuple(
+      _post_thumbnail(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
+   )
+   has_more, _ = _page_info(connection, connection_path)
+
+   return TaggedPosts(posts=posts, has_more=has_more)

@@ -40,7 +40,14 @@ from dumpstagram.models.highlights import Highlight, HighlightTray
 from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
-from dumpstagram.models.posts import PostDetail, PostThumbnail, PublishedPost
+from dumpstagram.models.posts import (
+   PostDetail,
+   PostThumbnail,
+   ProfileReels,
+   PublishedPost,
+   ReelThumbnail,
+   TaggedPosts,
+)
 from dumpstagram.models.profiles import (
    BioLink,
    FriendshipStatus,
@@ -109,10 +116,12 @@ __all__ = [
    "PostAuthor",
    "PostDetail",
    "PostThumbnail",
+   "ProfileReels",
    "PublishedPost",
    "Profile",
    "ProfileSummary",
    "Reaction",
+   "ReelThumbnail",
    "RecentSearch",
    "RecentSearchKind",
    "SentMessage",
@@ -123,6 +132,7 @@ __all__ = [
    "StoryReel",
    "StoryVideo",
    "SuggestedAccount",
+   "TaggedPosts",
    "ThreadParticipant",
    "TrayReel",
    "UnreadCounts",

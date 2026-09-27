@@ -60,7 +60,12 @@ from dumpstagram._private.web.documents.media import (
    MORE_FROM_AUTHOR,
 )
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
-from dumpstagram._private.web.documents.profiles import PROFILE_POSTS, PROFILE_POSTS_NEXT_PAGE
+from dumpstagram._private.web.documents.profiles import (
+   PROFILE_POSTS,
+   PROFILE_POSTS_NEXT_PAGE,
+   PROFILE_REELS,
+   PROFILE_TAGGED,
+)
 from dumpstagram._private.web.documents.search import (
    HASHTAG_HEADER,
    NON_PERSONALISED_TYPEAHEAD,
@@ -84,6 +89,7 @@ from tests.test_notes import tray_payload
 from tests.test_parse import payload as thread_page_payload
 from tests.test_post_depth import recorded as recorded_post_depth
 from tests.test_profile_tabs import recorded as recorded_profile_tabs
+from tests.test_profile_tabs_more import recorded as recorded_profile_tabs_more
 from tests.test_profiles import USERNAME as PROFILE_USERNAME
 from tests.test_profiles import profile_payload
 from tests.test_search import recorded as recorded_search
@@ -243,6 +249,8 @@ def answers_for_every_read() -> dict[str, Any]:
          "non_personalised_typeahead.json"
       ),
       "PolarisHashtagHeaderActionButtonsQuery": recorded_search("hashtag_header.json"),
+      "PolarisProfileReelsTabContentQuery": recorded_profile_tabs_more("reels_tab.json"),
+      "PolarisProfileTaggedTabContentQuery": recorded_profile_tabs_more("tagged_tab.json"),
    }
 
 
@@ -464,7 +472,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 55
+   assert len(registry) == 57
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -680,6 +688,22 @@ def test_the_search_steps_read_the_viewers_own_username_and_the_verified_tag() -
    assert check_for(report, HASHTAG_HEADER).replay is ReplayVerdict.OK
 
 
+def test_the_profile_tab_steps_read_the_viewers_own_account() -> None:
+   """Catches the reels or tagged tab replayed on any account but the viewer's own, the id the
+   session carries, which is the only account the canary reads a tab of."""
+
+   bundles = every_query_compiled()
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   reels_variables = site.variables_of("PolarisProfileReelsTabContentQuery")
+
+   assert reels_variables["user_id"] == VIEWER_ID
+   assert reels_variables["data"]["target_user_id"] == VIEWER_ID
+   assert site.variables_of("PolarisProfileTaggedTabContentQuery")["user_id"] == VIEWER_ID
+   assert check_for(report, PROFILE_REELS).replay is ReplayVerdict.OK
+   assert check_for(report, PROFILE_TAGGED).replay is ReplayVerdict.OK
+
+
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
    """Catches a scan that fetches every bundle a document names after it already has its
    answer. The home document names a bundle the scan never needs."""
@@ -746,7 +770,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 32
+   assert payload["plan"]["paced_requests_at_most"] == 34
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -842,5 +866,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 30 reads" in stated
+   assert "2 documents and at most 32 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated

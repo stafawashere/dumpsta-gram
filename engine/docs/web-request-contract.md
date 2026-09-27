@@ -666,6 +666,41 @@ token, so a read without the statuses spends no bootstrap.
 - A later page's statuses were not observed in a browser; sending them per page is an INFERENCE
   (W59). `Behavior.follow_list_statuses` set to False leaves them out.
 
+**The following list, 2026-09-27, E2 batch 11a (W99).** `read_following_page` sends
+`GET https://www.instagram.com/api/v1/friendships/<user id>/following/` with `count` 12 and no
+`search_surface`, the query the browser's following list sent, and on a later page `max_id`, the
+previous page's `next_max_id`, a numeric offset as a string. The headers, the shared
+`x-web-session-id` and the `show_many` statuses after each page are the followers page's, built by
+the same code. Finding `read-an-account-s-following`: the browser's first page twice and a later
+page once in `run-2026-09-27-131354`, each followed by `show_many` within 0.6 to 0.7 s, then four
+engine replays in `run-2026-09-27-151121`, the next page with zero overlap on both. The recorded
+departures are the followers page's: the site root as referer where the browser sent the
+profile tab it was on, no list code chunk, and the statuses sent as soon as the page is mapped.
+
+## The profile tabs, 2026-09-27
+
+E2 batch 11a added the reels and tagged tabs in `_private/web/requests/profiles.py`, sent by
+`read_profile_reels` and `read_tagged_posts` in `_core/profiles.py` and answered through
+`parse_profile_reels` and `parse_tagged_posts`. Findings `read-a-profile-s-reels-tab` and
+`read-a-profile-s-tagged-tab`, each observed once in the browser in `run-2026-09-27-131354` and
+replayed twice in `run-2026-09-27-151121`. Rulings W97 and W98.
+
+| Request | Query | Path | Variables |
+|---|---|---|---|
+| Reels tab | `PolarisProfileReelsTabContentQuery`, `29628758406714645`, root header `fetch__XDTUserDict` | `GRAPHQL_QUERY_URL` | `data` of `include_feed_video` true, `page_size` 12 and `target_user_id`, then `user_id`, both the account id, then the short drama provider false |
+| Tagged tab | `PolarisProfileTaggedTabContentQuery`, `28390247837269928`, root header `xdt_api__v1__usertags__user_id__feed_connection` | `GRAPHQL_QUERY_URL` | `count` 12, `user_id`, then the short drama provider false |
+
+Both carry the body and header set every query on that path carries, in the browser's variable
+order. **Recorded departures.**
+
+- A tab click sent `PolarisProfileSuggestedUsersWithPreloadableQuery` 2 ms before the tab's query
+  on both clicks captured, beside a bootloader fetch and `/ajax/navigation/`. The engine sends the
+  tab's query alone, as `profiles.posts` sends the grid's first page alone (W53).
+- The referer is the site root. The browser's was the profile page's previous tab, which needs a
+  username the methods do not take; the replays sent the profile's reels tab. Untested until the
+  batch's live acceptance.
+- Neither tab's next page has been observed, so neither is registered or sent.
+
 ## The viewer's own account reads, 2026-09-27
 
 E2 batch 6 added the second REST family, in `_private/web/requests/account.py`, sent by

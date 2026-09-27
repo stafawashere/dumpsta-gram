@@ -7,7 +7,8 @@ that needs an argument takes it from an earlier one: a thread from the inbox lis
 the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid, a
 comment with replies from the post's comments, a highlight from the viewer's highlights tray, a
 place from the first post that names one on the timeline or the viewer's grid, and the search
-typeahead's query from the viewer's own username. The hashtag header is read for
+typeahead's query from the viewer's own username. The reels and tagged tabs are read on the
+viewer's own account, like the highlights tray. The hashtag header is read for
 :data:`CANARY_HASHTAG`, the tag its finding was verified with, since no earlier read yields one.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
@@ -54,6 +55,8 @@ from dumpstagram._private.web.documents.profiles import (
    PROFILE_HIGHLIGHTS,
    PROFILE_POSTS,
    PROFILE_POSTS_NEXT_PAGE,
+   PROFILE_REELS,
+   PROFILE_TAGGED,
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
@@ -91,8 +94,10 @@ from dumpstagram._private.web.parse.profiles import (
    parse_highlight_tray,
    parse_profile,
    parse_profile_posts_page,
+   parse_profile_reels,
    parse_suggested_accounts,
    parse_suggested_beside_profile,
+   parse_tagged_posts,
    parse_user_id,
 )
 from dumpstagram._private.web.parse.search import (
@@ -129,7 +134,9 @@ from dumpstagram._private.web.requests.notes import build_inbox_tray_request
 from dumpstagram._private.web.requests.profiles import (
    build_highlight_tray_request,
    build_profile_posts_request,
+   build_profile_reels_request,
    build_profile_request,
+   build_profile_tagged_request,
    build_suggested_accounts_request,
    build_suggested_beside_profile_request,
 )
@@ -557,6 +564,22 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, CANARY_HASHTAG, user_agent=user_agent
       ),
       read=_mapped_by(lambda payload: parse_hashtag_header(payload, CANARY_HASHTAG)),
+   ),
+   ReplayStep(
+      query=PROFILE_REELS,
+      requires="viewer_id",
+      build=lambda session, arguments, user_agent: build_profile_reels_request(
+         session, arguments.viewer_id, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_profile_reels),
+   ),
+   ReplayStep(
+      query=PROFILE_TAGGED,
+      requires="viewer_id",
+      build=lambda session, arguments, user_agent: build_profile_tagged_request(
+         session, arguments.viewer_id, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_tagged_posts),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

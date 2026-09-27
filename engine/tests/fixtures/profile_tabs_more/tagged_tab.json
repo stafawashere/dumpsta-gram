@@ -1,0 +1,679 @@
+{
+ "data": {
+  "xdt_api__v1__usertags__user_id__feed_connection": {
+   "edges": [
+    {
+     "node": {
+      "pk": "9000000000000000013",
+      "media_type": 2,
+      "code": "p14xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": "9000000000000000013_90000000015",
+      "accessibility_caption": null,
+      "caption": null,
+      "audience": null,
+      "carousel_media_count": null,
+      "display_uri": null,
+      "carousel_media": null,
+      "image_versions2": {
+       "candidates": [
+        {
+         "height": 1136,
+         "url": "https://example.invalid/16",
+         "width": 640
+        },
+        {
+         "height": 852,
+         "url": "https://example.invalid/17",
+         "width": 480
+        },
+        {
+         "height": 568,
+         "url": "https://example.invalid/18",
+         "width": 320
+        },
+        {
+         "height": 426,
+         "url": "https://example.invalid/19",
+         "width": 240
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/20",
+         "width": 640
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/20",
+         "width": 640
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/20",
+         "width": 640
+        },
+        {
+         "height": 480,
+         "url": "https://example.invalid/21",
+         "width": 480
+        },
+        {
+         "height": 320,
+         "url": "https://example.invalid/22",
+         "width": 320
+        },
+        {
+         "height": 240,
+         "url": "https://example.invalid/23",
+         "width": 240
+        },
+        {
+         "height": 150,
+         "url": "https://example.invalid/24",
+         "width": 150
+        }
+       ]
+      },
+      "media_cropping_info": {
+       "square_crop": {
+        "crop_bottom": 0,
+        "crop_left": 0,
+        "crop_right": 0,
+        "crop_top": 0
+       },
+       "four_by_three_crop": null
+      },
+      "profile_grid_thumbnail_fitting_style": "p25xx",
+      "media_overlay_info": null,
+      "preview": null,
+      "product_type": "clips",
+      "thumbnails": null,
+      "timeline_pinned_user_ids": [],
+      "upcoming_event": null,
+      "user": {
+       "pk": "90000000015",
+       "username": "p26xxxxx",
+       "id": "90000000015",
+       "aigm_account_label_info": {
+        "attribution_label_text": null,
+        "is_auto_detected": false,
+        "is_enabled": false,
+        "is_manually_enabled": false
+       }
+      },
+      "media_notes": {
+       "items": []
+      },
+      "like_count": 0,
+      "like_and_view_counts_disabled": false,
+      "boosted_status": null,
+      "boost_unavailable_identifier": null,
+      "boost_unavailable_reason": null,
+      "comment_count": 0,
+      "comments_disabled": null,
+      "view_count": null,
+      "original_height": 1280,
+      "original_width": 720,
+      "ai_interactive_embodiment_attachment_style_info": null,
+      "ai_label_info": null,
+      "coauthor_producers": [],
+      "longform_clip_metadata": null,
+      "longform_title": null,
+      "is_fb_only": null,
+      "is_internal_only": null,
+      "__typename": "XDTMediaDict"
+     },
+     "cursor": null
+    },
+    {
+     "node": {
+      "pk": "9000000000000000027",
+      "media_type": 8,
+      "code": "p28xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": "9000000000000000027_90000000015",
+      "accessibility_caption": null,
+      "caption": null,
+      "audience": null,
+      "carousel_media_count": 2,
+      "display_uri": null,
+      "carousel_media": [
+       {
+        "image_versions2": {
+         "candidates": [
+          {
+           "height": 1080,
+           "url": "https://example.invalid/29",
+           "width": 1079
+          },
+          {
+           "height": 720,
+           "url": "https://example.invalid/30",
+           "width": 719
+          },
+          {
+           "height": 640,
+           "url": "https://example.invalid/31",
+           "width": 639
+          },
+          {
+           "height": 480,
+           "url": "https://example.invalid/32",
+           "width": 480
+          },
+          {
+           "height": 320,
+           "url": "https://example.invalid/33",
+           "width": 320
+          },
+          {
+           "height": 240,
+           "url": "https://example.invalid/34",
+           "width": 240
+          },
+          {
+           "height": 1079,
+           "url": "https://example.invalid/35",
+           "width": 1079
+          },
+          {
+           "height": 750,
+           "url": "https://example.invalid/36",
+           "width": 750
+          },
+          {
+           "height": 640,
+           "url": "https://example.invalid/37",
+           "width": 640
+          },
+          {
+           "height": 480,
+           "url": "https://example.invalid/38",
+           "width": 480
+          },
+          {
+           "height": 320,
+           "url": "https://example.invalid/39",
+           "width": 320
+          },
+          {
+           "height": 240,
+           "url": "https://example.invalid/40",
+           "width": 240
+          },
+          {
+           "height": 150,
+           "url": "https://example.invalid/41",
+           "width": 150
+          }
+         ]
+        },
+        "id": "9000000000000000042_90000000015",
+        "media_type": 1,
+        "carousel_media": null,
+        "thumbnails": null,
+        "usertags": {
+         "in": [
+          {
+           "user": {
+            "pk": "90000000002",
+            "id": "90000000002"
+           }
+          }
+         ]
+        },
+        "media_overlay_info": null
+       },
+       {
+        "image_versions2": {
+         "candidates": [
+          {
+           "height": 1079,
+           "url": "https://example.invalid/43",
+           "width": 1080
+          },
+          {
+           "height": 719,
+           "url": "https://example.invalid/44",
+           "width": 720
+          },
+          {
+           "height": 639,
+           "url": "https://example.invalid/45",
+           "width": 640
+          },
+          {
+           "height": 480,
+           "url": "https://example.invalid/46",
+           "width": 480
+          },
+          {
+           "height": 320,
+           "url": "https://example.invalid/47",
+           "width": 320
+          },
+          {
+           "height": 240,
+           "url": "https://example.invalid/48",
+           "width": 240
+          },
+          {
+           "height": 1079,
+           "url": "https://example.invalid/49",
+           "width": 1079
+          },
+          {
+           "height": 750,
+           "url": "https://example.invalid/50",
+           "width": 750
+          },
+          {
+           "height": 640,
+           "url": "https://example.invalid/51",
+           "width": 640
+          },
+          {
+           "height": 480,
+           "url": "https://example.invalid/52",
+           "width": 480
+          },
+          {
+           "height": 320,
+           "url": "https://example.invalid/53",
+           "width": 320
+          },
+          {
+           "height": 240,
+           "url": "https://example.invalid/54",
+           "width": 240
+          },
+          {
+           "height": 150,
+           "url": "https://example.invalid/55",
+           "width": 150
+          }
+         ]
+        },
+        "id": "9000000000000000056_90000000015",
+        "media_type": 1,
+        "carousel_media": null,
+        "thumbnails": null,
+        "usertags": null,
+        "media_overlay_info": null
+       }
+      ],
+      "image_versions2": {
+       "candidates": [
+        {
+         "height": 1080,
+         "url": "https://example.invalid/29",
+         "width": 1079
+        },
+        {
+         "height": 720,
+         "url": "https://example.invalid/30",
+         "width": 719
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/31",
+         "width": 639
+        },
+        {
+         "height": 480,
+         "url": "https://example.invalid/32",
+         "width": 480
+        },
+        {
+         "height": 320,
+         "url": "https://example.invalid/33",
+         "width": 320
+        },
+        {
+         "height": 240,
+         "url": "https://example.invalid/34",
+         "width": 240
+        },
+        {
+         "height": 1079,
+         "url": "https://example.invalid/35",
+         "width": 1079
+        },
+        {
+         "height": 750,
+         "url": "https://example.invalid/36",
+         "width": 750
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/37",
+         "width": 640
+        },
+        {
+         "height": 480,
+         "url": "https://example.invalid/38",
+         "width": 480
+        },
+        {
+         "height": 320,
+         "url": "https://example.invalid/39",
+         "width": 320
+        },
+        {
+         "height": 240,
+         "url": "https://example.invalid/40",
+         "width": 240
+        },
+        {
+         "height": 150,
+         "url": "https://example.invalid/41",
+         "width": 150
+        }
+       ]
+      },
+      "media_cropping_info": null,
+      "profile_grid_thumbnail_fitting_style": "p25xx",
+      "media_overlay_info": null,
+      "preview": null,
+      "product_type": "carousel_container",
+      "thumbnails": null,
+      "timeline_pinned_user_ids": [],
+      "upcoming_event": null,
+      "user": {
+       "pk": "90000000015",
+       "username": "p26xxxxx",
+       "id": "90000000015",
+       "aigm_account_label_info": {
+        "attribution_label_text": null,
+        "is_auto_detected": false,
+        "is_enabled": false,
+        "is_manually_enabled": false
+       }
+      },
+      "media_notes": {
+       "items": []
+      },
+      "like_count": 0,
+      "like_and_view_counts_disabled": false,
+      "boosted_status": null,
+      "boost_unavailable_identifier": null,
+      "boost_unavailable_reason": null,
+      "comment_count": 0,
+      "comments_disabled": null,
+      "view_count": null,
+      "original_height": 1080,
+      "original_width": 1079,
+      "ai_interactive_embodiment_attachment_style_info": null,
+      "ai_label_info": null,
+      "coauthor_producers": [],
+      "longform_clip_metadata": null,
+      "longform_title": null,
+      "is_fb_only": null,
+      "is_internal_only": null,
+      "__typename": "XDTMediaDict"
+     },
+     "cursor": null
+    },
+    {
+     "node": {
+      "pk": "9000000000000000057",
+      "media_type": 1,
+      "code": "p58xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": "9000000000000000057_90000000015",
+      "accessibility_caption": null,
+      "caption": null,
+      "audience": null,
+      "carousel_media_count": null,
+      "display_uri": null,
+      "carousel_media": null,
+      "image_versions2": {
+       "candidates": [
+        {
+         "height": 565,
+         "url": "https://example.invalid/59",
+         "width": 1080
+        },
+        {
+         "height": 377,
+         "url": "https://example.invalid/60",
+         "width": 720
+        },
+        {
+         "height": 335,
+         "url": "https://example.invalid/61",
+         "width": 640
+        },
+        {
+         "height": 251,
+         "url": "https://example.invalid/62",
+         "width": 480
+        },
+        {
+         "height": 167,
+         "url": "https://example.invalid/63",
+         "width": 320
+        },
+        {
+         "height": 126,
+         "url": "https://example.invalid/64",
+         "width": 240
+        },
+        {
+         "height": 565,
+         "url": "https://example.invalid/65",
+         "width": 565
+        },
+        {
+         "height": 565,
+         "url": "https://example.invalid/66",
+         "width": 565
+        },
+        {
+         "height": 565,
+         "url": "https://example.invalid/66",
+         "width": 565
+        },
+        {
+         "height": 480,
+         "url": "https://example.invalid/67",
+         "width": 480
+        },
+        {
+         "height": 320,
+         "url": "https://example.invalid/68",
+         "width": 320
+        },
+        {
+         "height": 240,
+         "url": "https://example.invalid/69",
+         "width": 240
+        },
+        {
+         "height": 150,
+         "url": "https://example.invalid/70",
+         "width": 150
+        }
+       ]
+      },
+      "media_cropping_info": null,
+      "profile_grid_thumbnail_fitting_style": "p25xx",
+      "media_overlay_info": null,
+      "preview": null,
+      "product_type": "feed",
+      "thumbnails": null,
+      "timeline_pinned_user_ids": [],
+      "upcoming_event": null,
+      "user": {
+       "pk": "90000000015",
+       "username": "p26xxxxx",
+       "id": "90000000015",
+       "aigm_account_label_info": {
+        "attribution_label_text": null,
+        "is_auto_detected": false,
+        "is_enabled": false,
+        "is_manually_enabled": false
+       }
+      },
+      "media_notes": {
+       "items": []
+      },
+      "like_count": 0,
+      "like_and_view_counts_disabled": false,
+      "boosted_status": null,
+      "boost_unavailable_identifier": null,
+      "boost_unavailable_reason": null,
+      "comment_count": 0,
+      "comments_disabled": null,
+      "view_count": null,
+      "original_height": 565,
+      "original_width": 1080,
+      "ai_interactive_embodiment_attachment_style_info": null,
+      "ai_label_info": null,
+      "coauthor_producers": [],
+      "longform_clip_metadata": null,
+      "longform_title": null,
+      "is_fb_only": null,
+      "is_internal_only": null,
+      "__typename": "XDTMediaDict"
+     },
+     "cursor": null
+    },
+    {
+     "node": {
+      "pk": "9000000000000000071",
+      "media_type": 1,
+      "code": "p72xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "id": "9000000000000000071_90000000015",
+      "accessibility_caption": null,
+      "caption": null,
+      "audience": null,
+      "carousel_media_count": null,
+      "display_uri": null,
+      "carousel_media": null,
+      "image_versions2": {
+       "candidates": [
+        {
+         "height": 770,
+         "url": "https://example.invalid/73",
+         "width": 1080
+        },
+        {
+         "height": 513,
+         "url": "https://example.invalid/74",
+         "width": 720
+        },
+        {
+         "height": 456,
+         "url": "https://example.invalid/75",
+         "width": 640
+        },
+        {
+         "height": 342,
+         "url": "https://example.invalid/76",
+         "width": 480
+        },
+        {
+         "height": 228,
+         "url": "https://example.invalid/77",
+         "width": 320
+        },
+        {
+         "height": 171,
+         "url": "https://example.invalid/78",
+         "width": 240
+        },
+        {
+         "height": 770,
+         "url": "https://example.invalid/79",
+         "width": 770
+        },
+        {
+         "height": 750,
+         "url": "https://example.invalid/80",
+         "width": 750
+        },
+        {
+         "height": 640,
+         "url": "https://example.invalid/81",
+         "width": 640
+        },
+        {
+         "height": 480,
+         "url": "https://example.invalid/82",
+         "width": 480
+        },
+        {
+         "height": 320,
+         "url": "https://example.invalid/83",
+         "width": 320
+        },
+        {
+         "height": 240,
+         "url": "https://example.invalid/84",
+         "width": 240
+        },
+        {
+         "height": 150,
+         "url": "https://example.invalid/85",
+         "width": 150
+        }
+       ]
+      },
+      "media_cropping_info": null,
+      "profile_grid_thumbnail_fitting_style": "p25xx",
+      "media_overlay_info": null,
+      "preview": null,
+      "product_type": "feed",
+      "thumbnails": null,
+      "timeline_pinned_user_ids": [],
+      "upcoming_event": null,
+      "user": {
+       "pk": "90000000015",
+       "username": "p26xxxxx",
+       "id": "90000000015",
+       "aigm_account_label_info": {
+        "attribution_label_text": null,
+        "is_auto_detected": false,
+        "is_enabled": false,
+        "is_manually_enabled": false
+       }
+      },
+      "media_notes": {
+       "items": []
+      },
+      "like_count": 0,
+      "like_and_view_counts_disabled": false,
+      "boosted_status": null,
+      "boost_unavailable_identifier": null,
+      "boost_unavailable_reason": null,
+      "comment_count": 0,
+      "comments_disabled": null,
+      "view_count": null,
+      "original_height": 770,
+      "original_width": 1080,
+      "ai_interactive_embodiment_attachment_style_info": null,
+      "ai_label_info": null,
+      "coauthor_producers": [],
+      "longform_clip_metadata": null,
+      "longform_title": null,
+      "is_fb_only": null,
+      "is_internal_only": null,
+      "__typename": "XDTMediaDict"
+     },
+     "cursor": null
+    }
+   ],
+   "page_info": {
+    "end_cursor": "C000",
+    "has_next_page": false,
+    "has_previous_page": false,
+    "start_cursor": null
+   }
+  }
+ },
+ "extensions": {
+  "server_metadata": {
+   "request_start_time_ms": 0,
+   "time_at_flush_ms": 0
+  },
+  "is_final": true
+ }
+}
