@@ -1,0 +1,366 @@
+{
+ "data": {
+  "response": {
+   "inbox_tray_items": [
+    {
+     "inbox_tray_item_id": "90000000000000001",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000002",
+        "profile_pic_url": "https://example.invalid/3",
+        "profile_pic_url_hd": "https://example.invalid/3",
+        "username": "p4xxxxxxxxxxx",
+        "full_name": "p5xxxxxxxxx",
+        "interop_messaging_user_fbid": "90000000000000006"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p7xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000002",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000008",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000009",
+        "profile_pic_url": "https://example.invalid/10",
+        "profile_pic_url_hd": "https://example.invalid/10",
+        "username": "p11xxxxx",
+        "full_name": "p12xxxxxxxx",
+        "interop_messaging_user_fbid": "90000000000000013"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p14xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000009",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000015",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000016",
+        "profile_pic_url": "https://example.invalid/17",
+        "profile_pic_url_hd": "https://example.invalid/17",
+        "username": "p18xxxxxxx",
+        "full_name": "p19xxxxxx",
+        "interop_messaging_user_fbid": "90000000000000020"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p21xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000016",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000022",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000023",
+        "profile_pic_url": "https://example.invalid/24",
+        "profile_pic_url_hd": "https://example.invalid/24",
+        "username": "p25xxx",
+        "full_name": "p26xx",
+        "interop_messaging_user_fbid": "90000000000000027"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p28xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000023",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000029",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000030",
+        "profile_pic_url": "https://example.invalid/31",
+        "profile_pic_url_hd": "https://example.invalid/31",
+        "username": "p32xxxxxxxxxxxx",
+        "full_name": "p33xxxx",
+        "interop_messaging_user_fbid": "90000000000000034"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p35xxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000030",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000036",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000037",
+        "profile_pic_url": "https://example.invalid/38",
+        "profile_pic_url_hd": "https://example.invalid/38",
+        "username": "p39xxxxx",
+        "full_name": "p40",
+        "interop_messaging_user_fbid": "90000000000000041"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": {
+       "activation_type": "p42xxxxxxxxxxxxxxxxxxx",
+       "background_color_hex": "p43xxxx",
+       "text_color_hex": "p44xxxx",
+       "secondary_text_color_hex": "p45xxxx",
+       "custom_emoji": "p46xxxxxxx"
+      },
+      "text": "p47xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000037",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000048",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000049",
+        "profile_pic_url": "https://example.invalid/50",
+        "profile_pic_url_hd": "https://example.invalid/50",
+        "username": "p51xxxxxx",
+        "full_name": "p52xxxx",
+        "interop_messaging_user_fbid": "90000000000000053"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p54xxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000049",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000055",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000056",
+        "profile_pic_url": "https://example.invalid/57",
+        "profile_pic_url_hd": "https://example.invalid/57",
+        "username": "p58xxxxxxxxxx",
+        "full_name": "p59x",
+        "interop_messaging_user_fbid": "90000000000000060"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": null,
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "p61xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000056",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000062",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000063",
+        "profile_pic_url": "https://example.invalid/64",
+        "profile_pic_url_hd": "https://example.invalid/64",
+        "username": "p65xxxxxxxxxxxxxxx",
+        "full_name": "",
+        "interop_messaging_user_fbid": "90000000000000067"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": {
+        "music_info": {
+         "music_asset_info": {
+          "title": "p68xxxxxxxxxxxxxxxxxxxxxxxx",
+          "display_artist": "p69xxxxxxxxxxxxx",
+          "is_explicit": true,
+          "progressive_download_url": "https://example.invalid/70",
+          "web_30s_preview_download_url": null,
+          "cover_artwork_uri": "https://example.invalid/71",
+          "audio_cluster_id": "900000000000072"
+         },
+         "music_consumption_info": {
+          "audio_asset_start_time_in_ms": 0,
+          "should_mute_audio": false
+         }
+        },
+        "__typename": "p73xxxxxxxxxxxxxxxxxxxxx"
+       },
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000063",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000074",
+     "inbox_tray_item_type": "note",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000075",
+        "profile_pic_url": "https://example.invalid/57",
+        "profile_pic_url_hd": "https://example.invalid/57",
+        "username": "p76xxxxxxxxx",
+        "full_name": "",
+        "interop_messaging_user_fbid": "90000000000000077"
+       }
+      ]
+     },
+     "note_dict": {
+      "note_style": 0,
+      "note_response_info": {
+       "music_note_response_info": {
+        "music_info": {
+         "music_asset_info": {
+          "title": "p78xxx",
+          "display_artist": "p79xx",
+          "is_explicit": true,
+          "progressive_download_url": "https://example.invalid/80",
+          "web_30s_preview_download_url": null,
+          "cover_artwork_uri": "https://example.invalid/81",
+          "audio_cluster_id": "9000000000000082"
+         },
+         "music_consumption_info": {
+          "audio_asset_start_time_in_ms": 0,
+          "should_mute_audio": false
+         }
+        },
+        "__typename": "p73xxxxxxxxxxxxxxxxxxxxx"
+       },
+       "note_pog_video_response_info": null
+      },
+      "custom_theme": null,
+      "text": "",
+      "is_emoji_only": false,
+      "audience": 0,
+      "author_id": "90000000075",
+      "created_at": 0
+     }
+    },
+    {
+     "inbox_tray_item_id": "90000000000000083",
+     "inbox_tray_item_type": "ambient_data",
+     "pog_info": {
+      "pog_style": "user",
+      "pog_users": [
+       {
+        "id": "90000000084",
+        "profile_pic_url": "https://example.invalid/85",
+        "profile_pic_url_hd": "https://example.invalid/85",
+        "username": "p86xxxxxxxxxx",
+        "full_name": "p87xxxx",
+        "interop_messaging_user_fbid": "90000000000000088"
+       }
+      ]
+     },
+     "note_dict": null
+    }
+   ]
+  }
+ }
+}

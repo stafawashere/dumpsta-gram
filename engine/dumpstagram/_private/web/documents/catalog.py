@@ -42,12 +42,18 @@ from dumpstagram._private.web.documents.media import (
 )
 from dumpstagram._private.web.documents.notes import CREATE_NOTE, DELETE_NOTE, INBOX_TRAY
 from dumpstagram._private.web.documents.page_load import (
+   AUTOMATIC_PREVIEWS_SETTING,
    BADGE_COUNT,
    CHAT_TABS_JEWEL,
+   FEATURE_LIMITS,
    GET_FR_COOKIE,
+   INBOX_QP_INTERSTITIAL,
    OMNI_PICKER_NULL_STATE,
+   PRESENCE_SETUP,
    QUICK_PROMOTION,
    STORIES_TRAY,
+   THREAD_LIST_ACCOUNT_SWITCHER,
+   VIEWER_SETTINGS,
 )
 from dumpstagram._private.web.documents.profiles import (
    PROFILE_BY_ID,
@@ -117,6 +123,12 @@ COMPANION_QUERIES: tuple[PersistedQuery, ...] = (
    PROFILE_NOTE_BUBBLE,
    PROFILE_SUGGESTED_USERS,
    PROFILE_SCHOOL_BADGE,
+   AUTOMATIC_PREVIEWS_SETTING,
+   FEATURE_LIMITS,
+   PRESENCE_SETUP,
+   INBOX_QP_INTERSTITIAL,
+   THREAD_LIST_ACCOUNT_SWITCHER,
+   VIEWER_SETTINGS,
 )
 """The queries sent only because a page sends them, whose answers nothing reads.
 

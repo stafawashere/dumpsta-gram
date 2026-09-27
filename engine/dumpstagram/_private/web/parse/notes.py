@@ -90,6 +90,25 @@ def _author_username(item: dict[str, Any], author_id: str, path: str) -> str | N
    return None
 
 
+def _carries_no_note(item: Any) -> bool:
+   """Whether a tray item is of a kind other than a note and carries no note at all.
+
+   The live tray of 2026-09-27 held ten notes and one ``ambient_data`` item whose ``note_dict``
+   was null beside a picture of one account (W91). What an ambient item means is UNRESOLVED, so
+   it is skipped rather than modelled. A note item without a note, or an item of another kind
+   that carries one, is not covered and still raises.
+   """
+
+   if not isinstance(item, dict):
+      return False
+
+   item_type = item.get("inbox_tray_item_type")
+   is_another_kind = isinstance(item_type, str) and item_type != NOTE_ITEM_TYPE
+   has_a_null_note = "note_dict" in item and item["note_dict"] is None
+
+   return is_another_kind and has_a_null_note
+
+
 def parse_note(item: Any, path: str) -> Note:
    """One tray item, mapped field by field.
 
@@ -140,6 +159,9 @@ def parse_note(item: Any, path: str) -> Note:
 def parse_inbox_tray(payload: Any) -> tuple[Note, ...]:
    """One ``IGDInboxTrayQuery`` payload, mapped into the notes it carries, in the tray's order.
 
+   An item of another kind that carries no note is skipped, since the tray holds kinds beside
+   notes (W91).
+
    The tray is the whole answer, one call with no cursor, so a pagination key appearing
    beside the items raises :class:`~dumpstagram.errors.SchemaChanged`: the engine would
    otherwise report a first page as the whole tray.
@@ -166,7 +188,9 @@ def parse_inbox_tray(payload: Any) -> tuple[Note, ...]:
       )
 
    return tuple(
-      parse_note(item, f"{tray_path}.inbox_tray_items[{index}]") for index, item in enumerate(items)
+      parse_note(item, f"{tray_path}.inbox_tray_items[{index}]")
+      for index, item in enumerate(items)
+      if not _carries_no_note(item)
    )
 
 

@@ -145,9 +145,14 @@ def build_thread_detail_request(
    session: Session,
    thread_fbid: str,
    *,
+   referer: str | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
 ) -> Request:
    """The query a browser sends to open a thread, which answers with its newest page.
+
+   ``referer`` is the thread's own page unless another is named. An inbox load sends the same
+   query for each of its first fifteen threads with the inbox as referer, and each of those
+   carries the row's ``thread_key`` as ``thread_fbid``.
 
    ``IGDEnableOffMsysChatThemesQErelayprovider`` is false because every one of the 63 requests
    a browser sent across four captures on 2026-09-23 carried false. The finding's replay
@@ -166,11 +171,13 @@ def build_thread_detail_request(
       "__relay_internal__pv__IGDInitialMessagePageCountrelayprovider": PAGE_SIZE,
    }
 
+   page = thread_url(thread_fbid) if referer is None else referer
+
    return build_graphql_request(
       session,
       THREAD_DETAIL,
       variables,
-      referer=thread_url(thread_fbid),
+      referer=page,
       user_agent=user_agent,
    )
 

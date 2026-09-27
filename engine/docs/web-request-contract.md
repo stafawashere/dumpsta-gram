@@ -114,19 +114,18 @@ two path constants is in `documents/common.py`.
 The table above lists the entries the first capabilities added. The `documents/` package is the
 complete list, and its own docstrings carry each later entry's evidence.
 
-**The notes tray is sent alone, a recorded departure.** Added 2026-09-23. `INBOX_TRAY` takes no
-variables and is sent with `https://www.instagram.com/direct/inbox/` as its referer, the shape
-of every captured inbox load. A browser never sends it by itself: an inbox load sends the
-document, then ten queries within 4 ms of each other at about 500 ms, of which the tray is one,
-then fifteen `IGDThreadDetailQuery` prefetches, the common page-load companions and the cookie
-sync tail. The engine does not model the inbox load's direct block yet, so `notes()` sends the
-tray query alone under every behavior. It is not a `Behavior` setting, because a setting chooses
-between routes and there is only one route here. Modelling the inbox load, from findings
-`direct-inbox-thread-list`, `direct-inbox-unread-thread-count`, the six empty-variable direct
-findings and this one, would make it the parity route and add the setting.
+**The notes tray is read inside the inbox page load, and sent alone only as the named departure.**
+Added 2026-09-23, amended 2026-09-27 with E2 batch 9. `INBOX_TRAY` takes no variables and is sent
+with `https://www.instagram.com/direct/inbox/` as its referer, the shape of every captured inbox
+load. A browser never sends it by itself: an inbox load sends the document, then ten queries
+within 4 ms of each other at about 500 ms, of which the tray is one, then its companions and the
+cookie sync tail. From E2 batch 9 `InboxRoute.PAGE`, the default, sends that load, described in
+the inbox page load section below, and `InboxRoute.QUERIES` sends the tray query alone (W87).
+This closes the notes departure `1.0.0` and `1.1.0` recorded.
 
-**The inbox pages, the message requests and the unread counts are each sent alone, a recorded
-departure.** Added 2026-09-24 with E2 batch 1, rulings W45 to W48. `DIRECT_INBOX_NEXT_PAGE`
+**The inbox pages after the first and the message requests are each sent alone, a recorded
+departure, and the first page and the unread counts are read inside the inbox page load.** Added
+2026-09-24 with E2 batch 1, rulings W45 to W48, amended 2026-09-27 with E2 batch 9, W87. `DIRECT_INBOX_NEXT_PAGE`
 (`28000787896268887`, `IGDThreadListOffMsysPaginationQuery`), `MESSAGE_REQUESTS`
 (`27525641663781745`, `IGDMessageRequestLeftRailStandaloneQuery`) and `FOLDER_UNREAD_ROWS`
 (`27437959689223570`, `useIGDSystemFolderUnreadThreadCountQuery`) all answer on
@@ -139,8 +138,10 @@ engine replays sent. The unread rows are sent twice, folder `INBOX` and then fol
 with `newer_than_timestamp_ms` a string 2592000000 ms before now, one device id between them, as
 both captured inbox loads sent them. A browser sends all of these inside an inbox load, where the
 first page, both unread reads and the tray go out within milliseconds of each other and the
-requests are read when the requests view opens. The engine sends each read's own queries alone,
-for the reason the notes tray gives above. Findings `direct-inbox-thread-list-next-page`,
+requests are read when the requests view opens. Under `InboxRoute.PAGE` the first page and both
+unread reads go out inside the inbox page load, and under `InboxRoute.QUERIES` each read's own
+queries go out alone; a later page and the message requests are sent alone under both. Findings
+`direct-inbox-thread-list-next-page`,
 `direct-message-requests` and `direct-inbox-unread-thread-count`, each verified by engine
 replays on 2026-09-24.
 
@@ -675,8 +676,10 @@ did not keep, so the two fields and their order are the replay's, which answered
 
 **Recorded departures.**
 
-- A browser sent both inside its direct inbox load, 0.4 ms apart. The engine sends each alone,
-  from no page, with the inbox as referer as the replays did.
+- A browser sent both inside its direct inbox load, 0.4 ms apart. `account.follow_requests` and
+  `account.activity` send each alone, from no page, with the inbox as referer as the replays did.
+  Since E2 batch 9 the inbox page load sends both as its last companion group, together, their
+  answers unread (W88).
 - The browser's inbox load followed the feed with `POST
   https://www.instagram.com/api/v1/news/inbox_seen/`, empty body, which clears the viewer's own
   notifications badge and nothing another person sees. It is a hypothesis finding,
@@ -711,6 +714,62 @@ timeline's GraphQL node sends null, read as null when absent (W77).
 - No next page is sent. The answer carries `more_available`, `next_max_id`, `max_id`,
   `rank_token` and `session_paging_token`, but a browser's next page request has not been
   observed, so the grid is read as its first page with `more_available` (W77).
+
+## The direct inbox page load, 2026-09-27
+
+E2 batch 9 made the inbox load the parity route of `notes()`, `direct.inbox()` with no cursor and
+`direct.unread_counts()`, through `read_from_inbox_page` in `_core/inbox.py`, rulings W86 to W90.
+The burst was designed from the two full cold loads the skill recorded,
+`run-2026-09-23-022159-inbox-cold-load.jsonl` and `run-2026-09-23-045256-inbox-cold-load.jsonl`,
+with no new load. One paced action:
+
+| Group | Requests | Recorded at, first load and second | Built by |
+|---|---|---|---|
+| Document | `GET https://www.instagram.com/direct/inbox/` | 0 ms | `build_document_request` |
+| Direct block, together | `PolarisAutomaticPreviewsDisabledContextProviderQuery`, `useFeatureLimitsOffMsysQuery`, `useIGDSystemFolderUnreadThreadCountQuery` folder `INBOX`, `PolarisDirectInboxQuery`, the same unread query folder `PENDING`, `IGPresenceUnifiedSetupQuery`, `PolarisDirectInboxQPInterstitialQuery`, `IGDThreadListHeaderAccountSwitcherOffMsysQuery`, `PolarisViewerSettingsQuery`, `IGDInboxTrayQuery` | 492 to 496, 532 to 536 | `build_inbox_block` |
+| Badge count | `IGDBadgeCountOffMsysQuery` | 519, 564 | `build_inbox_page_load_companions` |
+| Stories tray | `PolarisStoriesV3TrayContainerQuery` | 642, 728 | the same |
+| Quick promotion | `QuickPromotionSupportIGSchemaBatchFetchQuery`, the login interstitial surface only | 849, 897 | the same |
+| Thread details, together | `IGDThreadDetailQuery` once per row of the first page, 15 | 1039 to 1044, 1051 to 1070 | the same |
+| Account reads, together | `GET /api/v1/friendships/pending/`, `POST /api/v1/news/inbox/` | 3687, not sent | the same |
+
+The block's order was identical in both loads. The six queries with no variables are registered
+in `documents/page_load.py` and listed as companions in the catalog. The listing, both unread
+queries and the badge count carry the document's `IGDMqttWebDeviceID`, as both loads did; a
+document without one gets a fresh uuid4 for the block, which a replay showed answers the same,
+and no badge count. The inbox document preloads none of the block: neither stored document, 199807
+of about 822000 characters each, carried an `adp_` preloader, and both loads asked for the four
+answers the engine reads over XHR (FACT for the stored part, INFERENCE for the rest).
+
+Each thread detail carries the row's `thread_key` as `thread_fbid`, the inbox as referer, and the
+variables a thread open sends. The order is the pinned threads as `pinned_threads_v2` lists them,
+then the other rows in the listing's order: both loads sent exactly that, 15 of 15 positions, the
+pinned pair first in each. A listing the upstream refused keys no details. The two account reads
+share one `x-web-session-id`, as the first load's did.
+
+Every answer of the block and of each companion group is screened for a checkpoint or a throttle
+and otherwise left alone, so only the answers of the read the caller asked for can fail it. A
+successful read schedules the cookie sync tail for the inbox, as both loads ran it from 3870 and
+3964 ms.
+
+**Recorded departures.**
+
+- The feed timeline prefetch the load sends within 2 ms of the stories tray is left out, as the
+  profile load leaves it out, and so are `fxcal/ig_sso_users` and the manifest, which have no
+  verified finding.
+- `news/inbox_seen`, which the first load sent 2 ms before the account reads, is never built or
+  sent, W74's departure; it clears the viewer's own activity badge.
+- The account reads went out in one of the two full loads, and the engine sends them on every load
+  (ASSUMPTION: what makes a browser send them is unobserved; the load that did was a background
+  tab).
+- The browser permuted the order in which it dispatched the block and the details by a fraction
+  of a millisecond; the engine sends each group together, in the recorded order.
+
+Not sent, and not departures, because no captured inbox load sent them: the chat tabs jewel and
+the omni picker, which belong to the pages that are not direct; `IGDInboxHeaderOffMsysQuery`,
+which a thread page sends; and `useIGDShouldShowAdResponsesTabQuery` and
+`IGDThreadlineContainerQuerySuggestedQuery`, verified twice on 2026-09-27 but absent from all five
+captured inbox loads (W88).
 
 ## What is not implemented here
 

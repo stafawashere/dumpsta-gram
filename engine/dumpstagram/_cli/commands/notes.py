@@ -125,12 +125,15 @@ def add_note_parser(commands: Subcommands) -> None:
       "note",
       help="read the notes tray, set the viewer's note, or delete it",
       description=(
-         "list reads the whole tray, one live request, and marks the viewer's own note. set and "
-         "delete write to the account, one write each, sent once and never retried."
+         "list reads the whole tray from a load of the direct inbox, as a browser reads it, and "
+         "marks the viewer's own note. set and delete write to the account, one write each, "
+         "sent once and never retried."
       ),
    )
    note_actions = note.add_subparsers(dest="note_action", required=True)
-   note_list = note_actions.add_parser("list", help="read the whole notes tray, one live request")
+   note_list = note_actions.add_parser(
+      "list", help="read the whole notes tray, from a load of the direct inbox"
+   )
    note_list.add_argument(
       "--user-agent",
       metavar="STRING",

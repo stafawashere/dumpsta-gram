@@ -6,8 +6,9 @@ of each command it runs, and inert anywhere ``DUMPSTA_PROBE_REQUEST_LOG`` is uns
 the count is what left the machine rather than what the library asked for.
 
 One JSON line per request: the probe's step number, host, method, friendly name, status and
-offset. No path beyond a first segment from a fixed list, no query, no header value but the
-friendly name, and nothing from a body. The cap is shared across processes by counting lines already written, and
+offset, and the whole path only when it is one of ``NAMED_REST_PATHS``. No other path beyond a
+first segment from a fixed list, no query, no header value but the friendly name, and nothing
+from a body. The cap is shared across processes by counting lines already written, and
 a request over it is refused before it departs.
 """
 
@@ -24,6 +25,14 @@ STEP_ENV = "DUMPSTA_PROBE_STEP"
 
 NAMED_PATH_SEGMENTS = ("", "ajax", "api", "graphql", "instagram", "sync")
 """First path segments safe to record. Anything else may be a username, so it is not."""
+
+NAMED_REST_PATHS = (
+   "/api/v1/friendships/pending/",
+   "/api/v1/news/inbox/",
+   "/api/v1/news/inbox_seen/",
+)
+"""REST paths recorded whole, so a probe can tell the inbox load's reads from the badge write it
+must not send. None of them carries an account name."""
 
 
 def install(request_log: Path, request_cap: int, step: str) -> None:
@@ -52,6 +61,10 @@ def install(request_log: Path, request_cap: int, step: str) -> None:
          "name": request.headers.get("x-fb-friendly-name", f"/{recorded_segment}"),
          "offset_ms": int((time.monotonic() - started_at) * 1000),
       }
+      is_a_named_rest_path = request.url.path in NAMED_REST_PATHS
+
+      if is_a_named_rest_path:
+         entry["path"] = request.url.path
 
       in_flight[0] += 1
 

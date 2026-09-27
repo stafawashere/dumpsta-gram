@@ -43,7 +43,7 @@ capture night that unblocks the rest.
 | 6 | Own account, done 2026-09-27 | `probes/e2_own_account.py` | 7, spent 7 | 3, spent 0 |
 | 7 | Discovery feeds, done 2026-09-27 | `probes/e2_discovery_feeds.py` | 9, spent 11 | 5, spent 2 |
 | 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
-| 9 | Page models, companions | `probes/e2_page_models.py` | 10 | 4 |
+| 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
 | 11 | Replays the capture unblocks | written after batch 10 | about 40, HYPOTHESIS | |
 | 12 | Story seen, arranged | written after batch 5 | about 4 | |
@@ -552,6 +552,36 @@ flag; the Threads and profile nav badges count the Threads app; the scroll break
 the creator marketplace badge, the messaging eligibility, the profile view insights and the
 follow confirmation dialog are chrome for professional accounts or for a regional notice; the
 threadline chat query reads reel shares inside a thread and belongs with E4's message kinds.
+
+**Status: done on 2026-09-27 for the inbox load, rulings W86 to W90; the post page waits on
+batch 10.** `probes/e2_page_models.py` ran once with 10 requests in run `run-2026-09-27-014102`,
+replaying the post page's two companions and the two inbox queries twice each, log
+`logs/e2-page-models-2026-09-27-013957.json`. The post page ships nothing, because its document has
+never been captured, and its two verified companions are not registered until it does (W86). The
+inbox load became the parity route of `client.direct.notes()`, `direct.inbox()` with no cursor
+and `direct.unread_counts()`, chosen by the new `Behavior.inbox_route`, `InboxRoute.PAGE` by
+default and `InboxRoute.QUERIES` as the departure (W87). It was designed from the two full inbox
+cold loads of 2026-09-23 with no new load. What the recordings said that this list did not:
+
+- The load sends ten queries together, the tray, the listing and both unread folders among them,
+  so the three reads share one load, and the inbox document preloads none of them (W87).
+- The header query is sent only on a thread page, and the chat tabs jewel only on pages that are
+  not direct, so neither goes out; `useIGDShouldShowAdResponsesTabQuery` and
+  `IGDThreadlineContainerQuerySuggestedQuery`, verified today, were in none of five captured
+  inbox loads and are not registered (W88).
+- The load prefetches the thread detail of every row of its first page, pinned threads first in
+  `pinned_threads_v2` order, fifteen requests, which this list did not name (W89).
+- `friendships/pending` and `news/inbox` went out in one of the two loads and are sent as
+  companions whose answers are not read; `news/inbox_seen` is never sent (W74, W88).
+- `IGDChatTabsContentOffMsysQuery` has no finding, so it waits rather than joining the home and
+  profile companions.
+
+Under the default behavior each of the three reads costs 31 requests with a full first page. The
+CLI acceptance, `probes/e2_page_models_cli_acceptance.py`, ran twice: `note
+list`, `inbox --pages 2` and `unread`, 94 requests, 110 at most (W90). Its first run sent the
+whole load and stopped on an `ambient_data` item in the notes tray, a defect of `notes()` on every
+route, fixed by skipping an item of another kind that carries no note (W91). Its second run, after W91, passed with every step exit 0 and 94 requests, all 200: each of the three loads sent its whole block, 15 thread details and both account reads and no `news/inbox_seen`, 10 notes, 30 threads over two inbox pages, log `logs/e2-page-models-cli-2026-09-27-055040.json`. The post, like and comment
+departures of `1.0.0` stay open for batch 10.
 
 ## Batch 10: the capture night
 

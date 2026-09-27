@@ -293,8 +293,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             CORE,
-            "         folder=INBOX_FOLDER,\n",
-            "         folder=PENDING_FOLDER,\n",
+            "iris_device_id=device_id,\n         folder=INBOX_FOLDER,\n",
+            "iris_device_id=device_id,\n         folder=PENDING_FOLDER,\n",
          )
       ],
    },

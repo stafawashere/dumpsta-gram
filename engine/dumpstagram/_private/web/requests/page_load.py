@@ -1,27 +1,45 @@
-"""What a home or profile page load sends after its document, as groups in the page's order."""
+"""What a home, profile or direct inbox page load sends after its document, as groups in the
+page's order, and the direct block an inbox load sends first."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from dumpstagram._private.transport import Request
-from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
+from dumpstagram._private.web.bootstrap import BOOTSTRAP_URL, DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.page_load import (
+   AUTOMATIC_PREVIEWS_SETTING,
    BADGE_COUNT,
    CHAT_TABS_JEWEL,
+   FEATURE_LIMITS,
+   INBOX_QP_INTERSTITIAL,
    OMNI_PICKER_NULL_STATE,
+   PRESENCE_SETUP,
    QUICK_PROMOTION,
    STORIES_TRAY,
+   THREAD_LIST_ACCOUNT_SWITCHER,
+   VIEWER_SETTINGS,
+)
+from dumpstagram._private.web.requests.account import (
+   build_activity_feed_request,
+   build_follow_requests_request,
 )
 from dumpstagram._private.web.requests.common import build_graphql_request
+from dumpstagram._private.web.requests.direct import build_thread_detail_request
 from dumpstagram._private.web.requests.profiles import profile_page_url
 from dumpstagram.session import Session
 
 __all__ = [
+   "INBOX_PAGE_URL",
    "build_home_page_load_companions",
+   "build_inbox_block",
+   "build_inbox_page_load_companions",
    "build_profile_page_load_companions",
 ]
+
+INBOX_PAGE_URL = BOOTSTRAP_URL
+"""The direct inbox, the page an inbox load is of and the referer of everything it sends."""
 
 LOGIN_INTERSTITIAL_SURFACES = ["INSTAGRAM_FOR_WEB_LOGIN_INTERSTITIAL_QP"]
 """The quick promotion surface every captured page load asked for."""
@@ -86,6 +104,18 @@ def _badge_group(
    return [_companion(session, BADGE_COUNT, iris, referer, user_agent)]
 
 
+def _stories_tray_variables() -> dict[str, Any]:
+   return {
+      "data": {"is_following_feed": False},
+      "suggestedUsersData": {
+         "max_id": "",
+         "max_number_to_display": 0,
+         "module": "stories_tray",
+         "paginate": False,
+      },
+   }
+
+
 def build_home_page_load_companions(
    session: Session,
    *,
@@ -148,15 +178,7 @@ def build_profile_page_load_companions(
    """
 
    referer = profile_page_url(username)
-   stories_tray_variables = {
-      "data": {"is_following_feed": False},
-      "suggestedUsersData": {
-         "max_id": "",
-         "max_number_to_display": 0,
-         "module": "stories_tray",
-         "paginate": False,
-      },
-   }
+   stories_tray_variables = _stories_tray_variables()
    profile_trigger = {
       "context_data_tuples": [{"context_key": "profile_igid", "context_value": user_id}]
    }
@@ -171,6 +193,99 @@ def build_profile_page_load_companions(
          _companion(session, QUICK_PROMOTION, page_surfaces, referer, user_agent),
          _companion(session, QUICK_PROMOTION, login_surface, referer, user_agent),
       ],
+   ]
+
+   return [group for group in groups if group]
+
+
+def build_inbox_block(
+   session: Session,
+   *,
+   tray: Request,
+   listing: Request,
+   inbox_unread_rows: Request,
+   pending_unread_rows: Request,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> list[Request]:
+   """The ten queries of an inbox load's direct block, in the page's order.
+
+   The four requests a capability reads are the caller's, built with the document's device id,
+   and the six with no variables are built here. Both captured inbox loads sent the ten in this
+   order within 4 ms: 492 to 496 ms after the document in ``run-2026-09-23-022159`` and 532 to
+   536 ms in ``run-2026-09-23-045256``.
+
+   Findings: ``direct-inbox-automatic-previews-setting``, ``direct-feature-limits``,
+   ``direct-inbox-unread-thread-count``, ``direct-inbox-thread-list``,
+   ``direct-presence-setup``, ``direct-inbox-qp-interstitial``,
+   ``direct-thread-list-header-account-switcher``, ``viewer-settings`` and
+   ``read-the-notes-tray-on-the-direct-inbox``.
+   """
+
+   def empty(query: PersistedQuery) -> Request:
+      return _companion(session, query, {}, INBOX_PAGE_URL, user_agent)
+
+   return [
+      empty(AUTOMATIC_PREVIEWS_SETTING),
+      empty(FEATURE_LIMITS),
+      inbox_unread_rows,
+      listing,
+      pending_unread_rows,
+      empty(PRESENCE_SETUP),
+      empty(INBOX_QP_INTERSTITIAL),
+      empty(THREAD_LIST_ACCOUNT_SWITCHER),
+      empty(VIEWER_SETTINGS),
+      tray,
+   ]
+
+
+def build_inbox_page_load_companions(
+   session: Session,
+   *,
+   device_id: str | None,
+   thread_keys: tuple[str, ...],
+   web_session_id: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> list[list[Request]]:
+   """What a direct inbox load sends after its direct block, as groups in the page's order.
+
+   From the cold load ``run-2026-09-23-022159``: the badge count at 519 ms, the stories tray at
+   642, the login interstitial quick promotion at 849, a thread detail query for each row of
+   the first page from 1039 to 1044, and the pending follow requests and the activity feed at
+   3687, 0.4 ms apart. ``run-2026-09-23-045256`` sent the same up to the thread details, at 564,
+   728, 897 and 1051 to 1070 ms, and no REST read at all. ``thread_keys`` is
+   :func:`~dumpstagram._private.web.parse.direct.parse_thread_prefetch_keys` of the block's
+   listing, and an empty one leaves that group out.
+
+   Left out, and why: the feed timeline prefetch the page sends within 2 ms of the stories
+   tray, as the profile load leaves it out; ``fxcal`` and ``/data/manifest.json``, which have no
+   verified finding; and ``news/inbox_seen``, which the first load sent 2 ms before the
+   pending requests and which is an unverified write that clears the viewer's own activity
+   badge (W74). The inbox load sends neither the chat tabs jewel nor the omni picker, which
+   are the floating chat of the pages that are not direct. ``device_id`` is the document's own,
+   and ``None`` leaves out the badge count.
+
+   Findings: ``page-load-direct-badge-count``, ``page-load-stories-tray``,
+   ``page-load-quick-promotion``, ``open-a-direct-thread``, ``pending-follow-requests`` and
+   ``activity-feed-inbox``.
+   """
+
+   referer = INBOX_PAGE_URL
+   login_surface = _quick_promotion_variables(LOGIN_INTERSTITIAL_SURFACES, None)
+   thread_details = [
+      build_thread_detail_request(session, key, referer=referer, user_agent=user_agent)
+      for key in thread_keys
+   ]
+   account_reads = [
+      build_follow_requests_request(session, web_session_id=web_session_id, user_agent=user_agent),
+      build_activity_feed_request(session, web_session_id=web_session_id, user_agent=user_agent),
+   ]
+
+   groups = [
+      _badge_group(session, device_id, referer, user_agent),
+      [_companion(session, STORIES_TRAY, _stories_tray_variables(), referer, user_agent)],
+      [_companion(session, QUICK_PROMOTION, login_surface, referer, user_agent)],
+      thread_details,
+      account_reads,
    ]
 
    return [group for group in groups if group]

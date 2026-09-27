@@ -310,11 +310,12 @@ def run_inbox_command(
 def add_inbox_parsers(commands: Subcommands) -> None:
    inbox = commands.add_parser(
       "inbox",
-      help="list the direct inbox, newest activity first, one live request per page",
+      help="list the direct inbox, newest activity first, the first page from an inbox load",
       description=(
-         "Lists direct threads without opening any, so nothing is marked read. The FBID each "
-         "thread prints is what dumpsta thread takes. --after takes a next_cursor this command "
-         "printed, and no other cursor."
+         "Lists direct threads without opening any, so nothing is marked read. The first page "
+         "is read from a load of the direct inbox, as a browser reads it, and each later page is "
+         "one live request. The FBID each thread prints is what dumpsta thread takes. --after "
+         "takes a next_cursor this command printed, and no other cursor."
       ),
    )
    inbox.add_argument(
@@ -339,7 +340,7 @@ def add_inbox_parsers(commands: Subcommands) -> None:
 
    unread = commands.add_parser(
       "unread",
-      help="count the unread threads in the inbox and the pending requests, two live requests",
+      help="count the unread threads in the inbox and the pending requests, from an inbox load",
       description=(
          "Counts over the first page of each folder that an inbox load reads, and marks a "
          "count with + when the folder has rows past that page. A thread is unread when it is "

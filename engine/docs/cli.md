@@ -42,9 +42,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `adopt` | 0 | Builds a session from cookie material and saves it |
 | `session` | 0 | Prints what the saved session holds, redacted |
 | `thread FBID` | 1 per page, plus 1 if the session has no token yet | Reads pages of one direct thread |
-| `inbox` | 1 per page, plus 1 if the session has no token yet | Lists the direct inbox, newest activity first, with each thread's `FBID`. Opens no thread, so marks nothing read |
+| `inbox` | an inbox page load for the first page, up to 31, then 1 per page | Lists the direct inbox, newest activity first, with each thread's `FBID`. Opens no thread, so marks nothing read |
 | `message-requests` | 1, plus 1 if the session has no token yet | Lists the pending and spam message requests, one page each. Opens no request thread |
-| `unread` | 2, plus 1 if the session has no token yet | Counts the unread threads in the inbox and the pending requests |
+| `unread` | an inbox page load, up to 31 | Counts the unread threads in the inbox and the pending requests |
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
 | `posts USERNAME` | 1 per page, plus 1 if the session has no token yet | Reads pages of an account's posts grid, twelve posts a page |
 | `highlights USER_ID` | 1, plus 1 if the session has no token yet | Lists an account's story highlights, the tray's first page. Opens no story |
@@ -52,7 +52,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `suggested-for-you` | 1, plus 1 if the session has no token yet | Lists the accounts suggested to the viewer, each with the reason the website shows |
 | `followers USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of an account's followers with the viewer's relationship to each |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
-| `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
+| `note list` | an inbox page load, up to 31 | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
 | `post CODE`, `post --by-id PK` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, or by its `pk`, with its `pk` and the viewer's like state |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
@@ -184,6 +184,12 @@ marks it seen to its sender.
 folder has rows past the first page the count is taken over. A thread counts as unread when it is
 marked unread or the viewer's read receipt is older than its last activity, the engine's reading
 of the rows rather than the website's own rule (W47).
+
+Since E2 batch 9 `inbox` reads its first page, and `unread` its counts, from a load of the direct
+inbox as a browser reads them, which needs no stored token: the document, the ten queries of its
+direct block together, and the page's companions, 31 requests with a full first page (W87 to
+W89). `note list` does the same. A later `inbox` page is one request. `Behavior.inbox_route`
+chooses the route in the library; the commands run the default behavior.
 
 All three take `--user-agent` and `--no-session-writeback`, and write harvested tokens back by
 default. Live on 2026-09-24 through `probes/e2_direct_read_cli_acceptance.py`, 5 requests: two
@@ -357,8 +363,8 @@ JSON form because guessing which one a later capability wants is the mistake thi
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json note list
 ```
 
-`note list` reads the whole notes tray on the direct inbox, one live request, since the tray is
-one unpaged call. The text form prints one line per note, the viewer's own marked `*`, with the
+`note list` reads the whole notes tray on the direct inbox from a load of the inbox, as `inbox`
+does (W87), since the tray is one unpaged call of the page's direct block. The text form prints one line per note, the viewer's own marked `*`, with the
 item id, the author, the audience and the text, then a count. The JSON form carries
 `note_count`, `own_note_id`, null when the viewer has no note, and a `notes` list whose keys are
 `id`, `author_id`, `author_username`, `is_own`, `text`, `audience` (`mutual_follows`,

@@ -73,6 +73,7 @@ __all__ = [
    "parse_inbox_recent_messages",
    "parse_thread_detail",
    "parse_thread_id",
+   "parse_thread_prefetch_keys",
    "parse_thread_message_page",
 ]
 
@@ -692,6 +693,48 @@ def parse_inbox_page(payload: Any) -> InboxPage:
    """
 
    return _thread_page(payload, INBOX_MAILBOX_PATH)
+
+
+def _thread_key_of(item: Any, path: str) -> str:
+   thread_path = f"{path}.as_ig_direct_thread"
+   thread = _required(item, "as_ig_direct_thread", path)
+
+   if not isinstance(thread, dict):
+      raise SchemaChanged(f"{thread_path} is not an object", path=thread_path)
+
+   return _required_string(thread, "thread_key", thread_path)
+
+
+def parse_thread_prefetch_keys(payload: Any) -> tuple[str, ...]:
+   """The ``thread_key`` of every row on the inbox's first page, in the order an inbox load
+   sends a thread detail query for each.
+
+   Both captured inbox loads of 2026-09-23 sent one per row of the first page, fifteen, the
+   pinned threads first in the order ``pinned_threads_v2`` lists them and then the other rows
+   in the listing's order. A pinned thread is not sent twice.
+   """
+
+   mailbox = _object_at(payload, INBOX_MAILBOX_PATH)
+   mailbox_path = ".".join(INBOX_MAILBOX_PATH)
+   pinned_path = f"{mailbox_path}.pinned_threads_v2"
+   pinned = _required(mailbox, "pinned_threads_v2", mailbox_path)
+
+   if not isinstance(pinned, list):
+      raise SchemaChanged(f"{pinned_path} is not a list", path=pinned_path)
+
+   edges, _, _ = _connection_of(mailbox, mailbox_path)
+   connection_path = f"{mailbox_path}.threads_by_folder"
+   keys: list[str] = []
+
+   for index, item in enumerate(pinned):
+      keys.append(_thread_key_of(item, f"{pinned_path}[{index}]"))
+
+   for index, edge in enumerate(edges):
+      edge_path = f"{connection_path}.edges[{index}]"
+      key = _thread_key_of(_required(edge, "node", edge_path), f"{edge_path}.node")
+      keys.append(key)
+
+   return tuple(dict.fromkeys(keys))
 
 
 def parse_inbox_continuation(payload: Any) -> tuple[str, str | None]:

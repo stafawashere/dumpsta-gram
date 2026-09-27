@@ -195,6 +195,47 @@ def test_a_tray_item_that_is_not_a_note_is_a_schema_change() -> None:
       parse_inbox_tray(tray_payload([tray_item(item_type="story")]))
 
 
+AMBIENT_TRAY = (
+   Path(__file__).resolve().parent / "fixtures" / "notes" / "tray_with_ambient_item.json"
+)
+"""The live tray of 2026-09-27, ten notes and one ``ambient_data`` item, pseudonymised by
+``scripts/build_notes_tray_fixtures.py``."""
+
+
+def test_an_item_of_another_kind_carrying_no_note_is_skipped() -> None:
+   """Catches the live tray of 2026-09-27 refused whole because one item was ``ambient_data``,
+   and an ambient item turned into a note."""
+
+   payload = json.loads(AMBIENT_TRAY.read_text(encoding="utf-8"))
+   items = payload["data"]["response"]["inbox_tray_items"]
+   note_ids = [
+      item["inbox_tray_item_id"] for item in items if item["inbox_tray_item_type"] == "note"
+   ]
+   ambient_ids = [item["inbox_tray_item_id"] for item in items if item["note_dict"] is None]
+
+   notes = parse_inbox_tray(payload)
+
+   assert len(note_ids) == 10
+   assert len(ambient_ids) == 1
+   assert [note.id for note in notes] == note_ids
+
+
+@pytest.mark.parametrize(
+   "item",
+   [
+      {**tray_item(), "note_dict": None},
+      tray_item(item_type="ambient_data"),
+   ],
+   ids=["typed-note-without-a-note", "another-kind-with-a-note"],
+)
+def test_an_item_the_skip_does_not_cover_is_still_a_schema_change(item: dict[str, Any]) -> None:
+   """Catches the skip widened to a note item that lost its note, or to an item of another kind
+   that carries one, either of which would drop a note silently."""
+
+   with pytest.raises(SchemaChanged):
+      parse_inbox_tray(tray_payload([tray_item(item_id=OWN_ITEM_ID), item]))
+
+
 def test_the_author_username_is_only_taken_from_the_author() -> None:
    """Catches a note credited to whoever the tray pictured first when that is not the author."""
 

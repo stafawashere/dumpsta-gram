@@ -159,7 +159,7 @@ class AsyncDirect:
       )
 
    async def notes(self) -> tuple[Note, ...]:
-      """Read the notes tray on the direct inbox, whole, in the tray's order. One live request.
+      """Read the notes tray on the direct inbox, whole, in the tray's order.
 
       Each author has at most one note, and the viewer's own is the one whose
       :attr:`~dumpstagram.models.Note.author_id` equals this session's ``ds_user_id``. It is
@@ -169,9 +169,12 @@ class AsyncDirect:
       :class:`~dumpstagram.errors.SchemaChanged` rather than returning the first page as the
       whole tray.
 
-      A browser reads the tray inside an inbox page load, beside nine other queries. This sends
-      the tray query alone under every behavior, a departure recorded in
-      ``docs/web-request-contract.md`` until the inbox load is modelled.
+      Under the default behavior this loads the direct inbox as a browser does: the document,
+      the ten queries of the page's direct block at once, of which the tray is one, and the
+      page's companions, all in one action. That is eleven requests and up to nineteen
+      companions, and only the tray is read.
+      :attr:`~dumpstagram.behavior.Behavior.inbox_route` set to
+      :attr:`~dumpstagram.behavior.InboxRoute.QUERIES` sends the tray query alone, one request.
       """
 
       client = self._client
@@ -181,6 +184,9 @@ class AsyncDirect:
          read_notes(
             client._sender,
             client._session,
+            route=client._behavior.inbox_route,
+            companions=client._behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
             user_agent=client._user_agent,
          )
       )
@@ -249,7 +255,7 @@ class AsyncDirect:
       )
 
    async def inbox(self, *, after: str | None = None) -> Page[DirectThread]:
-      """Read one page of the direct inbox, newest activity first. One live request.
+      """Read one page of the direct inbox, newest activity first.
 
       The first page is what an inbox load lists, pinned threads at their activity position.
       ``after`` is the ``end_cursor`` of a page this method returned, and nothing else: it
@@ -261,9 +267,11 @@ class AsyncDirect:
       :meth:`messages`, which takes :attr:`DirectThread.thread_fbid
       <dumpstagram.models.DirectThread.thread_fbid>`.
 
-      A browser reads the first page inside an inbox load, beside the document and nine other
-      queries. This sends the listing alone, a departure recorded in
-      ``docs/web-request-contract.md``.
+      Under the default behavior the first page is read from the direct inbox's page load, as
+      :meth:`notes` describes, and only the listing is read.
+      :attr:`~dumpstagram.behavior.Behavior.inbox_route` set to
+      :attr:`~dumpstagram.behavior.InboxRoute.QUERIES` sends the listing alone, one request.
+      Every later page is one request either way, the query a browser's thread list pages with.
       """
 
       client = self._client
@@ -274,6 +282,9 @@ class AsyncDirect:
             client._sender,
             client._session,
             after=after,
+            route=client._behavior.inbox_route,
+            companions=client._behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
             user_agent=client._user_agent,
          )
       )
@@ -302,7 +313,7 @@ class AsyncDirect:
       )
 
    async def unread_counts(self) -> UnreadCounts:
-      """Count the unread threads in the inbox and in the pending requests. Two live requests.
+      """Count the unread threads in the inbox and in the pending requests.
 
       The upstream answers each folder's first page of rows with their read receipts and no
       number, as it does for a browser, and the count is taken over those rows: a thread is
@@ -310,6 +321,11 @@ class AsyncDirect:
       activity or absent. That rule is the engine's reading of the rows (INFERENCE), since the
       browser's own has not been read. Muted threads count. A folder with rows past its first
       page says so in :class:`~dumpstagram.models.UnreadCounts`, and those rows are not counted.
+
+      Under the default behavior both folders are read from the direct inbox's page load, as
+      :meth:`notes` describes. :attr:`~dumpstagram.behavior.Behavior.inbox_route` set to
+      :attr:`~dumpstagram.behavior.InboxRoute.QUERIES` sends the two folders' queries alone, two
+      requests.
       """
 
       client = self._client
@@ -319,6 +335,9 @@ class AsyncDirect:
          read_unread_counts(
             client._sender,
             client._session,
+            route=client._behavior.inbox_route,
+            companions=client._behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
             user_agent=client._user_agent,
          )
       )
@@ -449,8 +468,8 @@ class SyncDirect:
    def notes(self) -> tuple[Note, ...]:
       """Read the notes tray on the direct inbox. Blocks until it has it.
 
-      The same call as :meth:`AsyncDirect.notes`, run on the shared loop thread. One live
-      request.
+      The same call as :meth:`AsyncDirect.notes`, run on the shared loop thread, with the same
+      requests under the same behavior.
       """
 
       return self._client._loop.run(
@@ -516,8 +535,8 @@ class SyncDirect:
    def inbox(self, *, after: str | None = None) -> Page[DirectThread]:
       """Read one page of the direct inbox. Blocks until it has one.
 
-      The same call as :meth:`AsyncDirect.inbox`, with the same arguments and the same result,
-      run on the shared loop thread. One live request.
+      The same call as :meth:`AsyncDirect.inbox`, with the same arguments, the same result and
+      the same requests, run on the shared loop thread.
       """
 
       return self._client._loop.run(
@@ -541,8 +560,8 @@ class SyncDirect:
       """Count the unread threads in the inbox and the pending requests. Blocks until it has
       both.
 
-      The same call as :meth:`AsyncDirect.unread_counts`, run on the shared loop thread. Two
-      live requests.
+      The same call as :meth:`AsyncDirect.unread_counts`, run on the shared loop thread, with
+      the same requests under the same behavior.
       """
 
       return self._client._loop.run(

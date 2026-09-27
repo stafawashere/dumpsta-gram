@@ -186,6 +186,12 @@ timeline query the page sends and the engine does not read. Another account meas
 browser capture cost 1.51 MB of answers. `ProfileRoute.QUERIES` costs two requests and about
 32 kB.
 
+What the direct inbox's page load costs, since E2 batch 9 the default route of `notes()`,
+`direct.inbox()` and `direct.unread_counts()`: one action of 31 requests with a full first page,
+the document of about 0.82 MB, the ten-query direct block, and nineteen companions, fifteen of
+them thread details of about 42 kB each (W87 to W89). The answer sizes of the whole load were not
+measured through the engine. `InboxRoute.QUERIES` costs one request, two for the unread counts.
+
 The page-load cookie sync is the one traffic that departs outside any slot, ruling 17 in
 [build-plan.md](build-plan.md). After a document action succeeds, `_core/cookie_sync.py`
 schedules four requests on the client's loop, two to www.facebook.com through the cookieless

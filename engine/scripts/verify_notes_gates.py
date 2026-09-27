@@ -128,6 +128,22 @@ MUTATIONS: list[dict[str, object]] = [
       ],
    },
    {
+      "gate": gate("test_an_item_of_another_kind_carrying_no_note_is_skipped"),
+      "defect": "the skip is removed, so an ambient item fails the whole tray",
+      "edits": [(PARSE_NOTES, "      if not _carries_no_note(item)\n", "      if True\n")],
+   },
+   {
+      "gate": gate("test_an_item_the_skip_does_not_cover_is_still_a_schema_change"),
+      "defect": "the skip widens to an item typed note that lost its note",
+      "edits": [
+         (
+            PARSE_NOTES,
+            "   return is_another_kind and has_a_null_note\n",
+            "   return has_a_null_note\n",
+         )
+      ],
+   },
+   {
       "gate": gate("test_the_author_username_is_only_taken_from_the_author"),
       "defect": "the first pictured user is taken as the author",
       "edits": [

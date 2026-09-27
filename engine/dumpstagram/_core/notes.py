@@ -4,10 +4,9 @@ Both public surfaces call this. Nothing here knows the upstream speaks GraphQL: 
 `_private/web/` builds the request and maps the answer.
 
 A browser reads the tray as one of the ten queries an inbox page load sends together, beside
-the inbox document, the page's common companions and its cookie sync tail. The engine does not
-model the inbox load's direct block yet, so it sends the tray query alone, which is a recorded
-departure in `engine/docs/web-request-contract.md` rather than a setting, because there is no
-parity route for a setting to choose.
+the inbox document, the page's companions and its cookie sync tail. :attr:`InboxRoute.PAGE`
+does the same since E2 batch 9, through the inbox page load in ``_core/inbox.py`` (W87), and
+:attr:`InboxRoute.QUERIES` sends the tray query alone, the departure.
 
 Setting and deleting a note are writes, and they belong in `_core/writes/`.
 """
@@ -16,12 +15,15 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from dumpstagram._core.cookie_sync import CookieSync
+from dumpstagram._core.inbox import read_from_inbox_page
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.notes import parse_inbox_tray
 from dumpstagram._private.web.requests.notes import build_inbox_tray_request
+from dumpstagram.behavior import InboxRoute
 from dumpstagram.models import Note
 from dumpstagram.session import Session
 
@@ -32,6 +34,9 @@ async def read_notes(
    sender: PacedSender,
    session: Session,
    *,
+   route: InboxRoute = InboxRoute.QUERIES,
+   companions: bool = False,
+   cookie_sync: CookieSync | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> tuple[Note, ...]:
@@ -39,7 +44,22 @@ async def read_notes(
 
    One live request when the session already carries usable tokens, two when it has to
    bootstrap first. The tray is unpaged, so there is no cursor to pass.
+
+   Under :attr:`InboxRoute.PAGE` the tray is read from the inbox page load instead, and
+   ``companions`` and ``cookie_sync`` apply only there. ``QUERIES`` and no companions stay the
+   defaults at this level so callers below the client keep the requests they had.
    """
+
+   if route is InboxRoute.PAGE:
+      return await read_from_inbox_page(
+         sender,
+         session,
+         lambda answers: parse_inbox_tray(classify(answers.tray)),
+         companions=companions,
+         cookie_sync=cookie_sync,
+         user_agent=user_agent,
+         deadline=deadline,
+      )
 
    async def attempt() -> tuple[Note, ...]:
       if not session.fb_dtsg:

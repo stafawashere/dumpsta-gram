@@ -7,8 +7,8 @@ nothing a caller could not set by hand, and ``dataclasses.replace`` derives a va
 
 Each setting is added here only once the engine can honour it. Spacing was the first, the
 feed's first page the second, the profile route the third, a thread's first page the fourth,
-the page load companions the fifth, the cookie sync the sixth, and the follow list's
-relationship statuses the seventh. The three write settings came
+the page load companions the fifth, the cookie sync the sixth, the follow list's
+relationship statuses the seventh, and the inbox route the eighth. The three write settings came
 with the write path, before any write capability, because a write is only safe with all three in
 place from the first one. The listener's poll interval came with the ``events()`` surface.
 Other companion requests and
@@ -30,6 +30,7 @@ __all__ = [
    "PARITY",
    "Behavior",
    "FeedFirstPage",
+   "InboxRoute",
    "ProfileRoute",
    "Spacing",
    "ThreadFirstPage",
@@ -88,6 +89,26 @@ class ProfileRoute(Enum):
    QUERIES = "queries"
 
 
+class InboxRoute(Enum):
+   """How the notes tray, the inbox's first page and the unread counts are read.
+
+   ``PAGE`` is what a browser does: it loads the direct inbox and sends the ten queries of the
+   page's direct block at once, of which the tray, the first page and the two folders' unread
+   rows are four. That is eleven requests inside one action, about 0.8 MB of document, and it
+   refreshes the session's page tokens on the way. Whichever of the three is asked for, the
+   whole block goes out and only its answers are read.
+
+   ``QUERIES`` sends only the queries the read needs, one for the tray or the first page and
+   two for the unread counts, which no browser was observed to do.
+
+   Every inbox page after the first goes through the next page query either way, which is what
+   a browser does when the thread list scrolls.
+   """
+
+   PAGE = "page"
+   QUERIES = "queries"
+
+
 class ThreadFirstPage(Enum):
    """How the newest page of a direct thread is read.
 
@@ -119,7 +140,10 @@ class Behavior:
    browser's page load sends beside its own: the badge count, the chat tabs jewel, the omni
    picker, two quick promotion calls, and on a profile page the stories tray. None of their
    answers is read. Five or six requests inside the document's own action, departing in the
-   page's order and grouping. False leaves them out and changes nothing else.
+   page's order and grouping. On the direct inbox they are the badge count, the stories tray,
+   one quick promotion call, the thread detail of each of the first fifteen threads, and the
+   pending follow requests with the activity feed, up to nineteen. False leaves them out and
+   changes nothing else.
 
    ``cookie_sync`` runs, after every document the engine loads, the four requests a browser's
    page sends seconds later to keep its ``fr`` in step with facebook.com: two to
@@ -164,6 +188,7 @@ class Behavior:
    spacing: Spacing = Spacing(floor_seconds=1.3, mean_jitter_seconds=2.0)
    feed_first_page: FeedFirstPage = FeedFirstPage.DOCUMENT
    profile_route: ProfileRoute = ProfileRoute.PAGE
+   inbox_route: InboxRoute = InboxRoute.PAGE
    thread_first_page: ThreadFirstPage = ThreadFirstPage.DETAIL
    page_load_companions: bool = True
    cookie_sync: bool = True

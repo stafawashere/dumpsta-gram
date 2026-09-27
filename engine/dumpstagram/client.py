@@ -249,7 +249,7 @@ class SyncClient:
       """Read the notes tray on the direct inbox. Blocks until it has it.
 
       The same call as :meth:`~dumpstagram.aio.AsyncClient.notes`, run on the shared loop
-      thread. One live request.
+      thread, with the same requests under the same behavior.
       """
 
       return self._loop.run(

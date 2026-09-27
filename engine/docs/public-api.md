@@ -126,8 +126,9 @@ does not close the pool. Closing the owner stops both.
 `Behavior` carries only settings the engine honours. On 2026-09-23 that is `spacing`,
 `feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions`,
 `cookie_sync`, `write_spacing`, `write_budget_per_hour`,
-`stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`, and since E2 batch 3
-`follow_list_statuses`, described with the followers below. The last, added with the
+`stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`, since E2 batch 3
+`follow_list_statuses`, described with the followers below, and since E2 batch 9 `inbox_route`,
+described with `notes()` below. `poll_interval_seconds`, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
 zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
 above.
@@ -157,9 +158,22 @@ replaced `useIGDMessageListPaginationQuery` in the browser by 2026-09-23. One re
 way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries,
 and neither marks the thread seen.
 
-`notes()` has no setting. Added 2026-09-23 as the read half of Step 14, it returns
-`tuple[Note, ...]`, the whole notes tray on the direct inbox in the tray's order, from one
-`IGDInboxTrayQuery` request, since the tray is one unpaged call. A cursor appearing beside the
+`inbox_route` decides how `notes()`, `direct.inbox()` with no cursor and `direct.unread_counts()`
+read, since E2 batch 9 (W87). `InboxRoute.PAGE`, the parity default, loads
+`https://www.instagram.com/direct/inbox/` as a navigation and sends the ten queries of the page's
+direct block together, of which the tray, the inbox's first page and the two folders' unread rows
+are four, eleven requests in one paced action, and with `page_load_companions` the inbox load's
+companions after them. Whichever of the three is called, the whole block goes out and only that
+read's answers are read; the document preloads none of them. It refreshes the session's page
+tokens. `InboxRoute.QUERIES` is the route the engine used before: each read's own queries alone,
+one request for the tray or the first page and two for the unread counts. Later inbox pages and
+the message requests are sent alone under both. Every preset keeps `PAGE`.
+
+`notes()` was added 2026-09-23 as the read half of Step 14. It returns `tuple[Note, ...]`, the
+whole notes tray on the direct inbox in the tray's order, from the one `IGDInboxTrayQuery` answer,
+since the tray is one unpaged call. The tray also holds items of other kinds, one `ambient_data` item
+so far, whose meaning is unresolved; an item of another kind that carries no note is skipped, and
+any other item that is not a note raises `SchemaChanged` (W91). A cursor appearing beside the
 items raises `SchemaChanged` rather than reporting a first page as the whole tray. `Note`
 carries `id`, the tray item's 17-digit id that a delete will name, `author_id`, the author's
 numeric Instagram id, `text`, empty on a song note, `audience`, `created_at` in UTC,
@@ -167,10 +181,9 @@ numeric Instagram id, `text`, empty on a song note, `audience`, `created_at` in 
 equals the session's `ds_user_id`, and it is absent when the viewer has none. `NoteAudience`
 is an `IntEnum` holding the web client's own numbers, `MUTUAL_FOLLOWS` 0 ("Followers you follow
 back"), `CLOSE_FRIENDS` 1 and `INTERNAL` 2, read out of the client's `PolarisNotesTypes` module,
-and any other number is a `SchemaChanged`. A browser reads the tray inside an inbox page load
-beside nine other queries, and the engine sends the tray query alone under every behavior until
-the inbox load is modelled, a departure recorded in
-[web-request-contract.md](web-request-contract.md).
+and any other number is a `SchemaChanged`. Under `InboxRoute.PAGE` the tray is read inside the
+inbox page load as a browser reads it, which closes the departure `1.0.0` recorded;
+`InboxRoute.QUERIES` sends it alone.
 
 `set_note(text, *, audience=NoteAudience.CLOSE_FRIENDS) -> Note` and `delete_note(note_id) ->
 None` have no setting either. Added 2026-09-23 as the write half of Step 14. `set_note` sends
@@ -285,8 +298,13 @@ browser sends around a send, a mark read, its validation and a thread refetch, i
 departure in [web-request-contract.md](web-request-contract.md).
 
 `page_load_companions` decides whether a document load also sends the queries a browser's page
-load sends beside its own. It applies to the two routes that load a document, the home document
-under `FeedFirstPage.DOCUMENT` and the profile page under `ProfileRoute.PAGE`. True, the parity
+load sends beside its own. It applies to the three routes that load a document, the home document
+under `FeedFirstPage.DOCUMENT`, the profile page under `ProfileRoute.PAGE` and the direct inbox
+under `InboxRoute.PAGE`. After the inbox's direct block it sends the badge count, the stories tray,
+the login interstitial quick promotion call, one `IGDThreadDetailQuery` for each row of the first
+page, pinned threads first, and the pending follow requests with the activity feed, up to
+nineteen; the inbox load sends no chat tabs jewel or omni picker, and `news/inbox_seen` is never
+sent (W88, W89). True, the parity
 default, sends after the home document the badge count, the chat tabs jewel with the omni picker,
 and two quick promotion calls, and after the profile page's six queries the stories tray, the
 jewel with the omni picker, the badge count and the two quick promotion calls, all inside the
@@ -625,9 +643,10 @@ observed. No request row has been seen, because the account had none; one is map
 row, and a row that differs raises `SchemaChanged`.
 
 Nothing here opens a thread, so nothing is marked read to anyone, and no request thread is
-opened, which would mark it seen to its sender (W43). A browser reads all of this inside an inbox
-page load. Each method sends its own queries alone, a departure recorded in
-[web-request-contract.md](web-request-contract.md).
+opened, which would mark it seen to its sender (W43). Under the default behavior the inbox's first
+page and the unread counts are read inside the inbox page load `inbox_route` describes, and the
+thread details it prefetches mark nothing seen. Later pages and the message requests are each sent
+alone, as a browser sends them when its thread list scrolls and its requests view opens.
 
 ### The profile tabs and the suggested accounts
 

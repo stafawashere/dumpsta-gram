@@ -1436,6 +1436,131 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   CLI acceptance, `probes/e2_search_cli_acceptance.py`, runs the three commands, three requests,
   six at most, and checks that each sent its own query and none an unobserved search query; it
   ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-search-cli-2026-09-27-051346.json`.
+- **W86. The inbox load ships in batch 9 and the post page does not; the post page's two
+  companions are not registered yet.** Ruled 2026-09-27 for E2 batch 9, the orchestrator's ruling
+  on the owner's delegation. The post page document has never been captured, and a model of its
+  burst without its document would be half a page load, so the post page waits for the capture
+  night (batch 10) and the post, like and comment departures of `1.0.0` stay open until then. Its
+  two companions were verified today, each replayed twice in run `run-2026-09-27-014102` by
+  `probes/e2_page_models.py`: `PolarisPostCommentsContainerQuery` (finding
+  `read-a-post-page-first-comments`) and `PolarisLikedByTextDaisyReduxQuery` (finding
+  `read-the-liked-by-line`), captures `skills/reverse-engineer/var/captures/e2-page-models-2026-09-27-*`,
+  log `logs/e2-page-models-2026-09-27-013957.json`. They are not registered: the companion
+  registry in `documents/page_load.py` and the catalog's `COMPANION_QUERIES` hold only what the
+  engine sends, since the catalog's own rule is that a companion is sent because a page sends it,
+  and nothing sends these before the post page is modelled. Live traffic for the batch:
+  `probes/e2_page_models.py`, 10 requests.
+- **W87. The inbox page load is the parity route of `notes()`, `direct.inbox()` and
+  `direct.unread_counts()`, chosen by `Behavior.inbox_route`.** Ruled 2026-09-27 for E2 batch 9.
+  `InboxRoute.PAGE`, the default in every preset, loads `https://www.instagram.com/direct/inbox/`
+  as a navigation, writes its tokens onto the session, and sends the ten queries of the page's
+  direct block together in one paced action, followed by the load's companions (W88) when
+  `page_load_companions` is on, as the home and profile routes do; `InboxRoute.QUERIES` keeps the
+  single-query route of each read as the named departure, in the style of `ProfileRoute`. The
+  three reads share one load because the tray, the first page and both folders' unread rows are
+  all in the block, so whichever is called the whole block goes out and only its answers are read;
+  every other answer is screened for a checkpoint or a throttle and otherwise left alone. The
+  block's order is the recorded one, FACT, identical in both full inbox cold loads,
+  `run-2026-09-23-022159` (492.2 to 496.1 ms after the document) and `run-2026-09-23-045256`
+  (532.1 to 535.8 ms): automatic previews, feature limits, the unread rows for `INBOX`, the
+  listing, the unread rows for `PENDING`, presence setup, the inbox interstitial, the account
+  switcher, viewer settings, the tray. The six queries with no variables were verified on
+  2026-09-23 and are registered now as companions, which moved the registry from 48 to 54. The
+  inbox document preloads none of the block, unlike the home document and its feed: FACT, neither
+  stored document (199807 of about 822000 characters each) carried an `adp_` preloader, and both
+  loads asked for the four answers over XHR; INFERENCE for the unstored rest. The listing, both
+  unread queries and the badge count carry the document's `IGDMqttWebDeviceID`, as both loads did;
+  a document without one gets one fresh uuid4 for the whole block, because the read is what the
+  caller asked for and a replay with an id no page issued answered the same, and no badge count,
+  as on the other routes. Later inbox pages and the message requests stay single requests under
+  both routes, since a browser sends them when its list scrolls and its requests view opens. The
+  cookie sync tail is scheduled for the inbox after a read that succeeded. The listener's polls
+  are unchanged. Cost under parity: 31 requests per call with a full first page, where the
+  departure costs one or two. Closes the notes departure of `1.0.0` and `1.1.0`. Those release
+  notes describe their releases and are left as written; the `1.2.0` notes will list it closed.
+- **W88. The inbox load's companions are the badge count, the stories tray, the login
+  interstitial, the thread details and the two account reads; `news/inbox_seen` is never sent,
+  and five queries the plan named are not sent.** Ruled 2026-09-27 for E2 batch 9. From the first
+  load, in groups: the badge count at 518.7 ms, the stories tray at 642.2, the login interstitial
+  quick promotion at 849.0, the fifteen thread details at 1038.5 to 1044.2 (W89), and the pending
+  follow requests and the activity feed at 3686.9 and 3687.3, sent together with one
+  `x-web-session-id` and their answers unread, batch 6's builders. The second load sent the same
+  up to the details (564.4, 727.7, 897.0, 1050.6 to 1070.3) and no REST read. Left out and named:
+  the feed timeline prefetch at 641.1, as the profile route leaves it out; `fxcal` at 545.0 and
+  the manifest, no verified finding; `news/inbox_seen` at 3685.2, an unverified write that clears
+  the viewer's own badge, W74. Sending the account reads on every load is an ASSUMPTION, since one
+  of two loads sent them and what triggers them is unobserved. Not sent, against the execution
+  list's companion list, because the recorded loads say so: the chat tabs jewel (and the omni
+  picker), absent from both inbox loads and documented as a load that is not direct; the header,
+  `IGDInboxHeaderOffMsysQuery`, which its finding records only on a thread page, beside the thread
+  detail of the open thread; and `useIGDShouldShowAdResponsesTabQuery` (finding
+  `read-whether-the-ad-responses-tab-shows`) and `IGDThreadlineContainerQuerySuggestedQuery`
+  (finding `read-suggested-threads-reels`), verified twice today, which no inbox load sent: FACT,
+  absent from the two full loads and from the three inbox captures of `run-2026-09-21-034918`,
+  which recorded the direct block and the thread details. The census lists them as compiled on home, inbox and location, so
+  INFERENCE: each is conditional, the suggested reels on an empty threadline and the ad responses
+  tab on a professional account. Neither is registered; the capture night can show what sends
+  them. `IGDChatTabsContentOffMsysQuery`, the floating chat tabs twelve non-direct captures carry,
+  is a census entry (`39445397375059002`) with no finding, so it does not join the home and
+  profile companions and waits on a finding.
+- **W89. An inbox load prefetches the thread detail of every row of its first page, pinned
+  threads first.** Ruled 2026-09-27 for E2 batch 9. FACT, both loads: fifteen `IGDThreadDetailQuery`
+  requests, the set equal to the fifteen rows of the first page, each carrying the row's
+  `thread_key` as `thread_fbid`, null `min_uq_seq_id`, the two providers a thread open sends, and
+  the inbox as referer. The order was listing positions 2, 7, 0, 1, 3 to 6, 8 to 14 in the first
+  load and 1, 0, 2 to 14 in the second, and each load's `pinned_threads_v2` listed exactly 2, 7
+  and 1, 0: the pinned threads in that list's order, then the other rows in the listing's order,
+  which `parse_thread_prefetch_keys` reads and which accounts for all 30 positions. A pinned thread
+  is not sent twice. Whether a first page longer than fifteen rows prefetches all of them is
+  unobserved, and the first page has been fifteen rows on every read. `build_thread_detail_request`
+  gained a `referer` keyword for it, the thread's own page staying the default. A listing that is
+  refused or unreadable keys no details rather than costing the read. None of it marks a thread
+  seen, which a browser does over a socket.
+- **W90. Gates, the two gates that followed, and what did not change.** Ruled 2026-09-27 for E2
+  batch 9. `tests/test_page_models.py` holds 16 gates on batch 1's pseudonymised fixtures and a
+  synthetic document, so no fixture builder was needed, and `scripts/verify_page_models_gates.py`
+  29 mutations, each seen red then green. Two gates followed the deliberate change, the W48 way:
+  the registry count in `tests/test_doctor.py`, 48 to 54, seen red as `assert 54 == 48` before
+  the edit and green after; and the two inbox walk gates of `tests/test_direct_read.py`, which
+  hold the step from the first page query to the next page query and went red with
+  `AuthenticationFailed` once the default route loaded a document, and now run under
+  `inbox_route=InboxRoute.QUERIES` in their scripted behavior, green, while the page route's walk
+  is gated in the new file. `scripts/verify_direct_read_gates.py` had one anchor the new core made
+  ambiguous, `folder=INBOX_FOLDER`, lengthened with the line before it; that harness, the page
+  load, notes and behavior harnesses ran clean after, 34, 15, 43 and 9 mutations. The doctor's
+  replay steps did not change, since no new capability read exists, and it now checks fourteen
+  companions by artifact. The surface grew from 927 lines to 932, `InboxRoute` with its two
+  members and `Behavior.inbox_route`, none removed or changed. No command was added; `note list`,
+  `inbox` and `unread` read through the load under the default behavior and their help says so.
+  The request counter in `probes/cli_request_counter/` records three REST paths whole, the two
+  account reads and `news/inbox_seen`, so the acceptance can show the last never went out. The CLI
+  acceptance, `probes/e2_page_models_cli_acceptance.py`, runs `note list`, `inbox --pages 2` and
+  `unread`, 94 requests with full first pages, 110 at most, and checks each load's block, its
+  thread details against the rows listed, and that no `news/inbox_seen` was sent. Its second run, after W91, passed with every step exit 0 and 94 requests, all 200: each of the three loads sent its whole block, 15 thread details and both account reads and no `news/inbox_seen`, 10 notes, 30 threads over two inbox pages, log
+  `logs/e2-page-models-cli-2026-09-27-055040.json`.
+- **W91. The notes tray holds kinds beside notes, and `notes()` returns the notes only.** Ruled
+  2026-09-27 for E2 batch 9, the orchestrator's ruling on the owner's delegation, after the batch's
+  CLI acceptance. That run sent the whole inbox page load, 31 requests, all 200, the block
+  complete, 15 thread details and no `news/inbox_seen`, and then `note list` exited 8 with
+  `SchemaChanged` at `data.response.inbox_tray_items[10].inbox_tray_item_type`, "is
+  'ambient_data', not a note", log `logs/e2-page-models-cli-stopped-2026-09-27-054426.json`. The
+  same refusal came on `InboxRoute.QUERIES`, so it is a defect in `direct.notes()` on every route
+  since `1.0.0`, not in the page load. `probes/notes_tray_shape.py`, 2 requests, found FACT: 10
+  `note` items and 1 `ambient_data` item carrying `inbox_tray_item_id`, `inbox_tray_item_type`,
+  `note_dict` null, and `pog_info` with `pog_style` and one pictured account (id, username, full
+  name, pictures, `interop_messaging_user_fbid`), capture
+  `notes-tray-shape-2026-09-27-054515-02-notes-tray.json`. `parse_inbox_tray` now skips an item
+  whose `inbox_tray_item_type` is a string other than `note` and whose `note_dict` is present and
+  null, since it carries no note. An item typed `note` without a note, an item of another kind that
+  does carry a `note_dict`, and an item with no type still raise `SchemaChanged`, and
+  `parse_created_note` is unchanged. There is no public model for an ambient item: it is not a
+  note, it was seen once, and what it means is UNRESOLVED. `find_own_note` works on the notes that
+  remain, and `set_note` and `delete_note` read no tray, so their reconciling read is `notes()`
+  with the skip. The fixture is the live tray, pseudonymised by `scripts/build_notes_tray_fixtures.py`
+  into `tests/fixtures/notes/tray_with_ambient_item.json`, 86 values checked absent. Two gates in
+  `tests/test_notes.py` hold it, the skip seen red on the code before the fix, and
+  `scripts/verify_notes_gates.py` gained two mutations, the skip removed and the skip widened to
+  items typed `note`, 45 of 45 fired.
 
 ## Standing rules for every phase
 

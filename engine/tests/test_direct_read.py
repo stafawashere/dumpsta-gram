@@ -54,7 +54,7 @@ from dumpstagram._private.web.requests.direct import (
    build_message_requests_request,
 )
 from dumpstagram.aio import AsyncClient
-from dumpstagram.behavior import PARITY
+from dumpstagram.behavior import PARITY, InboxRoute
 from dumpstagram.client import SyncClient
 from dumpstagram.models import DirectThread, MessageRequests, Page, UnreadCounts
 from dumpstagram.session import Session
@@ -78,7 +78,9 @@ THIRTY_DAYS_MS = 2_592_000_000
 DEVICE_ID = "0b6f2c1e-8d7a-4c55-9e3f-2a1b0c9d8e7f"
 NOW_MS = 1_790_000_000_000
 
-SCRIPTED_BEHAVIOR = replace(PARITY, cookie_sync=False)
+SCRIPTED_BEHAVIOR = replace(PARITY, cookie_sync=False, inbox_route=InboxRoute.QUERIES)
+"""The walks below hold the step from the first page query to the next page query, so the first
+page is asked for alone. The inbox page load's own walk is gated in ``test_page_models.py``."""
 
 
 def recorded(name: str) -> Any:
