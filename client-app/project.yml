@@ -1,0 +1,34 @@
+name: InstagramPlus
+options:
+   bundleIdPrefix: io.github.stafawashere
+   deploymentTarget:
+      macOS: "14.0"
+   indentWidth: 3
+   tabWidth: 3
+   usesTabs: false
+   createIntermediateGroups: true
+settings:
+   base:
+      SWIFT_VERSION: "6.0"
+      SWIFT_STRICT_CONCURRENCY: complete
+targets:
+   InstagramPlus:
+      type: application
+      platform: macOS
+      sources:
+         - path: src/InstagramPlus
+      settings:
+         base:
+            PRODUCT_NAME: "Instagram+"
+            PRODUCT_MODULE_NAME: InstagramPlus
+            PRODUCT_BUNDLE_IDENTIFIER: io.github.stafawashere.instagramplus
+            MARKETING_VERSION: "0.1.0"
+            CURRENT_PROJECT_VERSION: "1"
+            GENERATE_INFOPLIST_FILE: YES
+            INFOPLIST_KEY_CFBundleDisplayName: "Instagram+"
+            INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.social-networking
+            ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+            ARCHS: arm64
+            ENABLE_HARDENED_RUNTIME: YES
+            CODE_SIGN_IDENTITY: "-"
+            CODE_SIGN_STYLE: Manual

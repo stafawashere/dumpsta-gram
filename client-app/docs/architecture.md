@@ -9,13 +9,17 @@ Canonical bridge documentation:
 ## Layers
 
 ```
-client-app/src/Dumpstagram/
+client-app/src/InstagramPlus/
+   App/                       entry point, appearance, the DEBUG snapshot probe
    PythonRuntime.swift        bootstrap, once per process
    Bridge/                    the Python queue and the typed wrapper
-   Services/                  orchestration over the wrapper
+   Engine/                    EngineClient, the proposed surface, Swift mirrors of the engine's models
+   Engine/Dummy/              DummyEngine, which stands in for Bridge/ until step 5.2
+   Services/                  EngineGateway: session state, notices, checkpoint handling
    Models/                    Swift value types, decoded at the bridge
    Stores/                    observable application state, main actor
    Views/                     SwiftUI
+   Resources/                 asset catalog, the app icon
 ```
 
 The shape that matters is the two concurrency domains and the single seam between
