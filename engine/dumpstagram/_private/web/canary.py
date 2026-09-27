@@ -9,7 +9,10 @@ comment with replies from the post's comments, a highlight from the viewer's hig
 place from the first post that names one on the timeline or the viewer's grid, and the search
 typeahead's query from the viewer's own username. The reels and tagged tabs are read on the
 viewer's own account, like the highlights tray. The hashtag header is read for
-:data:`CANARY_HASHTAG`, the tag its finding was verified with, since no earlier read yields one.
+:data:`CANARY_HASHTAG`, the tag its finding was verified with, since no earlier read yields one,
+and the keyword grid for :data:`CANARY_KEYWORD` for the same reason. Both typeaheads search for
+the viewer's own username, and the reels feed's next page is keyed on its first page's cursor and
+reels.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -37,6 +40,8 @@ from dumpstagram._private.web.documents.discovery import (
    LOCATION_INFO,
    LOCATION_POSTS,
    NEW_FEED_POSTS,
+   REELS_FEED_FIRST_PAGE,
+   REELS_FEED_NEXT_PAGE,
 )
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
 from dumpstagram._private.web.documents.media import (
@@ -62,7 +67,9 @@ from dumpstagram._private.web.documents.profiles import (
 )
 from dumpstagram._private.web.documents.search import (
    HASHTAG_HEADER,
+   KEYWORD_RESULTS,
    NON_PERSONALISED_TYPEAHEAD,
+   PERSONALISED_TYPEAHEAD,
    RECENT_SEARCHES,
 )
 from dumpstagram._private.web.documents.stories import STORY_REEL
@@ -79,6 +86,7 @@ from dumpstagram._private.web.parse.discovery import (
    parse_location_info,
    parse_location_posts,
    parse_new_feed_posts,
+   parse_reels_feed_page,
 )
 from dumpstagram._private.web.parse.feed import parse_feed_page
 from dumpstagram._private.web.parse.media import (
@@ -102,7 +110,9 @@ from dumpstagram._private.web.parse.profiles import (
 )
 from dumpstagram._private.web.parse.search import (
    parse_hashtag_header,
+   parse_keyword_results,
    parse_non_personalised_typeahead,
+   parse_personalised_typeahead,
    parse_recent_searches,
 )
 from dumpstagram._private.web.parse.stories import parse_highlight_reel, parse_stories_tray
@@ -120,6 +130,8 @@ from dumpstagram._private.web.requests.discovery import (
    build_location_info_request,
    build_location_posts_request,
    build_new_feed_posts_request,
+   build_reels_feed_first_page_request,
+   build_reels_feed_next_page_request,
 )
 from dumpstagram._private.web.requests.feed import build_feed_page_request
 from dumpstagram._private.web.requests.media import (
@@ -142,8 +154,11 @@ from dumpstagram._private.web.requests.profiles import (
 )
 from dumpstagram._private.web.requests.search import (
    build_hashtag_header_request,
+   build_keyword_results_request,
    build_non_personalised_typeahead_request,
+   build_personalised_typeahead_request,
    build_recent_searches_request,
+   new_search_session_id,
 )
 from dumpstagram._private.web.requests.stories import (
    build_highlight_request,
@@ -154,6 +169,7 @@ from dumpstagram.session import Session
 
 __all__ = [
    "CANARY_HASHTAG",
+   "CANARY_KEYWORD",
    "REPLAY_STEPS",
    "ReplayArguments",
    "ReplayStep",
@@ -162,6 +178,11 @@ __all__ = [
 CANARY_HASHTAG = "instagram"
 """The tag the hashtag header is replayed for, the one ``probes/e2_search.py`` verified it with
 twice on 2026-09-27 (W85)."""
+
+CANARY_KEYWORD = "instagram"
+"""The text the keyword grid is replayed for, the query ``probes/e2_capture_replays.py --stage
+search`` verified it with twice on 2026-09-27, its default, since no ``IG_E2_SEARCH_QUERY`` was set
+(W104)."""
 
 
 @dataclass
@@ -189,6 +210,8 @@ class ReplayArguments:
    replies_cursor: str | None = None
    highlight_id: str | None = None
    location_id: str | None = None
+   reels_cursor: str | None = None
+   seen_reel_pks: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -289,6 +312,17 @@ def _learn_first_highlight(payload: Any, arguments: ReplayArguments) -> None:
 
    if tray.highlights:
       arguments.highlight_id = tray.highlights[0].id
+
+
+def _learn_reels_cursor(payload: Any, arguments: ReplayArguments) -> None:
+   """The reels feed's first page, its upstream cursor and the reels it showed, which the next
+   page step names as seen. A cursor is kept only when the page says more exist."""
+
+   page = parse_reels_feed_page(payload)
+
+   if page.has_next_page:
+      arguments.reels_cursor = page.end_cursor
+      arguments.seen_reel_pks = tuple(reel.pk for reel in page.items)
 
 
 def _mapped_by(mapper: Callable[[Any], object]) -> Callable[[Any, ReplayArguments], None]:
@@ -580,6 +614,44 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, arguments.viewer_id, user_agent=user_agent
       ),
       read=_mapped_by(parse_tagged_posts),
+   ),
+   ReplayStep(
+      query=REELS_FEED_FIRST_PAGE,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_reels_feed_first_page_request(
+         session, user_agent=user_agent
+      ),
+      read=_learn_reels_cursor,
+   ),
+   ReplayStep(
+      query=REELS_FEED_NEXT_PAGE,
+      requires="reels_cursor",
+      build=lambda session, arguments, user_agent: build_reels_feed_next_page_request(
+         session,
+         cursor=_required(arguments.reels_cursor),
+         seen_reel_pks=arguments.seen_reel_pks,
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_reels_feed_page),
+   ),
+   ReplayStep(
+      query=PERSONALISED_TYPEAHEAD,
+      requires="username",
+      build=lambda session, arguments, user_agent: build_personalised_typeahead_request(
+         session,
+         _required(arguments.username),
+         search_session_id=new_search_session_id(),
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_personalised_typeahead),
+   ),
+   ReplayStep(
+      query=KEYWORD_RESULTS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_keyword_results_request(
+         session, CANARY_KEYWORD, search_session_id=new_search_session_id(), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_keyword_results),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

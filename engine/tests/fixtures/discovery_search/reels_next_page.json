@@ -1,0 +1,878 @@
+{
+ "data": {
+  "xdt_api__v1__clips__home__connection_v2": {
+   "edges": [
+    {
+     "node": {
+      "media": {
+       "__typename": "XDTMediaDict",
+       "code": "p58xxxxxxxx",
+       "id": "9000000000000000059_90000000060",
+       "pk": "9000000000000000059",
+       "taken_at": 1781290219,
+       "video_versions": [
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/61",
+         "type": 101
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/61",
+         "type": 102
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/61",
+         "type": 103
+        }
+       ],
+       "is_dash_eligible": 0,
+       "number_of_qualities": 0,
+       "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT16.182858S\"/>",
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://example.invalid/62",
+          "height": 2347,
+          "width": 1320
+         },
+         {
+          "url": "https://example.invalid/63",
+          "height": 1920,
+          "width": 1080
+         },
+         {
+          "url": "https://example.invalid/64",
+          "height": 1280,
+          "width": 720
+         },
+         {
+          "url": "https://example.invalid/65",
+          "height": 1138,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/66",
+          "height": 853,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/67",
+          "height": 569,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/68",
+          "height": 427,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/69",
+          "height": 1080,
+          "width": 1080
+         },
+         {
+          "url": "https://example.invalid/70",
+          "height": 750,
+          "width": 750
+         },
+         {
+          "url": "https://example.invalid/71",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/72",
+          "height": 480,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/73",
+          "height": 320,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/74",
+          "height": 240,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/75",
+          "height": 150,
+          "width": 150
+         }
+        ],
+        "additional_candidates": {
+         "first_frame": {
+          "url": "https://example.invalid/76"
+         }
+        }
+       },
+       "carousel_media_count": null,
+       "carousel_media": null,
+       "original_height": 1280,
+       "original_width": 720,
+       "organic_tracking_token": "p77xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "tappable_elements": [],
+       "user": {
+        "pk": "90000000060",
+        "username": "p78xxxxxxxx",
+        "profile_pic_url": "https://example.invalid/79",
+        "is_private": false,
+        "is_embeds_disabled": false,
+        "is_unpublished": false,
+        "id": "90000000060",
+        "profile_pic_url_hd": "https://example.invalid/79",
+        "is_ai_user": null,
+        "aigm_account_label_info": {
+         "is_enabled": false,
+         "attribution_label_text": null
+        },
+        "is_verified": false,
+        "friendship_status": {
+         "following": false,
+         "is_feed_favorite": false
+        },
+        "full_name": "",
+        "show_account_transparency_details": true,
+        "__typename": "XDTUserDict"
+       },
+       "comments_disabled": null,
+       "like_and_view_counts_disabled": false,
+       "can_viewer_reshare": true,
+       "product_type": "clips",
+       "media_type": 2,
+       "usertags": null,
+       "media_overlay_info": null,
+       "has_liked": false,
+       "inventory_source": "p27xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "logging_info_token": "p81xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "ai_label_info": null,
+       "like_count": 0,
+       "owner_id": {
+        "pk": "90000000060",
+        "id": "90000000060"
+       },
+       "enable_media_notes_production": true,
+       "fb_like_count": null,
+       "view_count": null,
+       "crosspost_metadata": {
+        "is_feedback_aggregated": null,
+        "is_feed_feedback_aggregated": null
+       },
+       "clips_metadata": {
+        "is_shared_to_fb": false,
+        "music_info": null,
+        "original_sound_info": {
+         "audio_asset_id": "90000000000000082",
+         "ig_artist": {
+          "profile_pic_url": "https://example.invalid/79",
+          "id": "90000000060",
+          "username": "p78xxxxxxxx"
+         },
+         "consumption_info": {
+          "should_mute_audio_reason_type": null,
+          "is_trending_in_clips": false
+         },
+         "original_audio_title": "p30xxxxxxxxxxx",
+         "is_explicit": false,
+         "audio_filter_infos": null
+        }
+       },
+       "comment_count": 0,
+       "caption": {
+        "text": "p83xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pk": "90000000000000084",
+        "has_translation": null
+       },
+       "commenting_disabled_for_viewer": null,
+       "fb_comment_count": null,
+       "saved_collection_ids": null,
+       "has_viewer_saved": null,
+       "sharing_friction_info": {
+        "should_have_sharing_friction": false,
+        "bloks_app_url": null
+       },
+       "media_repost_count": 0,
+       "floating_context_items": [],
+       "audience": null,
+       "has_audio": true,
+       "ai_interactive_embodiment_attachment_style_info": null,
+       "is_shared_from_basel": null,
+       "is_fb_only": null,
+       "is_internal_only": null,
+       "creative_config": null,
+       "location": null,
+       "clips_attribution_info": null,
+       "wearable_attribution_info": null,
+       "longform_clip_metadata": null,
+       "invited_coauthor_producers": [],
+       "preview": null,
+       "link_text": null,
+       "link": null,
+       "ig_media_sharing_disabled": false,
+       "feed_demotion_control": null,
+       "feed_recs_demotion_control": null,
+       "coauthor_producers": [],
+       "open_carousel_submission_state": null,
+       "is_in_profile_grid": false,
+       "profile_grid_control_enabled": false,
+       "view_state_item_type": 0,
+       "brs_severity": 0
+      },
+      "__typename": "XDTClipsItemDict"
+     },
+     "cursor": ""
+    },
+    {
+     "node": {
+      "media": {
+       "__typename": "XDTMediaDict",
+       "code": "p85xxxxxxxx",
+       "id": "9000000000000000086_90000000087",
+       "pk": "9000000000000000086",
+       "taken_at": 1781297977,
+       "video_versions": [
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/88",
+         "type": 101
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/88",
+         "type": 102
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/88",
+         "type": 103
+        }
+       ],
+       "is_dash_eligible": 0,
+       "number_of_qualities": 0,
+       "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT39.63501S\"/>",
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://example.invalid/89",
+          "height": 1136,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/90",
+          "height": 852,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/91",
+          "height": 568,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/92",
+          "height": 426,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/93",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/93",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/93",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/94",
+          "height": 480,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/95",
+          "height": 320,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/96",
+          "height": 240,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/97",
+          "height": 150,
+          "width": 150
+         }
+        ],
+        "additional_candidates": {
+         "first_frame": {
+          "url": "https://example.invalid/98"
+         }
+        }
+       },
+       "carousel_media_count": null,
+       "carousel_media": null,
+       "original_height": 1920,
+       "original_width": 1080,
+       "organic_tracking_token": "p99xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "tappable_elements": [],
+       "user": {
+        "pk": "90000000087",
+        "username": "p100xxxxxxxxxxxx",
+        "profile_pic_url": "https://example.invalid/101",
+        "is_private": false,
+        "is_embeds_disabled": false,
+        "is_unpublished": false,
+        "id": "90000000087",
+        "profile_pic_url_hd": "https://example.invalid/101",
+        "is_ai_user": null,
+        "aigm_account_label_info": {
+         "is_enabled": false,
+         "attribution_label_text": null
+        },
+        "is_verified": true,
+        "friendship_status": {
+         "following": false,
+         "is_feed_favorite": false
+        },
+        "full_name": "p102xxxxxxxxxxxx",
+        "show_account_transparency_details": true,
+        "__typename": "XDTUserDict"
+       },
+       "comments_disabled": null,
+       "like_and_view_counts_disabled": false,
+       "can_viewer_reshare": true,
+       "product_type": "clips",
+       "media_type": 2,
+       "usertags": null,
+       "media_overlay_info": null,
+       "has_liked": false,
+       "inventory_source": "p27xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "logging_info_token": "p103xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "ai_label_info": null,
+       "like_count": 0,
+       "owner_id": {
+        "pk": "90000000087",
+        "id": "90000000087"
+       },
+       "enable_media_notes_production": true,
+       "fb_like_count": null,
+       "view_count": null,
+       "crosspost_metadata": {
+        "is_feedback_aggregated": null,
+        "is_feed_feedback_aggregated": null
+       },
+       "clips_metadata": {
+        "is_shared_to_fb": false,
+        "music_info": null,
+        "original_sound_info": {
+         "audio_asset_id": "90000000000000104",
+         "ig_artist": {
+          "profile_pic_url": "https://example.invalid/101",
+          "id": "90000000087",
+          "username": "p100xxxxxxxxxxxx"
+         },
+         "consumption_info": {
+          "should_mute_audio_reason_type": null,
+          "is_trending_in_clips": false
+         },
+         "original_audio_title": "p30xxxxxxxxxxx",
+         "is_explicit": false,
+         "audio_filter_infos": null
+        }
+       },
+       "comment_count": 0,
+       "caption": {
+        "text": "p105xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pk": "90000000000000106",
+        "has_translation": null
+       },
+       "commenting_disabled_for_viewer": null,
+       "fb_comment_count": null,
+       "saved_collection_ids": null,
+       "has_viewer_saved": null,
+       "sharing_friction_info": {
+        "should_have_sharing_friction": false,
+        "bloks_app_url": null
+       },
+       "media_repost_count": 0,
+       "floating_context_items": [],
+       "audience": null,
+       "has_audio": true,
+       "ai_interactive_embodiment_attachment_style_info": null,
+       "is_shared_from_basel": null,
+       "is_fb_only": null,
+       "is_internal_only": null,
+       "creative_config": null,
+       "location": null,
+       "clips_attribution_info": null,
+       "wearable_attribution_info": null,
+       "longform_clip_metadata": null,
+       "invited_coauthor_producers": [],
+       "preview": null,
+       "link_text": null,
+       "link": null,
+       "ig_media_sharing_disabled": false,
+       "feed_demotion_control": null,
+       "feed_recs_demotion_control": null,
+       "coauthor_producers": [],
+       "open_carousel_submission_state": null,
+       "is_in_profile_grid": false,
+       "profile_grid_control_enabled": false,
+       "view_state_item_type": 0,
+       "brs_severity": 0
+      },
+      "__typename": "XDTClipsItemDict"
+     },
+     "cursor": ""
+    },
+    {
+     "node": {
+      "media": {
+       "__typename": "XDTMediaDict",
+       "code": "p107xxxxxxx",
+       "id": "9000000000000000108_90000000109",
+       "pk": "9000000000000000108",
+       "taken_at": 1781289530,
+       "video_versions": [
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/110",
+         "type": 101
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/110",
+         "type": 102
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/110",
+         "type": 103
+        }
+       ],
+       "is_dash_eligible": 0,
+       "number_of_qualities": 0,
+       "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT16.166666S\"/>",
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://example.invalid/111",
+          "height": 1280,
+          "width": 720
+         },
+         {
+          "url": "https://example.invalid/112",
+          "height": 1138,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/113",
+          "height": 853,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/114",
+          "height": 569,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/115",
+          "height": 427,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/116",
+          "height": 720,
+          "width": 720
+         },
+         {
+          "url": "https://example.invalid/116",
+          "height": 720,
+          "width": 720
+         },
+         {
+          "url": "https://example.invalid/117",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/118",
+          "height": 480,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/119",
+          "height": 320,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/120",
+          "height": 240,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/121",
+          "height": 150,
+          "width": 150
+         }
+        ],
+        "additional_candidates": {
+         "first_frame": {
+          "url": "https://example.invalid/122"
+         }
+        }
+       },
+       "carousel_media_count": null,
+       "carousel_media": null,
+       "original_height": 1920,
+       "original_width": 1080,
+       "organic_tracking_token": "p123xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "tappable_elements": [],
+       "user": {
+        "pk": "90000000109",
+        "username": "p124xxxxxxxxx",
+        "profile_pic_url": "https://example.invalid/125",
+        "is_private": false,
+        "is_embeds_disabled": false,
+        "is_unpublished": false,
+        "id": "90000000109",
+        "profile_pic_url_hd": "https://example.invalid/125",
+        "is_ai_user": null,
+        "aigm_account_label_info": {
+         "is_enabled": false,
+         "attribution_label_text": null
+        },
+        "is_verified": false,
+        "friendship_status": {
+         "following": false,
+         "is_feed_favorite": false
+        },
+        "full_name": "p126xxxxxxxxxxxxxxxx",
+        "show_account_transparency_details": true,
+        "__typename": "XDTUserDict"
+       },
+       "comments_disabled": null,
+       "like_and_view_counts_disabled": false,
+       "can_viewer_reshare": true,
+       "product_type": "clips",
+       "media_type": 2,
+       "usertags": null,
+       "media_overlay_info": null,
+       "has_liked": false,
+       "inventory_source": "p27xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "logging_info_token": "p81xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "ai_label_info": null,
+       "like_count": 0,
+       "owner_id": {
+        "pk": "90000000109",
+        "id": "90000000109"
+       },
+       "enable_media_notes_production": true,
+       "fb_like_count": null,
+       "view_count": null,
+       "crosspost_metadata": {
+        "is_feedback_aggregated": null,
+        "is_feed_feedback_aggregated": null
+       },
+       "clips_metadata": {
+        "is_shared_to_fb": false,
+        "music_info": null,
+        "original_sound_info": {
+         "audio_asset_id": "90000000000000127",
+         "ig_artist": {
+          "profile_pic_url": "https://example.invalid/125",
+          "id": "90000000109",
+          "username": "p124xxxxxxxxx"
+         },
+         "consumption_info": {
+          "should_mute_audio_reason_type": null,
+          "is_trending_in_clips": false
+         },
+         "original_audio_title": "p30xxxxxxxxxxx",
+         "is_explicit": false,
+         "audio_filter_infos": null
+        }
+       },
+       "comment_count": 0,
+       "caption": {
+        "text": "p128xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pk": "90000000000000129",
+        "has_translation": null
+       },
+       "commenting_disabled_for_viewer": null,
+       "fb_comment_count": null,
+       "saved_collection_ids": null,
+       "has_viewer_saved": null,
+       "sharing_friction_info": {
+        "should_have_sharing_friction": false,
+        "bloks_app_url": null
+       },
+       "media_repost_count": 0,
+       "floating_context_items": [],
+       "audience": null,
+       "has_audio": true,
+       "ai_interactive_embodiment_attachment_style_info": null,
+       "is_shared_from_basel": null,
+       "is_fb_only": null,
+       "is_internal_only": null,
+       "creative_config": null,
+       "location": null,
+       "clips_attribution_info": null,
+       "wearable_attribution_info": null,
+       "longform_clip_metadata": null,
+       "invited_coauthor_producers": [],
+       "preview": null,
+       "link_text": null,
+       "link": null,
+       "ig_media_sharing_disabled": false,
+       "feed_demotion_control": null,
+       "feed_recs_demotion_control": null,
+       "coauthor_producers": [],
+       "open_carousel_submission_state": null,
+       "is_in_profile_grid": false,
+       "profile_grid_control_enabled": false,
+       "view_state_item_type": 0,
+       "brs_severity": 0
+      },
+      "__typename": "XDTClipsItemDict"
+     },
+     "cursor": ""
+    },
+    {
+     "node": {
+      "media": {
+       "__typename": "XDTMediaDict",
+       "code": "p130xxxxxxx",
+       "id": "9000000000000000131_90000000132",
+       "pk": "9000000000000000131",
+       "taken_at": 1781221564,
+       "video_versions": [
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/133",
+         "type": 101
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/133",
+         "type": 102
+        },
+        {
+         "width": 720,
+         "height": 1280,
+         "url": "https://example.invalid/133",
+         "type": 103
+        }
+       ],
+       "is_dash_eligible": 0,
+       "number_of_qualities": 0,
+       "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT53.266666S\"/>",
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://example.invalid/134",
+          "height": 1136,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/135",
+          "height": 852,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/136",
+          "height": 568,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/137",
+          "height": 426,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/138",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/138",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/138",
+          "height": 640,
+          "width": 640
+         },
+         {
+          "url": "https://example.invalid/139",
+          "height": 480,
+          "width": 480
+         },
+         {
+          "url": "https://example.invalid/140",
+          "height": 320,
+          "width": 320
+         },
+         {
+          "url": "https://example.invalid/141",
+          "height": 240,
+          "width": 240
+         },
+         {
+          "url": "https://example.invalid/142",
+          "height": 150,
+          "width": 150
+         }
+        ],
+        "additional_candidates": {
+         "first_frame": {
+          "url": "https://example.invalid/143"
+         }
+        }
+       },
+       "carousel_media_count": null,
+       "carousel_media": null,
+       "original_height": 1280,
+       "original_width": 720,
+       "organic_tracking_token": "p144xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "tappable_elements": [],
+       "user": {
+        "pk": "90000000132",
+        "username": "p145xx",
+        "profile_pic_url": "https://example.invalid/146",
+        "is_private": false,
+        "is_embeds_disabled": true,
+        "is_unpublished": false,
+        "id": "90000000132",
+        "profile_pic_url_hd": "https://example.invalid/146",
+        "is_ai_user": null,
+        "aigm_account_label_info": {
+         "is_enabled": false,
+         "attribution_label_text": null
+        },
+        "is_verified": false,
+        "friendship_status": {
+         "following": false,
+         "is_feed_favorite": false
+        },
+        "full_name": "p147x",
+        "show_account_transparency_details": true,
+        "__typename": "XDTUserDict"
+       },
+       "comments_disabled": null,
+       "like_and_view_counts_disabled": false,
+       "can_viewer_reshare": true,
+       "product_type": "clips",
+       "media_type": 2,
+       "usertags": null,
+       "media_overlay_info": null,
+       "has_liked": false,
+       "inventory_source": "p27xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "logging_info_token": "p148xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+       "ai_label_info": null,
+       "like_count": 0,
+       "owner_id": {
+        "pk": "90000000132",
+        "id": "90000000132"
+       },
+       "enable_media_notes_production": true,
+       "fb_like_count": null,
+       "view_count": null,
+       "crosspost_metadata": {
+        "is_feedback_aggregated": null,
+        "is_feed_feedback_aggregated": null
+       },
+       "clips_metadata": {
+        "is_shared_to_fb": false,
+        "music_info": {
+         "music_asset_info": {
+          "audio_cluster_id": "9000000000000149",
+          "cover_artwork_thumbnail_uri": "https://example.invalid/150",
+          "title": "p151xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "display_artist": "p152xxxxxxxxxxx",
+          "is_explicit": true
+         },
+         "music_consumption_info": {
+          "should_mute_audio": false,
+          "is_trending_in_clips": false,
+          "audio_filter_infos": []
+         }
+        },
+        "original_sound_info": null
+       },
+       "comment_count": 0,
+       "caption": {
+        "text": "p153xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pk": "90000000000000154",
+        "has_translation": null
+       },
+       "commenting_disabled_for_viewer": null,
+       "fb_comment_count": null,
+       "saved_collection_ids": null,
+       "has_viewer_saved": null,
+       "sharing_friction_info": {
+        "should_have_sharing_friction": false,
+        "bloks_app_url": null
+       },
+       "media_repost_count": 0,
+       "floating_context_items": [],
+       "audience": null,
+       "has_audio": true,
+       "ai_interactive_embodiment_attachment_style_info": null,
+       "is_shared_from_basel": null,
+       "is_fb_only": null,
+       "is_internal_only": null,
+       "creative_config": null,
+       "location": null,
+       "clips_attribution_info": null,
+       "wearable_attribution_info": null,
+       "longform_clip_metadata": null,
+       "invited_coauthor_producers": [],
+       "preview": null,
+       "link_text": null,
+       "link": null,
+       "ig_media_sharing_disabled": false,
+       "feed_demotion_control": null,
+       "feed_recs_demotion_control": null,
+       "coauthor_producers": [],
+       "open_carousel_submission_state": null,
+       "is_in_profile_grid": false,
+       "profile_grid_control_enabled": false,
+       "view_state_item_type": 0,
+       "brs_severity": 0
+      },
+      "__typename": "XDTClipsItemDict"
+     },
+     "cursor": ""
+    }
+   ],
+   "gating": null,
+   "page_info": {
+    "end_cursor": "C000155ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "has_next_page": true,
+    "has_previous_page": false,
+    "start_cursor": null
+   }
+  }
+ }
+}

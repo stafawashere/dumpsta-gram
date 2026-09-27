@@ -426,8 +426,10 @@ empty answers only; the non-empty shapes wait for E6, where block and follow req
 | `PolarisLocationPageTabContentQuery` | a location's grid | verified 2026-09-27, public as `feeds.location`, first page only |
 | `PolarisLocationPageTabContentQuery_connection` | its next pages | verified as answering 2026-09-27, but it answered the cursor it was sent, so not registered or sent (W79) |
 | `PolarisAPICheckNewFeedPostsExistQuery` | new posts on the home feed | verified 2026-09-27, public as `feeds.has_new_posts` |
-| `PolarisClipsHomeRootQuery` | the reels feed | hypothesis, capture first |
-| `PolarisClipsTabRootPaginationQuery` | its next pages | hypothesis, capture first |
+| `PolarisClipsHomeRootQuery` | the reels feed, as the census guessed it | not sent by a `/reels/` load, not registered (W101) |
+| `PolarisClipsTabRootPaginationQuery` | its next pages, as guessed | not sent, not registered |
+| `PolarisClipsTabDesktopContainerQuery` | the reels feed's first page | verified 2026-09-27, public as `feeds.reels` in batch 11b |
+| `PolarisClipsTabDesktopPaginationQuery` | its next pages | verified 2026-09-27, public as `feeds.reels` with a cursor in batch 11b |
 | audio page | | capture first |
 
 **Status: done on 2026-09-27 for the explore grid, a place's header and first grid page, and the
@@ -453,7 +455,7 @@ The CLI acceptance, `probes/e2_discovery_feeds_cli_acceptance.py`, ran on 2026-0
 - The grid's author carries no full name, so its posts are `PostThumbnail` (W79).
 - The new posts check carries one flag, false both times (W80).
 
-The reels feed and audio pages wait on the capture night. The doctor replays twenty-seven reads,
+The reels feed shipped in batch 11b; audio pages wait. The doctor replays twenty-seven reads,
 the place steps keyed on the first place a timeline or grid post names (W81).
 
 Variables. The explore grid takes five observed constants; its next page parameter is not
@@ -485,9 +487,9 @@ home feed.
 | `PolarisSearchNullStateQuery` | recent searches | verified 2026-09-27, public as `search.recent` |
 | `PolarisSearchBoxNonProfiledRefetchableQuery` | non-personalised typeahead | verified 2026-09-27, public as `search.accounts`, accounts only |
 | `PolarisHashtagHeaderActionButtonsQuery` | a hashtag's header | verified 2026-09-27, public as `search.hashtag` |
-| `PolarisSearchBoxContainerQuery` | typeahead across accounts, hashtags, places | hypothesis, capture first, not registered (W83) |
-| `PolarisSearchBoxRefetchableQuery` | its refetch | alternate of the container, same root |
-| `PolarisKeywordSearchExplorePageRelayQuery` and its pagination | keyword results, which a hashtag page renders | hypothesis, capture first |
+| `PolarisSearchBoxContainerQuery` | typeahead across accounts, hashtags, places | not sent by the signed-in box the capture night observed, not registered (W102) |
+| `PolarisSearchBoxRefetchableQuery` | the personalised typeahead as the box sends it | verified 2026-09-27, public as `search.top` and the default route of `search.accounts` in batch 11b |
+| `PolarisKeywordSearchExplorePageRelayQuery` | keyword results, which a hashtag page renders | verified 2026-09-27, first page, public as `search.keyword` in batch 11b; its pagination not observed |
 
 **Status: done on 2026-09-27 for the recent searches, the non-personalised typeahead and a
 hashtag's header, rulings W82 to W85.** `probes/e2_search.py` ran once with 7 requests, none
@@ -511,8 +513,8 @@ the plan did not know:
 - The hashtag header carries only the tag's id, so `Hashtag` is the id and the tag asked for.
   A tag with a `#` is refused rather than stripped (W84).
 
-The personalised typeahead and the keyword grid, which is also the hashtag page's grid, wait on
-the capture night. The doctor replays thirty reads, the typeahead keyed on the viewer's own
+The personalised typeahead and the keyword grid, which is also the hashtag page's grid, shipped
+in batch 11b. The doctor replays thirty reads, the typeahead keyed on the viewer's own
 username and the header on the tag its finding was verified with (W85).
 
 Variables. Recent searches take nothing. The non-personalised typeahead takes the query text.
@@ -661,6 +663,47 @@ requests, nine at most, and ran on 2026-09-27 with every step exit 0 and 6 reque
   offset, and it is ranked: two first pages seconds apart shared 11 of 12 accounts in a different
   order. `Behavior.follow_list_statuses` governs both lists (W99).
 - The doctor replays both tabs on the viewer's own id, thirty-two reads (W100).
+
+## Batch 11b: the reels feed, the personalised typeahead and the keyword grid, from the capture night
+
+| Operation | Kind | Status |
+|---|---|---|
+| `PolarisClipsTabDesktopContainerQuery` | the reels feed's first page | verified 2026-09-27, public as `feeds.reels` |
+| `PolarisClipsTabDesktopPaginationQuery` | its next page, `seen_reels` the reels shown | verified 2026-09-27, public as `feeds.reels(after=...)` and `iter_reels` |
+| `PolarisSearchBoxRefetchableQuery` | the personalised typeahead | verified 2026-09-27, public as `search.top` and the default route of `search.accounts` |
+| `PolarisKeywordSearchExplorePageRelayQuery` | the keyword grid, which is also a hashtag's grid | verified 2026-09-27, public as `search.keyword`, first page only |
+| `report-a-reel-video-view`, `PolarisClipsAdsPoolQuery` | a played reel's view report, the ads pool | not sent, the engine plays nothing (W101) |
+
+**Status: done on 2026-09-27, rulings W101 to W104.** The browser captured each read in
+`run-2026-09-27-131354`, and `probes/e2_capture_replays.py --stage search` and `--stage reels`
+replayed each twice in `run-2026-09-27-151121`, 5 requests each with the bootstrap, logs
+`logs/e2-capture-replays-2026-09-27-151138.json` and `-151307.json`. It shipped
+`client.feeds.reels(*, after=None) -> Page[Post]` and `feeds.iter_reels(*, limit, after=None)`,
+`client.search.top(query) -> SearchResults` and `client.search.keyword(query) ->
+KeywordResults`, on both clients with no flat twin, with the new models `SearchResults`,
+`SearchResult`, `SearchResultKind`, `SearchPost` and `KeywordResults`, the new setting
+`Behavior.typeahead_route` with `TypeaheadRoute`, and `dumpsta reels`, `search-top` and `keyword`,
+`search` and `search-top` taking `--non-personalised`. The live acceptance,
+`probes/e2_discovery_search_cli_acceptance.py`, planned at seven requests and nine at most, ran on 2026-09-27, 7 requests, every step exit 0, log `logs/e2-discovery-search-cli-2026-09-27-163749.json`. What the batch found:
+
+- A `/reels/` load sends the desktop clips tab container, not the reels root the census guessed,
+  and a reel is the timeline's media node with keys left out and two in another shape, so it is a
+  `Post` with what it lacks read as W101 records. An original sound carried no mute flag on any of
+  the 8 read, so those reels' `audio` is `None`; the 3 songs are read.
+- The next page names the reels already shown in `seen_reels`, a JSON string, so the cursor
+  carries the upstream's cursor and the pks of its page's reels, and nothing else carries state.
+- The feed is ranked: two next pages on one cursor shared 3 of 4 reels in a different order.
+- A signed-in search box sends the refetchable typeahead, not the container. It blends accounts
+  with keyword suggestions by an explicit `position`; hashtags and places were empty lists, so
+  they are carried by kind alone. It became the default route of `search.accounts`, and the
+  non-profiled query is the departure (W102). One query answered 5 accounts where the non-profiled
+  one answered 18.
+- The keyword grid keys both session ids on one uuid and sends no page size; its posts come three
+  to a row among header and accounts rows that carry nothing, and they lack `product_type` and
+  viewer state, so they are the new `SearchPost` (W103).
+- `/explore/tags/<tag>/` lands on the keyword page for `#<tag>`, so a hashtag's posts are
+  `search.keyword("#" + tag)`; only the plain text has been replayed.
+- The doctor replays thirty-six reads, the keyword grid on `CANARY_KEYWORD` (W104).
 
 ## Batch 12: story seen
 

@@ -51,7 +51,7 @@ from dumpstagram._private.web.parse.search import (
    parse_recent_searches,
 )
 from dumpstagram.aio import AsyncClient
-from dumpstagram.behavior import PARITY
+from dumpstagram.behavior import PARITY, TypeaheadRoute
 from dumpstagram.client import SyncClient
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import Hashtag, ProfileSummary, RecentSearch, RecentSearchKind
@@ -75,15 +75,12 @@ HASHTAG_HEADER_DOC_ID = "35337906325853853"
 RECENT_ROOT = "xig_recent_searches"
 TYPEAHEAD_ROOT = "xdt_api__v1__fbsearch__non_profiled_serp"
 HASHTAG_ROOT = "fetch__XDTTagInfo"
-UNOBSERVED_SEARCH_QUERIES = {
-   "PolarisSearchBoxContainerQuery",
-   "PolarisSearchBoxRefetchableQuery",
-   "PolarisKeywordSearchExplorePageRelayQuery",
-}
+UNOBSERVED_SEARCH_QUERIES = {"PolarisSearchBoxContainerQuery"}
 A_TAG = "some_tag"
 A_QUERY = "a query"
 
 SCRIPTED_BEHAVIOR = replace(PARITY, cookie_sync=False)
+NON_PERSONALISED = replace(SCRIPTED_BEHAVIOR, typeahead_route=TypeaheadRoute.NON_PERSONALISED)
 
 
 def recorded(name: str) -> Any:
@@ -281,9 +278,9 @@ def friendly_names(requests: list[Any]) -> list[str]:
 async def test_each_search_read_sends_its_one_query_and_no_unobserved_search_is_registered() -> (
    None
 ):
-   """The W83 gate. Catches a search method sending more than its one query, and the
-   personalised typeahead or the keyword grid registered anywhere a later change could send it
-   from before its variables are observed."""
+   """The W83 gate, on the non-personalised route W102 made the departure. Catches a search
+   method sending more than its one query, and the search box's container query, which no
+   browser was observed to send, registered anywhere a later change could send it from."""
 
    transport = ScriptedTransport(
       [
@@ -292,7 +289,7 @@ async def test_each_search_read_sends_its_one_query_and_no_unobserved_search_is_
          json_response(recorded("hashtag_header.json")),
       ]
    )
-   client = AsyncClient(a_bootstrapped_session(), behavior=SCRIPTED_BEHAVIOR)
+   client = AsyncClient(a_bootstrapped_session(), behavior=NON_PERSONALISED)
    await client._sender.aclose()
    client._sender = paced(transport, client)
 
@@ -319,7 +316,8 @@ async def test_each_search_read_sends_its_one_query_and_no_unobserved_search_is_
 
 
 def test_the_blocking_search_reads_answer_as_their_async_twins() -> None:
-   """The same three reads on the blocking surface, each on the loop thread."""
+   """The same three reads on the blocking surface, each on the loop thread, the accounts on the
+   non-personalised route."""
 
    transport = ScriptedTransport(
       [
@@ -329,7 +327,7 @@ def test_the_blocking_search_reads_answer_as_their_async_twins() -> None:
       ]
    )
 
-   with SyncClient(a_bootstrapped_session(), behavior=SCRIPTED_BEHAVIOR) as client:
+   with SyncClient(a_bootstrapped_session(), behavior=NON_PERSONALISED) as client:
       client._loop.run(client._impl._sender.aclose(), operation="the scripted sender swap")
       client._impl._sender = paced(transport, client._impl)
       hashtag = client.search.hashtag(A_TAG)

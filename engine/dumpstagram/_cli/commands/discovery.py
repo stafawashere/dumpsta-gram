@@ -1,5 +1,5 @@
-"""The discovery commands: the explore grid, a place's header and posts, and whether the home
-feed has new posts."""
+"""The discovery commands: the explore grid, a place's header and posts, whether the home feed
+has new posts, and pages of the reels feed."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from dumpstagram._cli.commands.common import (
    Subcommands,
    add_request_options,
    emit,
+   page_count,
    resolve_session_path,
 )
 from dumpstagram._cli.exits import EXIT_OK
@@ -21,11 +22,14 @@ from dumpstagram._cli.render.discovery import (
    describe_explore_grid,
    describe_location_posts,
    describe_place,
+   describe_reels_pages,
    render_explore_grid,
    render_location_posts,
    render_new_posts,
    render_place,
+   render_reels_pages,
 )
+from dumpstagram.models import Page, Post
 
 __all__ = [
    "DISCOVERY_COMMANDS",
@@ -33,7 +37,7 @@ __all__ = [
    "run_discovery_command",
 ]
 
-DISCOVERY_COMMANDS = ("explore", "place", "location", "new-posts")
+DISCOVERY_COMMANDS = ("explore", "place", "location", "new-posts", "reels")
 
 _LOCATION_ID = re.compile(r"[0-9]{1,30}")
 
@@ -49,7 +53,31 @@ def location_id(value: str) -> str:
    return value
 
 
+def read_reels_pages(client: Client, arguments: argparse.Namespace) -> list[Page[Post]]:
+   """Read up to ``--pages`` pages of the reels feed, stopping on the page's own terminator."""
+
+   pages: list[Page[Post]] = []
+   cursor = arguments.after
+
+   for _ in range(arguments.pages):
+      page = client.feeds.reels(after=cursor)
+
+      pages.append(page)
+
+      if not page.has_next_page:
+         break
+
+      cursor = page.end_cursor
+
+   return pages
+
+
 def _discovery_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
+   if arguments.command == "reels":
+      pages = read_reels_pages(client, arguments)
+
+      return {"command": "reels", **describe_reels_pages(pages)}, render_reels_pages(pages)
+
    if arguments.command == "explore":
       grid = client.feeds.explore()
 
@@ -141,3 +169,21 @@ def add_discovery_parsers(commands: Subcommands) -> None:
       description="Asks whether the home feed has posts newer than you last loaded.",
    )
    add_request_options(new_posts)
+
+   reels = commands.add_parser(
+      "reels",
+      help="read pages of the reels feed, one live request per page",
+      description=(
+         "Reads the reels feed as the /reels/ tab pages it, stopping on the feed's own "
+         "terminator. Nothing is played, so no view is reported."
+      ),
+   )
+   reels.add_argument(
+      "--pages",
+      type=page_count,
+      default=1,
+      metavar="N",
+      help="how many pages to read at most, default 1",
+   )
+   reels.add_argument("--after", metavar="CURSOR", help="an end_cursor from an earlier page")
+   add_request_options(reels)

@@ -6,7 +6,9 @@ console script run as ``uv run dumpsta --json`` subprocesses, never the library 
 ``e2_discovery_feeds_cli_acceptance.py`` does.
 
    recent-searches             1 request, the viewer's recent searches
-   search QUERY                1 request, the accounts QUERY matches, non-personalised
+   search QUERY                1 request, the accounts QUERY matches, non-personalised, sent
+                               with --non-personalised since batch 11b made the personalised
+                               query the default (W102)
    hashtag TAG                 1 request, the header of the hashtag TAG
 
 QUERY and TAG come from ``IG_E2_SEARCH_QUERY`` and ``IG_E2_HASHTAG`` in the root ``.env``, both
@@ -19,7 +21,7 @@ commands itself, 2.85 s after the previous one ended. It stops on any nonzero ex
 
 Nothing here is visible to another person, and nothing is opened, so no recent search is added.
 The probe checks from the counter's log that each command sent exactly its own query and that
-none sent the personalised typeahead or the keyword grid, whose variables are unobserved (W83).
+none sent the search box's container query, which no browser was observed to send (W83, W102).
 Recorded: exit codes, error class names, the requests each command sent, counts and booleans.
 No username, full name, keyword, query, tag or id leaves the subprocess's output into the log.
 
@@ -53,11 +55,7 @@ EXPECTED_QUERY = {
    "search": "PolarisSearchBoxNonProfiledRefetchableQuery",
    "hashtag": "PolarisHashtagHeaderActionButtonsQuery",
 }
-UNOBSERVED_QUERIES = (
-   "PolarisSearchBoxContainerQuery",
-   "PolarisSearchBoxRefetchableQuery",
-   "PolarisKeywordSearchExplorePageRelayQuery",
-)
+UNOBSERVED_QUERIES = ("PolarisSearchBoxContainerQuery",)
 
 
 def requests_sent(request_log: Path) -> list[dict[str, Any]]:
@@ -210,7 +208,7 @@ def main() -> int:
 
       for label, arguments, summarise in (
          ("recent searches", ["recent-searches"], summarise_recent),
-         ("accounts search", ["search", query], summarise_accounts),
+         ("accounts search", ["search", "--non-personalised", query], summarise_accounts),
          ("hashtag header", ["hashtag", tag], summarise_hashtag),
       ):
          if run(label, arguments, summarise) is None:

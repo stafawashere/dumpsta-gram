@@ -95,8 +95,12 @@ MUTATIONS: list[dict[str, object]] = [
       RECENT,
       "the account kind is named after the model rather than the slot",
       MODELS,
-      '   ACCOUNT = "user"\n',
-      '   ACCOUNT = "account"\n',
+      '   ACCOUNT = "user"\n   KEYWORD = "keyword"\n'
+      '   HASHTAG = "hashtag"\n   PLACE = "place"\n\n\n'
+      "@dataclass(frozen=True)\nclass RecentSearch:",
+      '   ACCOUNT = "account"\n   KEYWORD = "keyword"\n'
+      '   HASHTAG = "hashtag"\n   PLACE = "place"\n\n\n'
+      "@dataclass(frozen=True)\nclass RecentSearch:",
    ),
    mutation(
       UNREAD,
@@ -244,8 +248,8 @@ MUTATIONS: list[dict[str, object]] = [
       DUMPSTA,
       "the command searches for something other than the query",
       COMMANDS,
-      "client.search.accounts(arguments.query)",
-      'client.search.accounts(arguments.query.strip() + " ")',
+      "search.accounts(arguments.query)",
+      'search.accounts(arguments.query.strip() + " ")',
    ),
    mutation(
       DUMPSTA,
@@ -300,7 +304,7 @@ MUTATIONS: list[dict[str, object]] = [
       parity(REACHES_CORE, "search.accounts"),
       "accounts reaches the recent searches' core function",
       NAMESPACE,
-      "         read_non_personalised_typeahead(\n",
+      "         read_typeahead_accounts(\n",
       "         read_recent_searches(\n",
    ),
 ]

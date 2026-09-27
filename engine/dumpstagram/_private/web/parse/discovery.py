@@ -19,6 +19,16 @@ Built from the answers ``probes/e2_discovery_feeds.py`` kept on 2026-09-27. Drop
 - on a place's grid, ``page_info.end_cursor``, which nothing here follows, ``cursor`` on each
   edge, null on all, and on a node everything :class:`~dumpstagram.models.PostThumbnail` does
   not carry (W79)
+- on the reels feed, ``gating``, null on all four answers, ``has_previous_page`` and
+  ``start_cursor``, false and null, each edge's ``cursor``, an empty string on all 11, and on a
+  reel everything the timeline's post mapper drops, and ``media_repost_count``,
+  ``tappable_elements``, ``brs_severity``, ``view_state_item_type``, ``is_in_profile_grid``,
+  ``profile_grid_control_enabled``, ``can_viewer_reshare``, ``ig_media_sharing_disabled``,
+  ``sharing_friction_info``, ``enable_media_notes_production``, ``fb_like_count``,
+  ``fb_comment_count``, ``creative_config`` and ``is_shared_from_basel``, which are sharing
+  controls, Facebook's own counts and telemetry, and the author's ``profile_pic_url_hd``,
+  ``is_embeds_disabled``, ``is_unpublished``, ``is_ai_user``, ``aigm_account_label_info`` and
+  ``show_account_transparency_details`` (W101)
 """
 
 from __future__ import annotations
@@ -27,6 +37,7 @@ from typing import Any
 
 from dumpstagram._private.web.parse.common import (
    _object_at,
+   _optional_string,
    _required,
    _required_flag,
    _required_integer,
@@ -40,6 +51,7 @@ from dumpstagram.models import (
    ExploreGrid,
    ExploreSection,
    LocationPosts,
+   Page,
    Place,
    Post,
 )
@@ -48,11 +60,13 @@ __all__ = [
    "LOCATION_INFO_PATH",
    "LOCATION_POSTS_PATH",
    "NEW_FEED_POSTS_PATH",
+   "REELS_FEED_PATH",
    "REST_KEYS_ABSENT_AS_NULL",
    "parse_explore_grid",
    "parse_location_info",
    "parse_location_posts",
    "parse_new_feed_posts",
+   "parse_reels_feed_page",
 ]
 
 LOCATION_INFO_PATH = (
@@ -68,6 +82,15 @@ LOCATION_POSTS_PATH = ("data", "xdt_location_get_web_info_tab")
 
 NEW_FEED_POSTS_PATH = ("data", "xdt_api__v1__new_feed_posts_exist")
 """The path to the object carrying the new posts flag."""
+
+REELS_FEED_PATH = ("data", "xdt_api__v1__clips__home__connection_v2")
+"""The path to the reels feed's connection, the same on its first page and on every later one."""
+
+REEL_KEYS_ABSENT_AS_NULL = frozenset({"is_seen", "accessibility_caption"})
+"""The keys a reels feed reel leaves out that a timeline post sends, each read as null when
+absent (W101). Both were absent on all 11 reels of the four answers read. ``is_seen`` then reads
+as False, as a profile grid's null does under W53, since the feed is not a timeline the viewer
+has seen things in."""
 
 REST_KEYS_ABSENT_AS_NULL = frozenset(
    {
@@ -261,3 +284,76 @@ def parse_new_feed_posts(payload: Any) -> bool:
    root = _object_at(payload, NEW_FEED_POSTS_PATH)
 
    return _required_flag(root, "new_feed_posts_exist", ".".join(NEW_FEED_POSTS_PATH))
+
+
+def _reel_feed_node(media: Any) -> Any:
+   """``media`` as the timeline's post mapper reads it, with what the reels feed leaves out or
+   sends in another shape made explicit (W101). Anything but an object is returned untouched,
+   for the post mapper to refuse.
+
+   - :data:`REEL_KEYS_ABSENT_AS_NULL` read as null when absent.
+   - ``is_paid_partnership``, absent on all 11 reels, reads as False when absent, which carries
+     no information here, as ``is_seen`` does on a grid.
+   - The author's ``hd_profile_pic_url_info``, absent on all 11, reads as null, so the author's
+     ``hd_profile_pic_url`` is ``None``; the author's ``profile_pic_url_hd`` is not read.
+   - ``coauthor_producers`` carried ``pk`` and ``id`` only on the one reel that had one, with no
+     username, so it is not read and ``collaborators`` is ``None``, not carried.
+   - An original sound carried no ``should_mute_audio`` on any of the 8 read, which
+     :class:`~dumpstagram.models.MediaAudio` requires, so such a reel's ``audio`` is ``None``
+     rather than a guessed flag, W63's rule for the post read by media pk. A song carries the flag
+     and is read.
+   """
+
+   if not isinstance(media, dict):
+      return media
+
+   filled = {key: None for key in REEL_KEYS_ABSENT_AS_NULL if key not in media}
+   node = {**media, **filled}
+   node.setdefault("is_paid_partnership", False)
+   node.pop("coauthor_producers", None)
+   author = node.get("user")
+
+   if isinstance(author, dict):
+      node["user"] = {"hd_profile_pic_url_info": None, **author}
+
+   metadata = node.get("clips_metadata")
+   original = metadata.get("original_sound_info") if isinstance(metadata, dict) else None
+   lacks_the_mute_flag = isinstance(original, dict) and "should_mute_audio" not in original
+
+   if lacks_the_mute_flag:
+      node["clips_metadata"] = {**metadata, "original_sound_info": None}
+
+   return node
+
+
+def _reel(edge: Any, path: str) -> Post:
+   node = _object_at(edge, ("node",))
+   node_path = f"{path}.node"
+   media = _required(node, "media", node_path)
+
+   return parse_post(_reel_feed_node(media), f"{node_path}.media", null_is_unseen=True)
+
+
+def parse_reels_feed_page(payload: Any) -> Page[Post]:
+   """One reels feed page, first or later, the reels in the upstream's order.
+
+   ``end_cursor`` is the upstream's own cursor, which the capability joins with the page's reels
+   before handing it out (W101).
+
+   Findings: ``read-the-reels-tab-first-page`` and ``read-the-reels-tab-next-page``.
+   """
+
+   connection = _object_at(payload, REELS_FEED_PATH)
+   connection_path = ".".join(REELS_FEED_PATH)
+   edges = _list_of(connection, "edges", connection_path)
+   reels = tuple(
+      _reel(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
+   )
+   page_info_path = f"{connection_path}.page_info"
+   page_info = _object_at(connection, ("page_info",))
+
+   return Page(
+      items=reels,
+      has_next_page=_required_flag(page_info, "has_next_page", page_info_path),
+      end_cursor=_optional_string(page_info, "end_cursor", page_info_path),
+   )

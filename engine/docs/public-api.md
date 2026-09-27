@@ -129,7 +129,9 @@ does not close the pool. Closing the owner stops both.
 `stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`, since E2 batch 3
 `follow_list_statuses`, described with the followers below, since E2 batch 9 `inbox_route`,
 described with `notes()` below, and since E2 batch 12 `mark_stories_seen`, described with the
-stories below, whose default makes a story read visible to the story's owner. `poll_interval_seconds`, added with the
+stories below, whose default makes a story read visible to the story's owner, and since E2 batch
+11b `typeahead_route`, described with the search below, whose default changed the accounts
+`search.accounts` returns. `poll_interval_seconds`, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
 zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
 above.
@@ -429,10 +431,10 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests and activity feed, read without marking anything seen |
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
-| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, and whether the home feed has new posts |
+| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, whether the home feed has new posts, and the reels feed |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, reels and tagged tabs, highlights tray, followers and following, and the suggested accounts |
-| `search` | `AsyncSearch` | `SyncSearch` | The viewer's recent searches, the accounts a query matches, and a hashtag's header |
+| `search` | `AsyncSearch` | `SyncSearch` | The viewer's recent searches, what the search box offers for a query, the accounts a query matches, a hashtag's header, and the keyword grid, which is also a hashtag's posts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 | `stories` | `AsyncStories` | `SyncStories` | The stories tray, an account's live stories and one highlight, read without marking anything seen |
 
@@ -482,6 +484,7 @@ only there, with no flat twin:
 | `direct.messages(thread_fbid, *, after, newer_than_message_id)` | `direct.iter_messages(thread_fbid, *, limit, after=None, newer_than_message_id=None)` | `Message`, newest first |
 | `direct.inbox(*, after)` | `direct.iter_inbox(*, limit, after=None)` | `DirectThread`, newest activity first |
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
+| `feeds.reels(*, after)` | `feeds.iter_reels(*, limit, after=None)` | `Post`, a reel, in the feed's order |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
 | `media.replies(post_pk, comment_id, *, after)` | `media.iter_replies(post_pk, comment_id, *, limit, after=None)` | `Comment`, oldest first |
 | `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
@@ -1015,16 +1018,44 @@ only tab observed.
 **New posts.** `has_new_posts()` returns the upstream's flag for whether the home feed has posts
 newer than the viewer last loaded; only `False` has been observed (W80).
 
+**The reels feed.** Landed 2026-09-27, E2 batch 11b, ruling W101. `feeds.reels(*, after=None) ->
+Page[Post]` reads one page of the `/reels/` tab, one request, plus a bootstrap when the session
+holds no token, and `feeds.iter_reels(*, limit, after=None)` walks it reel by reel.
+
+```python
+page = client.feeds.reels()
+for reel in page:
+   print(reel.code, reel.author.username, reel.video_duration)
+
+for reel in client.feeds.iter_reels(limit=30):
+   ...
+```
+
+The first page asks for 2 reels and a later one for 10; measured pages carried 1, 2 and 4, and
+the walk stops only on `has_next_page`. The next page names the reels already shown, as a
+browser's does, so a page's `end_cursor` carries the upstream's cursor and the pks of that page's
+reels; it is opaque, and a cursor from anywhere else raises `ValueError` before anything is sent.
+The feed is ranked, so two walks do not see the same reels. Each reel is a `Post`: `is_seen` and
+`is_paid_partnership` read False and carry no information, since the feed sends neither; the
+author's `hd_profile_pic_url` and the post's `collaborators` are `None`, not carried; and a reel
+whose original sound comes without the mute flag, which every one read did, has `audio` `None`,
+while a song is read. A browser plays each reel, reports each view and asks for advertisements to
+place between them; the engine plays nothing and sends neither, so nobody sees the viewer as
+having watched a reel.
+
 ### Search
 
-Landed 2026-09-27, E2 batch 8 of [web-parity-plan.md](web-parity-plan.md), rulings W82 to W85.
-Three methods opening the `search` namespace, on both clients, with no flat twin:
+Landed 2026-09-27, E2 batch 8 of [web-parity-plan.md](web-parity-plan.md), rulings W82 to W85,
+and E2 batch 11b, rulings W102 to W104. Five methods on the `search` namespace, on both clients,
+with no flat twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
 | `search.recent()` | `tuple[RecentSearch, ...]` | one, plus a bootstrap when the session holds no token |
+| `search.top(query)` | `SearchResults` | one, plus a bootstrap when the session holds no token |
 | `search.accounts(query)` | `tuple[ProfileSummary, ...]` | one, plus a bootstrap when the session holds no token |
 | `search.hashtag(tag)` | `Hashtag` | one, plus a bootstrap when the session holds no token |
+| `search.keyword(query)` | `KeywordResults` | one, plus a bootstrap when the session holds no token |
 
 ```python
 for entry in client.search.recent():
@@ -1046,17 +1077,48 @@ four slots the upstream declares, `ACCOUNT`, `KEYWORD`, `HASHTAG` and `PLACE`; a
 entry carries its kind and nothing else, because neither shape has been read (W82). The list is
 whole as sent.
 
-**Accounts.** `accounts(query)` reads the search box's non-personalised typeahead: the accounts
-the query matches, ranked without the viewer's profile, whole as sent. It carries accounts only.
-A signed-in browser is believed to send the personalised typeahead instead, whose accounts,
-hashtags and places are not read yet, so this is a recorded departure, and `search.top` is left
-for that query when the capture night observes it (W83). A blank query raises `ValueError`
-before anything is sent. A row carries no `is_private` and no relationship.
+**Top results.** `top(query)` reads what the search box offers, as a signed-in browser's box
+sends it, the first query of a search session of its own. `SearchResults.results` holds
+`SearchResult` rows in the order the box shows them, by the upstream's `position`: each with its
+`kind` (`SearchResultKind.ACCOUNT`, `KEYWORD`, `HASHTAG` or `PLACE`), an `account` or a `keyword`,
+the suggested search text. One measured query answered a keyword at position 0 and five accounts
+after it; hashtags and places were empty, so such a row carries its kind alone (W102).
+
+```python
+for result in client.search.top("cats").results:
+   if result.kind is SearchResultKind.KEYWORD:
+      grid = client.search.keyword(result.keyword)
+   elif result.account is not None:
+      print(result.position, result.account.username)
+```
+
+**Accounts.** `accounts(query)` returns the accounts of those rows, in the box's order, whole as
+sent. Since E2 batch 11b it sends the personalised typeahead by default; before, it sent the
+non-profiled one, which ranks without the viewer's profile and answered 18 accounts where the
+personalised query answered 5. `Behavior.typeahead_route` set to
+`TypeaheadRoute.NON_PERSONALISED` sends that query again, for `accounts` and for `top`, whose rows
+are then accounts with no position (W102). A blank query raises `ValueError` before anything is
+sent, on every search. A row carries no `is_private` and no relationship.
+
+```python
+plain = client.with_behavior(
+   replace(client.behavior, typeahead_route=TypeaheadRoute.NON_PERSONALISED)
+)
+accounts = plain.search.accounts("cats")
+```
+
+**The keyword grid.** `keyword(query)` reads the first page of the grid the keyword page shows,
+`KeywordResults` with `posts` and `has_more`, the upstream's flag that it goes on. No later page
+has been observed, so there is no cursor and no `iter_keyword` (W103). Each post is a
+`SearchPost`, the grid's own lighter shape: no `product_type`, no viewer state, no audio,
+location or tags; `media.by_code` reads the whole post. A hashtag's page is this grid for the tag
+with its `#`, so `keyword("#cats")` reads the posts under `#cats` and `hashtag("cats")` its
+header; the `#` form was sent by the browser and has not yet been replayed by the engine.
 
 **A hashtag.** `hashtag(tag)` takes the tag without its `#`, letters, digits and underscores; a
 `#` or anything else raises `ValueError` before anything is sent. `Hashtag` carries `id`, the one
-field the header answers, and `name`, the tag asked for (W84). The posts under a tag are not read
-yet.
+field the header answers, and `name`, the tag asked for (W84). The posts under a tag are
+`keyword("#" + tag)`.
 
 ## Stability contract
 

@@ -52,6 +52,8 @@ from dumpstagram._private.web.documents.discovery import (
    LOCATION_INFO,
    LOCATION_POSTS,
    NEW_FEED_POSTS,
+   REELS_FEED_FIRST_PAGE,
+   REELS_FEED_NEXT_PAGE,
 )
 from dumpstagram._private.web.documents.media import (
    COMMENT_REPLIES,
@@ -68,7 +70,9 @@ from dumpstagram._private.web.documents.profiles import (
 )
 from dumpstagram._private.web.documents.search import (
    HASHTAG_HEADER,
+   KEYWORD_RESULTS,
    NON_PERSONALISED_TYPEAHEAD,
+   PERSONALISED_TYPEAHEAD,
    RECENT_SEARCHES,
 )
 from dumpstagram._private.web.documents.stories import STORY_REEL
@@ -80,6 +84,7 @@ from tests.test_comments import page_payload as comment_page_payload
 from tests.test_direct_read import recorded as recorded_direct_read
 from tests.test_discovery import location_id as recorded_place_id
 from tests.test_discovery import recorded as recorded_discovery
+from tests.test_discovery_search import recorded as recorded_discovery_search
 from tests.test_feed import AUTHOR_ID as FEED_AUTHOR_ID
 from tests.test_feed import item as feed_item
 from tests.test_feed import payload as feed_payload
@@ -251,6 +256,12 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisHashtagHeaderActionButtonsQuery": recorded_search("hashtag_header.json"),
       "PolarisProfileReelsTabContentQuery": recorded_profile_tabs_more("reels_tab.json"),
       "PolarisProfileTaggedTabContentQuery": recorded_profile_tabs_more("tagged_tab.json"),
+      "PolarisClipsTabDesktopContainerQuery": recorded_discovery_search("reels_first_page.json"),
+      "PolarisClipsTabDesktopPaginationQuery": recorded_discovery_search("reels_next_page.json"),
+      "PolarisSearchBoxRefetchableQuery": recorded_discovery_search("personalised_typeahead.json"),
+      "PolarisKeywordSearchExplorePageRelayQuery": recorded_discovery_search(
+         "keyword_results.json"
+      ),
    }
 
 
@@ -472,7 +483,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 57
+   assert len(registry) == 61
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -770,7 +781,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 34
+   assert payload["plan"]["paced_requests_at_most"] == 38
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -866,5 +877,42 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 32 reads" in stated
+   assert "2 documents and at most 36 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated
+
+
+def test_the_reels_and_search_steps_of_batch_11b_read_what_earlier_steps_learned() -> None:
+   """Catches the reels next page sent on anything but the first page's upstream cursor and
+   reels, or sent when the first page is the last, the personalised typeahead replayed on
+   anything but the viewer's own username, and the keyword grid on anything but the verified
+   text with one session id for both of its ids."""
+
+   bundles = every_query_compiled()
+   first_page = recorded_discovery_search("reels_first_page.json")
+   connection = first_page["data"]["xdt_api__v1__clips__home__connection_v2"]
+   first_reels = [edge["node"]["media"]["pk"] for edge in connection["edges"]]
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   next_page = site.variables_of("PolarisClipsTabDesktopPaginationQuery")
+   typeahead = site.variables_of("PolarisSearchBoxRefetchableQuery")
+   keyword = site.variables_of("PolarisKeywordSearchExplorePageRelayQuery")
+   last_page_answers = answers_for_every_read()
+   last_page = recorded_discovery_search("reels_first_page.json")
+   last_page["data"]["xdt_api__v1__clips__home__connection_v2"]["page_info"]["has_next_page"] = (
+      False
+   )
+   last_page_answers["PolarisClipsTabDesktopContainerQuery"] = last_page
+   last_page_site = a_site(bundles, answers=last_page_answers)
+   last_page_report = run_doctor(last_page_site, FakeBundles(bundles))
+
+   assert next_page["after"] == connection["page_info"]["end_cursor"]
+   assert json.loads(next_page["data"]["seen_reels"]) == [{"id": pk} for pk in first_reels]
+   assert typeahead["data"]["query"] == PROFILE_USERNAME
+   assert keyword["query"] == "instagram"
+   assert keyword["search_session_id"] == keyword["serp_session_id"]
+   assert check_for(report, REELS_FEED_FIRST_PAGE).replay is ReplayVerdict.OK
+   assert check_for(report, REELS_FEED_NEXT_PAGE).replay is ReplayVerdict.OK
+   assert check_for(report, PERSONALISED_TYPEAHEAD).replay is ReplayVerdict.OK
+   assert check_for(report, KEYWORD_RESULTS).replay is ReplayVerdict.OK
+   assert check_for(last_page_report, REELS_FEED_NEXT_PAGE).replay is ReplayVerdict.SKIPPED
+   assert "PolarisClipsTabDesktopPaginationQuery" not in last_page_site.sent

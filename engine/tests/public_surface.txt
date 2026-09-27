@@ -32,6 +32,7 @@ alias dumpstagram.Hashtag -> dumpstagram.models.search.Hashtag
 alias dumpstagram.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.HighlightTray -> dumpstagram.models.highlights.HighlightTray
 alias dumpstagram.InboxRoute -> dumpstagram.behavior.InboxRoute
+alias dumpstagram.KeywordResults -> dumpstagram.models.search.KeywordResults
 alias dumpstagram.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.Location -> dumpstagram.models.feed.Location
@@ -69,6 +70,10 @@ alias dumpstagram.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
 alias dumpstagram.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
 data dumpstagram.SCHEMA_VERSION: int = 1
 alias dumpstagram.SchemaChanged -> dumpstagram.errors.SchemaChanged
+alias dumpstagram.SearchPost -> dumpstagram.models.search.SearchPost
+alias dumpstagram.SearchResult -> dumpstagram.models.search.SearchResult
+alias dumpstagram.SearchResultKind -> dumpstagram.models.search.SearchResultKind
+alias dumpstagram.SearchResults -> dumpstagram.models.search.SearchResults
 alias dumpstagram.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.Session -> dumpstagram.session.Session
 alias dumpstagram.Spacing -> dumpstagram.behavior.Spacing
@@ -86,6 +91,7 @@ alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
 alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.TransportFailure -> dumpstagram.errors.TransportFailure
 alias dumpstagram.TrayReel -> dumpstagram.models.stories.TrayReel
+alias dumpstagram.TypeaheadRoute -> dumpstagram.behavior.TypeaheadRoute
 alias dumpstagram.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.UpstreamRejected -> dumpstagram.errors.UpstreamRejected
 alias dumpstagram.UserTag -> dumpstagram.models.feed.UserTag
@@ -141,6 +147,7 @@ field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.b
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
 field dumpstagram.behavior.Behavior.stop_writes_after_unrecognised_rejection: bool = True
 field dumpstagram.behavior.Behavior.thread_first_page: ThreadFirstPage = <dumpstagram.behavior.ThreadFirstPage>
+field dumpstagram.behavior.Behavior.typeahead_route: TypeaheadRoute = <dumpstagram.behavior.TypeaheadRoute>
 field dumpstagram.behavior.Behavior.write_budget_per_hour: int | None = 30
 field dumpstagram.behavior.Behavior.write_spacing: Spacing = <dumpstagram.behavior.Spacing>
 data dumpstagram.behavior.EXPORT: Behavior = <dumpstagram.behavior.Behavior>
@@ -161,6 +168,9 @@ field dumpstagram.behavior.Spacing.mean_jitter_seconds: float
 class dumpstagram.behavior.ThreadFirstPage(enum.Enum)
 data dumpstagram.behavior.ThreadFirstPage.DETAIL: ThreadFirstPage = <dumpstagram.behavior.ThreadFirstPage>
 data dumpstagram.behavior.ThreadFirstPage.QUERY: ThreadFirstPage = <dumpstagram.behavior.ThreadFirstPage>
+class dumpstagram.behavior.TypeaheadRoute(enum.Enum)
+data dumpstagram.behavior.TypeaheadRoute.NON_PERSONALISED: TypeaheadRoute = <dumpstagram.behavior.TypeaheadRoute>
+data dumpstagram.behavior.TypeaheadRoute.PERSONALISED: TypeaheadRoute = <dumpstagram.behavior.TypeaheadRoute>
 module dumpstagram.client
 class dumpstagram.client.SyncClient()
 def dumpstagram.client.SyncClient.__enter__(self) -> SyncClient
@@ -249,6 +259,7 @@ alias dumpstagram.models.FriendshipStatus -> dumpstagram.models.profiles.Friends
 alias dumpstagram.models.Hashtag -> dumpstagram.models.search.Hashtag
 alias dumpstagram.models.Highlight -> dumpstagram.models.highlights.Highlight
 alias dumpstagram.models.HighlightTray -> dumpstagram.models.highlights.HighlightTray
+alias dumpstagram.models.KeywordResults -> dumpstagram.models.search.KeywordResults
 alias dumpstagram.models.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.models.Location -> dumpstagram.models.feed.Location
@@ -276,6 +287,10 @@ alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.RecentSearch -> dumpstagram.models.search.RecentSearch
 alias dumpstagram.models.RecentSearchKind -> dumpstagram.models.search.RecentSearchKind
 alias dumpstagram.models.ReelThumbnail -> dumpstagram.models.posts.ReelThumbnail
+alias dumpstagram.models.SearchPost -> dumpstagram.models.search.SearchPost
+alias dumpstagram.models.SearchResult -> dumpstagram.models.search.SearchResult
+alias dumpstagram.models.SearchResultKind -> dumpstagram.models.search.SearchResultKind
+alias dumpstagram.models.SearchResults -> dumpstagram.models.search.SearchResults
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.models.StoryItem -> dumpstagram.models.stories.StoryItem
 alias dumpstagram.models.StoryMention -> dumpstagram.models.stories.StoryMention
@@ -686,6 +701,9 @@ module dumpstagram.models.search
 class dumpstagram.models.search.Hashtag()
 field dumpstagram.models.search.Hashtag.id: str
 field dumpstagram.models.search.Hashtag.name: str
+class dumpstagram.models.search.KeywordResults()
+field dumpstagram.models.search.KeywordResults.has_more: bool
+field dumpstagram.models.search.KeywordResults.posts: tuple[SearchPost, ...]
 class dumpstagram.models.search.RecentSearch()
 field dumpstagram.models.search.RecentSearch.account: ProfileSummary | None = None
 field dumpstagram.models.search.RecentSearch.keyword: str | None = None
@@ -695,6 +713,38 @@ data dumpstagram.models.search.RecentSearchKind.ACCOUNT: RecentSearchKind = <Rec
 data dumpstagram.models.search.RecentSearchKind.HASHTAG: RecentSearchKind = <RecentSearchKind.HASHTAG: 'hashtag'>
 data dumpstagram.models.search.RecentSearchKind.KEYWORD: RecentSearchKind = <RecentSearchKind.KEYWORD: 'keyword'>
 data dumpstagram.models.search.RecentSearchKind.PLACE: RecentSearchKind = <RecentSearchKind.PLACE: 'place'>
+class dumpstagram.models.search.SearchPost()
+field dumpstagram.models.search.SearchPost.accessibility_caption: str | None = None
+field dumpstagram.models.search.SearchPost.author: PostAuthor
+field dumpstagram.models.search.SearchPost.caption: str | None = None
+field dumpstagram.models.search.SearchPost.carousel_media_count: int | None = None
+field dumpstagram.models.search.SearchPost.code: str
+field dumpstagram.models.search.SearchPost.comment_count: int
+field dumpstagram.models.search.SearchPost.has_audio: bool | None = None
+field dumpstagram.models.search.SearchPost.id: str
+field dumpstagram.models.search.SearchPost.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.search.SearchPost.like_and_view_counts_disabled: bool
+field dumpstagram.models.search.SearchPost.like_count: int
+field dumpstagram.models.search.SearchPost.media_type: int
+field dumpstagram.models.search.SearchPost.original_height: int | None = None
+field dumpstagram.models.search.SearchPost.original_width: int | None = None
+field dumpstagram.models.search.SearchPost.pk: str
+field dumpstagram.models.search.SearchPost.taken_at: datetime
+field dumpstagram.models.search.SearchPost.video_duration: float | None = None
+field dumpstagram.models.search.SearchPost.videos: tuple[VideoRendition, ...] = ()
+field dumpstagram.models.search.SearchPost.view_count: int | None = None
+class dumpstagram.models.search.SearchResult()
+field dumpstagram.models.search.SearchResult.account: ProfileSummary | None = None
+field dumpstagram.models.search.SearchResult.keyword: str | None = None
+field dumpstagram.models.search.SearchResult.kind: SearchResultKind
+field dumpstagram.models.search.SearchResult.position: int | None = None
+class dumpstagram.models.search.SearchResultKind(enum.StrEnum)
+data dumpstagram.models.search.SearchResultKind.ACCOUNT: SearchResultKind = <SearchResultKind.ACCOUNT: 'user'>
+data dumpstagram.models.search.SearchResultKind.HASHTAG: SearchResultKind = <SearchResultKind.HASHTAG: 'hashtag'>
+data dumpstagram.models.search.SearchResultKind.KEYWORD: SearchResultKind = <SearchResultKind.KEYWORD: 'keyword'>
+data dumpstagram.models.search.SearchResultKind.PLACE: SearchResultKind = <SearchResultKind.PLACE: 'place'>
+class dumpstagram.models.search.SearchResults()
+field dumpstagram.models.search.SearchResults.results: tuple[SearchResult, ...]
 module dumpstagram.models.stories
 class dumpstagram.models.stories.StoryItem()
 field dumpstagram.models.stories.StoryItem.audience: str | None = None
@@ -826,16 +876,20 @@ def dumpstagram.namespaces.feeds.AsyncFeeds.explore(self) -> ExploreGrid
 def dumpstagram.namespaces.feeds.AsyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.AsyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
 def dumpstagram.namespaces.feeds.AsyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[FeedItem]
+def dumpstagram.namespaces.feeds.AsyncFeeds.iter_reels(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
 def dumpstagram.namespaces.feeds.AsyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
 def dumpstagram.namespaces.feeds.AsyncFeeds.place(self, location_id: str) -> Place
+def dumpstagram.namespaces.feeds.AsyncFeeds.reels(self, *, after: str | None = None) -> Page[Post]
 class dumpstagram.namespaces.feeds.SyncFeeds()
 def dumpstagram.namespaces.feeds.SyncFeeds.__init__(self) -> None
 def dumpstagram.namespaces.feeds.SyncFeeds.explore(self) -> ExploreGrid
 def dumpstagram.namespaces.feeds.SyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.SyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
 def dumpstagram.namespaces.feeds.SyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> Iterator[FeedItem]
+def dumpstagram.namespaces.feeds.SyncFeeds.iter_reels(self, *, limit: int | None, after: str | None = None) -> Iterator[Post]
 def dumpstagram.namespaces.feeds.SyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
 def dumpstagram.namespaces.feeds.SyncFeeds.place(self, location_id: str) -> Place
+def dumpstagram.namespaces.feeds.SyncFeeds.reels(self, *, after: str | None = None) -> Page[Post]
 module dumpstagram.namespaces.media
 class dumpstagram.namespaces.media.AsyncMedia()
 def dumpstagram.namespaces.media.AsyncMedia.__init__(self) -> None
@@ -909,12 +963,16 @@ class dumpstagram.namespaces.search.AsyncSearch()
 def dumpstagram.namespaces.search.AsyncSearch.__init__(self) -> None
 def dumpstagram.namespaces.search.AsyncSearch.accounts(self, query: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.search.AsyncSearch.hashtag(self, tag: str) -> Hashtag
+def dumpstagram.namespaces.search.AsyncSearch.keyword(self, query: str) -> KeywordResults
 def dumpstagram.namespaces.search.AsyncSearch.recent(self) -> tuple[RecentSearch, ...]
+def dumpstagram.namespaces.search.AsyncSearch.top(self, query: str) -> SearchResults
 class dumpstagram.namespaces.search.SyncSearch()
 def dumpstagram.namespaces.search.SyncSearch.__init__(self) -> None
 def dumpstagram.namespaces.search.SyncSearch.accounts(self, query: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.search.SyncSearch.hashtag(self, tag: str) -> Hashtag
+def dumpstagram.namespaces.search.SyncSearch.keyword(self, query: str) -> KeywordResults
 def dumpstagram.namespaces.search.SyncSearch.recent(self) -> tuple[RecentSearch, ...]
+def dumpstagram.namespaces.search.SyncSearch.top(self, query: str) -> SearchResults
 module dumpstagram.namespaces.social
 class dumpstagram.namespaces.social.AsyncSocial()
 def dumpstagram.namespaces.social.AsyncSocial.__init__(self) -> None

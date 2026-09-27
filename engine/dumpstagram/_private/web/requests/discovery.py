@@ -1,13 +1,17 @@
-"""The discovery reads: the explore grid, a place's header and grid, and the new posts check.
+"""The discovery reads: the explore grid, a place's header and grid, the new posts check, and
+the reels feed.
 
 The explore grid is a REST GET on the follow list's header set with the explore page as referer.
 The rest are persisted queries. A place's two reads carry the place's page as referer and the
-new posts check the site root, as ``probes/e2_discovery_feeds.py`` sent them.
+new posts check the site root, as ``probes/e2_discovery_feeds.py`` sent them. Both reels feed
+pages carry ``/reels/``, as ``probes/e2_capture_replays.py --stage reels`` sent them.
 """
 
 from __future__ import annotations
 
+import json
 import re
+from collections.abc import Sequence
 from typing import Any
 
 from dumpstagram._private.transport import Request
@@ -16,6 +20,8 @@ from dumpstagram._private.web.documents.discovery import (
    LOCATION_INFO,
    LOCATION_POSTS,
    NEW_FEED_POSTS,
+   REELS_FEED_FIRST_PAGE,
+   REELS_FEED_NEXT_PAGE,
 )
 from dumpstagram._private.web.requests.common import build_graphql_request
 from dumpstagram._private.web.requests.profiles import _rest_read_headers
@@ -26,12 +32,19 @@ __all__ = [
    "EXPLORE_PARAMETERS",
    "EXPLORE_REFERER",
    "LOCATION_PAGE_SIZE",
+   "REELS_CONTAINER_MODULE",
+   "REELS_FIRST_PAGE_SIZE",
+   "REELS_NEXT_PAGE_SIZE",
+   "REELS_PAGE_URL",
    "build_explore_grid_request",
    "build_location_info_request",
    "build_location_posts_request",
    "build_new_feed_posts_request",
+   "build_reels_feed_first_page_request",
+   "build_reels_feed_next_page_request",
    "location_page_url",
    "refuse_what_is_not_a_location_id",
+   "seen_reels_text",
 ]
 
 _EXPLORE_GRID_URL = "https://www.instagram.com/api/v1/discover/web/explore_grid/"
@@ -55,6 +68,21 @@ request and predicts nothing about the answer."""
 
 SHORT_DRAMA_PROVIDER = "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider"
 """The one provider flag the grid carries, false, as the replays sent it."""
+
+RECO_DEBUG_PROVIDER = "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider"
+"""The reels feed's second provider flag, false on both pages, as the browser sent it."""
+
+REELS_PAGE_URL = f"{ORIGIN}/reels/"
+"""The reels tab, the referer of both reels feed pages."""
+
+REELS_CONTAINER_MODULE = "clips_tab_desktop_page"
+"""The ``data.container_module`` a 1192 px wide ``/reels/`` tab sent on both pages."""
+
+REELS_FIRST_PAGE_SIZE = 2
+"""The ``first`` the tab's first page sent. The replays answered 1 and 2 reels for it."""
+
+REELS_NEXT_PAGE_SIZE = 10
+"""The ``first`` the tab's next page sent. The replays answered 4 reels for it."""
 
 _LOCATION_ID = re.compile(r"[0-9]{1,30}")
 
@@ -168,5 +196,73 @@ def build_new_feed_posts_request(
       NEW_FEED_POSTS,
       {},
       referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def seen_reels_text(reel_pks: Sequence[str]) -> str:
+   """``data.seen_reels`` as the browser sent it: a JSON string, not an object, listing ``{"id":
+   <pk>}`` for each reel already shown, the numeric pk without its ``_<author id>``, compact."""
+
+   return json.dumps([{"id": pk} for pk in reel_pks], separators=(",", ":"))
+
+
+def build_reels_feed_first_page_request(
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The reels feed's first page, every variable a constant, in the browser's order.
+
+   Finding: ``read-the-reels-tab-first-page``.
+   """
+
+   variables = {
+      "data": {"container_module": REELS_CONTAINER_MODULE},
+      "first": REELS_FIRST_PAGE_SIZE,
+      "useChannelsPagination": False,
+      RECO_DEBUG_PROVIDER: False,
+      SHORT_DRAMA_PROVIDER: False,
+   }
+
+   return build_graphql_request(
+      session,
+      REELS_FEED_FIRST_PAGE,
+      variables,
+      referer=REELS_PAGE_URL,
+      user_agent=user_agent,
+   )
+
+
+def build_reels_feed_next_page_request(
+   session: Session,
+   *,
+   cursor: str,
+   seen_reel_pks: Sequence[str],
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The reels feed's page after ``cursor``, with the reels already shown as ``seen_reels``.
+
+   Finding: ``read-the-reels-tab-next-page``.
+   """
+
+   variables = {
+      "after": cursor,
+      "before": None,
+      "data": {
+         "container_module": REELS_CONTAINER_MODULE,
+         "seen_reels": seen_reels_text(seen_reel_pks),
+      },
+      "first": REELS_NEXT_PAGE_SIZE,
+      "last": None,
+      RECO_DEBUG_PROVIDER: False,
+      SHORT_DRAMA_PROVIDER: False,
+   }
+
+   return build_graphql_request(
+      session,
+      REELS_FEED_NEXT_PAGE,
+      variables,
+      referer=REELS_PAGE_URL,
       user_agent=user_agent,
    )

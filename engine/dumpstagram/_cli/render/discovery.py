@@ -1,4 +1,5 @@
-"""The explore grid, a place's header and posts, and the new posts check, in both output forms."""
+"""The explore grid, a place's header and posts, the new posts check, and pages of the reels
+feed, in both output forms."""
 
 from __future__ import annotations
 
@@ -6,16 +7,18 @@ from typing import Any
 
 from dumpstagram._cli.render.media import describe_post
 from dumpstagram._cli.render.post_depth import describe_post_thumbnail
-from dumpstagram.models import ExploreGrid, LocationPosts, Place, Post
+from dumpstagram.models import ExploreGrid, LocationPosts, Page, Place, Post
 
 __all__ = [
    "describe_explore_grid",
    "describe_location_posts",
    "describe_place",
+   "describe_reels_pages",
    "render_explore_grid",
    "render_location_posts",
    "render_new_posts",
    "render_place",
+   "render_reels_pages",
 ]
 
 
@@ -124,3 +127,30 @@ def render_location_posts(page: LocationPosts) -> str:
 
 def render_new_posts(has_new_posts: bool) -> str:
    return f"new_posts: {has_new_posts}"
+
+
+def describe_reels_pages(pages: list[Page[Post]]) -> dict[str, Any]:
+   """What was read, every reel with the whole post form, and the last page's own terminator and
+   cursor."""
+
+   last = pages[-1] if pages else None
+   reels = [reel for page in pages for reel in page.items]
+
+   return {
+      "pages_read": len(pages),
+      "reel_count": len(reels),
+      "more_available": last.has_next_page if last is not None else False,
+      "end_cursor": last.end_cursor if last is not None else None,
+      "reels": [describe_post(reel) for reel in reels],
+   }
+
+
+def render_reels_pages(pages: list[Page[Post]]) -> str:
+   """One line per reel in the feed's order, page after page, then the trailer."""
+
+   lines = [_post_line(reel) for page in pages for reel in page.items]
+   reel_count = sum(len(page.items) for page in pages)
+   more_available = pages[-1].has_next_page if pages else False
+   lines.append(f"pages: {len(pages)}  reels: {reel_count}  more_available: {more_available}")
+
+   return "\n".join(lines)

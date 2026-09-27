@@ -1770,6 +1770,156 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   `probes/e2_profile_tabs_more_cli_acceptance.py` is written, six requests on the owner's own
   account, nine at most, and ran on 2026-09-27 with every step exit 0 and 6 requests, the site root referer answering all three reads: 1 reel, 4 tagged posts, 24 accounts followed over two pages with no overlap, log
   `logs/e2-profile-tabs-more-cli-2026-09-27-160153.json`.
+- **W101. The reels feed is `feeds.reels(*, after=None) -> Page[Post]` and `iter_reels`, its
+  cursor carries the reels its page showed, and no view report or ads pool is sent.** Ruled
+  2026-09-27 for E2 batch 11b, the orchestrator's delegation. Evidence: findings
+  `read-the-reels-tab-first-page` (`PolarisClipsTabDesktopContainerQuery`) and
+  `read-the-reels-tab-next-page` (`PolarisClipsTabDesktopPaginationQuery`), both on
+  `/graphql/query` under root `xdt_api__v1__clips__home__connection_v2`, each observed once in the
+  browser in `run-2026-09-27-131354` and replayed twice by `probes/e2_capture_replays.py --stage
+  reels` in `run-2026-09-27-151121`, log `logs/e2-capture-replays-2026-09-27-151307.json`. That
+  meets the standing rule for both pages, so the read pages. The first page sends
+  `data.container_module` `clips_tab_desktop_page`, `first` 2, `useChannelsPagination` false and
+  two provider flags false, all constants; the next page sends `after`, the previous page's
+  `end_cursor`, `before` and `last` null, `first` 10, and `data.seen_reels`, a JSON string, not an
+  object, of `{"id": <pk>}` entries. FACT: the two first pages answered 1 and 2 reels, each with
+  `has_next_page` true and a cursor; both next pages, sent on the first answer's cursor naming its
+  one reel, answered 4 reels, none on the first page, 3 of 4 shared between them in a different
+  order, so the feed is ranked. The terminator is `has_next_page`, true on all four, so no last
+  page has been read and `has_next_page` false ending a walk is an INFERENCE. **The cursor.** The
+  next page needs `seen_reels`, which only the caller's previous page knows, so a page's
+  `end_cursor` is `<pk>,<pk>,...:<upstream cursor>`, the pks of every reel on that page joined by
+  commas, and `reels(after=...)` splits it and refuses with `ValueError`, before anything is sent,
+  anything else, as W46 joined the mailbox id into the inbox cursor; `Page.end_cursor` was already
+  opaque. Which reels to name is a ruling: the browser named the reels it had played, the first
+  reel only when it fetched the next page with the second in view (FACT, one observation, and the
+  replay named the one reel of its first page). A caller handed a page has been shown all of it,
+  so every reel of the page before is named, and only that page's, so the cursor stays bounded;
+  whether the browser's list grows across pages is unobserved (INFERENCE both ways). A page of no
+  reels hands a cursor naming none, sent as `[]`, unobserved. **The model.** A reel node is the
+  timeline's media node with keys left out and two in another shape, so each reel is a `Post`
+  through the timeline's mapper after `_reel_feed_node` states the difference: `is_seen`,
+  `accessibility_caption` absent on all 11 reels read as null, so `is_seen` is False as a grid's is
+  under W53; `is_paid_partnership`, absent on all 11, reads False where absent and is read where
+  sent, carrying no information here; the author has `profile_pic_url_hd` rather than
+  `hd_profile_pic_url_info`, so `hd_profile_pic_url` is `None`; `coauthor_producers` carried `pk`
+  and `id` only on the one reel with one, so `collaborators` is `None`, not carried; and an
+  original sound carried no `should_mute_audio` on any of the 8 read, so W63's rule applies and that
+  reel's `audio` is `None`, where the 3 songs carried the flag and are read. `ReelThumbnail` is not
+  used, because the feed's reel carries the username, caption, renditions and time it lacks.
+  **Departures.** A browser on `/reels/` plays each reel and posts `/video/unified_cvc/` per played
+  reel (`report-a-reel-video-view`) and asks `PolarisClipsAdsPoolQuery` for ads to place
+  (`read-the-reels-ads-pool`), and loads the tab with `/ajax/navigation/` and a quick promotion
+  query. The engine plays nothing, so it reports no view and asks for no ads; neither has a
+  `Behavior` setting, since a view report for a reel nobody watched would be a false signal. Both
+  pages send `/reels/` as referer where the browser's next page sent the reel in view,
+  `/reels/<code>/`. `PolarisClipsHomeRootQuery`, the census's guess, was not sent and is not
+  registered. `dumpsta reels [--pages N] [--after CURSOR]` reads pages until the terminator.
+- **W102. The personalised typeahead is the default route of a search: `search.top(query) ->
+  SearchResults` is new, `search.accounts` sends it too, and `Behavior.typeahead_route` keeps the
+  non-profiled query as the departure.** Ruled 2026-09-27 for E2 batch 11b. Evidence: finding
+  `search-typeahead-personalised-as-sent`, `PolarisSearchBoxRefetchableQuery` on `/api/graphql`,
+  observed once in the browser in `run-2026-09-27-131354`, where typing into the signed-in search
+  panel sent this query 630 ms after the recent searches and did not send
+  `PolarisSearchBoxContainerQuery`, then replayed twice in `run-2026-09-27-151121`, 7822 bytes
+  each, log `logs/e2-capture-replays-2026-09-27-151138.json`. The variables are `data` with
+  `context` blended, `include_reel` the string `true`, `query`, `rank_token` empty,
+  `search_session_id` a client made lowercase uuid4 and `search_surface` `web_top_search`, and
+  `hasQuery` true. Each call is the first query of a search session of its own: a fresh uuid4 and
+  an empty rank token, as the browser's first query after the panel opened. The answer's
+  `rank_token` is what a later query of the same session would send back (INFERENCE), and since a
+  typed session of several queries is not modelled it is dropped. **The model.** FACT over both
+  answers: root `xdt_api__v1__fbsearch__topsearch_connection` carrying `users`, 5 rows of
+  `position` and `user`, `hashtags` and `places`, empty lists, `see_more` with `preview_number` 5
+  and `list`, one row of `position` and `keyword` (`name`, a numeric `id`), `inform_module` null
+  and `rank_token`. So `SearchResults(results)` holds `SearchResult(kind, position, account,
+  keyword)`, `SearchResultKind` naming the four lists, ordered by the upstream's `position`, 0 for
+  the keyword and 1 to 5 for the accounts on both answers (INFERENCE that the box shows that order),
+  then hashtag and place rows by kind alone with no position or payload, because neither shape has
+  been read, the W82 rule. A null `see_more` reads as no keywords (INFERENCE, unobserved). **The
+  route.** ADR-0013 makes the browser's behavior the default, and W83 named the non-profiled query
+  a departure until the box was observed; it now has been. So `search.accounts(query)` sends the
+  personalised query by default and returns its accounts in the box's order, and the new
+  `TypeaheadRoute` with `Behavior.typeahead_route`, `PERSONALISED` by default, keeps
+  `NON_PERSONALISED`, the query `accounts` sent before, as the named departure; `top` follows the
+  same setting, answering accounts with no position on the departure. The surface is additions
+  only: `accounts` keeps its signature and return type. What changed for a caller is the default
+  answer: one measured personalised query answered 5 accounts where the non-profiled one answered
+  18 for the same length of query, and a caller who wants the old list sets the route. The
+  non-profiled query stays registered and replayed. The container query stays unregistered, which
+  the W83 gate now holds alone. **Gates that followed** the W48 way, each seen red after the code
+  change and green after the edit: in `tests/test_search.py`, `UNOBSERVED_SEARCH_QUERIES` lost the
+  refetchable query and the keyword grid, and the W83 gate and the blocking twins gate now build
+  their client on `NON_PERSONALISED`, the route they check (red: the personalised default sent the
+  refetchable query against the non-profiled fixture); in `tests/test_facade_parity.py` the core
+  table's `search.accounts` line names `read_typeahead_accounts` rather than
+  `read_non_personalised_typeahead` (red: `assert ['dumpstagram...ead_accounts'] ==
+  ['dumpstagram...ed_typeahead']`). **CLI.** `dumpsta search QUERY` keeps its output and reads
+  `search.accounts`, now on the default route; `dumpsta search-top QUERY` prints the blended rows;
+  both take `--non-personalised`. `search` was not repurposed for the top results because its JSON
+  form is a contract scripts read. `probes/e2_search_cli_acceptance.py` now passes
+  `--non-personalised` to its `search` step, the route it was written to check. Departures: the
+  site root as referer where the browser's panel sent the page it was opened over, and one query
+  per call where a person typing sends one per pause in one session.
+- **W103. The keyword grid is `search.keyword(query) -> KeywordResults`, its first page only, of a
+  new `SearchPost`, and it is also a hashtag's grid.** Ruled 2026-09-27 for E2 batch 11b.
+  Evidence: finding `read-keyword-search-results`, `PolarisKeywordSearchExplorePageRelayQuery` on
+  `/api/graphql`, observed twice in the browser in `run-2026-09-27-131354`, on
+  `/explore/search/keyword/?q=<text>` and on `/explore/tags/<tag>/`, which landed on the keyword page
+  for `#<tag>` and sent this query with `query` `#<tag>`, then replayed twice with the plain text in
+  `run-2026-09-27-151121`, 1386918 and 1235532 bytes. The variables are `query`, and one client
+  made uuid4 sent as both `search_session_id` and `serp_session_id`, with no `first` and no
+  `after`; the referer is the keyword page with its query escaped, a `#` as `%23`. FACT over both
+  answers: root `xdt_fbsearch__top_serp_graphql` beside `xdt_viewer`, 11 edges each, 2
+  `XDTTopSerpHeaderUnit` and 1 `XDTTopSerpAccountsHCMUnit` carrying nothing but `__typename`, and 8
+  `XDTTopSerpMediaGridUnit` of 3 posts each, 24 posts, `has_next_page` true, the last edge alone
+  carrying a cursor. The page was not scrolled, so no next page was observed, and under W45 the
+  read is a first page: `KeywordResults(posts, has_more)`, no cursor and no `iter_keyword`. A grid
+  row's posts are read in order; a header or accounts row carrying anything, or a row of another
+  kind, raises `SchemaChanged`, since a post it held would otherwise go missing unseen. A post
+  carries `id`, `pk`, `code`, `taken_at`, an author of `pk`, `id`, `username`, `full_name`,
+  `profile_pic_url`, `is_verified` and `is_private`, `media_type` (1, 2 and 8 seen), the counts,
+  `like_and_view_counts_disabled`, the caption, the original size, `carousel_media_count`, the
+  renditions and the DASH manifest, `has_audio` and `view_count` (set on 4 of 48), and no
+  `product_type`, no `has_liked`, no `is_seen`, no audio track, no location and no tags, and its
+  slides carry no kind. So it is neither `Post` nor `PostThumbnail`, which both require a
+  `product_type`, without a guess, and `SearchPost` carries exactly what the grid sends, the
+  author a `PostAuthor` with its picture, following and favourite fields `None`. **The hashtag.**
+  The hashtag page's grid is this read with the `#`: `search.keyword("#" + tag)`, and
+  `search.hashtag(tag)` stays the header, unchanged. No second method was added for the tag's grid,
+  because it would be the same request under another name, and `hashtag` did not gain the grid,
+  because that would change what an existing method sends. FACT that the browser sent the `#`
+  form; the engine has replayed only the plain text, so the `#` form's answer shape is an
+  ASSUMPTION until the live acceptance, which reads it. Departures: the grid is sent alone, where
+  the keyword page's load also sends `PolarisHashtagHeaderActionButtonsQuery` 1 ms after it
+  (`tag_name` empty on a keyword, the tag on a hashtag) and the page's companions; `dumpsta
+  keyword QUERY` reads it.
+- **W104. Gates, the canary, the harness and the surface for batch 11b.** Ruled 2026-09-27. The four
+  queries joined `READ_QUERIES` and the canary replays each: the reels first page on nothing, its
+  next page on the first page's upstream cursor and reels, skipped when the first page is the last,
+  the personalised typeahead on the viewer's own username as the non-profiled one is (W85), and
+  the keyword grid on `CANARY_KEYWORD`, `instagram`, the text its finding was verified with, the
+  probe's default, since no `IG_E2_SEARCH_QUERY` was set; no earlier read yields a keyword. A live
+  doctor run goes from at most 32 reads to 36 and from at most 34 paced requests to 38.
+  `tests/test_doctor.py` followed in three literals the W48 way, each seen red before the edit and
+  green after: the registry count, `assert 61 == 57`, the dry run's paced total, `assert 38 ==
+  34`, and the stated plan, `'2 documents and at most 32 reads' in '... at most 36 reads ...'`. It
+  gained the four recorded answers and one gate on the four steps' arguments. The new
+  `tests/test_discovery_search.py` holds 16 gates, 23 cases, on fixtures pseudonymised by
+  `scripts/build_discovery_search_fixtures.py` from the engine replays, 763 values checked absent.
+  `scripts/verify_discovery_search_gates.py` holds 50 mutations, 50 of 50 fired; its first run
+  had one that did not fire, a song dropped only on the reels whose sound lacked the flag, which no
+  input reaches, replaced by one dropping every reel's track. Five anchors of two older harnesses
+  moved: in `scripts/verify_discovery_gates.py` the absent-as-null and first edge anchors were
+  lengthened, since the reels mapper repeats both shorter lines, and in
+  `scripts/verify_search_gates.py` the `ACCOUNT = "user"` anchor was lengthened to its enum, which
+  `SearchResultKind` repeats, and the command and namespace anchors follow the new calls; both
+  were rerun, 35 of 35 and 33 of 33, exit 0, and `scripts/check_harness_exits.py` passed. The
+  parity tables gained `feeds.reels`, `feeds.iter_reels`, `search.top` and `search.keyword`. The
+  commands are `reels`, `search-top` and `keyword`, and `search` and `search-top` take
+  `--non-personalised`. The surface grew from 970 lines to 1028, 58 added and none removed or
+  changed. Live traffic for the batch: the search and reels stages' 10 requests on 2026-09-27;
+  `probes/e2_discovery_search_cli_acceptance.py`, planned at seven requests and nine at most, ran on 2026-09-27, 7 requests, every step exit 0, log `logs/e2-discovery-search-cli-2026-09-27-163749.json`.
 
 ## Standing rules for every phase
 

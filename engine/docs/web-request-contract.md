@@ -247,7 +247,8 @@ root as referer. INFERENCE from the census: a signed-in browser's search box sen
 personalised `PolarisSearchBoxContainerQuery` instead, whose `data` object has not been observed,
 so the engine sends the one query verified until the capture night records what the box sends;
 neither that query, its refetch, nor the keyword grid `PolarisKeywordSearchExplorePageRelayQuery`
-is registered (W83). `HASHTAG_HEADER` (`35337906325853853`,
+is registered (W83). Superseded in part by E2 batch 11b: the box sends the refetch, which is now
+registered and the default route, and the non-profiled query is the departure (W102), below. `HASHTAG_HEADER` (`35337906325853853`,
 `PolarisHashtagHeaderActionButtonsQuery`) is sent with `tag_name`, the tag without its `#`, and
 the tag's page, `https://www.instagram.com/explore/tags/<tag>/`, as referer, the tag
 percent-encoded there, where a browser reads it inside that page's load. Findings
@@ -700,6 +701,51 @@ order. **Recorded departures.**
   username the methods do not take; the replays sent the profile's reels tab. Untested until the
   batch's live acceptance.
 - Neither tab's next page has been observed, so neither is registered or sent.
+
+## The reels feed, the personalised typeahead and the keyword grid, 2026-09-27
+
+E2 batch 11b added four queries, the reels feed's two pages in `_private/web/requests/discovery.py`
+sent by `read_reels_feed_page` in `_core/discovery.py`, and the typeahead and the keyword grid in
+`_private/web/requests/search.py` sent by `read_personalised_typeahead` and
+`read_keyword_results` in `_core/search.py`. Findings `read-the-reels-tab-first-page`,
+`read-the-reels-tab-next-page`, `search-typeahead-personalised-as-sent` and
+`read-keyword-search-results`, each observed in the browser in `run-2026-09-27-131354` and
+replayed twice in `run-2026-09-27-151121`. Rulings W101 to W103.
+
+| Request | Query | Path | Variables | Referer |
+|---|---|---|---|---|
+| Reels, first page | `PolarisClipsTabDesktopContainerQuery`, `38583065568003775`, root header `xdt_api__v1__clips__home__connection_v2` | `GRAPHQL_QUERY_URL` | `data` of `container_module` `clips_tab_desktop_page`, `first` 2, `useChannelsPagination` false, the reco debug and short drama providers false | `https://www.instagram.com/reels/` |
+| Reels, next page | `PolarisClipsTabDesktopPaginationQuery`, `28230813126620480`, the same root header | `GRAPHQL_QUERY_URL` | `after` the upstream cursor, `before` null, `data` of the container module and `seen_reels`, `first` 10, `last` null, the two providers false | the same |
+| Personalised typeahead | `PolarisSearchBoxRefetchableQuery`, `27706427925724183` | `API_GRAPHQL_URL` | `data` of `context` blended, `include_reel` the string `true`, `query`, `rank_token` empty, `search_session_id` a fresh lowercase uuid4, `search_surface` `web_top_search`, then `hasQuery` true | the site root |
+| Keyword grid | `PolarisKeywordSearchExplorePageRelayQuery`, `37324993597144881` | `API_GRAPHQL_URL` | `query`, then one fresh lowercase uuid4 as both `search_session_id` and `serp_session_id` | `https://www.instagram.com/explore/search/keyword/?q=<query>`, the query escaped, a `#` as `%23` |
+
+`seen_reels` is a JSON string, not an object: `[{"id":"<pk>"}]` compact, one entry per reel of the
+page before, the numeric pk without its `_<author id>`. The cursor `feeds.reels` hands out is
+`<pk>,<pk>,...:<upstream cursor>`, split back before the next page is built, so the upstream only
+ever receives its own cursor (W101). Every variable is in the browser's order.
+
+**Recorded departures.**
+
+- The reels tab plays each reel and posts `/video/unified_cvc/` per played reel, and asks
+  `PolarisClipsAdsPoolQuery` for ads with the organic reels' ids; its load also sends
+  `/ajax/navigation/` and a quick promotion query. None of these is sent: the engine plays
+  nothing, and a view report for a reel nobody watched would be a false signal (W101).
+- Which reels a browser names in `seen_reels` is the ones it played; the engine names every reel
+  of the page before, since the caller was handed all of them. The browser named one, the replay
+  one, so a longer list is untested until the live acceptance.
+- The browser's next page carried the reel in view, `/reels/<code>/`, as referer; the engine sends
+  `/reels/` on both pages, as the replays did.
+- The typeahead is sent once per call as the first query of its own session, with an empty rank
+  token. A person typing sends one query per pause in one session, each after the first sending
+  back the previous answer's `rank_token` (INFERENCE); that is not modelled. The browser's referer
+  was the page the panel was opened over, `/explore/` in the capture; the engine sends the site
+  root, as the replays did.
+- The keyword page's load sends `PolarisHashtagHeaderActionButtonsQuery` 1 ms after the grid, with
+  `tag_name` empty on a keyword and the tag on a hashtag, and the page's companions. The engine
+  sends the grid alone. The `#` form of the query was sent by the browser and not yet by an engine
+  replay.
+- `PolarisSearchBoxContainerQuery` and `PolarisClipsHomeRootQuery` were not sent by the loads that
+  were captured and are not registered.
 
 ## The viewer's own account reads, 2026-09-27
 

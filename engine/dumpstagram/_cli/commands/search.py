@@ -1,11 +1,12 @@
-"""The search commands: the recent searches, the accounts a query matches, and a hashtag's
-header."""
+"""The search commands: the recent searches, the accounts a query matches, what the search box
+offers for a query, a hashtag's header, and the keyword grid."""
 
 from __future__ import annotations
 
 import argparse
 import re
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any, TextIO
 
 from dumpstagram._cli.commands.common import (
@@ -19,12 +20,17 @@ from dumpstagram._cli.commands.common import (
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.search import (
    describe_hashtag,
+   describe_keyword_results,
    describe_recent_searches,
    describe_search_accounts,
+   describe_search_results,
    render_hashtag,
+   render_keyword_results,
    render_recent_searches,
    render_search_accounts,
+   render_search_results,
 )
+from dumpstagram.behavior import TypeaheadRoute
 
 __all__ = [
    "SEARCH_COMMANDS",
@@ -32,7 +38,7 @@ __all__ = [
    "run_search_command",
 ]
 
-SEARCH_COMMANDS = ("recent-searches", "search", "hashtag")
+SEARCH_COMMANDS = ("recent-searches", "search", "search-top", "hashtag", "keyword")
 
 _TAG = re.compile(r"\w+")
 
@@ -57,6 +63,17 @@ def hashtag_name(value: str) -> str:
    return value
 
 
+def _on_the_chosen_route(client: Client, arguments: argparse.Namespace) -> Client:
+   """``client``, or a twin of it sending the non-personalised typeahead when asked (W102)."""
+
+   if not arguments.non_personalised:
+      return client
+
+   route = TypeaheadRoute.NON_PERSONALISED
+
+   return client.with_behavior(replace(client.behavior, typeahead_route=route))
+
+
 def _search_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
    if arguments.command == "recent-searches":
       entries = client.search.recent()
@@ -65,7 +82,7 @@ def _search_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[
       return payload, render_recent_searches(entries)
 
    if arguments.command == "search":
-      accounts = client.search.accounts(arguments.query)
+      accounts = _on_the_chosen_route(client, arguments).search.accounts(arguments.query)
       payload = {
          "command": "search",
          "query": arguments.query,
@@ -73,6 +90,22 @@ def _search_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[
       }
 
       return payload, render_search_accounts(accounts)
+
+   if arguments.command == "search-top":
+      results = _on_the_chosen_route(client, arguments).search.top(arguments.query)
+      payload = {
+         "command": "search-top",
+         "query": arguments.query,
+         **describe_search_results(results),
+      }
+
+      return payload, render_search_results(results)
+
+   if arguments.command == "keyword":
+      grid = client.search.keyword(arguments.query)
+      payload = {"command": "keyword", "query": arguments.query, **describe_keyword_results(grid)}
+
+      return payload, render_keyword_results(grid)
 
    hashtag = client.search.hashtag(arguments.tag)
 
@@ -105,6 +138,14 @@ def run_search_command(
    return EXIT_OK
 
 
+def add_route_option(command: argparse.ArgumentParser) -> None:
+   command.add_argument(
+      "--non-personalised",
+      action="store_true",
+      help="send the non-personalised typeahead, accounts only, ranked without your profile",
+   )
+
+
 def add_search_parsers(commands: Subcommands) -> None:
    recent = commands.add_parser(
       "recent-searches",
@@ -115,14 +156,28 @@ def add_search_parsers(commands: Subcommands) -> None:
 
    search = commands.add_parser(
       "search",
-      help="read the accounts a query matches, ranked without your profile, one live request",
+      help="read the accounts a query matches, one live request",
       description=(
-         "Reads the accounts QUERY matches, as the search box's non-personalised typeahead ranks "
-         "them. Hashtags and places are not read, and nothing is added to your recent searches."
+         "Reads the accounts QUERY matches, as the search box ranks them. Keywords, hashtags "
+         "and places are left out; search-top reads them. Nothing is added to your recent "
+         "searches."
       ),
    )
    search.add_argument("query", metavar="QUERY", type=search_query, help="the text to search for")
+   add_route_option(search)
    add_request_options(search)
+
+   top = commands.add_parser(
+      "search-top",
+      help="read what the search box offers for a query, one live request",
+      description=(
+         "Reads the accounts and keyword suggestions the search box offers for QUERY, in the "
+         "order it shows them. Nothing is added to your recent searches."
+      ),
+   )
+   top.add_argument("query", metavar="QUERY", type=search_query, help="the text to search for")
+   add_route_option(top)
+   add_request_options(top)
 
    hashtag = commands.add_parser(
       "hashtag",
@@ -133,3 +188,14 @@ def add_search_parsers(commands: Subcommands) -> None:
       "tag", metavar="TAG", type=hashtag_name, help="the hashtag's name, without its '#'"
    )
    add_request_options(hashtag)
+
+   keyword = commands.add_parser(
+      "keyword",
+      help="read the first page of a keyword search's grid, one live request",
+      description=(
+         "Reads the first page of the grid of posts the keyword page shows for QUERY, and says "
+         "whether it goes on. A hashtag's posts are the grid for '#TAG'."
+      ),
+   )
+   keyword.add_argument("query", metavar="QUERY", type=search_query, help="the text to search for")
+   add_request_options(keyword)

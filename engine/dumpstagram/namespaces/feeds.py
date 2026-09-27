@@ -1,5 +1,5 @@
 """``client.feeds``, the timelines a signed-in account reads: the home timeline, the explore grid,
-a place's page, and whether the home feed has new posts."""
+a place's page, whether the home feed has new posts, and the reels feed."""
 
 from __future__ import annotations
 
@@ -11,10 +11,19 @@ from dumpstagram._core.discovery import (
    read_location_info,
    read_location_posts,
    read_new_feed_posts,
+   read_reels_feed_page,
 )
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
-from dumpstagram.models import ExploreGrid, FeedItem, LocationPosts, LocationTab, Page, Place
+from dumpstagram.models import (
+   ExploreGrid,
+   FeedItem,
+   LocationPosts,
+   LocationTab,
+   Page,
+   Place,
+   Post,
+)
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -200,6 +209,59 @@ class AsyncFeeds:
          )
       )
 
+   async def reels(self, *, after: str | None = None) -> Page[Post]:
+      """Read one page of the reels feed, the ``/reels/`` tab. One live request.
+
+      ``after`` is an ``end_cursor`` from a previous page, and omitting it asks for the first
+      page, which is short: the tab asks for 2 reels, and two measured first pages carried 1 and
+      2. A later page asks for 10, and two measured ones carried 4. The page's length is the
+      upstream's decision, so a caller keeps asking and stops on ``has_next_page``.
+
+      Each reel is a :class:`~dumpstagram.models.Post` read from the feed's own media shape,
+      with what the feed does not send read as W101 records: ``is_seen`` and
+      ``is_paid_partnership`` read False and carry no information, the author's
+      ``hd_profile_pic_url`` and the post's ``collaborators`` are ``None``, and ``audio`` is
+      ``None`` on a reel whose original sound comes without its mute flag, which every one read
+      did. A song is read.
+
+      The cursor carries the upstream's cursor and the reels of its page, because the next page
+      query names the reels already shown, as a browser names the reels it played. It is opaque;
+      anything that did not come from this method raises :class:`ValueError` before anything is
+      sent.
+
+      A browser plays each reel as it scrolls, reports every view and asks for advertisements
+      to place between them. The engine plays nothing, so no view is reported and no ads pool
+      is asked for, and nobody sees the viewer as having watched anything. Both pages carry
+      ``/reels/`` as referer. Departures recorded in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_reels_feed_page(
+            client._sender,
+            client._session,
+            after=after,
+            user_agent=client._user_agent,
+         )
+      )
+
+   def iter_reels(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]:
+      """Walk the reels feed reel by reel, reading a page with :meth:`reels` each time the one
+      before it is used up. Use it with ``async for``, and do not await it.
+
+      ``limit`` is required and counts reels. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks until ``has_next_page``
+      is false, which on the reels feed may be never. ``after`` starts the walk from a cursor
+      :meth:`reels` returned. Each page is one read, paced as any read is, and never read ahead
+      of the caller. A negative ``limit`` raises :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(lambda cursor: self.reels(after=cursor), limit=limit, after=after)
+
 
 class SyncFeeds:
    """The timelines, as ``client.feeds`` on :class:`~dumpstagram.client.SyncClient`. Each
@@ -296,3 +358,34 @@ class SyncFeeds:
          self._client._impl.feeds.has_new_posts(),
          operation="SyncClient.feeds.has_new_posts",
       )
+
+   def reels(self, *, after: str | None = None) -> Page[Post]:
+      """Read one page of the reels feed. Blocks until it has one.
+
+      The same call as :meth:`AsyncFeeds.reels`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.feeds.reels(after=after),
+         operation="SyncClient.feeds.reels",
+      )
+
+   def iter_reels(self, *, limit: int | None, after: str | None = None) -> Iterator[Post]:
+      """Walk the reels feed reel by reel. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncFeeds.iter_reels`, with the same ``limit``, each page read on
+      the shared loop thread. Closing the iterator early leaves nothing running, because no
+      page is read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Post]:
+         return client._loop.run(
+            client._impl.feeds.reels(after=cursor),
+            operation="SyncClient.feeds.iter_reels",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)

@@ -56,7 +56,16 @@ from dumpstagram.models.profiles import (
    ProfileSummary,
    SuggestedAccount,
 )
-from dumpstagram.models.search import Hashtag, RecentSearch, RecentSearchKind
+from dumpstagram.models.search import (
+   Hashtag,
+   KeywordResults,
+   RecentSearch,
+   RecentSearchKind,
+   SearchPost,
+   SearchResult,
+   SearchResultKind,
+   SearchResults,
+)
 from dumpstagram.models.stories import (
    StoryItem,
    StoryMention,
@@ -95,6 +104,7 @@ __all__ = [
    "FeedItemKind",
    "FriendshipStatus",
    "Hashtag",
+   "KeywordResults",
    "Highlight",
    "HighlightTray",
    "ListFriendshipStatus",
@@ -124,6 +134,10 @@ __all__ = [
    "ReelThumbnail",
    "RecentSearch",
    "RecentSearchKind",
+   "SearchPost",
+   "SearchResult",
+   "SearchResultKind",
+   "SearchResults",
    "SentMessage",
    "StoryItem",
    "StoryMention",

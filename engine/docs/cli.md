@@ -74,9 +74,12 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `place LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads a place's header: name, category, address, coordinates and post count |
 | `location LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads the first page of the posts tagged at a place, and whether more exist |
 | `new-posts` | 1, plus 1 if the session has no token yet | Asks whether the home feed has new posts |
+| `reels` | 1 per page, plus 1 if the session has no token yet | Reads pages of the reels feed. Plays nothing, so reports no view |
 | `recent-searches` | 1, plus 1 if the session has no token yet | Reads your recent searches, accounts and keywords |
-| `search QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts QUERY matches, ranked without your profile |
+| `search QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts QUERY matches, as the search box ranks them, or without your profile with `--non-personalised` |
+| `search-top QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts and keyword suggestions the search box offers for QUERY, in its order |
 | `hashtag TAG` | 1, plus 1 if the session has no token yet | Reads a hashtag's header, its id |
+| `keyword QUERY` | 1, plus 1 if the session has no token yet | Reads the first page of a keyword search's grid; `keyword '#TAG'` is a hashtag's posts |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
@@ -641,10 +644,12 @@ id, username and full name, `keyword` with the text searched, or the bare kind `
 `command`, `entry_count` and `entries`, each with `kind` (`user`, `keyword`, `hashtag` or
 `place`), `account` in the `followers` row form or null, and `keyword` or null.
 
-`search` prints one line per account the non-personalised typeahead answers, its id, username and
-full name, then `accounts: N`. Hashtags and places are not read, and nothing is added to your
-recent searches (W83). The JSON form is `command`, `query`, `account_count` and `accounts` in the
-`followers` row form. A blank query exits 2.
+`search` prints one line per account the search box's typeahead answers, its id, username and
+full name, then `accounts: N`. Since E2 batch 11b it reads the personalised typeahead a signed-in
+box sends, and `--non-personalised` reads the non-profiled one it read before (W83, W102).
+Keywords, hashtags and places are left out, and nothing is added to your recent searches. The JSON
+form is `command`, `query`, `account_count` and `accounts` in the `followers` row form, unchanged.
+A blank query exits 2.
 
 `hashtag` prints `#TAG  id ID`, and its JSON form is `command` and `hashtag`, with `id` and `name`
 (W84). TAG is the name without its `#`, letters, digits and underscores, and anything else exits 2.
@@ -652,6 +657,44 @@ recent searches (W83). The JSON form is `command`, `query`, `account_count` and 
 All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_search_cli_acceptance.py`, runs the three commands, three requests, and checks that
 each sent its own query and none the personalised typeahead or the keyword grid. It ran on 2026-09-27 with every step exit 0 and 3 requests, each its own query: 15 recent searches (4 accounts, 11 keywords), 18 accounts for the query and the tag's id, log `logs/e2-search-cli-2026-09-27-051346.json`.
+
+### `reels`, `search-top` and `keyword`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta reels --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json search-top cats
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta keyword '#cats'
+```
+
+Landed 2026-09-27, E2 batch 11b, rulings W101 to W104.
+
+`reels` reads up to `--pages N` pages of the reels feed, default 1, stopping on the feed's own
+terminator, and `--after CURSOR` starts from a cursor an earlier run printed. It prints one line
+per reel, its shortcode, author, likes, comments and the first line of its caption, then `pages: N
+reels: N  more_available: B`. The JSON form is `command`, `pages_read`, `reel_count`,
+`more_available`, `end_cursor` and `reels`, each in the `post` command's form. The cursor carries
+the reels its page showed, which the next page names as seen (W101). Nothing is played, so no
+view is reported and no ads pool is asked for.
+
+`search-top` prints one line per row the search box offers, in its order, `keyword` with the
+suggested text or `account` with the id, username and full name, or the bare kind `hashtag` or
+`place`, whose shape has not been read, then `results: N` (W102). The JSON form is `command`,
+`query`, `result_count`, `kinds`, a count per kind, and `results`, each with `kind`, `position`,
+`account` in the `followers` row form or null, and `keyword` or null. `--non-personalised` reads
+the non-profiled typeahead, accounts only with no position.
+
+`keyword` prints one line per post on the first page of the grid the keyword page shows, its
+shortcode, author, likes, comments and caption, then `posts: N  more_available: B`. The JSON form
+is `command`, `query`, `post_count`, `more_available` and `posts`, each with `id`, `pk`, `code`,
+`taken_at`, `author`, `media_type`, the counts, `like_and_view_counts_disabled`, the captions,
+the original size, `carousel_media_count`, `images`, `video_duration`, `has_audio` and
+`view_count`. A hashtag's posts are `keyword '#TAG'`, quoted so the shell does not read the `#`
+as a comment (W103). No later page is read. A blank query exits 2.
+
+All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_discovery_search_cli_acceptance.py`, runs `reels --pages 2`, `search-top`, `search` on
+both routes and `keyword` on the query and on `#` and the query, seven requests, nine at most,
+and checks that each step sent its own queries and nothing else. It ran on 2026-09-27, 7 requests, every step exit 0, log `logs/e2-discovery-search-cli-2026-09-27-163749.json`.
 
 ### `publish-photo`, `publish-carousel` and `delete-post`
 

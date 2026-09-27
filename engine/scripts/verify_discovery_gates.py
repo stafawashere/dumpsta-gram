@@ -118,7 +118,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": ABSENT,
       "defect": "an absent is_seen is read as a required flag",
-      "edits": [(PARSE, "null_is_unseen=True)", "null_is_unseen=False)")],
+      "edits": [
+         (
+            PARSE,
+            "parse_post(_absent_as_null(node), path, null_is_unseen=True)",
+            "parse_post(_absent_as_null(node), path, null_is_unseen=False)",
+         )
+      ],
    },
    {
       "gate": ABSENT,
@@ -179,7 +185,11 @@ MUTATIONS: list[dict[str, object]] = [
       "gate": GRID,
       "defect": "the first post of a place's grid is dropped",
       "edits": [
-         (PARSE, "for index, edge in enumerate(edges)", "for index, edge in enumerate(edges[1:])")
+         (
+            PARSE,
+            "      for index, edge in enumerate(edges)\n",
+            "      for index, edge in enumerate(edges[1:])\n",
+         )
       ],
    },
    {

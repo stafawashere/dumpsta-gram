@@ -8,10 +8,10 @@ nothing a caller could not set by hand, and ``dataclasses.replace`` derives a va
 Each setting is added here only once the engine can honour it. Spacing was the first, the
 feed's first page the second, the profile route the third, a thread's first page the fourth,
 the page load companions the fifth, the cookie sync the sixth, the follow list's
-relationship statuses the seventh, and the inbox route the eighth. The three write settings came
-with the write path, before any write capability, because a write is only safe with all three in
-place from the first one. The listener's poll interval came with the ``events()`` surface.
-Other companion requests and
+relationship statuses the seventh, the inbox route the eighth, and the typeahead route the
+ninth. The three write settings came with the write path, before any write capability, because a
+write is only safe with all three in place from the first one. The listener's poll interval
+came with the ``events()`` surface. Other companion requests and
 side effects such as marking a thread read become settings when the requests behind them are
 implemented, as new fields with parity defaults.
 
@@ -34,6 +34,7 @@ __all__ = [
    "ProfileRoute",
    "Spacing",
    "ThreadFirstPage",
+   "TypeaheadRoute",
 ]
 
 
@@ -109,6 +110,25 @@ class InboxRoute(Enum):
    QUERIES = "queries"
 
 
+class TypeaheadRoute(Enum):
+   """Which of the search box's two typeahead queries a search sends.
+
+   ``PERSONALISED`` is what a signed-in browser does: typing into the search box sends the
+   refetchable typeahead query with a search session id of its own, ranked with the viewer's
+   profile. Its answer blends accounts with keyword suggestions, and hashtags and places when
+   the upstream offers them. One measured query answered 5 accounts and 1 keyword.
+
+   ``NON_PERSONALISED`` sends the non-profiled typeahead query, which answers accounts only,
+   ranked without the viewer's profile, which no signed-in browser was observed to send. One
+   measured query answered 18 accounts.
+
+   Both are one request.
+   """
+
+   PERSONALISED = "personalised"
+   NON_PERSONALISED = "non_personalised"
+
+
 class ThreadFirstPage(Enum):
    """How the newest page of a direct thread is read.
 
@@ -168,6 +188,10 @@ class Behavior:
    marks nothing either way, as a browser's tray does not. False reads stories without marking
    anything, and changes nothing else.
 
+   ``typeahead_route`` is which typeahead query ``search.accounts`` and ``search.top`` send, see
+   :class:`TypeaheadRoute`. The personalised one is the default because it is what a signed-in
+   browser's search box sends, and the other changes the accounts a search returns.
+
    ``write_spacing`` is the gap before a write, measured from the account's previous write. It
    does not delay the reads between two writes, and a write still waits out ``spacing`` from
    whatever request went before it. The default, a 30 s floor plus 5 s mean jitter, is a
@@ -204,6 +228,7 @@ class Behavior:
    cookie_sync: bool = True
    follow_list_statuses: bool = True
    mark_stories_seen: bool = True
+   typeahead_route: TypeaheadRoute = TypeaheadRoute.PERSONALISED
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
    write_budget_per_hour: int | None = 30
    stop_writes_after_unrecognised_rejection: bool = True
