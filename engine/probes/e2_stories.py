@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Eight requests, and up to four more, conditional.
+"""Read only. Ran on 2026-09-27, 8 spent. Eight requests, and up to four more, conditional.
 
 E2 batch 5, stories, read without marking anything seen. The story reads are the owner's own:
 his highlights, and his own reel, which is empty unless he has a live story. The stories tray

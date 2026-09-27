@@ -43,6 +43,10 @@ def classify(response: Response) -> Any:
 
    The status code is never read. A 500 carrying a valid payload is a success, and a 200
    carrying an envelope is a failure.
+
+   A partial answer, whose ``errors`` array names only fields inside data roots that answered,
+   is returned with those fields null, and its body is never scanned for a checkpoint, since it
+   is a payload and carries user content (W52).
    """
    _raise_if_the_location_says_checkpoint(response)
 
@@ -95,7 +99,8 @@ def classify_preloaded(result: dict[str, Any]) -> dict[str, Any]:
    A preloaded result has no response of its own, since it arrived inside a document that
    :func:`classify_checkpoint_only` already judged, so only its envelope is left to read.
    INFERENCE: a preloaded query that fails carries the same envelope a requested one would.
-   No failed preload has been observed.
+   No failed preload has been observed. A partial answer is returned here as :func:`classify`
+   returns one, because the envelope is read by the same function (W52).
    """
    envelope_code = _envelope_code(result)
    if envelope_code is None:
@@ -104,15 +109,66 @@ def classify_preloaded(result: dict[str, Any]) -> dict[str, Any]:
    raise UpstreamRejected("upstream rejected the preloaded query", code=envelope_code)
 
 
+def _is_a_field_error(error: Any, data: Any) -> bool:
+   """Whether one entry of ``errors`` names a field inside a data root that answered.
+
+   Its ``path`` must be a list of at least two elements whose first is a key of ``data`` holding
+   a value that is not null. A path of one element names the root itself, and a root that is null
+   or absent did not answer, so neither is a field error.
+   """
+
+   if not isinstance(error, dict):
+      return False
+
+   path = error.get("path")
+
+   if not isinstance(path, list):
+      return False
+
+   names_a_field = len(path) >= 2
+
+   if not names_a_field:
+      return False
+
+   root = path[0]
+   data_is_an_object = isinstance(data, dict)
+   root_is_a_key = isinstance(root, str)
+
+   if not (data_is_an_object and root_is_a_key):
+      return False
+
+   return data.get(root) is not None
+
+
+def _is_a_partial_answer(errors: list[Any], data: Any) -> bool:
+   """Whether every entry of the ``errors`` array is a field error beside a root that answered.
+
+   Observed on 2026-09-27: the profile grid answered its posts whole with one error per post
+   whose location picture failed, severity ERROR, on
+   ``xdt_api__v1__feed__user_timeline_graphql_connection.edges[n].node.location.profile_pic_url``,
+   and a post read answered once with twelve, severity UNSET, on fields under
+   ``xdt_api__v1__media__media_id_web_info.items[0]``, and with none on its second replay. The
+   errored field reads as the null the payload holds there, and the mapper's own readers decide
+   whether that null is allowed, ruling W52. Recorded in
+   ``skills/reverse-engineer/knowledge/patterns/field-errors-arrive-beside-a-full-answer.md``.
+   """
+
+   return all(_is_a_field_error(error, data) for error in errors)
+
+
 def _envelope_code(parsed: dict[str, Any]) -> str | None:
    """Return the upstream code when the payload carries an error envelope.
 
    Three markers were observed: a top-level ``errors`` array, an ``error`` field, and an
    ``errorSummary`` field. A falsy ``error`` field is not an envelope, because the upstream
-   sends ``"error": null`` beside a valid payload.
+   sends ``"error": null`` beside a valid payload, and neither is an ``errors`` array that is a
+   partial answer, every entry a field error beside a root that answered.
    """
-   errors = parsed.get("errors")
-   if isinstance(errors, list) and errors:
+   raw_errors = parsed.get("errors")
+   errors: list[Any] = raw_errors if isinstance(raw_errors, list) else []
+   refuses = bool(errors) and not _is_a_partial_answer(errors, parsed.get("data"))
+
+   if refuses:
       first = errors[0]
       code = first.get("code") if isinstance(first, dict) else None
 

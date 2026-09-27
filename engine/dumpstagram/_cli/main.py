@@ -68,7 +68,13 @@ from dumpstagram._cli.commands.posting import (
    add_posting_parsers,
    run_posting_command,
 )
-from dumpstagram._cli.commands.profiles import add_profile_parser, run_profile
+from dumpstagram._cli.commands.profiles import (
+   PROFILE_TAB_COMMANDS,
+   add_profile_parser,
+   add_profile_tab_parsers,
+   run_profile,
+   run_profile_tab_command,
+)
 from dumpstagram._cli.commands.session import (
    add_adopt_parser,
    add_session_parser,
@@ -112,6 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_inbox_parsers(commands)
    add_feed_parser(commands)
    add_profile_parser(commands)
+   add_profile_tab_parsers(commands)
    add_note_parser(commands)
    add_post_parser(commands)
    add_like_parsers(commands)
@@ -160,6 +167,9 @@ def main(
 
       if arguments.command == "profile":
          return run_profile(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in PROFILE_TAB_COMMANDS:
+         return run_profile_tab_command(arguments, chosen_environment, out, client_factory)
 
       is_a_note_write = arguments.command == "note" and arguments.note_action != "list"
 

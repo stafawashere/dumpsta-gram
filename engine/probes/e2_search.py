@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Seven requests, and up to three more, conditional.
+"""Read only. Ran on 2026-09-27, 7 spent. Seven requests, and up to three more, conditional.
 
 E2 batch 8, search, the parts whose variables are fully known: the recent searches, the
 non-personalised typeahead, and a hashtag page's header. The personalised typeahead and the

@@ -769,6 +769,10 @@ CORE_FUNCTION_FOR_ALIAS = {
    "media.unlike": "dumpstagram._core.writes.likes.unlike_post",
    "profiles.by_id": "dumpstagram._core.profiles.read_profile_by_id",
    "profiles.by_username": "dumpstagram._core.profiles.read_profile",
+   "profiles.highlights": "dumpstagram._core.profiles.read_highlight_tray",
+   "profiles.posts": "dumpstagram._core.profiles.read_profile_posts_page",
+   "profiles.suggested": "dumpstagram._core.profiles.read_suggested_beside_profile",
+   "profiles.suggested_for_you": "dumpstagram._core.profiles.read_suggested_accounts",
    "social.follow": "dumpstagram._core.writes.follows.follow_user",
    "social.unfollow": "dumpstagram._core.writes.follows.unfollow_user",
 }
@@ -833,6 +837,7 @@ PAGE_METHOD_FOR_ITERATOR = {
    "direct.iter_messages": "direct.messages",
    "feeds.iter_home": "feeds.home",
    "media.iter_comments": "media.comments",
+   "profiles.iter_posts": "profiles.posts",
 }
 """Every iterator and the page read it walks, E1 item 5 and ruling W23. Written out rather than
 read off the source, because it is what the iterator gates hold the code to."""

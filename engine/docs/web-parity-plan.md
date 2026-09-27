@@ -698,6 +698,134 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   the other side of an arranged run, and the live login, the username change, log out and the
   live multi-account host join E5, all on B (W7). Group threads still need a third participant,
   so E6 keeps them under W9. The W30 partner is not borrowed for a group without the owner's word.
+- **W52. A field error beside an answer is a partial answer, and the answer is returned.** Ruled
+  2026-09-27 for E2 batch 2, and binding on every later batch. FACT: on 2026-09-27 the verified
+  `PolarisProfilePostsQuery` answered the owner's grid whole, eight posts, beside an `errors` array
+  of three entries, severity ERROR, each with a `path` of
+  `xdt_api__v1__feed__user_timeline_graphql_connection.edges[n].node.location.profile_pic_url`, one
+  per post carrying a location, and `classify` refused the page with `UpstreamRejected` code
+  `errors`. `PolarisPostActionLoadPostQueryMediaIdQuery` answered once with twelve errors, severity
+  UNSET, on fields under `xdt_api__v1__media__media_id_web_info.items[0]`, and its second replay
+  had none. The rule, in `_private/web/classify.py`: an answer whose every error carries a `path`
+  of two elements or more, the first a key of `data` whose value is present and not null, is a
+  partial answer. It is returned as the upstream sent it, each errored field reading as the null
+  the payload holds, and the mappers' own required and optional readers decide from there, so a
+  required field that errored still raises `SchemaChanged`. Anything else with an `errors` array
+  is refused as before: an error with no path, a path of one element, a path under a root that is
+  null or absent, and a field error beside any of those. `classify_preloaded` reads the envelope
+  through the same function, so a preloaded result follows the same rule. A partial answer is a
+  payload and carries user content, so its body is not scanned for checkpoint markers, which the
+  refused path still does. Effect on what shipped: `profiles.by_username` under the default page
+  route was not broken, FACT from the code, because the grid query is one of the page's six and
+  its answer is screened only for a checkpoint or a throttle, and a rejection there is dropped;
+  that screen did scan the refused grid body for checkpoint markers, so a caption quoting
+  `/challenge/` would have raised `CheckpointRequired`, never observed and now closed for partial
+  answers. The username resolution of `ProfileRoute.QUERIES`, and the canary's replay of the same
+  query, ask for one post, and the owner's newest post carries no location, so neither was broken
+  on the owner's account, an INFERENCE: it assumes the one-post answer is the same newest post and
+  that the error follows a post's location. Any account whose newest post carries such a location
+  would have had its resolution refused. Five gates in `tests/test_classify.py`, one of them
+  parametrised four ways, and six mutations in `scripts/verify_profile_tabs_gates.py`. Evidence:
+  the captures `e2-profile-tabs-2026-09-27-*-03-posts-grid-first-page-rejected.json` and
+  `e2-post-depth-2026-09-27-013544-08-post-by-media-pk-1-rejected.json`, each `debug_link`
+  redacted, and the knowledge base pattern `field-errors-arrive-beside-a-full-answer`.
+- **W53. The posts grid is `profiles.posts(username, *, after=None) -> Page[Post]` and
+  `iter_posts`, and it returns the home timeline's `Post`.** Ruled 2026-09-27 for E2 batch 2. The
+  parameter is a username, because the grid query is keyed on one; a caller holding a `Profile`
+  passes its `username`, and a `str | Profile` union was not taken because a parameter's type is a
+  snapshot line that could never be narrowed again. The first page is the verified
+  `PolarisProfilePostsQuery` at the profile page's twelve, and every later page
+  `PolarisProfilePostsTabContentQuery_connection` (finding `profile-posts-grid-next-page`,
+  replayed twice on 2026-09-27 on a public account the owner's timeline shows, twelve edges and
+  `has_next_page` true each time) with the first page's variables, the upstream's `end_cursor` as
+  `after`, and `first` 12 and `include_multi_captions` true as the compiled artifact declares them.
+  Both answer on `/graphql/query` under one root beside `xdt_viewer`, and `has_next_page` is the
+  only terminator. A grid node is the home timeline's media node key for key, FACT over 32 grid
+  nodes and the home page's six posts, with ten keys more that are dropped (`__typename`, `group`,
+  `longform_title`, `media_cropping_info`, `photo_of_you`,
+  `profile_grid_thumbnail_fitting_style`, `thumbnails`, `timeline_pinned_user_ids`, `title`,
+  `upcoming_event`), two the home node has and the grid lacks (`brs_severity`,
+  `view_state_item_type`, neither read), and `is_seen` null on every grid node where the home
+  timeline sent a boolean. `Post.is_seen` is a required `bool` in the frozen snapshot, so the
+  grid mapper reads that null as False, which carries no information and says so on `Post`, and
+  the home timeline mapper still refuses a null. The per-edge `cursor` was null on every grid
+  edge. Departure: a browser reads the first page inside the profile page load, beside the
+  document and five other queries, and `posts` sends it alone; a later page is sent as a browser
+  sends it when the grid is scrolled (INFERENCE, the scroll was not captured). An impossible
+  username raises `NotFound` before anything is sent, as the page route does.
+- **W54. The highlights tray is `profiles.highlights(user_id) -> HighlightTray`, its first page
+  only.** Ruled 2026-09-27 for E2 batch 2. `ProfileStoryHighlightsTrayContentQuery_connection` was
+  never answered, since the owner's tray holds one highlight and the public account's none, so no
+  cursor is handed out and `HighlightTray` carries `highlights` and the upstream's
+  `has_next_page` as `has_more`, the `MessageRequests` pattern of W45. No `iter_highlights` ships,
+  since the read is not a `Page`. `Highlight` carries `id` (the upstream's `highlight:<number>`),
+  `title`, `cover_url` from `cover_media.cropped_image_version.url`, and `owner_id` and
+  `owner_username` from the node's `user`, every field observed on the one highlight read five
+  times on 2026-09-27; `__typename` XDTReelDict is dropped. The query is the verified
+  `PolarisProfileStoryHighlightsTrayContentQuery`, which moved from `COMPANION_QUERIES` to
+  `READ_QUERIES` because a capability now reads it; the profile page still sends it among its six.
+  Departures: it is sent alone, and with the site root as its referer rather than the profile
+  page, because the method has an id and no username. The profile query's referer was not
+  validated under ablation; this one's has not been tested, an ASSUMPTION the batch's live
+  acceptance checks. A username raises `ValueError` before anything is sent.
+- **W55. The suggested accounts are `profiles.suggested(user_id)` and
+  `profiles.suggested_for_you()`, rows of a new `ProfileSummary`.** Ruled 2026-09-27 for E2 batch
+  2. `suggested` sends `PolarisProfileSuggestedUsersWithLazyQueryQuery` (finding
+  `profile-suggested-users-on-demand`, replayed twice, 17 to 19 rows each), the query a browser
+  sends when the suggestions beside a profile are opened, with `module` profile and the account id
+  as `target_id`, and returns `tuple[ProfileSummary, ...]`. `suggested_for_you` sends
+  `PolarisSuggestedUserListQuery` (finding `home-suggested-accounts`, replayed twice, one group of
+  five each) with the recorded browse's variables and returns `tuple[SuggestedAccount, ...]`,
+  because each item carries the line the website shows under the account in `social_context`,
+  content that a bare row would drop. Neither answer carried a cursor or a count, so each tuple is
+  the list as sent. `ProfileSummary` is built for lists in general, since batch 3's followers
+  will reuse it: `id` from `pk` (equal to `id` on all 138 rows), `username`, `full_name`,
+  `is_verified`, `profile_pic_url`, and `is_private`, `hd_profile_pic_url` and
+  `friendship_status` where the row carries them, `None` where it does not. No row of the
+  suggested accounts list carried `is_private`, FACT. `FriendshipStatus` was not reused: every
+  row's status lacked `muting` and `is_muting_reel`, which it requires, and filling them would
+  be a guess. `ListFriendshipStatus` requires the six flags every row carried (`following`,
+  `outgoing_request`, `incoming_request`, `is_bestie`, `is_feed_favorite`, `is_restricted`) and
+  carries `followed_by` and `blocking` where a list sends them, since the `show_many` statuses
+  batch 3 will read lack both (FACT from its capture of 2026-09-27). Departures: `suggested` is
+  sent with the site root as referer, for W54's reason, where the replays sent the profile page;
+  `suggested_for_you` is sent alone rather than inside the page that lists it.
+- **W56. The canary replays seventeen reads, and three doctor literals followed.** Ruled 2026-09-27
+  for E2 batch 2. `READ_QUERIES` gained the grid's next page, the highlights tray, and both
+  suggested lists, so a live doctor run goes from at most 15 paced requests to at most 19. The
+  `PolarisProfilePostsQuery` step now builds the grid's first page at twelve, the request `posts`
+  sends, and reads it with both mappers the query feeds, the grid's and the username
+  resolution's, learning the grid cursor when the page says more exist; the next page step is
+  keyed on that cursor and skipped without one, which is what the owner's one-page grid gives.
+  `tests/test_doctor.py` followed in three literals, each seen red before the edit and green
+  after it: the registry count, 33 to 36 (`assert 36 == 33`), the dry run's paced total, 15 to 19
+  (`assert 19 == 15`), and the stated plan, 13 reads to 17. Its answer for
+  `PolarisProfilePostsQuery` moved from a one-post stub the grid mapper cannot read to the
+  pseudonymised author grid, and the four new reads answer from the batch's fixtures. A new gate
+  holds the next page to the first page's cursor and to being skipped on the owner's grid. The
+  parity tables gained the four methods and the iterator. The gate fixtures are the recorded
+  answers, pseudonymised by `scripts/build_profile_tabs_fixtures.py`, and
+  `scripts/verify_profile_tabs_gates.py` holds 43 mutations, each seen red then green. Live
+  traffic for the discovery: 8 requests on each of three runs of `probes/e2_profile_tabs.py`, 24,
+  the first two stopped at the grid's field errors, and `probes/e2_next_pages.py`'s 10 requests,
+  shared with batch 4, whose first six served this batch. The CLI acceptance,
+  `probes/e2_profile_tabs_cli_acceptance.py`, ran with every step exit 0 and 7 requests, log
+  `logs/e2-profile-tabs-cli-2026-09-27-022848.json`.
+
+- **W57. A token the upstream asks to re-open the window for is a stale token.** Ruled
+  2026-09-27 for E2 batch 2, after the batch's CLI acceptance stopped at its first step. The
+  session file had last been bootstrapped on 2026-09-24, and `profile --by-id` on the owner drew
+  HTTP 200 with a 249 byte `for (;;);` envelope, `error` 1357004, summary "Sorry, something went
+  wrong", description asking for the browser window to be closed and re-opened, and a null
+  payload. FACT, three identical answers, while the same read after a fresh bootstrap answered
+  200 with data an hour earlier in every E2 probe. `_core/tokens.py` re-bootstrapped once only on
+  the HTML shell, so every read on an aged session file failed with `UpstreamRejected` rather than
+  fetching a token, a defect in every read since `1.0.0`. The code joins the shell in
+  `STALE_TOKEN_CODES`, with the same once-only and not-just-fetched conditions, so a fresh token
+  that is refused the same way still raises. INFERENCE: the envelope means an expired `fb_dtsg`,
+  since the description asks for what a page reload does. A new gate in `tests/test_direct.py`
+  was seen red before the change and green after. Live, the batch 2 acceptance's first step spent
+  three requests, the refusal, one bootstrap and the read, and answered.
 
 ## Standing rules for every phase
 

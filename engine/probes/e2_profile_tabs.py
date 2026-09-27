@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Twelve requests, and up to four more, conditional.
+"""Read only. Ran on 2026-09-27 three times, 8 spent on each run. Twelve requests, and up to four more, conditional.
 
 E2 batch 2, the profile tabs read over GraphQL, on the owner's own account: the posts grid past
 its first page, the highlights tray past its first page, and the two suggested account lists.

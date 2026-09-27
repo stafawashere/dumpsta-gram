@@ -50,6 +50,7 @@ from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import DIRECT_INBOX, THREAD_DETAIL
 from dumpstagram._private.web.documents.media import LIKE_MEDIA
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
+from dumpstagram._private.web.documents.profiles import PROFILE_POSTS, PROFILE_POSTS_NEXT_PAGE
 from dumpstagram._private.web.preload import HOME_DOCUMENT_URL
 from dumpstagram.aio import AsyncClient, _rotation_doctor
 from dumpstagram.errors import CheckpointRequired
@@ -62,7 +63,8 @@ from tests.test_inbox_listing import listing_payload, listing_row, message_edge
 from tests.test_likes import post_item, post_payload
 from tests.test_notes import tray_payload
 from tests.test_parse import payload as thread_page_payload
-from tests.test_profiles import profile_payload, timeline_payload
+from tests.test_profile_tabs import recorded as recorded_profile_tabs
+from tests.test_profiles import profile_payload
 from tests.test_smoke import FakeClock
 from tests.test_thread_route import detail_payload
 
@@ -175,10 +177,18 @@ def answers_for_every_read() -> dict[str, Any]:
          [], has_next_page=False, end_cursor=None
       ),
       "PolarisProfilePageContentQuery": profile_payload(),
-      "PolarisProfilePostsQuery": timeline_payload(),
+      "PolarisProfilePostsQuery": recorded_profile_tabs("author_grid_first_page.json"),
       "IGDThreadListOffMsysPaginationQuery": recorded_direct_read("inbox_next_page.json"),
       "IGDMessageRequestLeftRailStandaloneQuery": recorded_direct_read("message_requests.json"),
       "useIGDSystemFolderUnreadThreadCountQuery": recorded_direct_read("inbox_unread_rows.json"),
+      "PolarisProfilePostsTabContentQuery_connection": recorded_profile_tabs(
+         "author_grid_next_page.json"
+      ),
+      "PolarisProfileStoryHighlightsTrayContentQuery": recorded_profile_tabs("highlight_tray.json"),
+      "PolarisProfileSuggestedUsersWithLazyQueryQuery": recorded_profile_tabs(
+         "suggested_beside_profile.json"
+      ),
+      "PolarisSuggestedUserListQuery": recorded_profile_tabs("suggested_accounts.json"),
    }
 
 
@@ -194,6 +204,10 @@ class FakeSite:
    checkpoint_on: str | None = None
    sent: list[str] = field(default_factory=list)
    writes_seen: list[str] = field(default_factory=list)
+   variables: dict[str, Any] = field(default_factory=dict)
+
+   def variables_of(self, name: str) -> Any:
+      return self.variables[name]
 
    async def send(self, request: Request) -> Response:
       if request.method == "GET":
@@ -207,6 +221,7 @@ class FakeSite:
       is_a_write = name in WRITE_NAMES or doc_id in WRITE_DOC_IDS
 
       self.sent.append(name)
+      self.variables[name] = json.loads(body["variables"][0])
 
       if is_a_write:
          self.writes_seen.append(name)
@@ -395,7 +410,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 33
+   assert len(registry) == 36
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -471,6 +486,29 @@ def test_a_read_whose_argument_was_never_learned_is_skipped_and_not_sent() -> No
    assert report.reads_sent == len(READ_QUERIES) - 4
 
 
+def test_the_grid_next_page_is_replayed_on_the_first_pages_cursor_and_skipped_without_one() -> None:
+   """Catches the grid's next page sent with no cursor when the viewer's grid fits one page, as
+   the owner's does, and sent on a cursor other than the one the first page handed out."""
+
+   bundles = every_query_compiled()
+   first_page = recorded_profile_tabs("author_grid_first_page.json")
+   cursor = first_page["data"]["xdt_api__v1__feed__user_timeline_graphql_connection"]["page_info"][
+      "end_cursor"
+   ]
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   last_page_answers = answers_for_every_read()
+   last_page_answers["PolarisProfilePostsQuery"] = recorded_profile_tabs("owner_grid_partial.json")
+   last_page_site = a_site(bundles, answers=last_page_answers)
+   last_page_report = run_doctor(last_page_site, FakeBundles(bundles))
+
+   assert check_for(report, PROFILE_POSTS_NEXT_PAGE).replay is ReplayVerdict.OK
+   assert site.variables_of("PolarisProfilePostsTabContentQuery_connection")["after"] == cursor
+   assert check_for(last_page_report, PROFILE_POSTS_NEXT_PAGE).replay is ReplayVerdict.SKIPPED
+   assert "PolarisProfilePostsTabContentQuery_connection" not in last_page_site.sent
+   assert check_for(last_page_report, PROFILE_POSTS).replay is ReplayVerdict.OK
+
+
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
    """Catches a scan that fetches every bundle a document names after it already has its
    answer. The home document names a bundle the scan never needs."""
@@ -537,7 +575,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 15
+   assert payload["plan"]["paced_requests_at_most"] == 19
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -633,5 +671,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 13 reads" in stated
+   assert "2 documents and at most 17 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated

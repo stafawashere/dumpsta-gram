@@ -27,6 +27,8 @@ from dumpstagram.session import Session
 
 __all__ = [
    "HTML_APP_SHELL",
+   "REOPEN_THE_WINDOW",
+   "STALE_TOKEN_CODES",
    "is_a_stale_token_failure",
    "with_one_token_recovery",
    "with_token_recovery",
@@ -35,14 +37,24 @@ __all__ = [
 HTML_APP_SHELL = "html_app_shell"
 """The classifier's code for the shell, which is what an unusable ``fb_dtsg`` produces."""
 
+REOPEN_THE_WINDOW = "1357004"
+"""The envelope code a three day old ``fb_dtsg`` drew on 2026-09-27, W57.
+
+Its summary reads "Sorry, something went wrong" and its description asks for the browser window
+to be closed and re-opened, which for a page is a fresh document and fresh tokens.
+"""
+
+STALE_TOKEN_CODES = (HTML_APP_SHELL, REOPEN_THE_WINDOW)
+
 
 def is_a_stale_token_failure(failure: Exception) -> bool:
    """Whether re-bootstrapping is a plausible fix for this failure.
 
    :class:`~dumpstagram.errors.AuthenticationFailed` is raised by the request builder when the
    session carries no token at all, and by the token scraper when the bootstrap page carried
-   none. :class:`~dumpstagram.errors.UpstreamRejected` with the shell code is what the upstream
-   returns for a token it will not accept.
+   none. :class:`~dumpstagram.errors.UpstreamRejected` with the shell code, or with the
+   envelope code that asks for the window to be re-opened, is what the upstream returns for a
+   token it will not accept.
    """
 
    if isinstance(failure, AuthenticationFailed):
@@ -51,7 +63,7 @@ def is_a_stale_token_failure(failure: Exception) -> bool:
    if not isinstance(failure, UpstreamRejected):
       return False
 
-   return failure.code == HTML_APP_SHELL
+   return failure.code in STALE_TOKEN_CODES
 
 
 async def with_token_recovery[T](

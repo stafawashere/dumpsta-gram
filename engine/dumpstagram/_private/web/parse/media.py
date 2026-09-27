@@ -44,6 +44,7 @@ __all__ = [
    "parse_comment_page",
    "parse_created_comment",
    "parse_like_answer",
+   "parse_post",
    "parse_post_detail",
 ]
 
@@ -397,8 +398,29 @@ def _post_author(node: dict[str, Any], path: str) -> PostAuthor:
    )
 
 
-def parse_post(node: Any, path: str) -> Post:
-   """One media node, mapped field by field."""
+def _is_seen(node: dict[str, Any], path: str, *, null_is_unseen: bool) -> bool:
+   """Whether the viewer has seen the post in the feed.
+
+   The home timeline sent a boolean on every node. A profile's grid sent null on all 32 nodes
+   read on 2026-09-27, because the grid is not a feed the viewer has seen things in, and the grid
+   mapper passes ``null_is_unseen`` so that null reads as False (W53). Anything but a boolean or
+   that null still raises.
+   """
+
+   if not null_is_unseen:
+      return _required_flag(node, "is_seen", path)
+
+   seen = _optional_flag(node, "is_seen", path)
+
+   return seen is True
+
+
+def parse_post(node: Any, path: str, *, null_is_unseen: bool = False) -> Post:
+   """One media node, mapped field by field.
+
+   The home timeline and a profile's grid send the same node, key for key but for ``is_seen``,
+   which the grid sends as null, so ``null_is_unseen`` is the grid mapper's one difference.
+   """
 
    if not isinstance(node, dict):
       raise SchemaChanged(f"{path} is not an object", path=path)
@@ -416,7 +438,7 @@ def parse_post(node: Any, path: str) -> Post:
       like_count=_required_integer(node, "like_count", path),
       comment_count=_required_integer(node, "comment_count", path),
       has_liked=_required_flag(node, "has_liked", path),
-      is_seen=_required_flag(node, "is_seen", path),
+      is_seen=_is_seen(node, path, null_is_unseen=null_is_unseen),
       caption=_caption_text(node, path),
       accessibility_caption=_optional_string(node, "accessibility_caption", path),
       original_width=_optional_integer(node, "original_width", path),

@@ -407,7 +407,7 @@ client.media.like(post.pk)
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
 | `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
 | `media` | `AsyncMedia` | `SyncMedia` | One post, its likes, its comments, downloading its renditions, and publishing and deleting the viewer's own |
-| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles |
+| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid and highlights tray, and the suggested accounts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 
 The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
@@ -455,6 +455,7 @@ only there, with no flat twin:
 | `direct.inbox(*, after)` | `direct.iter_inbox(*, limit, after=None)` | `DirectThread`, newest activity first |
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
+| `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
 
 ```python
 for message in client.direct.iter_messages(thread_fbid, limit=200):
@@ -619,6 +620,61 @@ Nothing here opens a thread, so nothing is marked read to anyone, and no request
 opened, which would mark it seen to its sender (W43). A browser reads all of this inside an inbox
 page load. Each method sends its own queries alone, a departure recorded in
 [web-request-contract.md](web-request-contract.md).
+
+### The profile tabs and the suggested accounts
+
+Landed 2026-09-27, E2 batch 2 of [web-parity-plan.md](web-parity-plan.md), rulings W52 to W56.
+Five methods on `profiles`, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `profiles.posts(username, *, after=None)` | `Page[Post]` | one |
+| `profiles.iter_posts(username, *, limit, after=None)` | iterator of `Post` | one per page read |
+| `profiles.highlights(user_id)` | `HighlightTray` | one |
+| `profiles.suggested(user_id)` | `tuple[ProfileSummary, ...]` | one |
+| `profiles.suggested_for_you()` | `tuple[SuggestedAccount, ...]` | one |
+
+```python
+profile = client.profiles.by_username("an.account")
+for post in client.profiles.iter_posts(profile.username, limit=36):
+   print(post.code, post.like_count)
+
+tray = client.profiles.highlights(profile.id)             # HighlightTray(highlights=(...), has_more=False)
+beside = await aclient.profiles.suggested(profile.id)     # (ProfileSummary(...), ...)
+for suggestion in client.profiles.suggested_for_you():
+   print(suggestion.account.username, suggestion.reason)
+```
+
+The grid is keyed on the username and pages twelve posts at a time on `has_next_page` alone.
+Its items are the home timeline's `Post`; on a grid `is_seen` is always False, because the
+upstream sends null for it there (W53). An impossible username raises `NotFound` before anything
+is sent.
+
+`HighlightTray` holds the tray's first page as `highlights` and the upstream's
+`has_next_page` as `has_more`, because the query that reads further has never answered (W54).
+`Highlight` carries `id` (`highlight:<number>`), `title`, `cover_url`, `owner_id` and
+`owner_username`. Reading the stories inside a highlight is not part of it, and nothing is
+marked seen.
+
+`ProfileSummary` is one account as a list row shows it: `id`, the numeric account id
+`profiles.by_id` takes, `username`, `full_name`, `is_verified`, `profile_pic_url`, and
+`is_private`, `hd_profile_pic_url` and `friendship_status`, each `None` where the row does not
+carry it. Rows of the suggested accounts list carry no `is_private`. `friendship_status` is a
+`ListFriendshipStatus`, not a `FriendshipStatus`, because a list row carries eight of the
+profile's ten flags: `following`, `outgoing_request`, `incoming_request`, `is_bestie`,
+`is_feed_favorite` and `is_restricted` always, and `followed_by` and `blocking` where the list
+sends them (W55). `SuggestedAccount` pairs a row with `reason`, the line the website shows under
+it. Neither suggested list carries a cursor, so each tuple is the list as the upstream sent it.
+
+`highlights` and `suggested` take the numeric account id and raise `ValueError` for a username
+before anything is sent. A browser reads the first grid page and the tray inside the profile page
+load and the suggested list inside the page that lists it; each method here sends its one query
+alone, and the tray and the suggestions beside a profile carry the site root as their referer,
+departures recorded in [web-request-contract.md](web-request-contract.md).
+
+The same batch changed one thing every read shares: an answer whose `errors` array only names
+fields inside data that answered is now returned, those fields null, rather than refused (W52).
+A mapper that requires an errored field still raises `SchemaChanged`.
 
 ## Stability contract
 

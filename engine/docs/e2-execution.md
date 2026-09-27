@@ -36,7 +36,7 @@ capture night that unblocks the rest.
 | Order | Batch | Probe | Requests | Conditional |
 |---|---|---|---|---|
 | 1 | Direct read side, done 2026-09-24 | `probes/e2_direct_read.py` | 9, spent 9 | 3, spent 0 |
-| 2 | Profile tabs over GraphQL | `probes/e2_profile_tabs.py` | 12 | 4 |
+| 2 | Profile tabs over GraphQL, done 2026-09-27 | `probes/e2_profile_tabs.py` | 12, spent 8 on each of 3 runs | 4, spent 0 |
 | 3 | Relationship lists | `probes/e2_follow_lists.py` | 6 | 1 |
 | 4 | Post depth | `probes/e2_post_depth.py` | 13 | 7 |
 | 5 | Stories, read only | `probes/e2_stories.py` | 8 | 4 |
@@ -118,14 +118,42 @@ professional pagination queries serve professional accounts only, and the owner'
 
 | Operation | Kind | Status |
 |---|---|---|
-| `PolarisProfilePostsQuery` | the grid's first page | verified |
-| `PolarisProfilePostsTabContentQuery_connection` | the grid's next pages | hypothesis |
-| `PolarisProfileStoryHighlightsTrayContentQuery` | the tray's first page | verified |
-| `ProfileStoryHighlightsTrayContentQuery_connection` | the tray's next pages | hypothesis |
-| `PolarisProfileSuggestedUsersWithPreloadableQuery` | suggested beside a profile, preloaded | verified |
-| `PolarisProfileSuggestedUsersWithLazyQueryQuery` | the same, on demand | hypothesis, variables observed |
-| `PolarisSuggestedUserListQuery` | the suggested accounts list | hypothesis, variables observed |
-| `PolarisSuggestedUserListRefetchQuery` | its refetch | alternate of the list, same root |
+| `PolarisProfilePostsQuery` | the grid's first page | verified, public as `profiles.posts` |
+| `PolarisProfilePostsTabContentQuery_connection` | the grid's next pages | verified 2026-09-27, public as `profiles.posts` with a cursor |
+| `PolarisProfileStoryHighlightsTrayContentQuery` | the tray's first page | verified, public as `profiles.highlights` |
+| `ProfileStoryHighlightsTrayContentQuery_connection` | the tray's next pages | hypothesis, never answered, no tray had a second page (W54) |
+| `PolarisProfileSuggestedUsersWithPreloadableQuery` | suggested beside a profile, preloaded | verified, a profile page companion |
+| `PolarisProfileSuggestedUsersWithLazyQueryQuery` | the same, on demand | verified 2026-09-27, public as `profiles.suggested` |
+| `PolarisSuggestedUserListQuery` | the suggested accounts list | verified 2026-09-27, public as `profiles.suggested_for_you` |
+| `PolarisSuggestedUserListRefetchQuery` | its refetch | alternate of the list, same root, no capability |
+
+**Status: done on 2026-09-27, rulings W52 to W56.** The probe ran three times at 8 requests
+each, 24, with no conditional request: the owner's grid fits one page and his tray holds one
+highlight, so neither next page was sent, and the first two runs stopped at the grid's field
+errors before the probe support learned to keep a partial answer. The grid's next page was then
+replayed twice by `probes/e2_next_pages.py` on a public account the owner's timeline shows, 10
+requests for that whole probe, shared with batch 4, and the finding was promoted to verified with
+the two suggested lists. The reads shipped as `client.profiles.posts(username, *, after=None) ->
+Page[Post]`, `client.profiles.iter_posts(username, *, limit, after=None)`,
+`client.profiles.highlights(user_id) -> HighlightTray`, `client.profiles.suggested(user_id) ->
+tuple[ProfileSummary, ...]` and `client.profiles.suggested_for_you() -> tuple[SuggestedAccount,
+...]`, on both clients with no flat twin, with the new public models `Highlight`,
+`HighlightTray`, `ProfileSummary`, `ListFriendshipStatus` and `SuggestedAccount`, and as
+`dumpsta posts`, `highlights`, `suggested` and `suggested-for-you`. The live acceptance through
+`dumpsta`, `probes/e2_profile_tabs_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and
+7 requests, 2 more than planned because the first step drew the stale token envelope of W57 and
+bootstrapped once: the owner's 8 posts in one page with W52's field errors live, 1 highlight,
+18 suggested beside the profile and 5 suggested for you. Log `logs/e2-profile-tabs-cli-2026-09-27-022848.json`. What the run found that the plan did not know:
+
+- The grid answered beside field errors, one per post whose location picture failed, and the
+  classifier refused the page. W52 makes such an answer a partial answer, for every batch.
+- A grid node is the home timeline's post node with `is_seen` null, so the grid returns `Post`
+  and reads that null as False (W53).
+- A list row's relationship carries eight flags, not the profile's ten, so rows get
+  `ListFriendshipStatus` rather than `FriendshipStatus`, and the suggested accounts list carries
+  no `is_private` at all (W55).
+- The suggested accounts list carries the line the website shows under each account, so
+  `suggested_for_you` returns `SuggestedAccount` rather than bare rows (W55).
 
 Variables. The grid is keyed on `username`, which `profiles.by_id` returns, with `data` copied
 from the verified first page and `after` from its cursor; `first` and `include_multi_captions`
@@ -133,7 +161,7 @@ on the next page are not observed. The tray is keyed on the numeric `user_id`. T
 lists take `target_id` and module `profile`, or a `data` object with module `discover_people`,
 both observed in a recorded browse.
 
-Methods. `client.profiles.posts(user, *, after=None) -> Page[Post]` and `iter_posts`, where
+Methods, as planned. `client.profiles.posts(user, *, after=None) -> Page[Post]` and `iter_posts`, where
 `user` is a `Profile` or a username; `client.profiles.highlights(user_id) ->
 Page[Highlight]` and `iter_highlights`; `client.profiles.suggested(user_id)` and
 `client.profiles.suggested_for_you()`, each returning `tuple[ProfileSummary, ...]`.
@@ -142,7 +170,11 @@ Pagination. `page_info.has_next_page` on both connections.
 
 Side effect. None.
 
-Needs capture first (batch 10): the profile's reels tab and tagged tab. No page load compiled
+W53 took a username only, W54 shipped the tray as a first page with no iterator, and W55 returned
+`SuggestedAccount` from the list.
+
+Needs capture first (batch 10), waiting on the capture night: the profile's reels tab and tagged
+tab. No page load compiled
 either, and neither is in the home document's lazy chunk map.
 
 ## Batch 3: relationship lists

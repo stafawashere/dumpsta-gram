@@ -1,0 +1,494 @@
+{
+ "data": {
+  "xdt_api__v1__discover__chaining": {
+   "users": [
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1246xxxxxxx",
+     "is_verified": false,
+     "pk": "90000001247",
+     "profile_pic_url": "https://example.invalid/1248",
+     "username": "p1249xxxxxxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1250"
+     },
+     "is_unpublished": false,
+     "id": "90000001247"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1251x",
+     "is_verified": false,
+     "pk": "90000001252",
+     "profile_pic_url": "https://example.invalid/1253",
+     "username": "p1254xxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1255"
+     },
+     "is_unpublished": false,
+     "id": "90000001252"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p125",
+     "is_verified": false,
+     "pk": "90000001257",
+     "profile_pic_url": "https://example.invalid/1258",
+     "username": "p1259xxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1260"
+     },
+     "is_unpublished": false,
+     "id": "90000001257"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1261xxx",
+     "is_verified": false,
+     "pk": "90000001262",
+     "profile_pic_url": "https://example.invalid/1263",
+     "username": "p1264xxxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1265"
+     },
+     "is_unpublished": false,
+     "id": "90000001262"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1266xxxxxxxxxx",
+     "is_verified": false,
+     "pk": "90000001267",
+     "profile_pic_url": "https://example.invalid/1268",
+     "username": "p1269xxxxxxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1270"
+     },
+     "is_unpublished": false,
+     "id": "90000001267"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1271xxx",
+     "is_verified": false,
+     "pk": "90000001272",
+     "profile_pic_url": "https://example.invalid/1273",
+     "username": "p1274xx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1275"
+     },
+     "is_unpublished": false,
+     "id": "90000001272"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1276xxxxxx",
+     "is_verified": false,
+     "pk": "90000001277",
+     "profile_pic_url": "https://example.invalid/1278",
+     "username": "p1279xxxxxxxxxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1280"
+     },
+     "is_unpublished": false,
+     "id": "90000001277"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "",
+     "is_verified": false,
+     "pk": "90000001281",
+     "profile_pic_url": "https://example.invalid/1282",
+     "username": "p1283xxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1284"
+     },
+     "is_unpublished": false,
+     "id": "90000001281"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1285xxxxxxxxxxxxxx",
+     "is_verified": false,
+     "pk": "9000001286",
+     "profile_pic_url": "https://example.invalid/1287",
+     "username": "p1288xxxxxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1289"
+     },
+     "is_unpublished": false,
+     "id": "9000001286"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1290",
+     "is_verified": false,
+     "pk": "90000001291",
+     "profile_pic_url": "https://example.invalid/1292",
+     "username": "p1293xxxxx",
+     "is_private": true,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1294"
+     },
+     "is_unpublished": false,
+     "id": "90000001291"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": true,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "",
+     "is_verified": false,
+     "pk": "90000001295",
+     "profile_pic_url": "https://example.invalid/1296",
+     "username": "p1297xxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1298"
+     },
+     "is_unpublished": false,
+     "id": "90000001295"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1299xx",
+     "is_verified": false,
+     "pk": "90000001300",
+     "profile_pic_url": "https://example.invalid/1301",
+     "username": "p1302xxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1303"
+     },
+     "is_unpublished": false,
+     "id": "90000001300"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": true,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p130",
+     "is_verified": false,
+     "pk": "90000001305",
+     "profile_pic_url": "https://example.invalid/1306",
+     "username": "p1307xxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1308"
+     },
+     "is_unpublished": false,
+     "id": "90000001305"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1309x",
+     "is_verified": false,
+     "pk": "90000001310",
+     "profile_pic_url": "https://example.invalid/1311",
+     "username": "p1312xxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1313"
+     },
+     "is_unpublished": false,
+     "id": "90000001310"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1314xx",
+     "is_verified": false,
+     "pk": "90000001315",
+     "profile_pic_url": "https://example.invalid/1316",
+     "username": "p1317xxxxxxxxxxxx",
+     "is_private": true,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1318"
+     },
+     "is_unpublished": false,
+     "id": "90000001315"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p1319xxxx",
+     "is_verified": false,
+     "pk": "90000001320",
+     "profile_pic_url": "https://example.invalid/1321",
+     "username": "p1322xxxx",
+     "is_private": true,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1323"
+     },
+     "is_unpublished": false,
+     "id": "90000001320"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p",
+     "is_verified": false,
+     "pk": "90000001325",
+     "profile_pic_url": "https://example.invalid/1326",
+     "username": "p1327xxxxxxxx",
+     "is_private": false,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1328"
+     },
+     "is_unpublished": false,
+     "id": "90000001325"
+    },
+    {
+     "friendship_status": {
+      "following": false,
+      "blocking": false,
+      "is_feed_favorite": false,
+      "outgoing_request": false,
+      "followed_by": false,
+      "incoming_request": false,
+      "is_restricted": false,
+      "is_bestie": false
+     },
+     "full_name": "p",
+     "is_verified": false,
+     "pk": "90000001330",
+     "profile_pic_url": "https://example.invalid/1331",
+     "username": "p1332xxx",
+     "is_private": true,
+     "supervision_info": null,
+     "social_context": null,
+     "live_broadcast_visibility": null,
+     "live_broadcast_id": null,
+     "hd_profile_pic_url_info": {
+      "url": "https://example.invalid/1333"
+     },
+     "is_unpublished": false,
+     "id": "90000001330"
+    }
+   ]
+  }
+ }
+}

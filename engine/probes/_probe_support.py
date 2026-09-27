@@ -12,12 +12,14 @@ cost two live requests to re-establish a claim that is already established.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
 ENGINE_ROOT = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE_ROOT / "logs"
-ENV_PATH = ENGINE_ROOT.parent / ".env"
+ENV_PATH = Path(os.environ.get("DUMPSTA_ENV_FILE") or ENGINE_ROOT.parent / ".env")
+"""The root `.env` unless `DUMPSTA_ENV_FILE` names another, such as `.env.account-b`."""
 
 SESSION_PATH = ENGINE_ROOT / "state" / "session.json"
 """Where the adopted session is persisted between the two Step 9 probes.

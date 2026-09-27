@@ -19,6 +19,9 @@ alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
+alias dumpstagram.Highlight -> dumpstagram.models.highlights.Highlight
+alias dumpstagram.HighlightTray -> dumpstagram.models.highlights.HighlightTray
+alias dumpstagram.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
@@ -38,6 +41,7 @@ alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProfileRoute -> dumpstagram.behavior.ProfileRoute
+alias dumpstagram.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
 alias dumpstagram.ProxyConfig -> dumpstagram.session.ProxyConfig
 alias dumpstagram.PublishedPost -> dumpstagram.models.posts.PublishedPost
 data dumpstagram.RETRYABLE: tuple = (dumpstagram.errors.TransportFailure, dumpstagram.errors.RateLimited)
@@ -49,6 +53,7 @@ alias dumpstagram.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.Session -> dumpstagram.session.Session
 alias dumpstagram.Spacing -> dumpstagram.behavior.Spacing
 alias dumpstagram.SpinParameters -> dumpstagram.session.SpinParameters
+alias dumpstagram.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
 alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
 alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
@@ -191,6 +196,9 @@ alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDroppe
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.models.FriendshipStatus -> dumpstagram.models.profiles.FriendshipStatus
+alias dumpstagram.models.Highlight -> dumpstagram.models.highlights.Highlight
+alias dumpstagram.models.HighlightTray -> dumpstagram.models.highlights.HighlightTray
+alias dumpstagram.models.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.models.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
@@ -205,9 +213,11 @@ alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
+alias dumpstagram.models.ProfileSummary -> dumpstagram.models.profiles.ProfileSummary
 alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
+alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
@@ -315,6 +325,16 @@ field dumpstagram.models.feed.VideoRendition.height: int
 field dumpstagram.models.feed.VideoRendition.url: str
 field dumpstagram.models.feed.VideoRendition.version_type: int
 field dumpstagram.models.feed.VideoRendition.width: int
+module dumpstagram.models.highlights
+class dumpstagram.models.highlights.Highlight()
+field dumpstagram.models.highlights.Highlight.cover_url: str
+field dumpstagram.models.highlights.Highlight.id: str
+field dumpstagram.models.highlights.Highlight.owner_id: str
+field dumpstagram.models.highlights.Highlight.owner_username: str
+field dumpstagram.models.highlights.Highlight.title: str
+class dumpstagram.models.highlights.HighlightTray()
+field dumpstagram.models.highlights.HighlightTray.has_more: bool
+field dumpstagram.models.highlights.HighlightTray.highlights: tuple[Highlight, ...]
 module dumpstagram.models.messages
 class dumpstagram.models.messages.Message()
 field dumpstagram.models.messages.Message.content_type: str
@@ -411,6 +431,15 @@ field dumpstagram.models.profiles.FriendshipStatus.is_muting_reel: bool
 field dumpstagram.models.profiles.FriendshipStatus.is_restricted: bool
 field dumpstagram.models.profiles.FriendshipStatus.muting: bool
 field dumpstagram.models.profiles.FriendshipStatus.outgoing_request: bool
+class dumpstagram.models.profiles.ListFriendshipStatus()
+field dumpstagram.models.profiles.ListFriendshipStatus.blocking: bool | None = None
+field dumpstagram.models.profiles.ListFriendshipStatus.followed_by: bool | None = None
+field dumpstagram.models.profiles.ListFriendshipStatus.following: bool
+field dumpstagram.models.profiles.ListFriendshipStatus.incoming_request: bool
+field dumpstagram.models.profiles.ListFriendshipStatus.is_bestie: bool
+field dumpstagram.models.profiles.ListFriendshipStatus.is_feed_favorite: bool
+field dumpstagram.models.profiles.ListFriendshipStatus.is_restricted: bool
+field dumpstagram.models.profiles.ListFriendshipStatus.outgoing_request: bool
 class dumpstagram.models.profiles.Profile()
 field dumpstagram.models.profiles.Profile.account_type: int | None = None
 field dumpstagram.models.profiles.Profile.bio_links: tuple[BioLink, ...] = ()
@@ -437,6 +466,18 @@ field dumpstagram.models.profiles.Profile.media_count: int
 field dumpstagram.models.profiles.Profile.profile_pic_url: str
 field dumpstagram.models.profiles.Profile.total_clips_count: int
 field dumpstagram.models.profiles.Profile.username: str
+class dumpstagram.models.profiles.ProfileSummary()
+field dumpstagram.models.profiles.ProfileSummary.friendship_status: ListFriendshipStatus | None = None
+field dumpstagram.models.profiles.ProfileSummary.full_name: str
+field dumpstagram.models.profiles.ProfileSummary.hd_profile_pic_url: str | None = None
+field dumpstagram.models.profiles.ProfileSummary.id: str
+field dumpstagram.models.profiles.ProfileSummary.is_private: bool | None = None
+field dumpstagram.models.profiles.ProfileSummary.is_verified: bool
+field dumpstagram.models.profiles.ProfileSummary.profile_pic_url: str
+field dumpstagram.models.profiles.ProfileSummary.username: str
+class dumpstagram.models.profiles.SuggestedAccount()
+field dumpstagram.models.profiles.SuggestedAccount.account: ProfileSummary
+field dumpstagram.models.profiles.SuggestedAccount.reason: str
 module dumpstagram.models.threads
 class dumpstagram.models.threads.DirectThread()
 field dumpstagram.models.threads.DirectThread.is_group: bool
@@ -534,10 +575,20 @@ class dumpstagram.namespaces.profiles.AsyncProfiles()
 def dumpstagram.namespaces.profiles.AsyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.AsyncProfiles.by_username(self, username: str) -> Profile
+def dumpstagram.namespaces.profiles.AsyncProfiles.highlights(self, user_id: str) -> HighlightTray
+def dumpstagram.namespaces.profiles.AsyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
+def dumpstagram.namespaces.profiles.AsyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.profiles.AsyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.profiles.AsyncProfiles.suggested_for_you(self) -> tuple[SuggestedAccount, ...]
 class dumpstagram.namespaces.profiles.SyncProfiles()
 def dumpstagram.namespaces.profiles.SyncProfiles.__init__(self) -> None
 def dumpstagram.namespaces.profiles.SyncProfiles.by_id(self, user_id: str) -> Profile
 def dumpstagram.namespaces.profiles.SyncProfiles.by_username(self, username: str) -> Profile
+def dumpstagram.namespaces.profiles.SyncProfiles.highlights(self, user_id: str) -> HighlightTray
+def dumpstagram.namespaces.profiles.SyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> Iterator[Post]
+def dumpstagram.namespaces.profiles.SyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.profiles.SyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
+def dumpstagram.namespaces.profiles.SyncProfiles.suggested_for_you(self) -> tuple[SuggestedAccount, ...]
 module dumpstagram.namespaces.social
 class dumpstagram.namespaces.social.AsyncSocial()
 def dumpstagram.namespaces.social.AsyncSocial.__init__(self) -> None

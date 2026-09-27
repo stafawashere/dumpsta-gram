@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Thirteen requests, and up to seven more, conditional.
+"""Read only. Ran on 2026-09-27, 13 spent. Thirteen requests, and up to seven more, conditional.
 
 E2 batch 4, post depth, on one post of the owner's home timeline: threaded comment replies and
 their next page, the likers, the post read by media pk, the post modal's context, and the more

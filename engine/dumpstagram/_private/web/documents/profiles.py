@@ -1,5 +1,5 @@
-"""The profile queries: one account by id, a username resolved through its timeline, and the
-companions a profile page sends.
+"""The profile queries: one account by id, a username resolved through its timeline, the
+companions a profile page sends, the posts grid past its first page, and the suggested accounts.
 """
 
 from __future__ import annotations
@@ -12,7 +12,10 @@ __all__ = [
    "PROFILE_NOTE_BUBBLE",
    "PROFILE_POSTS",
    "PROFILE_SCHOOL_BADGE",
+   "PROFILE_POSTS_NEXT_PAGE",
    "PROFILE_SUGGESTED_USERS",
+   "SUGGESTED_ACCOUNTS",
+   "SUGGESTED_BESIDE_PROFILE",
 ]
 
 PROFILE_BY_ID = PersistedQuery(
@@ -66,7 +69,12 @@ PROFILE_HIGHLIGHTS = PersistedQuery(
    friendly_name="PolarisProfileStoryHighlightsTrayContentQuery",
    finding_id="profile-page-story-highlights",
 )
-"""The story highlights tray on a profile. One of the six queries a profile page sends."""
+"""The story highlights tray on a profile, keyed on the numeric account id. One of the six queries
+a profile page sends, and since E2 batch 2 the read behind ``profiles.highlights`` too.
+
+Its next page, ``ProfileStoryHighlightsTrayContentQuery_connection``, has never answered a
+replay, because no tray read so far had a second page, so it is not in the registry (W54).
+"""
 
 PROFILE_SUGGESTED_USERS = PersistedQuery(
    doc_id="27929823133325729",
@@ -82,3 +90,40 @@ PROFILE_SCHOOL_BADGE = PersistedQuery(
    finding_id="profile-page-school-badge",
 )
 """The school partner badge on a profile. One of the six queries a profile page sends."""
+
+PROFILE_POSTS_NEXT_PAGE = PersistedQuery(
+   doc_id="38620137654299531",
+   friendly_name="PolarisProfilePostsTabContentQuery_connection",
+   finding_id="profile-posts-grid-next-page",
+   url=GRAPHQL_QUERY_URL,
+   root_field="xdt_api__v1__feed__user_timeline_graphql_connection",
+)
+"""The posts grid past its first page, keyed on the username and the previous page's cursor.
+
+It answers under the same root as :data:`PROFILE_POSTS`, beside ``xdt_viewer``, and on the same
+path. Replayed twice on 2026-09-27 on a public account the owner's timeline shows, twelve edges
+and ``has_next_page`` true each time. ``first`` and ``include_multi_captions`` are sent as the
+compiled artifact declares them and were not observed from a browser.
+"""
+
+SUGGESTED_BESIDE_PROFILE = PersistedQuery(
+   doc_id="28011006998510477",
+   friendly_name="PolarisProfileSuggestedUsersWithLazyQueryQuery",
+   finding_id="profile-suggested-users-on-demand",
+)
+"""The accounts suggested beside a profile, asked for on demand rather than preloaded.
+
+The same root, ``xdt_api__v1__discover__chaining``, and the same variables as
+:data:`PROFILE_SUGGESTED_USERS`, which a profile page load sends. Replayed twice on
+2026-09-27, 17 to 19 accounts each time.
+"""
+
+SUGGESTED_ACCOUNTS = PersistedQuery(
+   doc_id="28042919442028999",
+   friendly_name="PolarisSuggestedUserListQuery",
+   finding_id="home-suggested-accounts",
+)
+"""The suggested accounts list the website shows under "Suggested for you", root ``ayml``.
+
+Replayed twice on 2026-09-27, one group of five accounts each time, with no cursor in the answer.
+"""

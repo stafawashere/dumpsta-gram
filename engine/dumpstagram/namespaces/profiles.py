@@ -1,11 +1,28 @@
-"""``client.profiles``, reading one account's profile."""
+"""``client.profiles``, reading one account's profile, its posts grid, its highlights tray, and
+the accounts suggested beside it or to the viewer."""
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
-from dumpstagram._core.profiles import read_profile, read_profile_by_id
-from dumpstagram.models import Profile
+from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
+from dumpstagram._core.profiles import (
+   read_highlight_tray,
+   read_profile,
+   read_profile_by_id,
+   read_profile_posts_page,
+   read_suggested_accounts,
+   read_suggested_beside_profile,
+)
+from dumpstagram.models import (
+   HighlightTray,
+   Page,
+   Post,
+   Profile,
+   ProfileSummary,
+   SuggestedAccount,
+)
 
 if TYPE_CHECKING:
    from dumpstagram.aio import AsyncClient
@@ -85,6 +102,132 @@ class AsyncProfiles:
          )
       )
 
+   async def posts(self, username: str, *, after: str | None = None) -> Page[Post]:
+      """Read one page of an account's posts grid, twelve posts, newest first. One live request.
+
+      ``username`` is the account's username, which the grid is keyed on; a caller holding a
+      :class:`~dumpstagram.models.Profile` passes its ``username``. ``after`` is the
+      ``end_cursor`` of a page this method returned, and the page's ``has_next_page`` is the only
+      thing that says whether more exist. Pinned posts come first, as the grid shows them.
+
+      Each item is a :class:`~dumpstagram.models.Post`, the home timeline's model, and on a grid
+      its ``is_seen`` is always False because the upstream sends null for it there. A post whose
+      location failed on the upstream arrives with the rest of the page rather than failing it.
+
+      A browser reads the first page inside the profile page load, beside the document and five
+      other queries. This sends the grid's query alone, a departure recorded in
+      ``docs/web-request-contract.md``. A later page is sent as a browser sends it when the grid
+      is scrolled. An account whose posts the viewer cannot see answers an empty page.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_profile_posts_page(
+            client._sender,
+            client._session,
+            username,
+            after=after,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def highlights(self, user_id: str) -> HighlightTray:
+      """Read an account's story highlights tray, its first page. One live request.
+
+      ``user_id`` is the numeric account id, :attr:`Profile.id
+      <dumpstagram.models.Profile.id>`, and a username raises :class:`ValueError` before
+      anything is sent. Each highlight carries its title and cover; reading the stories in one is
+      not part of this read, and nothing is marked seen.
+
+      Only the first page is read, because the query that reads further has never answered: no
+      tray read so far had a second page. ``has_more`` on the result is the upstream's own flag
+      and says when the tuple is not the whole tray.
+
+      A browser reads the tray inside the profile page load. This sends it alone, with the site
+      root as its referer rather than the profile page, departures recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_highlight_tray(
+            client._sender,
+            client._session,
+            user_id,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def suggested(self, user_id: str) -> tuple[ProfileSummary, ...]:
+      """Read the accounts the website suggests beside an account's profile. One live request.
+
+      ``user_id`` is the numeric account id, and a username raises :class:`ValueError` before
+      anything is sent. The accounts come in the upstream's order, each with the viewer's
+      relationship to it, and the answer carries no cursor, so the tuple is the whole list.
+
+      This is the query a browser sends when the suggestions beside a profile are opened. It is
+      sent with the site root as its referer rather than the profile page, a departure recorded
+      in ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_suggested_beside_profile(
+            client._sender,
+            client._session,
+            user_id,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def suggested_for_you(self) -> tuple[SuggestedAccount, ...]:
+      """Read the suggested accounts list the website shows the viewer. One live request.
+
+      Each :class:`~dumpstagram.models.SuggestedAccount` is an account and the line the website
+      shows under it. The list is asked for five at a time as the recorded browse asked, and the
+      answer carries no cursor, so the tuple is what one read returns.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_suggested_accounts(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
+   def iter_posts(
+      self, username: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[Post]:
+      """Walk an account's posts grid post by post, newest first, reading a page with
+      :meth:`posts` each time the one before it is used up. Use it with ``async for``, and do not
+      await it.
+
+      ``limit`` is required and counts posts. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks to the oldest post, one
+      read per page. ``after`` starts the walk from a cursor :meth:`posts` handed out.
+
+      Each page is one read with everything :meth:`posts` sends for it, paced as any read is,
+      and never read ahead of the caller. A page that says more exist with no cursor raises
+      :class:`~dumpstagram.errors.SchemaChanged`, and a negative ``limit`` raises
+      :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.posts(username, after=cursor), limit=limit, after=after
+      )
+
 
 class SyncProfiles:
    """Profiles, as ``client.profiles`` on :class:`~dumpstagram.client.SyncClient`. Each method
@@ -126,3 +269,72 @@ class SyncProfiles:
          self._client._impl.profiles.by_id(user_id),
          operation="SyncClient.profiles.by_id",
       )
+
+   def posts(self, username: str, *, after: str | None = None) -> Page[Post]:
+      """Read one page of an account's posts grid. Blocks until it has one.
+
+      The same call as :meth:`AsyncProfiles.posts`, with the same arguments and the same result,
+      run on the shared loop thread. One live request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.posts(username, after=after),
+         operation="SyncClient.profiles.posts",
+      )
+
+   def highlights(self, user_id: str) -> HighlightTray:
+      """Read an account's story highlights tray, its first page. Blocks until it has it.
+
+      The same call as :meth:`AsyncProfiles.highlights`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.highlights(user_id),
+         operation="SyncClient.profiles.highlights",
+      )
+
+   def suggested(self, user_id: str) -> tuple[ProfileSummary, ...]:
+      """Read the accounts suggested beside an account's profile. Blocks until it has them.
+
+      The same call as :meth:`AsyncProfiles.suggested`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.suggested(user_id),
+         operation="SyncClient.profiles.suggested",
+      )
+
+   def suggested_for_you(self) -> tuple[SuggestedAccount, ...]:
+      """Read the suggested accounts list. Blocks until it has it.
+
+      The same call as :meth:`AsyncProfiles.suggested_for_you`, run on the shared loop thread.
+      One live request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.suggested_for_you(),
+         operation="SyncClient.profiles.suggested_for_you",
+      )
+
+   def iter_posts(
+      self, username: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[Post]:
+      """Walk an account's posts grid post by post. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncProfiles.iter_posts`, with the same ``limit``, each page read
+      on the shared loop thread. Exceptions cross back as themselves, with a note naming this
+      method. Closing the iterator early leaves nothing running, because no page is read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Post]:
+         return client._loop.run(
+            client._impl.profiles.posts(username, after=cursor),
+            operation="SyncClient.profiles.iter_posts",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)

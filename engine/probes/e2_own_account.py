@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Seven requests, and up to three more, conditional.
+"""Read only. Ran on 2026-09-27, 7 spent. Seven requests, and up to three more, conditional.
 
 E2 batch 6, the owner's own account, the parts whose requests are known: pending follow
 requests and the activity feed over REST, as an inbox load sends them, and the saved

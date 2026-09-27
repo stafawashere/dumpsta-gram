@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Six requests, and one more, conditional.
+"""Read only. Ran on 2026-09-27 twice, 7 spent on each run. Six requests, and one more, conditional.
 
 E2 batch 3, the relationship lists, on the owner's own account: one page of the owner's
 followers over REST, twice, and the relationship statuses the list page asks for beside it,

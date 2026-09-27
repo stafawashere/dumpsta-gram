@@ -4,8 +4,9 @@ Every read in :data:`~dumpstagram._private.web.documents.catalog.READ_QUERIES` h
 here, built with the request builder its capability uses and read with the mapper its capability
 uses, so a replay that passes is a query the capability would still get an answer from. A replay
 that needs an argument takes it from an earlier one: a thread from the inbox listing, a post from
-the timeline, a username from the viewer's own profile. Nothing is supplied by the caller, and a
-step whose argument never turned up is skipped rather than sent with a guess.
+the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid.
+Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
+than sent with a guess.
 
 Only ``_core`` sends. This module builds and reads.
 """
@@ -30,7 +31,14 @@ from dumpstagram._private.web.documents.direct import (
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
 from dumpstagram._private.web.documents.media import COMMENT_PAGE, POST_BY_SHORTCODE
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
-from dumpstagram._private.web.documents.profiles import PROFILE_BY_ID, PROFILE_POSTS
+from dumpstagram._private.web.documents.profiles import (
+   PROFILE_BY_ID,
+   PROFILE_HIGHLIGHTS,
+   PROFILE_POSTS,
+   PROFILE_POSTS_NEXT_PAGE,
+   SUGGESTED_ACCOUNTS,
+   SUGGESTED_BESIDE_PROFILE,
+)
 from dumpstagram._private.web.parse.direct import (
    parse_folder_unread_rows,
    parse_inbox_continuation,
@@ -43,7 +51,14 @@ from dumpstagram._private.web.parse.direct import (
 from dumpstagram._private.web.parse.feed import parse_feed_page
 from dumpstagram._private.web.parse.media import parse_comment_page, parse_post_detail
 from dumpstagram._private.web.parse.notes import parse_inbox_tray
-from dumpstagram._private.web.parse.profiles import parse_profile, parse_user_id
+from dumpstagram._private.web.parse.profiles import (
+   parse_highlight_tray,
+   parse_profile,
+   parse_profile_posts_page,
+   parse_suggested_accounts,
+   parse_suggested_beside_profile,
+   parse_user_id,
+)
 from dumpstagram._private.web.requests.direct import (
    INBOX_FOLDER,
    build_folder_unread_rows_request,
@@ -58,8 +73,11 @@ from dumpstagram._private.web.requests.feed import build_feed_page_request
 from dumpstagram._private.web.requests.media import build_comment_page_request, build_post_request
 from dumpstagram._private.web.requests.notes import build_inbox_tray_request
 from dumpstagram._private.web.requests.profiles import (
+   build_highlight_tray_request,
+   build_profile_posts_request,
    build_profile_request,
-   build_username_resolution_request,
+   build_suggested_accounts_request,
+   build_suggested_beside_profile_request,
 )
 from dumpstagram.session import Session
 
@@ -89,6 +107,7 @@ class ReplayArguments:
    post_code: str | None = None
    post_pk: str | None = None
    username: str | None = None
+   posts_cursor: str | None = None
 
 
 @dataclass(frozen=True)
@@ -132,6 +151,17 @@ def _learn_first_post(payload: Any, arguments: ReplayArguments) -> None:
 
 def _learn_username(payload: Any, arguments: ReplayArguments) -> None:
    arguments.username = parse_profile(payload).username
+
+
+def _learn_grid_cursor(payload: Any, arguments: ReplayArguments) -> None:
+   """The grid's first page, read by both mappers its query feeds: the page and the account id
+   the username resolution reads off it. A cursor is kept only when the page says more exist."""
+
+   page = parse_profile_posts_page(payload)
+   parse_user_id(payload)
+
+   if page.has_next_page:
+      arguments.posts_cursor = page.end_cursor
 
 
 def _mapped_by(mapper: Callable[[Any], object]) -> Callable[[Any, ReplayArguments], None]:
@@ -226,10 +256,10 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
    ReplayStep(
       query=PROFILE_POSTS,
       requires="username",
-      build=lambda session, arguments, user_agent: build_username_resolution_request(
+      build=lambda session, arguments, user_agent: build_profile_posts_request(
          session, _required(arguments.username), user_agent=user_agent
       ),
-      read=_mapped_by(parse_user_id),
+      read=_learn_grid_cursor,
    ),
    ReplayStep(
       query=DIRECT_INBOX_NEXT_PAGE,
@@ -261,6 +291,41 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          user_agent=user_agent,
       ),
       read=_mapped_by(parse_folder_unread_rows),
+   ),
+   ReplayStep(
+      query=PROFILE_POSTS_NEXT_PAGE,
+      requires="posts_cursor",
+      build=lambda session, arguments, user_agent: build_profile_posts_request(
+         session,
+         _required(arguments.username),
+         after=_required(arguments.posts_cursor),
+         user_agent=user_agent,
+      ),
+      read=_mapped_by(parse_profile_posts_page),
+   ),
+   ReplayStep(
+      query=PROFILE_HIGHLIGHTS,
+      requires="viewer_id",
+      build=lambda session, arguments, user_agent: build_highlight_tray_request(
+         session, arguments.viewer_id, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_highlight_tray),
+   ),
+   ReplayStep(
+      query=SUGGESTED_BESIDE_PROFILE,
+      requires="viewer_id",
+      build=lambda session, arguments, user_agent: build_suggested_beside_profile_request(
+         session, arguments.viewer_id, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_suggested_beside_profile),
+   ),
+   ReplayStep(
+      query=SUGGESTED_ACCOUNTS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_suggested_accounts_request(
+         session, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_suggested_accounts),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

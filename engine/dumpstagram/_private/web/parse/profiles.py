@@ -1,4 +1,5 @@
-"""Map a profile payload, and the account id read off a timeline's first post."""
+"""Map a profile payload, the account id read off a timeline's first post, a page of a profile's
+posts grid, its highlights tray, and the two lists of suggested accounts."""
 
 from __future__ import annotations
 
@@ -7,23 +8,40 @@ from typing import Any
 from dumpstagram._private.web.parse.common import (
    _hd_profile_pic_url,
    _object_at,
+   _optional_flag,
    _optional_string,
    _required,
    _required_flag,
    _required_integer,
    _required_string,
 )
+from dumpstagram._private.web.parse.media import parse_post
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
    BioLink,
    FriendshipStatus,
+   Highlight,
+   HighlightTray,
+   ListFriendshipStatus,
+   Page,
+   Post,
    Profile,
+   ProfileSummary,
+   SuggestedAccount,
 )
 
 __all__ = [
+   "HIGHLIGHT_TRAY_PATH",
    "PROFILE_PATH",
+   "SUGGESTED_ACCOUNTS_PATH",
+   "SUGGESTED_BESIDE_PROFILE_PATH",
    "TIMELINE_PATH",
+   "parse_highlight_tray",
    "parse_profile",
+   "parse_profile_posts_page",
+   "parse_profile_summary",
+   "parse_suggested_accounts",
+   "parse_suggested_beside_profile",
    "parse_user_id",
 ]
 
@@ -31,7 +49,18 @@ PROFILE_PATH = ("data", "user")
 """The path to the profile object in a ``PolarisProfilePageContentQuery`` payload."""
 
 TIMELINE_PATH = ("data", "xdt_api__v1__feed__user_timeline_graphql_connection")
-"""The path to the timeline connection the username resolution reads an author id off."""
+"""The path to the timeline connection: the posts grid's pages, first and next, both answer under
+it, and the username resolution reads an author id off its first post."""
+
+HIGHLIGHT_TRAY_PATH = ("data", "highlights")
+"""The path to the highlights connection in a ``PolarisProfileStoryHighlightsTrayContentQuery``
+payload."""
+
+SUGGESTED_BESIDE_PROFILE_PATH = ("data", "xdt_api__v1__discover__chaining")
+"""The path to the accounts suggested beside a profile, which carries ``users`` and nothing else."""
+
+SUGGESTED_ACCOUNTS_PATH = ("data", "ayml")
+"""The path to the suggested accounts list, which carries ``groups`` and nothing else."""
 
 
 def _flag_or_default(node: Any, key: str, path: str, default: bool) -> bool:
@@ -209,3 +238,217 @@ def parse_user_id(payload: Any) -> str | None:
    author = _required(node, "user", node_path)
 
    return _required_string(author, "pk", f"{node_path}.user")
+
+
+def _list_of(node: dict[str, Any], key: str, path: str) -> list[Any]:
+   value = _required(node, key, path)
+
+   if not isinstance(value, list):
+      raise SchemaChanged(f"{path}.{key} is not a list", path=f"{path}.{key}")
+
+   return value
+
+
+def _page_info(connection: dict[str, Any], path: str) -> tuple[bool, str | None]:
+   page_info_path = f"{path}.page_info"
+   page_info = _required(connection, "page_info", path)
+
+   if not isinstance(page_info, dict):
+      raise SchemaChanged(f"{page_info_path} is not an object", path=page_info_path)
+
+   has_next_page = _required_flag(page_info, "has_next_page", page_info_path)
+   end_cursor = _optional_string(page_info, "end_cursor", page_info_path)
+
+   return has_next_page, end_cursor
+
+
+def parse_profile_posts_page(payload: Any) -> Page[Post]:
+   """One page of a profile's posts grid, first or next, mapped into posts.
+
+   Both queries answer under :data:`TIMELINE_PATH` beside ``xdt_viewer``, which is dropped. A
+   grid node is the home timeline's media node key for key, with ten keys more that are dropped
+   (``__typename``, ``group``, ``longform_title``, ``media_cropping_info``, ``photo_of_you``,
+   ``profile_grid_thumbnail_fitting_style``, ``thumbnails``, ``timeline_pinned_user_ids``,
+   ``title`` and ``upcoming_event``) and ``is_seen`` null on all 32 nodes read, which reads as
+   False (W53). The per-edge ``cursor`` was null on every edge, as on the home timeline, so
+   ``page_info`` is the only cursor.
+
+   A post whose location picture failed arrives whole with that one field null beside a field
+   error, and is mapped like any other, since nothing here reads the location (W52).
+
+   Findings: ``resolve-a-username-to-a-user-id`` for the first page and
+   ``profile-posts-grid-next-page`` for the rest.
+   """
+
+   connection = _object_at(payload, TIMELINE_PATH)
+   connection_path = ".".join(TIMELINE_PATH)
+   edges = _list_of(connection, "edges", connection_path)
+
+   posts = tuple(
+      parse_post(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+         null_is_unseen=True,
+      )
+      for index, edge in enumerate(edges)
+   )
+   has_next_page, end_cursor = _page_info(connection, connection_path)
+
+   return Page(items=posts, has_next_page=has_next_page, end_cursor=end_cursor)
+
+
+def _highlight(node: Any, path: str) -> Highlight:
+   if not isinstance(node, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   cover = _object_at(node, ("cover_media", "cropped_image_version"))
+   owner = _object_at(node, ("user",))
+
+   return Highlight(
+      id=_required_string(node, "id", path),
+      title=_required_string(node, "title", path),
+      cover_url=_required_string(cover, "url", f"{path}.cover_media.cropped_image_version"),
+      owner_id=_required_string(owner, "id", f"{path}.user"),
+      owner_username=_required_string(owner, "username", f"{path}.user"),
+   )
+
+
+def parse_highlight_tray(payload: Any) -> HighlightTray:
+   """One ``PolarisProfileStoryHighlightsTrayContentQuery`` payload, the tray's first page.
+
+   Each node carried ``id``, ``title``, ``cover_media.cropped_image_version.url`` and a ``user``
+   of ``id`` and ``username``, and ``__typename`` XDTReelDict, which is dropped. The per-edge
+   ``cursor`` was the empty string. ``page_info.has_next_page`` is carried as ``has_more`` and
+   its cursor is not, because no query that follows it has answered (W54).
+
+   Finding: ``profile-page-story-highlights``.
+   """
+
+   connection = _object_at(payload, HIGHLIGHT_TRAY_PATH)
+   connection_path = ".".join(HIGHLIGHT_TRAY_PATH)
+   edges = _list_of(connection, "edges", connection_path)
+
+   highlights = tuple(
+      _highlight(
+         _required(edge, "node", f"{connection_path}.edges[{index}]"),
+         f"{connection_path}.edges[{index}].node",
+      )
+      for index, edge in enumerate(edges)
+   )
+   has_more, _ = _page_info(connection, connection_path)
+
+   return HighlightTray(highlights=highlights, has_more=has_more)
+
+
+def _flag_if_carried(node: dict[str, Any], key: str, path: str) -> bool | None:
+   """A flag some lists carry and others do not: ``None`` when the key is absent."""
+
+   if key not in node:
+      return None
+
+   return _optional_flag(node, key, path)
+
+
+def _list_friendship_status(row: dict[str, Any], path: str) -> ListFriendshipStatus | None:
+   raw = row.get("friendship_status")
+
+   if raw is None:
+      return None
+
+   status_path = f"{path}.friendship_status"
+
+   if not isinstance(raw, dict):
+      raise SchemaChanged(f"{status_path} is not an object or null", path=status_path)
+
+   return ListFriendshipStatus(
+      following=_required_flag(raw, "following", status_path),
+      outgoing_request=_required_flag(raw, "outgoing_request", status_path),
+      incoming_request=_required_flag(raw, "incoming_request", status_path),
+      is_bestie=_required_flag(raw, "is_bestie", status_path),
+      is_feed_favorite=_required_flag(raw, "is_feed_favorite", status_path),
+      is_restricted=_required_flag(raw, "is_restricted", status_path),
+      followed_by=_flag_if_carried(raw, "followed_by", status_path),
+      blocking=_flag_if_carried(raw, "blocking", status_path),
+   )
+
+
+def parse_profile_summary(row: Any, path: str) -> ProfileSummary:
+   """One account row of a list, mapped field by field.
+
+   ``pk`` is the id read, the key a row is built around, and ``id`` held the same value on all
+   138 rows read on 2026-09-27. ``is_private``, ``hd_profile_pic_url_info`` and
+   ``friendship_status`` are read where the row carries them and are ``None`` where it does not:
+   no row of the suggested accounts list carried ``is_private``. Dropped: ``is_unpublished``,
+   false on every row, and ``supervision_info``, ``social_context``,
+   ``live_broadcast_visibility`` and ``live_broadcast_id``, null on every row.
+   """
+
+   if not isinstance(row, dict):
+      raise SchemaChanged(f"{path} is not an object", path=path)
+
+   carries_hd_picture = "hd_profile_pic_url_info" in row
+   hd_profile_pic_url = _hd_profile_pic_url(row, path) if carries_hd_picture else None
+
+   return ProfileSummary(
+      id=_required_string(row, "pk", path),
+      username=_required_string(row, "username", path),
+      full_name=_required_string(row, "full_name", path),
+      is_verified=_required_flag(row, "is_verified", path),
+      profile_pic_url=_required_string(row, "profile_pic_url", path),
+      is_private=_flag_if_carried(row, "is_private", path),
+      hd_profile_pic_url=hd_profile_pic_url,
+      friendship_status=_list_friendship_status(row, path),
+   )
+
+
+def parse_suggested_beside_profile(payload: Any) -> tuple[ProfileSummary, ...]:
+   """One ``PolarisProfileSuggestedUsersWithLazyQueryQuery`` payload, the accounts in its order.
+
+   The root carried ``users`` and no cursor or count on each of six answers, so the list is
+   whole as sent.
+
+   Finding: ``profile-suggested-users-on-demand``.
+   """
+
+   root = _object_at(payload, SUGGESTED_BESIDE_PROFILE_PATH)
+   root_path = ".".join(SUGGESTED_BESIDE_PROFILE_PATH)
+   users = _list_of(root, "users", root_path)
+
+   return tuple(
+      parse_profile_summary(user, f"{root_path}.users[{index}]") for index, user in enumerate(users)
+   )
+
+
+def parse_suggested_accounts(payload: Any) -> tuple[SuggestedAccount, ...]:
+   """One ``PolarisSuggestedUserListQuery`` payload, every group's items in the upstream's order.
+
+   Each of six answers held one group of five items. An item carried ``user``, ``social_context``
+   (the reason line), ``uuid`` and ``social_context_facepile_users``; the last two are dropped,
+   a tracking id and the small pictures of the accounts the reason names. The answer carried no
+   cursor, so the list is whole as sent. More than one group has not been seen, and groups are
+   read in order.
+
+   Finding: ``home-suggested-accounts``.
+   """
+
+   root = _object_at(payload, SUGGESTED_ACCOUNTS_PATH)
+   root_path = ".".join(SUGGESTED_ACCOUNTS_PATH)
+   groups = _list_of(root, "groups", root_path)
+   accounts: list[SuggestedAccount] = []
+
+   for group_index, group in enumerate(groups):
+      group_path = f"{root_path}.groups[{group_index}]"
+
+      for item_index, item in enumerate(_list_of(group, "items", group_path)):
+         item_path = f"{group_path}.items[{item_index}]"
+
+         accounts.append(
+            SuggestedAccount(
+               account=parse_profile_summary(
+                  _required(item, "user", item_path), f"{item_path}.user"
+               ),
+               reason=_required_string(item, "social_context", item_path),
+            )
+         )
+
+   return tuple(accounts)

@@ -46,6 +46,10 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `message-requests` | 1, plus 1 if the session has no token yet | Lists the pending and spam message requests, one page each. Opens no request thread |
 | `unread` | 2, plus 1 if the session has no token yet | Counts the unread threads in the inbox and the pending requests |
 | `profile USERNAME` | 2, or 1 with `--by-id`, plus 1 if the session has no token yet | Reads one account's profile |
+| `posts USERNAME` | 1 per page, plus 1 if the session has no token yet | Reads pages of an account's posts grid, twelve posts a page |
+| `highlights USER_ID` | 1, plus 1 if the session has no token yet | Lists an account's story highlights, the tray's first page. Opens no story |
+| `suggested USER_ID` | 1, plus 1 if the session has no token yet | Lists the accounts suggested beside an account's profile |
+| `suggested-for-you` | 1, plus 1 if the session has no token yet | Lists the accounts suggested to the viewer, each with the reason the website shows |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | 1, plus 1 if the session has no token yet | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
@@ -60,7 +64,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
 | `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
-| `doctor` | 0 without `--live`. With it, 2 documents and at most 13 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 17 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -169,6 +173,38 @@ All three take `--user-agent` and `--no-session-writeback`, and write harvested 
 default. Live on 2026-09-24 through `probes/e2_direct_read_cli_acceptance.py`, 5 requests: two
 inbox pages of 15 threads each, both request folders empty, and one unread thread that the
 listing and the count agreed on.
+
+### `posts`, `highlights`, `suggested` and `suggested-for-you`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta posts some.account --pages 2
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json highlights 1234567890
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta suggested 1234567890
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta suggested-for-you
+```
+
+`posts` prints one line per post in the grid's order, pinned posts first: the time, the
+shortcode `post` takes, the counts and the caption's first line. `--pages N` reads at most `N`
+pages of twelve, default 1, and stops earlier on the page's own `has_next_page`. `--after
+CURSOR` takes a `next_cursor` an earlier `posts` run printed for the same account. The JSON form
+carries `pages_read`, `post_count`, `more_available`, `end_cursor` and every post in the form
+`feed` prints one, `is_seen` always false (W53).
+
+`highlights` prints each highlight's id and title, then `highlights: N`, marked
+`more_available: True` when the tray has more than the first page, which is all that can be read
+(W54). No story is opened or marked seen.
+
+`suggested` prints one line per account suggested beside the profile: the id, the username, the
+name and whether the viewer follows it. `suggested-for-you` prints the same line for each account
+suggested to the viewer, with the reason the website shows under it on the next line. The JSON
+forms carry each account's `id`, `username`, `full_name`, `is_verified`, `is_private` (null on
+the suggested accounts list, which does not send it), both pictures and `friendship_status`
+with its eight flags, and `suggested-for-you` each `reason` (W55).
+
+`highlights` and `suggested` take the numeric account id, which `profile` prints, and refuse a
+username with exit 2 before anything is sent. All four take `--user-agent` and
+`--no-session-writeback`, and write harvested tokens back by default. The live acceptance,
+`probes/e2_profile_tabs_cli_acceptance.py`, is written and not yet run.
 
 ### `profile`
 
@@ -530,7 +566,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

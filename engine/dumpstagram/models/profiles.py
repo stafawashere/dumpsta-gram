@@ -6,6 +6,11 @@ That response was the viewer's own profile. On 2026-09-23 six reads of another a
 profile added what the upstream fills only for someone else, the viewer's relationship to the
 account, which :class:`FriendshipStatus` carries.
 
+:class:`ProfileSummary`, :class:`ListFriendshipStatus` and :class:`SuggestedAccount` were added on
+2026-09-27 for E2 batch 2 from 108 account rows beside six profile reads and 30 rows of the
+suggested accounts list, recorded under the findings ``profile-suggested-users-on-demand`` and
+``home-suggested-accounts``.
+
 Fields the upstream sends and this model does not carry are named in
 `dumpstagram/_private/web/parse/profiles.py` beside the mapping that drops them.
 
@@ -17,7 +22,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["BioLink", "FriendshipStatus", "Profile"]
+__all__ = [
+   "BioLink",
+   "FriendshipStatus",
+   "ListFriendshipStatus",
+   "Profile",
+   "ProfileSummary",
+   "SuggestedAccount",
+]
 
 
 @dataclass(frozen=True)
@@ -119,3 +131,61 @@ class Profile:
    has_profile_pic: bool = True
    has_story_archive: bool = False
    friendship_status: FriendshipStatus | None = None
+
+
+@dataclass(frozen=True)
+class ListFriendshipStatus:
+   """The viewer's relationship to an account, as a row of a list of accounts reports it.
+
+   A list row carries fewer flags than a profile does, so this is not a
+   :class:`FriendshipStatus`: none of the 138 rows read on 2026-09-27 carried ``muting`` or
+   ``is_muting_reel``, and they are not guessed. The six required flags were a boolean on every
+   row. ``followed_by`` and ``blocking`` were a boolean on every row of both suggested lists and
+   are ``None`` on a row that does not carry them, which is expected of other lists (ASSUMPTION,
+   from the ``show_many`` answer of 2026-09-27, which lacks both).
+   """
+
+   following: bool
+   outgoing_request: bool
+   incoming_request: bool
+   is_bestie: bool
+   is_feed_favorite: bool
+   is_restricted: bool
+   followed_by: bool | None = None
+   blocking: bool | None = None
+
+
+@dataclass(frozen=True)
+class ProfileSummary:
+   """One account as a row of a list shows it: who it is, not its whole profile.
+
+   ``id`` is the numeric account id, the one :attr:`Profile.id` carries and
+   :meth:`~dumpstagram.namespaces.profiles.AsyncProfiles.by_id` takes. The upstream sends it
+   as ``pk`` and again as ``id``, identical on every row read.
+
+   ``is_private`` is ``None`` where a row does not carry it, which every row of the suggested
+   accounts list did not. ``hd_profile_pic_url`` is ``None`` where the row carries no high
+   resolution picture. ``friendship_status`` is ``None`` where the row carries none.
+   """
+
+   id: str
+   username: str
+   full_name: str
+   is_verified: bool
+   profile_pic_url: str
+   is_private: bool | None = None
+   hd_profile_pic_url: str | None = None
+   friendship_status: ListFriendshipStatus | None = None
+
+
+@dataclass(frozen=True)
+class SuggestedAccount:
+   """One account the suggested accounts list offers, and the line the website shows under it.
+
+   ``reason`` is the upstream's own text, such as who among the people the viewer follows
+   follows the account. It names other accounts, so it is content and not a label. It was a
+   string on all 30 rows read.
+   """
+
+   account: ProfileSummary
+   reason: str

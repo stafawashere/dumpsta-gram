@@ -219,6 +219,10 @@ class Post:
    ``has_audio`` is the upstream's flag, set on a video and ``None`` on a photo or a carousel,
    which the upstream sends as null. ``audio`` describes the track a reel plays, see
    :class:`MediaAudio`, and is ``None`` on a post that is not a reel.
+
+   ``is_seen`` is whether the viewer has seen the post in the home timeline. A profile's grid
+   returns the same model, and there the upstream sends null for it on every post, which reads
+   as False and carries no information.
    """
 
    id: str

@@ -13,7 +13,7 @@ import json
 import pytest
 
 from dumpstagram._private.transport import Response
-from dumpstagram._private.web.classify import classify
+from dumpstagram._private.web.classify import classify, classify_preloaded
 from dumpstagram.errors import CheckpointRequired, SchemaChanged, UpstreamRejected
 
 
@@ -174,3 +174,114 @@ def test_the_app_shell_of_a_challenge_page_is_a_checkpoint_not_a_rejection() -> 
 
    with pytest.raises(CheckpointRequired):
       classify(response)
+
+
+GRID_ROOT = "xdt_api__v1__feed__user_timeline_graphql_connection"
+POST_ROOT = "xdt_api__v1__media__media_id_web_info"
+
+
+def field_error(path: list[object], severity: str = "ERROR") -> dict[str, object]:
+   return {"message": "A server error field_exception occured.", "severity": severity, "path": path}
+
+
+def grid_answer(errors: list[dict[str, object]], *, caption: str = "") -> dict[str, object]:
+   """The shape the profile grid answered with on 2026-09-27: whole edges, the errored location
+   picture null, and one error per errored field."""
+
+   node = {
+      "pk": "1",
+      "caption": {"text": caption},
+      "location": {"pk": "2", "profile_pic_url": None},
+   }
+
+   return {
+      "data": {
+         GRID_ROOT: {"edges": [{"node": node}], "page_info": {"has_next_page": False}},
+         "xdt_viewer": {"user": {"id": "3"}},
+      },
+      "errors": errors,
+   }
+
+
+def test_field_errors_beside_a_root_that_answered_are_a_partial_answer() -> None:
+   """Catches the grid refused whole for one errored location picture per post, as the shipped
+   classifier did on 2026-09-27, and the post read's UNSET errors refused the same way."""
+
+   grid = grid_answer([field_error([GRID_ROOT, "edges", 0, "node", "location", "profile_pic_url"])])
+   post = {
+      "data": {POST_ROOT: {"items": [{"ad_id": None, "user": {"friendship_status": {}}}]}},
+      "errors": [
+         field_error([POST_ROOT, "items", 0, "ad_id"], severity="UNSET"),
+         field_error([POST_ROOT, "items", 0, "user", "friendship_status", "muting"], "UNSET"),
+      ],
+      "status": "ok",
+   }
+
+   assert classify(make_response(json.dumps(grid))) == grid
+   assert classify(make_response(json.dumps(post))) == post
+
+
+@pytest.mark.parametrize(
+   "errors",
+   [
+      pytest.param([{"message": "a failure", "severity": "ERROR"}], id="no path"),
+      pytest.param([field_error([GRID_ROOT])], id="a path of one element"),
+      pytest.param([field_error(["absent_root", "edges", 0])], id="a root the data lacks"),
+      pytest.param(
+         [
+            field_error([GRID_ROOT, "edges", 0, "node", "location", "profile_pic_url"]),
+            {"message": "a failure", "severity": "ERROR"},
+         ],
+         id="one field error beside one with no path",
+      ),
+   ],
+)
+def test_an_error_that_is_not_a_field_error_beside_an_answer_is_still_refused(
+   errors: list[dict[str, object]],
+) -> None:
+   """Catches the partial answer rule widened past field errors: an error with no path, one
+   naming the root itself, one naming a root that is not there, and a pathless error hidden
+   behind a field error."""
+
+   with pytest.raises(UpstreamRejected) as caught:
+      classify(make_response(json.dumps(grid_answer(errors))))
+
+   assert caught.value.code == "errors"
+
+
+def test_a_field_error_under_a_null_root_is_refused() -> None:
+   """Catches a root that did not answer taken for one that did, because the error's path is
+   long enough. The control is the same error beside the root present."""
+
+   path = [GRID_ROOT, "edges", 0, "node", "location", "profile_pic_url"]
+   answered = grid_answer([field_error(path)])
+   null_root = {"data": {GRID_ROOT: None}, "errors": [field_error(path)]}
+
+   assert classify(make_response(json.dumps(answered))) == answered
+
+   with pytest.raises(UpstreamRejected):
+      classify(make_response(json.dumps(null_root)))
+
+
+def test_a_partial_answer_quoting_the_challenge_path_is_not_a_checkpoint() -> None:
+   """Catches the body scan run over a partial answer, which carries user content: a caption
+   quoting ``/challenge/`` would end the read for good."""
+
+   path = [GRID_ROOT, "edges", 0, "node", "location", "profile_pic_url"]
+   answer = grid_answer([field_error(path)], caption="see instagram.com/challenge/ now")
+
+   assert classify(make_response(json.dumps(answer))) == answer
+
+
+def test_a_preloaded_result_follows_the_same_partial_answer_rule() -> None:
+   """Catches the preloaded reader left refusing a partial answer, or accepting a pathless
+   error because it reads the envelope another way."""
+
+   path = [GRID_ROOT, "edges", 0, "node", "location", "profile_pic_url"]
+   partial = grid_answer([field_error(path)])
+   refused = grid_answer([{"message": "a failure", "severity": "ERROR"}])
+
+   assert classify_preloaded(partial) == partial
+
+   with pytest.raises(UpstreamRejected):
+      classify_preloaded(refused)

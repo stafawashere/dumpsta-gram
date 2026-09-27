@@ -1,0 +1,31 @@
+{
+ "data": {
+  "highlights": {
+   "edges": [
+    {
+     "node": {
+      "id": "highlight:90000000000001243",
+      "title": "p",
+      "cover_media": {
+       "cropped_image_version": {
+        "url": "https://example.invalid/1245"
+       }
+      },
+      "user": {
+       "username": "p15xxx",
+       "id": "90000000003"
+      },
+      "__typename": "XDTReelDict"
+     },
+     "cursor": ""
+    }
+   ],
+   "page_info": {
+    "end_cursor": null,
+    "has_next_page": false,
+    "has_previous_page": false,
+    "start_cursor": null
+   }
+  }
+ }
+}

@@ -204,6 +204,43 @@ async def test_a_stale_token_is_re_bootstrapped_once_for_the_capability_too() ->
    assert page.items[0].id == MESSAGE_ID
 
 
+STALE_TOKEN_ENVELOPE = (
+   'for (;;);{"error": 1357004, "errorSummary": "Sorry, something went wrong", '
+   '"errorDescription": "Please try closing and re-opening your browser window.", '
+   '"isNotCritical": 1, "payload": null}'
+)
+"""The answer a three day old ``fb_dtsg`` drew on 2026-09-27, W57, pseudonymised of its ids."""
+
+
+@pytest.mark.asyncio
+async def test_a_token_refused_with_the_reopen_envelope_is_re_bootstrapped_once() -> None:
+   """Catches an aged session file failing every read instead of fetching a fresh token."""
+
+   transport = ScriptedTransport(
+      [
+         Response(
+            status_code=200,
+            headers={"content-type": "application/x-javascript; charset=utf-8"},
+            content=STALE_TOKEN_ENVELOPE.encode("utf-8"),
+            final_url=API_GRAPHQL_URL,
+         ),
+         html_response(BOOTSTRAP_PAGE),
+         json_response(payload([node()])),
+      ]
+   )
+   session = a_bootstrapped_session()
+
+   page = await read_thread_messages(make_paced(transport), session, THREAD_FBID)
+
+   assert [request.url for request in transport.sent] == [
+      API_GRAPHQL_URL,
+      BOOTSTRAP_URL,
+      API_GRAPHQL_URL,
+   ]
+   assert session.fb_dtsg == FB_DTSG
+   assert page.items[0].id == MESSAGE_ID
+
+
 class SpyCapability:
    """Records what a facade passed down, and answers with an empty page."""
 

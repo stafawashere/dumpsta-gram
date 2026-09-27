@@ -18,11 +18,19 @@ from dumpstagram.models.feed import (
    PostAuthor,
    VideoRendition,
 )
+from dumpstagram.models.highlights import Highlight, HighlightTray
 from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import PostDetail, PublishedPost
-from dumpstagram.models.profiles import BioLink, FriendshipStatus, Profile
+from dumpstagram.models.profiles import (
+   BioLink,
+   FriendshipStatus,
+   ListFriendshipStatus,
+   Profile,
+   ProfileSummary,
+   SuggestedAccount,
+)
 from dumpstagram.models.threads import (
    DirectThread,
    MessageRequests,
@@ -42,6 +50,9 @@ __all__ = [
    "FeedItem",
    "FeedItemKind",
    "FriendshipStatus",
+   "Highlight",
+   "HighlightTray",
+   "ListFriendshipStatus",
    "ListenerStopped",
    "MediaAudio",
    "MediaImage",
@@ -57,8 +68,10 @@ __all__ = [
    "PostDetail",
    "PublishedPost",
    "Profile",
+   "ProfileSummary",
    "Reaction",
    "SentMessage",
+   "SuggestedAccount",
    "ThreadParticipant",
    "UnreadCounts",
    "VideoRendition",

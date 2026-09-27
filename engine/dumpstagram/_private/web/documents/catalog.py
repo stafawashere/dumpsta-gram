@@ -44,8 +44,11 @@ from dumpstagram._private.web.documents.profiles import (
    PROFILE_HIGHLIGHTS,
    PROFILE_NOTE_BUBBLE,
    PROFILE_POSTS,
+   PROFILE_POSTS_NEXT_PAGE,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
+   SUGGESTED_ACCOUNTS,
+   SUGGESTED_BESIDE_PROFILE,
 )
 from dumpstagram._private.web.documents.social import FOLLOW_USER, UNFOLLOW_USER
 
@@ -69,6 +72,10 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    DIRECT_INBOX_NEXT_PAGE,
    MESSAGE_REQUESTS,
    FOLDER_UNREAD_ROWS,
+   PROFILE_POSTS_NEXT_PAGE,
+   PROFILE_HIGHLIGHTS,
+   SUGGESTED_BESIDE_PROFILE,
+   SUGGESTED_ACCOUNTS,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 
@@ -80,11 +87,15 @@ COMPANION_QUERIES: tuple[PersistedQuery, ...] = (
    STORIES_TRAY,
    GET_FR_COOKIE,
    PROFILE_NOTE_BUBBLE,
-   PROFILE_HIGHLIGHTS,
    PROFILE_SUGGESTED_USERS,
    PROFILE_SCHOOL_BADGE,
 )
-"""The queries sent only because a page sends them, whose answers nothing reads."""
+"""The queries sent only because a page sends them, whose answers nothing reads.
+
+``PROFILE_HIGHLIGHTS`` left this list for :data:`READ_QUERIES` in E2 batch 2, when
+``profiles.highlights`` started reading it. The profile page still sends it as one of its six
+queries and still leaves that answer unread.
+"""
 
 WRITE_QUERIES: tuple[PersistedQuery, ...] = (
    DIRECT_TEXT_SEND,

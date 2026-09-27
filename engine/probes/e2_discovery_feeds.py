@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Nine requests, and up to five more, conditional.
+"""Read only. Ran on 2026-09-27, 11 spent. Nine requests, and up to five more, conditional.
 
 E2 batch 7, the discovery feeds whose variables are known: the explore grid over REST, a
 location page's header and grid, and the home feed's new posts check. The reels feed carries a

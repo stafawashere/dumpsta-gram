@@ -1,4 +1,4 @@
-"""Read only. Not yet run. Ten requests, and up to four more, conditional.
+"""Read only. Ran on 2026-09-27, 10 spent. Ten requests, and up to four more, conditional.
 
 E2 batch 9, the two page models: the post page and the inbox load. Most of the inbox load's
 companions are verified findings already, and the post page document itself has never been

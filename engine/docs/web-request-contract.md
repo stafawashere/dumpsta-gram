@@ -144,6 +144,35 @@ for the reason the notes tray gives above. Findings `direct-inbox-thread-list-ne
 `direct-message-requests` and `direct-inbox-unread-thread-count`, each verified by engine
 replays on 2026-09-24.
 
+**The posts grid, the highlights tray and the suggested accounts are each sent alone, a
+recorded departure.** Added 2026-09-27 with E2 batch 2, rulings W52 to W56. The grid's first page
+is `PROFILE_POSTS` (`28379418928391013`, `PolarisProfilePostsQuery`) with the profile page's
+variables, `count` 12, and every later page `PROFILE_POSTS_NEXT_PAGE` (`38620137654299531`,
+`PolarisProfilePostsTabContentQuery_connection`) with the same `data` and `username`, `after` the
+previous page's `end_cursor`, `before` and `last` null, and `first` 12 and
+`include_multi_captions` true, the two its compiled artifact declares and no browser was seen
+sending. Both answer on `GRAPHQL_QUERY_URL`, carry `x-bloks-version-id` and `x-root-field-name`,
+and have the profile page as their referer. `PROFILE_HIGHLIGHTS` (`26970053832668570`) is sent
+with `user_id`, `SUGGESTED_BESIDE_PROFILE` (`28011006998510477`,
+`PolarisProfileSuggestedUsersWithLazyQueryQuery`) with `module` profile and `target_id`, and
+`SUGGESTED_ACCOUNTS` (`28042919442028999`, `PolarisSuggestedUserListQuery`) with the recorded
+browse's `data`, `max_id` empty, `max_number_to_display` 5, `module` discover_people and
+`paginate` true, all three on `API_GRAPHQL_URL` with the site root as their referer. A browser
+sends the grid's first page and the tray inside a profile page load, beside the document and four
+other queries, and those two with the profile page as referer; the engine sends each alone, and
+the tray and the suggestions beside a profile with the root, because the methods are keyed on an
+id and hold no username. The profile query's referer was not validated under ablation, and these
+three have not been tested, an ASSUMPTION the batch's live acceptance checks. The replays of
+2026-09-27 sent the suggestions beside a profile with the profile page as referer. Findings
+`resolve-a-username-to-a-user-id`, `profile-posts-grid-next-page`,
+`profile-page-story-highlights`, `profile-suggested-users-on-demand` and
+`home-suggested-accounts`.
+
+**A field error beside an answer does not fail the request.** Added 2026-09-27, W52. `classify`
+returns an answer whose every `errors` entry has a `path` of two elements or more under a `data`
+root that is present and not null, the errored fields null, and refuses any other `errors` array
+as before. `classify_preloaded` reads the envelope through the same function.
+
 **A post read, a like and an unlike are each sent alone, a recorded departure.** Added
 2026-09-23 with Step 15. `POST_BY_SHORTCODE` (`27830990013244856`, `PolarisPostRootQuery`),
 `LIKE_MEDIA` (`27182485238052618`, `usePolarisLikeMediaXIGLikeMutation`) and `UNLIKE_MEDIA`
@@ -468,9 +497,10 @@ chunk holds are not reachable this way, so the canary reports them `missing`, ne
 
 **The replays.** `_private/web/canary.py` holds one step per read in
 `documents/catalog.py`'s `READ_QUERIES`, each built by the builder its capability uses and read
-by its mapper, so no request shape is new. `documents/catalog.py` sorts the thirty registry
-entries into ten reads, ten companions and ten writes, and a gate holds it to every entry in the
-domain modules exactly once. Companions and writes are compared with the bundle and never sent.
+by its mapper, so no request shape is new. `documents/catalog.py` sorted the thirty registry
+entries of E1 into ten reads, ten companions and ten writes; since E2 batch 2 it sorts thirty-six
+into seventeen reads, nine companions and ten writes, the tray having moved from the companions to
+the reads (W56). A gate holds it to every entry in the domain modules exactly once. Companions and writes are compared with the bundle and never sent.
 
 ## The posting requests, 2026-09-23
 

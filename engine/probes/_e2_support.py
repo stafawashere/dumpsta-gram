@@ -13,6 +13,8 @@ declared. It stops the whole probe at the first checkpoint, throttle, authentica
 HTML shell, and never retries one. Only key names, types, counts, lengths and a few enum values
 reach the log. No caption, username, full name, message text, URL or id is written, except the
 first four characters of an id where a probe needs to show two reads returned the same thing.
+Each answer's full body is kept beside the skill's captures, under ``var/captures/``, which the
+capture exemption of 2026-09-23 covers, so the gates' fixtures can be pseudonymised offline.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ import string
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -51,6 +54,7 @@ from dumpstagram.errors import (
 from dumpstagram.session import Session
 
 KNOWLEDGE_ENDPOINTS = ENGINE_ROOT.parent / "skills" / "reverse-engineer" / "knowledge" / "endpoints"
+CAPTURES = ENGINE_ROOT.parent / "skills" / "reverse-engineer" / "var" / "captures"
 NON_CREDENTIAL_KEYS = ("IG_USER_AGENT", "IG_SESSION_FILE", "IG_THREAD_FBID")
 PROBE_SPACING_SECONDS = 2.85
 SHAPE_DEPTH = 5
@@ -306,6 +310,16 @@ class E2Replay:
          "replays": [],
       }
       self._last_departure: float | None = None
+      self._stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+
+   def keep_body(self, label: str, parsed: Any) -> None:
+      if parsed is None:
+         return
+
+      CAPTURES.mkdir(parents=True, exist_ok=True)
+      slug = "-".join(label.lower().split())
+      path = CAPTURES / f"{self.kind}-{self._stamp}-{self.spent:02d}-{slug}.json"
+      path.write_text(json.dumps(parsed), encoding="utf-8")
 
    async def __aenter__(self) -> E2Replay:
       if not ENV_PATH.exists():
@@ -365,6 +379,7 @@ class E2Replay:
       await self._space()
       started = time.monotonic()
       entry: dict[str, Any] = {"label": label}
+      response = None
 
       try:
          response = await self._sender.send(request)
@@ -379,12 +394,16 @@ class E2Replay:
       except UpstreamRejected as failure:
          entry["failed_with"] = "UpstreamRejected"
          entry["code"] = failure.code
+         partial = self._record_rejected_body(label, response, entry)
          self.report["replays"].append(entry)
 
          if failure.code in STOPPING_CODES:
             raise ProbeStopped(f"{label}: {failure.code}") from failure
 
-         return None
+         if partial is not None:
+            entry["partial_answer_kept"] = True
+
+         return partial
       except DumpstagramError as failure:
          entry["failed_with"] = type(failure).__name__
          self.report["replays"].append(entry)
@@ -395,8 +414,49 @@ class E2Replay:
 
       entry["top_keys"] = sorted(parsed.keys()) if isinstance(parsed, dict) else None
       self.report["replays"].append(entry)
+      self.keep_body(label, parsed)
 
       return parsed
+
+   def _record_rejected_body(
+      self, label: str, response: Any, entry: dict[str, Any]
+   ) -> dict[str, Any] | None:
+      """Keep a rejected answer's body and log where its errors point, never their text.
+
+      Returns the body when every error names a field path under data that is present, which
+      is a field error beside an answer rather than a refusal, so discovery can go on.
+      """
+
+      try:
+         parsed = json.loads(response.content)
+      except (ValueError, AttributeError):
+         return None
+
+      if not isinstance(parsed, dict):
+         return None
+
+      errors = parsed.get("errors") if isinstance(parsed.get("errors"), list) else []
+
+      for error in errors:
+         if isinstance(error, dict) and "debug_link" in error:
+            error["debug_link"] = "<redacted>"
+
+      self.keep_body(f"{label} rejected", parsed)
+      data = parsed.get("data")
+      entry["error_paths"] = [error.get("path") for error in errors[:10] if isinstance(error, dict)]
+      entry["error_severities"] = sorted(
+         {str(error.get("severity")) for error in errors if isinstance(error, dict)}
+      )
+      entry["errors_count"] = len(errors)
+      entry["data_roots_beside_errors"] = sorted(data.keys()) if isinstance(data, dict) else None
+      has_data = isinstance(data, dict) and any(value is not None for value in data.values())
+      every_error_is_a_field_error = bool(errors) and all(
+         isinstance(error, dict) and isinstance(error.get("path"), list) and len(error["path"]) > 1
+         for error in errors
+      )
+      is_partial = has_data and every_error_is_a_field_error
+
+      return parsed if is_partial else None
 
    async def engine_read(self, label: str, request: Request) -> dict[str, Any] | None:
       """One read the library already builds, from a verified finding, used for arguments."""

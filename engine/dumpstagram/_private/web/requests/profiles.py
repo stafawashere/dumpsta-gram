@@ -1,5 +1,5 @@
-"""The profile requests: one account by id, a username resolved to one, and a profile page's six
-queries.
+"""The profile requests: one account by id, a username resolved to one, a profile page's six
+queries, a page of a profile's posts grid, its highlights tray, and the suggested accounts.
 """
 
 from __future__ import annotations
@@ -15,20 +15,29 @@ from dumpstagram._private.web.documents.profiles import (
    PROFILE_HIGHLIGHTS,
    PROFILE_NOTE_BUBBLE,
    PROFILE_POSTS,
+   PROFILE_POSTS_NEXT_PAGE,
    PROFILE_SCHOOL_BADGE,
    PROFILE_SUGGESTED_USERS,
+   SUGGESTED_ACCOUNTS,
+   SUGGESTED_BESIDE_PROFILE,
 )
-from dumpstagram._private.web.requests.common import build_graphql_request
+from dumpstagram._private.web.requests.common import _USER_ID, build_graphql_request
 from dumpstagram.errors import NotFound
 from dumpstagram.session import Session
 
 __all__ = [
    "PROFILE_PAGE_POSTS",
    "RESOLUTION_PAGE_SIZE",
+   "SUGGESTED_ACCOUNTS_SHOWN",
+   "build_highlight_tray_request",
    "build_profile_page_requests",
+   "build_profile_posts_request",
    "build_profile_request",
+   "build_suggested_accounts_request",
+   "build_suggested_beside_profile_request",
    "build_username_resolution_request",
    "profile_page_url",
+   "refuse_what_is_not_a_user_id",
 ]
 
 RESOLUTION_PAGE_SIZE = 1
@@ -37,6 +46,9 @@ does would move about 200 kB to learn an eleven-digit number."""
 
 PROFILE_PAGE_POSTS = 12
 """How many posts a profile page asks its timeline for, in both measured loads."""
+
+SUGGESTED_ACCOUNTS_SHOWN = 5
+"""``max_number_to_display`` on the suggested accounts list, the value the recorded browse sent."""
 
 _USERNAME = re.compile(r"[A-Za-z0-9._]{1,30}")
 
@@ -179,3 +191,145 @@ def build_profile_page_requests(
    ]
 
    return [profile, *companion_requests]
+
+
+def refuse_what_is_not_a_user_id(user_id: str) -> None:
+   """Raise :class:`ValueError` for anything but digits, before anything is built or sent.
+
+   The tray and the suggestions are keyed on the numeric account id, and what they answer for a
+   username is unobserved.
+   """
+
+   is_a_user_id = _USER_ID.fullmatch(user_id) is not None
+
+   if not is_a_user_id:
+      raise ValueError(f"{user_id!r} is not a numeric account id. Pass Profile.id, not a username")
+
+
+def _profile_posts_next_page_variables(username: str, after: str) -> dict[str, Any]:
+   return {
+      "after": after,
+      "before": None,
+      "data": {
+         "count": PROFILE_PAGE_POSTS,
+         "include_reel_media_seen_timestamp": True,
+         "include_relationship_info": True,
+         "latest_besties_reel_media": True,
+         "latest_reel_media": True,
+      },
+      "first": PROFILE_PAGE_POSTS,
+      "include_multi_captions": True,
+      "last": None,
+      "username": username,
+      "__relay_internal__pv__PolarisMultiCaptionCarouselEnabledrelayprovider": True,
+      "__relay_internal__pv__PolarisShortDramaEnabledrelayprovider": False,
+      "__relay_internal__pv__PolarisReelsRecoDebugOverlayEnabledrelayprovider": False,
+   }
+
+
+def build_profile_posts_request(
+   session: Session,
+   username: str,
+   *,
+   after: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """One page of a profile's posts grid, twelve posts, keyed on the username.
+
+   The first page is the timeline query a profile page sends among its six, with the page's
+   variables. Every later page is ``PolarisProfilePostsTabContentQuery_connection``, which takes
+   the same ``data`` and ``username`` with the previous page's ``end_cursor`` as ``after``, and
+   the connection arguments its compiled artifact declares. Both have the profile page as their
+   referer. The username is not checked here, as :func:`build_username_resolution_request` does
+   not check it; the capability refuses one that cannot be a username with
+   :func:`profile_page_url` before anything is built.
+
+   Findings: ``resolve-a-username-to-a-user-id`` and ``profile-posts-grid-next-page``.
+   """
+
+   referer = f"{ORIGIN}/{username}/"
+
+   if after is None:
+      query = PROFILE_POSTS
+      variables = _profile_posts_variables(username, PROFILE_PAGE_POSTS)
+   else:
+      query = PROFILE_POSTS_NEXT_PAGE
+      variables = _profile_posts_next_page_variables(username, after)
+
+   return build_graphql_request(session, query, variables, referer=referer, user_agent=user_agent)
+
+
+def build_highlight_tray_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The highlights tray on one account's profile, keyed on the numeric account id.
+
+   The account id is not checked here; the capability refuses anything but digits with
+   :func:`refuse_what_is_not_a_user_id` before anything is built. The variables are the ones a
+   profile page sends. The page's referer is the profile page, which
+   needs the username the caller did not give, so the site root is sent, as
+   :func:`build_profile_request` does when it has no username. The profile query's referer was
+   not validated; this one's has not been tested.
+
+   Finding: ``profile-page-story-highlights``.
+   """
+
+   return build_graphql_request(
+      session,
+      PROFILE_HIGHLIGHTS,
+      {"user_id": user_id},
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_suggested_beside_profile_request(
+   session: Session,
+   user_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The accounts suggested beside one account's profile, asked for on demand.
+
+   The variables are the ones the recorded browse sent and the preloaded query a profile page
+   sends carries. The referer is the site root, for the reason
+   :func:`build_highlight_tray_request` gives.
+
+   Finding: ``profile-suggested-users-on-demand``.
+   """
+
+   return build_graphql_request(
+      session,
+      SUGGESTED_BESIDE_PROFILE,
+      {"module": "profile", "target_id": user_id},
+      referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_suggested_accounts_request(
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The suggested accounts list, as the recorded browse asked for it, with the site root as the
+   referer.
+
+   Finding: ``home-suggested-accounts``.
+   """
+
+   variables = {
+      "data": {
+         "max_id": "",
+         "max_number_to_display": SUGGESTED_ACCOUNTS_SHOWN,
+         "module": "discover_people",
+         "paginate": True,
+      }
+   }
+
+   return build_graphql_request(
+      session, SUGGESTED_ACCOUNTS, variables, referer=f"{ORIGIN}/", user_agent=user_agent
+   )
