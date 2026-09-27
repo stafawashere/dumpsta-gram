@@ -33,6 +33,15 @@ from dumpstagram.models.profiles import (
    ProfileSummary,
    SuggestedAccount,
 )
+from dumpstagram.models.stories import (
+   StoryItem,
+   StoryMention,
+   StoryMusic,
+   StoryOwner,
+   StoryReel,
+   StoryVideo,
+   TrayReel,
+)
 from dumpstagram.models.threads import (
    DirectThread,
    MessageRequests,
@@ -75,8 +84,15 @@ __all__ = [
    "ProfileSummary",
    "Reaction",
    "SentMessage",
+   "StoryItem",
+   "StoryMention",
+   "StoryMusic",
+   "StoryOwner",
+   "StoryReel",
+   "StoryVideo",
    "SuggestedAccount",
    "ThreadParticipant",
+   "TrayReel",
    "UnreadCounts",
    "UserTag",
    "VideoRendition",

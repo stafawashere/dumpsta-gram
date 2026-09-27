@@ -189,6 +189,24 @@ post modal's `PolarisPostModalContextQuery` is not sent (W66). Findings `read-co
 `read-comment-replies-next-page`, `read-a-post-s-likers`, `read-a-post-by-media-id` and
 `read-more-posts-from-an-account`.
 
+**The stories reads are each sent alone, and no story is marked seen, two recorded departures.**
+Added 2026-09-27 with E2 batch 5, rulings W68 to W72. `STORIES_TRAY` (`27703822975903310`,
+`PolarisStoriesV3TrayContainerQuery`) is sent on `API_GRAPHQL_URL` with the variables every page
+load sends it with, `data.is_following_feed` false and the `suggestedUsersData` block asking to
+display none. `STORY_REEL` (`29184890191114309`, `PolarisStoriesV3ReelPageStandaloneQuery`) answers
+on `GRAPHQL_QUERY_URL` with `x-bloks-version-id` and `x-root-field-name`
+`xdt_api__v1__feed__reels_media`, and is sent with `reel_ids_arr` of one account id and the
+community note provider true for `stories.reel`, and with `reel_ids_arr` of one
+`highlight:<number>`, `is_highlight` true and the provider for `stories.highlight`, the probe's
+variables. All three have the site root as their referer: a browser reads the tray inside a page
+load and a reel when the story viewer opens, and neither burst is modelled. A browser then sends
+`PolarisStoriesV3SeenMutation` for each item it shows, which puts the viewer in the story's seen
+list. The engine sends no seen mutation and registers none, a named departure from W6 that holds
+until the arranged run of E2 batch 12 verifies the mutation on the owner's own story, when
+`Behavior.mark_stories_seen` arrives with parity as its default (W68). Reading a story through
+the engine today does not mark it seen. The stories gallery query is not sent (W71). Findings
+`page-load-stories-tray` and `read-one-account-s-stories-or-a-highlight`.
+
 **A field error beside an answer does not fail the request.** Added 2026-09-27, W52. `classify`
 returns an answer whose every `errors` entry has a `path` of two elements or more under a `data`
 root that is present and not null, the errored fields null, and refuses any other `errors` array
@@ -522,7 +540,8 @@ by its mapper, so no request shape is new. `documents/catalog.py` sorted the thi
 entries of E1 into ten reads, ten companions and ten writes; since E2 batch 2 it sorts thirty-six
 into seventeen reads, nine companions and ten writes, the tray having moved from the companions to
 the reads (W56), and since E2 batch 4 forty-one into twenty-two reads, nine companions and ten
-writes (W67). A gate holds it to every entry in the domain modules exactly once. Companions and writes are compared with the bundle and never sent.
+writes (W67), and since E2 batch 5 forty-two into twenty-four reads, eight companions and ten
+writes, the stories tray having moved to the reads (W72). A gate holds it to every entry in the domain modules exactly once. Companions and writes are compared with the bundle and never sent.
 
 ## The posting requests, 2026-09-23
 

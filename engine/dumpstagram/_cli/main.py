@@ -87,6 +87,11 @@ from dumpstagram._cli.commands.session import (
    run_session,
 )
 from dumpstagram._cli.commands.social import add_follow_parsers, run_follow_write
+from dumpstagram._cli.commands.stories import (
+   STORIES_COMMANDS,
+   add_stories_parsers,
+   run_stories_command,
+)
 from dumpstagram._cli.exits import EXIT_USAGE, exit_code_for
 from dumpstagram._core.redaction import redact
 from dumpstagram.errors import DumpstagramError
@@ -131,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_message_write_parsers(commands)
    add_comment_parsers(commands)
    add_post_depth_parsers(commands)
+   add_stories_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
    add_posting_parsers(commands)
@@ -199,6 +205,9 @@ def main(
 
       if arguments.command in POST_DEPTH_COMMANDS:
          return run_post_depth_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in STORIES_COMMANDS:
+         return run_stories_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)

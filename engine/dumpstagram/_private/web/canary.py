@@ -5,7 +5,7 @@ here, built with the request builder its capability uses and read with the mappe
 uses, so a replay that passes is a query the capability would still get an answer from. A replay
 that needs an argument takes it from an earlier one: a thread from the inbox listing, a post from
 the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid, a
-comment with replies from the post's comments.
+comment with replies from the post's comments, a highlight from the viewer's highlights tray.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -40,6 +40,7 @@ from dumpstagram._private.web.documents.media import (
    POST_LIKERS,
 )
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
+from dumpstagram._private.web.documents.page_load import STORIES_TRAY
 from dumpstagram._private.web.documents.profiles import (
    PROFILE_BY_ID,
    PROFILE_HIGHLIGHTS,
@@ -48,6 +49,7 @@ from dumpstagram._private.web.documents.profiles import (
    SUGGESTED_ACCOUNTS,
    SUGGESTED_BESIDE_PROFILE,
 )
+from dumpstagram._private.web.documents.stories import STORY_REEL
 from dumpstagram._private.web.parse.direct import (
    parse_folder_unread_rows,
    parse_inbox_continuation,
@@ -75,6 +77,7 @@ from dumpstagram._private.web.parse.profiles import (
    parse_suggested_beside_profile,
    parse_user_id,
 )
+from dumpstagram._private.web.parse.stories import parse_highlight_reel, parse_stories_tray
 from dumpstagram._private.web.requests.direct import (
    INBOX_FOLDER,
    build_folder_unread_rows_request,
@@ -101,6 +104,10 @@ from dumpstagram._private.web.requests.profiles import (
    build_profile_request,
    build_suggested_accounts_request,
    build_suggested_beside_profile_request,
+)
+from dumpstagram._private.web.requests.stories import (
+   build_highlight_request,
+   build_stories_tray_request,
 )
 from dumpstagram.session import Session
 
@@ -134,6 +141,7 @@ class ReplayArguments:
    author_id: str | None = None
    parent_comment_id: str | None = None
    replies_cursor: str | None = None
+   highlight_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -208,6 +216,16 @@ def _learn_replies_cursor(payload: Any, arguments: ReplayArguments) -> None:
 
    if page.has_next_page:
       arguments.replies_cursor = page.end_cursor
+
+
+def _learn_first_highlight(payload: Any, arguments: ReplayArguments) -> None:
+   """The viewer's own highlights tray, and its first highlight, which the story reel step reads,
+   so the canary never reads another account's story."""
+
+   tray = parse_highlight_tray(payload)
+
+   if tray.highlights:
+      arguments.highlight_id = tray.highlights[0].id
 
 
 def _mapped_by(mapper: Callable[[Any], object]) -> Callable[[Any, ReplayArguments], None]:
@@ -355,7 +373,7 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
       build=lambda session, arguments, user_agent: build_highlight_tray_request(
          session, arguments.viewer_id, user_agent=user_agent
       ),
-      read=_mapped_by(parse_highlight_tray),
+      read=_learn_first_highlight,
    ),
    ReplayStep(
       query=SUGGESTED_BESIDE_PROFILE,
@@ -419,6 +437,22 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, _required(arguments.author_id), user_agent=user_agent
       ),
       read=_mapped_by(parse_more_from_author),
+   ),
+   ReplayStep(
+      query=STORIES_TRAY,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_stories_tray_request(
+         session, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_stories_tray),
+   ),
+   ReplayStep(
+      query=STORY_REEL,
+      requires="highlight_id",
+      build=lambda session, arguments, user_agent: build_highlight_request(
+         session, _required(arguments.highlight_id), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_highlight_reel),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

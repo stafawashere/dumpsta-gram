@@ -61,6 +61,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `replies PK COMMENT_ID` | 1 per page, plus 1 if the session has no token yet | Reads pages of the replies under one comment, oldest first |
 | `likers PK` | 1, plus 1 if the session has no token yet | Lists the accounts the likes dialog shows for one post, a sample on a popular post |
 | `more-from-author AUTHOR_ID` | 1, plus 1 if the session has no token yet | Lists the posts a post page shows from its author |
+| `stories-tray` | 1, plus 1 if the session has no token yet | Lists the accounts in the stories tray. Reads no items and marks nothing seen |
+| `story USER_ID` | 1, plus 1 if the session has no token yet | Reads one account's live stories, every item. Marks nothing seen |
+| `highlight HIGHLIGHT_ID` | 1, plus 1 if the session has no token yet | Reads one highlight, every item. Marks nothing seen |
 | `comment PK TEXT`, `delete-comment PK COMMENT_ID` | 1 write, plus 1 read if the session has no token yet | Comments on one post, or deletes one comment. Writes to the account |
 | `send-message FBID TEXT` | 1 write, plus 1 read if the session has no token yet | Sends one text message into one direct thread. Writes to the account, and the thread's other people are notified |
 | `unsend-message FBID MESSAGE_ID` | 1 read and 1 write, plus 1 read if the session has no token yet | Unsends one of the viewer's own messages. Writes to the account |
@@ -68,7 +71,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `publish-carousel IMAGE IMAGE...` | 1 write per image, 1 more and 1 read, plus 1 read if the session has no token yet | Publishes two or more JPEGs as one carousel and reads it back. Writes to the account |
 | `delete-post PK CODE` | 1 write and 1 read, plus 1 read if the session has no token yet | Deletes one of the viewer's own posts and reads it to confirm it is gone. Writes to the account |
 | `events --duration SECONDS` | 1 per poll, plus 1 per page of a thread that gained messages, plus 1 if the session has no token yet | Prints new direct messages as they arrive, for a fixed time. Marks nothing seen |
-| `doctor` | 0 without `--live`. With it, 2 documents and at most 22 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
+| `doctor` | 0 without `--live`. With it, 2 documents and at most 24 reads, paced, plus the bundle fetches, cookieless and unpaced, 1000 at most | Checks every stored `doc_id` against the one the site's bundles compile, and replays each read once. Writes and companions are checked by artifact only and never sent |
 
 `--json` on any command emits the machine-readable form instead of text. That form is a
 contract: a key that moves breaks whatever scripts the command.
@@ -470,6 +473,40 @@ Every post and comment id is digits only, and anything else is refused by the pa
 code 2 before a client is opened. All three take `--user-agent` and `--no-session-writeback`.
 The live acceptance, `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log `logs/e2-post-depth-cli-2026-09-27-033207.json`.
 
+### `stories-tray`, `story` and `highlight`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta stories-tray
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json story 1234567890
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta highlight highlight:17912345678901234
+```
+
+None of the three marks anything seen. A browser marks every story item it shows, and the engine
+sends no seen mutation until one is verified on the owner's own story (W68), so reading a story
+here does not put you in its viewers.
+
+`stories-tray` prints one line per account in the tray's order, its rank, account id, username,
+the time of its latest item and when you last saw it, or `never`, then `reels: N`. The JSON form
+is `command`, `reel_count` and `reels`, each with `id`, `reel_type`, `owner` (`id`, `username`,
+`profile_pic_url`, `hd_profile_pic_url`, `is_verified`, `is_private`), `latest_item_at`,
+`expiring_at`, `seen_at`, `ranked_position`, `muted` and `has_close_friends_items` (W69).
+
+`story USER_ID` reads the live stories of the account whose numeric id is `USER_ID`, and
+`highlight HIGHLIGHT_ID` one highlight, in the `highlight:<number>` form `highlights` prints. Both
+print the reel's id, owner and title, one line per item with its time, `pk` and kind, then
+`items: N`; `story` prints `no live story` when the account has none. The JSON form is `command`,
+the id asked, `item_count` and `reel`, null when there is no live story, with `id`, `reel_type`,
+`title`, `cover_url`, `owner`, `latest_item_at`, `can_reshare` and `items`, each with `id`, `pk`,
+`code`, `owner_id`, `media_type`, `product_type`, `taken_at`, `expiring_at`, `original_width`,
+`original_height`, `audience`, `can_reply`, `can_reshare`, `is_paid_partnership`,
+`is_story_edited`, `has_audio`, `video_duration`, `images`, `videos` (`url`, `version_type`),
+`mentions` (`username`, `full_name`) and `music` (`title`, `artist`, `should_mute`) (W70).
+
+`story` refuses a username and `highlight` a bare number, with exit code 2 before a client is
+opened. All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
+highlight, four requests, and no other account's reel; it has not run yet.
+
 ### `publish-photo`, `publish-carousel` and `delete-post`
 
 ```bash
@@ -555,8 +592,8 @@ reads and the home document, collects every bundle on `static.cdninstagram.com` 
 and reads each for the `doc_id` its operations compile to, stopping once every stored operation
 is found or at `--bundle-limit N`, 1000 by default. Then it replays each capability read once
 through that capability's own request builder and mapper, taking a thread from the inbox, a post
-and its author from the timeline, a comment with replies from that post's comments and a
-username from the viewer's own profile, and skipping a read whose argument never turned up. The documents and reads pass the account's pacer. The bundles go
+and its author from the timeline, a comment with replies from that post's comments, a
+username from the viewer's own profile and the first highlight on the viewer's own highlights tray, and skipping a read whose argument never turned up. The documents and reads pass the account's pacer. The bundles go
 through a cookieless transport pinned to the static host and take no pacer slot. Nothing is
 retried, and a checkpoint ends the run with exit code 4 and no report.
 
@@ -632,7 +669,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

@@ -55,6 +55,7 @@ from dumpstagram.namespaces.feeds import AsyncFeeds
 from dumpstagram.namespaces.media import AsyncMedia
 from dumpstagram.namespaces.profiles import AsyncProfiles
 from dumpstagram.namespaces.social import AsyncSocial
+from dumpstagram.namespaces.stories import AsyncStories
 from dumpstagram.session import Session
 
 __all__ = ["AsyncClient"]
@@ -226,6 +227,12 @@ class AsyncClient:
       """The viewer's relationships to other accounts, ``client.social``."""
 
       return AsyncSocial._of(self)
+
+   @property
+   def stories(self) -> AsyncStories:
+      """The stories tray, an account's live stories and its highlights, ``client.stories``."""
+
+      return AsyncStories._of(self)
 
    async def thread_messages(
       self,

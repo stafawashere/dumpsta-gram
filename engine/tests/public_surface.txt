@@ -55,11 +55,18 @@ alias dumpstagram.SentMessage -> dumpstagram.models.messages.SentMessage
 alias dumpstagram.Session -> dumpstagram.session.Session
 alias dumpstagram.Spacing -> dumpstagram.behavior.Spacing
 alias dumpstagram.SpinParameters -> dumpstagram.session.SpinParameters
+alias dumpstagram.StoryItem -> dumpstagram.models.stories.StoryItem
+alias dumpstagram.StoryMention -> dumpstagram.models.stories.StoryMention
+alias dumpstagram.StoryMusic -> dumpstagram.models.stories.StoryMusic
+alias dumpstagram.StoryOwner -> dumpstagram.models.stories.StoryOwner
+alias dumpstagram.StoryReel -> dumpstagram.models.stories.StoryReel
+alias dumpstagram.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
 alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
 alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.TransportFailure -> dumpstagram.errors.TransportFailure
+alias dumpstagram.TrayReel -> dumpstagram.models.stories.TrayReel
 alias dumpstagram.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.UpstreamRejected -> dumpstagram.errors.UpstreamRejected
 alias dumpstagram.UserTag -> dumpstagram.models.feed.UserTag
@@ -93,6 +100,7 @@ def dumpstagram.aio.AsyncClient.send_message(self, thread_fbid: str, text: str) 
 property dumpstagram.aio.AsyncClient.session -> Session
 def dumpstagram.aio.AsyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 property dumpstagram.aio.AsyncClient.social -> AsyncSocial
+property dumpstagram.aio.AsyncClient.stories -> AsyncStories
 def dumpstagram.aio.AsyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.aio.AsyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.aio.AsyncClient.unlike(self, post_pk: str) -> None
@@ -156,6 +164,7 @@ def dumpstagram.client.SyncClient.send_message(self, thread_fbid: str, text: str
 property dumpstagram.client.SyncClient.session -> Session
 def dumpstagram.client.SyncClient.set_note(self, text: str, *, audience: NoteAudience = <NoteAudience.CLOSE_FRIENDS: 1>) -> Note
 property dumpstagram.client.SyncClient.social -> SyncSocial
+property dumpstagram.client.SyncClient.stories -> SyncStories
 def dumpstagram.client.SyncClient.thread_messages(self, thread_fbid: str, *, after: str | None = None, newer_than_message_id: str | None = None) -> Page[Message]
 def dumpstagram.client.SyncClient.unfollow(self, user_id: str) -> None
 def dumpstagram.client.SyncClient.unlike(self, post_pk: str) -> None
@@ -223,8 +232,15 @@ alias dumpstagram.models.ProfileSummary -> dumpstagram.models.profiles.ProfileSu
 alias dumpstagram.models.PublishedPost -> dumpstagram.models.posts.PublishedPost
 alias dumpstagram.models.Reaction -> dumpstagram.models.messages.Reaction
 alias dumpstagram.models.SentMessage -> dumpstagram.models.messages.SentMessage
+alias dumpstagram.models.StoryItem -> dumpstagram.models.stories.StoryItem
+alias dumpstagram.models.StoryMention -> dumpstagram.models.stories.StoryMention
+alias dumpstagram.models.StoryMusic -> dumpstagram.models.stories.StoryMusic
+alias dumpstagram.models.StoryOwner -> dumpstagram.models.stories.StoryOwner
+alias dumpstagram.models.StoryReel -> dumpstagram.models.stories.StoryReel
+alias dumpstagram.models.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
+alias dumpstagram.models.TrayReel -> dumpstagram.models.stories.TrayReel
 alias dumpstagram.models.UnreadCounts -> dumpstagram.models.threads.UnreadCounts
 alias dumpstagram.models.UserTag -> dumpstagram.models.feed.UserTag
 alias dumpstagram.models.VideoRendition -> dumpstagram.models.feed.VideoRendition
@@ -514,6 +530,65 @@ field dumpstagram.models.profiles.ProfileSummary.username: str
 class dumpstagram.models.profiles.SuggestedAccount()
 field dumpstagram.models.profiles.SuggestedAccount.account: ProfileSummary
 field dumpstagram.models.profiles.SuggestedAccount.reason: str
+module dumpstagram.models.stories
+class dumpstagram.models.stories.StoryItem()
+field dumpstagram.models.stories.StoryItem.audience: str | None = None
+field dumpstagram.models.stories.StoryItem.can_reply: bool
+field dumpstagram.models.stories.StoryItem.can_reshare: bool
+field dumpstagram.models.stories.StoryItem.code: str
+field dumpstagram.models.stories.StoryItem.expiring_at: datetime
+field dumpstagram.models.stories.StoryItem.has_audio: bool | None = None
+field dumpstagram.models.stories.StoryItem.id: str
+field dumpstagram.models.stories.StoryItem.images: tuple[MediaImage, ...] = ()
+field dumpstagram.models.stories.StoryItem.is_paid_partnership: bool
+field dumpstagram.models.stories.StoryItem.is_story_edited: bool
+field dumpstagram.models.stories.StoryItem.media_type: int
+field dumpstagram.models.stories.StoryItem.mentions: tuple[StoryMention, ...] = ()
+field dumpstagram.models.stories.StoryItem.music: tuple[StoryMusic, ...] = ()
+field dumpstagram.models.stories.StoryItem.original_height: int
+field dumpstagram.models.stories.StoryItem.original_width: int
+field dumpstagram.models.stories.StoryItem.owner_id: str
+field dumpstagram.models.stories.StoryItem.pk: str
+field dumpstagram.models.stories.StoryItem.product_type: str
+field dumpstagram.models.stories.StoryItem.taken_at: datetime
+field dumpstagram.models.stories.StoryItem.video_duration: float | None = None
+field dumpstagram.models.stories.StoryItem.videos: tuple[StoryVideo, ...] = ()
+class dumpstagram.models.stories.StoryMention()
+field dumpstagram.models.stories.StoryMention.full_name: str
+field dumpstagram.models.stories.StoryMention.username: str
+class dumpstagram.models.stories.StoryMusic()
+field dumpstagram.models.stories.StoryMusic.artist: str
+field dumpstagram.models.stories.StoryMusic.should_mute: bool
+field dumpstagram.models.stories.StoryMusic.title: str
+class dumpstagram.models.stories.StoryOwner()
+field dumpstagram.models.stories.StoryOwner.hd_profile_pic_url: str | None = None
+field dumpstagram.models.stories.StoryOwner.id: str
+field dumpstagram.models.stories.StoryOwner.is_private: bool | None = None
+field dumpstagram.models.stories.StoryOwner.is_verified: bool | None = None
+field dumpstagram.models.stories.StoryOwner.profile_pic_url: str
+field dumpstagram.models.stories.StoryOwner.username: str
+class dumpstagram.models.stories.StoryReel()
+field dumpstagram.models.stories.StoryReel.can_reshare: bool
+field dumpstagram.models.stories.StoryReel.cover_url: str | None = None
+field dumpstagram.models.stories.StoryReel.id: str
+field dumpstagram.models.stories.StoryReel.items: tuple[StoryItem, ...]
+field dumpstagram.models.stories.StoryReel.latest_item_at: datetime
+field dumpstagram.models.stories.StoryReel.owner: StoryOwner
+field dumpstagram.models.stories.StoryReel.reel_type: str
+field dumpstagram.models.stories.StoryReel.title: str | None = None
+class dumpstagram.models.stories.StoryVideo()
+field dumpstagram.models.stories.StoryVideo.url: str
+field dumpstagram.models.stories.StoryVideo.version_type: int
+class dumpstagram.models.stories.TrayReel()
+field dumpstagram.models.stories.TrayReel.expiring_at: datetime
+field dumpstagram.models.stories.TrayReel.has_close_friends_items: bool
+field dumpstagram.models.stories.TrayReel.id: str
+field dumpstagram.models.stories.TrayReel.latest_item_at: datetime
+field dumpstagram.models.stories.TrayReel.muted: bool
+field dumpstagram.models.stories.TrayReel.owner: StoryOwner
+field dumpstagram.models.stories.TrayReel.ranked_position: int
+field dumpstagram.models.stories.TrayReel.reel_type: str
+field dumpstagram.models.stories.TrayReel.seen_at: datetime | None = None
 module dumpstagram.models.threads
 class dumpstagram.models.threads.DirectThread()
 field dumpstagram.models.threads.DirectThread.is_group: bool
@@ -648,6 +723,17 @@ class dumpstagram.namespaces.social.SyncSocial()
 def dumpstagram.namespaces.social.SyncSocial.__init__(self) -> None
 def dumpstagram.namespaces.social.SyncSocial.follow(self, user_id: str) -> None
 def dumpstagram.namespaces.social.SyncSocial.unfollow(self, user_id: str) -> None
+module dumpstagram.namespaces.stories
+class dumpstagram.namespaces.stories.AsyncStories()
+def dumpstagram.namespaces.stories.AsyncStories.__init__(self) -> None
+def dumpstagram.namespaces.stories.AsyncStories.highlight(self, highlight_id: str) -> StoryReel
+def dumpstagram.namespaces.stories.AsyncStories.reel(self, user_id: str) -> StoryReel | None
+def dumpstagram.namespaces.stories.AsyncStories.tray(self) -> tuple[TrayReel, ...]
+class dumpstagram.namespaces.stories.SyncStories()
+def dumpstagram.namespaces.stories.SyncStories.__init__(self) -> None
+def dumpstagram.namespaces.stories.SyncStories.highlight(self, highlight_id: str) -> StoryReel
+def dumpstagram.namespaces.stories.SyncStories.reel(self, user_id: str) -> StoryReel | None
+def dumpstagram.namespaces.stories.SyncStories.tray(self) -> tuple[TrayReel, ...]
 module dumpstagram.session
 class dumpstagram.session.ProxyConfig()
 field dumpstagram.session.ProxyConfig.url: str

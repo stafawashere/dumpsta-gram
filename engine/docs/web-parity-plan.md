@@ -1033,6 +1033,119 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   the replies half of `probes/e2_next_pages.py`, 4 of its 10. The CLI acceptance,
   `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log
   `logs/e2-post-depth-cli-2026-09-27-033207.json`, six of them `dumpsta feed` under parity.
+- **W68. `client.stories` ships its reads now, without the seen mutation, amending W42.** Ruled
+  2026-09-27 by the orchestrator on the owner's delegation, for E2 batch 5. W42 held the whole
+  namespace until `PolarisStoriesV3SeenMutation` was verified on the owner's own story in an
+  arranged run, which needs the owner to post a story from his phone. The read queries mark
+  nothing (INFERENCE recorded in W42: the browser sends the seen mutation separately for each
+  item it shows, which would be redundant if the read had marked it), so shipping the reads
+  without the mutation cannot put the viewer in anyone's seen list, while holding them blocked
+  the E2 stop condition's "a story" render. So the reads send no seen marking, a named departure
+  from W6 until the arranged run of batch 12 verifies the mutation; `mark_seen` and
+  `Behavior.mark_stories_seen` do not ship in this batch and arrive with that run, when the
+  default becomes W6's parity. The docstrings on `client.stories`, `docs/public-api.md` and
+  `docs/web-request-contract.md` say that reading a story through the engine today does not mark
+  it seen. Nothing registers or sends `PolarisStoriesV3SeenMutation`,
+  `PolarisAPIReelSeenMutation` or `PolarisAPIForceStorySeenMutation`, and
+  `test_no_stories_method_sends_a_seen_mutation_and_the_registry_holds_none` holds it: every
+  stories method sends only its read query, none named a mutation, and no registry name
+  contains `Seen`, seen red under two mutations (a second request beside the reel's query, and
+  a seen mutation registered among the writes). W42's rule about the W30 partner stands for
+  acceptance runs: his stories are never read.
+- **W69. The tray is `stories.tray() -> tuple[TrayReel, ...]`, a model of its own.** Ruled
+  2026-09-27 for E2 batch 5. `PolarisStoriesV3TrayContainerQuery` (finding
+  `page-load-stories-tray`, a verified companion, replayed in run `run-2026-09-27-014102` with
+  roots `ayml`, `xdt_api__v1__feed__reels_tray` and `xdt_viewer`, 33 reels) with the variables
+  every page load sends, on `/api/graphql`. FACT over the 33 rows: each carried `id`, equal to
+  its owner's `pk` on all 33, `reel_type` `user_reel`, `latest_reel_media`, `expiring_at`
+  exactly 86400 s later, `seen` (0 on 23), `ranked_position` 1 to 33, `muted`,
+  `has_besties_media` and a `user` of `pk`, `id`, `username`, `profile_pic_url` and
+  `hd_profile_pic_url_info`, and no items. So a row is `TrayReel` rather than a `StoryReel`
+  with no items: `id`, `reel_type`, `owner` (`StoryOwner`, whose verified and private flags are
+  `None` here because the row does not carry them), `latest_item_at`, `expiring_at`,
+  `ranked_position`, `muted`, `has_close_friends_items` and `seen_at`, `None` where `seen` was
+  0 (INFERENCE that 0 means nothing seen). Dropped, listed on the mapper:
+  `latest_besties_reel_media`, which was a time on rows whose `has_besties_media` was false,
+  the wearables fields, zero or empty on all 33, `seen_ranked_position`, equal to the rank on all
+  33, the owner's repeats of the row, the empty `broadcasts`, and the `ayml` suggestions the
+  variables ask to show none of. The tray has no cursor, so the tuple is the tray as sent.
+  `STORIES_TRAY` moved from `COMPANION_QUERIES` to `READ_QUERIES`, as `PROFILE_HIGHLIGHTS` did in
+  W54, and every non-home page load still sends it unread. Departure: sent alone, with the site
+  root as referer, where a browser reads it inside a page load.
+- **W70. One account's live stories are `stories.reel(user_id) -> StoryReel | None`, one
+  highlight is `stories.highlight(highlight_id) -> StoryReel`, and a story item is `StoryItem`.**
+  Ruled 2026-09-27 for E2 batch 5. Both send `PolarisStoriesV3ReelPageStandaloneQuery` (finding
+  `read-one-account-s-stories-or-a-highlight`) on `/graphql/query` with root
+  `xdt_api__v1__feed__reels_media`: a reel with `reel_ids_arr` of the account id and the
+  community note provider true, a highlight with `reel_ids_arr` of its `highlight:<number>`,
+  `is_highlight` true and the provider, the probe's variables. FACT: the owner's highlight
+  answered one reel of 18 items twice, `reel_type` `highlight_reel`, and the owner's own reel
+  answered an empty `reels_media` once, 333 bytes, because he had no live story. So `reel`
+  returns `None` on an empty answer, `highlight` raises `NotFound` on one (INFERENCE, a missing
+  highlight was never read), and more than one reel for one id raises `SchemaChanged`. A live
+  story item was never observed; a highlight's items are story items, and a live reel's items
+  are ASSUMED to share their shape, which the docstrings say, as is a live reel's `reel_type`
+  `user_reel`, INFERENCE from the tray. `StoryReel` carries `id`, `reel_type`, `owner`
+  (`StoryOwner` with `is_verified` and `is_private` and no high resolution picture, which the
+  reel's user does not carry), `latest_item_at`, `can_reshare`, `items`, and `title` and
+  `cover_url` where the reel carries them, as a highlight does; `seen` and `muted` were null and
+  are not modelled. `StoryItem` carries, FACT over the 18 items: `id` as `<pk>_<owner id>`,
+  `pk`, `code`, `owner_id` from the item's own `user`, `media_type` (17 videos, 1 photo),
+  `product_type` `story`, `taken_at`, `expiring_at` (86400 s later on 17, 45 s on one),
+  `original_width` and `original_height`, `can_reply`, `can_reshare`, `is_paid_partnership`,
+  `is_story_edited`, `images` as E1's `MediaImage`, `videos`, `video_duration` read from the
+  item's own float rather than a manifest, `has_audio` (null on the photo), `audience`
+  (`besties` on 2, null otherwise), `mentions` from the four bloks stickers, each an
+  `ig_mention` with `username` and `full_name` and a position and size of zero, so neither is
+  modelled, and `music` from the eleven music stickers, each a title, a display artist and a
+  mute flag. A story video rendition carried `url` and `type` and no width or height on all 51,
+  so it is the new `StoryVideo(url, version_type)` rather than E1's `VideoRendition` with
+  dimensions guessed; `media.download` is typed for `MediaImage | VideoRendition`, a frozen
+  snapshot line, so a story image downloads through it and a story video has no typed download
+  yet. Links, locations, hashtags, polls, questions, sliders, countdowns and the caption were
+  null on every item, so none is modelled; `viewers` was an empty list on every item and is not
+  modelled, since where it is not empty it lists other people. A username raises `ValueError`
+  before anything is sent, and so does a highlight id not in the `highlight:<number>` form
+  `Highlight.id` carries. Departure: each is sent alone with the site root as referer, where a
+  browser opens the story viewer, and with no seen mutation after it (W68).
+- **W71. The stories gallery backs no capability and is not sent.** Ruled 2026-09-27 for E2
+  batch 5. `PolarisStoriesV3ReelPageGalleryQuery` (finding `read-the-stories-gallery`, replayed
+  twice) with `reel_ids` of up to three of the owner's highlight ids, `initial_reel_id`,
+  `first` 3, `last` 2 and `is_highlight` true answered on root
+  `xdt_api__v1__feed__reels_media__connection` one edge whose node is the standalone query's
+  reel key for key plus `__typename` and `unviewable_authors_infos`, with a null edge cursor and
+  `has_next_page` false. FACT from the two answers: it carries nothing `highlight` does not, it
+  was only read over highlights, never over several accounts' reels, and its next page query
+  never answered, so a `stories.reels(user_ids)` built on it would rest on an unobserved shape
+  and a pagination nothing verified. It is the story viewer's companion, whose burst has not
+  been captured, so it is not registered and nothing sends it; it joins `reel` as a companion
+  under ADR-0013 once the capture night records the viewer.
+- **W72. The canary replays twenty-four reads, three doctor literals followed, and the commands
+  are `stories-tray`, `story` and `highlight`.** Ruled 2026-09-27 for E2 batch 5. `READ_QUERIES`
+  gained the tray, moved from the companions, and the reel query, so a live doctor run goes from
+  at most 24 paced requests to at most 26, and the companions checked by artifact from 9 to 8.
+  The highlights tray step now learns the viewer's first highlight, and the reel step reads that
+  highlight, keyed on it and skipped without one, so the canary never reads another account's
+  story. W48's pattern. `tests/test_doctor.py` followed in three literals, each seen red before
+  the edit and green after: the registry count, 41 to 42 (`assert 42 == 41`), the dry run's paced
+  total, 24 to 26 (`assert 26 == 24`), and the stated plan, 22 reads to 24. The two new reads
+  answer from the batch's fixtures, and a new gate holds the reel step to the viewer's first
+  highlight with the highlight flag and to being skipped without one. One anchor in
+  `scripts/verify_profile_tabs_gates.py` followed the highlights step's mapper call into
+  `_learn_first_highlight`, the same defect on the new line. `ARGUMENT_FOR_PARAMETER` in
+  `tests/test_facade_parity.py` gained `highlight_id` and the core table the three methods. The
+  commands are `dumpsta stories-tray`, `story USER_ID` and `highlight HIGHLIGHT_ID`, text and
+  JSON: `story` names one account's live reel in the singular the website's "story" uses,
+  `stories-tray` keeps the tray apart from `highlights`, the profile's highlights tray, and
+  `highlight` reads one entry of that tray. `story` refuses a username and `highlight` a bare
+  number, with exit 2. The gate fixtures are the recorded answers, pseudonymised by
+  `scripts/build_stories_fixtures.py`, 436 values checked absent. `tests/test_stories.py` holds
+  11 gates and `scripts/verify_stories_gates.py` 42 mutations, each seen red then green. The
+  surface grew from 681 lines to 767, 86 added and none removed or changed. Live traffic for the
+  discovery: `probes/e2_stories.py` 8 requests. The CLI acceptance,
+  `probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
+  highlight through `dumpsta highlights` then `highlight`, four requests, and no other account's
+  reel; it has not run.
 
 ## Standing rules for every phase
 

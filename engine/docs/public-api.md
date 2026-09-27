@@ -410,11 +410,12 @@ client.media.like(post.pk)
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
+| `stories` | `AsyncStories` | `SyncStories` | The stories tray, an account's live stories and one highlight, read without marking anything seen |
 
 The classes are defined in `dumpstagram.namespaces.direct` and its siblings, one module per
 namespace holding both twins, and are not re-exported. A namespace is reached through its
-client and is not built directly: its `__init__` raises `TypeError`. `stories`, `search` and
-`account` appear with their first capability, not before (W20). `events` stays on the client.
+client and is not built directly: its `__init__` raises `TypeError`. `search` and `account`
+appear with their first capability, not before (W20), as `stories` did in E2 batch 5. `events` stays on the client.
 
 The seventeen flat methods of `1.0.0` stay for good. Each answers through its alias, with the
 same parameters, the same defaults and the same return type:
@@ -656,8 +657,8 @@ is sent.
 `HighlightTray` holds the tray's first page as `highlights` and the upstream's
 `has_next_page` as `has_more`, because the query that reads further has never answered (W54).
 `Highlight` carries `id` (`highlight:<number>`), `title`, `cover_url`, `owner_id` and
-`owner_username`. Reading the stories inside a highlight is not part of it, and nothing is
-marked seen.
+`owner_username`. Reading the stories inside a highlight is `stories.highlight(highlight.id)`,
+and nothing is marked seen.
 
 `ProfileSummary` is one account as a list row shows it: `id`, the numeric account id
 `profiles.by_id` takes, `username`, `full_name`, `is_verified`, `profile_pic_url`, and
@@ -777,6 +778,56 @@ and `PostDetail`, and `user_tags` on each `CarouselChild` too:
 A tuple is empty when the post has none, and `None` only when the read that produced the post
 does not carry the field, which today means `by_id`'s collaborators (W65). The post modal's
 context query backs no method (W66).
+
+### Stories
+
+Landed 2026-09-27, E2 batch 5 of [web-parity-plan.md](web-parity-plan.md), rulings W68 to W72.
+The `stories` namespace, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `stories.tray()` | `tuple[TrayReel, ...]` | one |
+| `stories.reel(user_id)` | `StoryReel \| None` | one |
+| `stories.highlight(highlight_id)` | `StoryReel` | one |
+
+```python
+for row in client.stories.tray():
+   print(row.ranked_position, row.owner.username, row.seen_at)
+
+tray = client.profiles.highlights(profile.id)
+highlight = client.stories.highlight(tray.highlights[0].id)
+for item in highlight.items:
+   print(item.taken_at, item.media_type, len(item.videos), [m.username for m in item.mentions])
+
+live = client.stories.reel(profile.id)   # None when the account has no live story
+```
+
+**Reading a story through the engine does not mark it seen.** A browser marks every item it
+shows with a separate mutation, which puts the viewer in the story's seen list. The engine sends
+none, a named departure from browser parity (W6) that holds until the mutation is verified on the
+owner's own story in an arranged run, E2 batch 12. `mark_seen` and `Behavior.mark_stories_seen`
+arrive with that run, and the default then becomes the browser's. Until then no request any
+stories method sends can mark a story seen (W68).
+
+**The tray.** One `TrayReel` per account with live stories, in the tray's order: the `owner` (a
+`StoryOwner` with a high resolution picture and no verified or private flag), `latest_item_at`,
+`expiring_at`, `seen_at` (`None` when nothing has been seen), `ranked_position`, `muted` and
+`has_close_friends_items`. It carries no items; `stories.reel(row.owner.id)` reads them (W69).
+
+**A reel and a highlight.** One query serves both. `reel` takes the numeric account id and
+returns `None` when the account has no live story; `highlight` takes `Highlight.id`, the
+`highlight:<number>` form, and raises `NotFound` on an answer with no reel. Anything else raises
+`ValueError` before anything is sent. A `StoryReel` carries `id`, `reel_type`, the `owner` (with
+its verified and private flags and no high resolution picture), `latest_item_at`, `can_reshare`,
+its `items`, and a highlight's `title` and `cover_url`. A `StoryItem` carries its identifiers and
+shortcode, `owner_id`, `media_type` and `product_type`, `taken_at` and `expiring_at`, its size,
+`images` (`MediaImage`), `videos` (`StoryVideo`: `url` and `version_type` only, since a story
+rendition carries no dimensions), `video_duration`, `has_audio`, `audience` (`besties` for close
+friends), four flags, and its `mentions` (`StoryMention`) and `music` (`StoryMusic`) stickers.
+Only highlights have been read live; a live reel's items are ASSUMED to share their shape (W70).
+`media.download` is typed for `MediaImage` and `VideoRendition`, so a story's image downloads
+through it and a `StoryVideo` has no typed download yet.
+The stories gallery query backs no method (W71).
 
 ## Stability contract
 

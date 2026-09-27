@@ -1,6 +1,7 @@
 """What a page load sends after its document, and the cookie sync's ``fr`` exchange.
 
-None of these back a capability. They are sent because a browser sends them.
+They are sent because a browser sends them. One of them, :data:`STORIES_TRAY`, also backs a
+capability, since ``stories.tray`` reads it on its own from E2 batch 5.
 """
 
 from __future__ import annotations
@@ -52,7 +53,9 @@ STORIES_TRAY = PersistedQuery(
    finding_id="page-load-stories-tray",
 )
 """The stories tray, prefetched by every load that is not the home page. The home document
-carries it as a preloader instead."""
+carries it as a preloader instead. ``stories.tray`` sends it alone and reads it, and a page
+load's copy is still left unread. Replayed on 2026-09-27 in run ``run-2026-09-27-014102``, 33
+reels, roots ``ayml``, ``xdt_api__v1__feed__reels_tray`` and ``xdt_viewer``."""
 
 GET_FR_COOKIE = PersistedQuery(
    doc_id="27399811883030165",

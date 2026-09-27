@@ -56,6 +56,7 @@ from dumpstagram._private.web.documents.media import (
 )
 from dumpstagram._private.web.documents.notes import INBOX_TRAY
 from dumpstagram._private.web.documents.profiles import PROFILE_POSTS, PROFILE_POSTS_NEXT_PAGE
+from dumpstagram._private.web.documents.stories import STORY_REEL
 from dumpstagram._private.web.preload import HOME_DOCUMENT_URL
 from dumpstagram.aio import AsyncClient, _rotation_doctor
 from dumpstagram.errors import CheckpointRequired
@@ -73,6 +74,7 @@ from tests.test_post_depth import recorded as recorded_post_depth
 from tests.test_profile_tabs import recorded as recorded_profile_tabs
 from tests.test_profiles import profile_payload
 from tests.test_smoke import FakeClock
+from tests.test_stories import recorded as recorded_stories
 from tests.test_thread_route import detail_payload
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "doctor"
@@ -199,6 +201,8 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisPostLikedByListDialogQuery": recorded_post_depth("likers.json"),
       "PolarisPostActionLoadPostQueryMediaIdQuery": recorded_post_depth("post_by_media_id.json"),
       "PolarisDesktopPostPageRelatedMediaGridQuery": recorded_post_depth("more_from_author.json"),
+      "PolarisStoriesV3TrayContainerQuery": recorded_stories("stories_tray.json"),
+      "PolarisStoriesV3ReelPageStandaloneQuery": recorded_stories("highlight.json"),
    }
 
 
@@ -420,7 +424,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 41
+   assert len(registry) == 42
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -565,6 +569,34 @@ def test_the_replies_are_replayed_on_a_learned_comment_and_skipped_without_one()
    assert no_replies_report.reads_sent == len(READ_QUERIES) - 2
 
 
+def test_the_story_reel_is_replayed_on_the_viewers_first_highlight_and_skipped_without_one() -> (
+   None
+):
+   """Catches the reel step reading anything but the viewer's own first highlight, which could
+   be another account's story, reading it without the highlight flag, and sending it when the
+   viewer has no highlight."""
+
+   bundles = every_query_compiled()
+   tray = recorded_profile_tabs("highlight_tray.json")
+   first_highlight = tray["data"]["highlights"]["edges"][0]["node"]["id"]
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   no_highlights = answers_for_every_read()
+   no_highlights["PolarisProfileStoryHighlightsTrayContentQuery"]["data"]["highlights"][
+      "edges"
+   ] = []
+   bare_site = a_site(bundles, answers=no_highlights)
+   bare_report = run_doctor(bare_site, FakeBundles(bundles))
+   reel_variables = site.variables_of("PolarisStoriesV3ReelPageStandaloneQuery")
+
+   assert reel_variables["reel_ids_arr"] == [first_highlight]
+   assert reel_variables["is_highlight"] is True
+   assert check_for(report, STORY_REEL).replay is ReplayVerdict.OK
+   assert check_for(bare_report, STORY_REEL).replay is ReplayVerdict.SKIPPED
+   assert "PolarisStoriesV3ReelPageStandaloneQuery" not in bare_site.sent
+   assert bare_report.reads_sent == len(READ_QUERIES) - 1
+
+
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
    """Catches a scan that fetches every bundle a document names after it already has its
    answer. The home document names a bundle the scan never needs."""
@@ -631,7 +663,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 24
+   assert payload["plan"]["paced_requests_at_most"] == 26
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -727,5 +759,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 22 reads" in stated
+   assert "2 documents and at most 24 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated

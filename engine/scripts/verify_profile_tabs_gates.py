@@ -503,8 +503,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             CANARY,
-            "      read=_mapped_by(parse_highlight_tray),",
-            "      read=_mapped_by(parse_suggested_accounts),",
+            "   tray = parse_highlight_tray(payload)",
+            "   tray = parse_suggested_accounts(payload)",
          )
       ],
    },

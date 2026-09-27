@@ -359,6 +359,7 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "caption": "a caption",
    "code": "Cxxxxxxxxxx",
    "comment_id": "17890123456789012",
+   "highlight_id": "highlight:17912345678901234",
    "image": b"\xff\xd8not-read-before-the-core",
    "images": [b"\xff\xd8first", b"\xff\xd8second"],
    "message_id": "mid.$abcdefghijklmnop",
@@ -781,6 +782,9 @@ CORE_FUNCTION_FOR_ALIAS = {
    "profiles.suggested_for_you": "dumpstagram._core.profiles.read_suggested_accounts",
    "social.follow": "dumpstagram._core.writes.follows.follow_user",
    "social.unfollow": "dumpstagram._core.writes.follows.unfollow_user",
+   "stories.highlight": "dumpstagram._core.stories.read_highlight",
+   "stories.reel": "dumpstagram._core.stories.read_story_reel",
+   "stories.tray": "dumpstagram._core.stories.read_stories_tray",
 }
 """The core capability each namespace method delegates to. The flat and alias gates above cannot
 see an alias reaching the wrong one, since a flat method answers through its alias, so this

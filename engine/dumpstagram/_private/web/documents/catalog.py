@@ -56,6 +56,7 @@ from dumpstagram._private.web.documents.profiles import (
    SUGGESTED_BESIDE_PROFILE,
 )
 from dumpstagram._private.web.documents.social import FOLLOW_USER, UNFOLLOW_USER
+from dumpstagram._private.web.documents.stories import STORY_REEL
 
 __all__ = [
    "COMPANION_QUERIES",
@@ -86,6 +87,8 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    POST_LIKERS,
    POST_BY_MEDIA_ID,
    MORE_FROM_AUTHOR,
+   STORIES_TRAY,
+   STORY_REEL,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 
@@ -94,7 +97,6 @@ COMPANION_QUERIES: tuple[PersistedQuery, ...] = (
    QUICK_PROMOTION,
    CHAT_TABS_JEWEL,
    OMNI_PICKER_NULL_STATE,
-   STORIES_TRAY,
    GET_FR_COOKIE,
    PROFILE_NOTE_BUBBLE,
    PROFILE_SUGGESTED_USERS,
@@ -104,7 +106,9 @@ COMPANION_QUERIES: tuple[PersistedQuery, ...] = (
 
 ``PROFILE_HIGHLIGHTS`` left this list for :data:`READ_QUERIES` in E2 batch 2, when
 ``profiles.highlights`` started reading it. The profile page still sends it as one of its six
-queries and still leaves that answer unread.
+queries and still leaves that answer unread. ``STORIES_TRAY`` left it in E2 batch 5 the same
+way, when ``stories.tray`` started reading it; every page load but the home page still sends it
+and leaves its answer unread.
 """
 
 WRITE_QUERIES: tuple[PersistedQuery, ...] = (

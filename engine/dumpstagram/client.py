@@ -42,6 +42,7 @@ from dumpstagram.namespaces.feeds import SyncFeeds
 from dumpstagram.namespaces.media import SyncMedia
 from dumpstagram.namespaces.profiles import SyncProfiles
 from dumpstagram.namespaces.social import SyncSocial
+from dumpstagram.namespaces.stories import SyncStories
 from dumpstagram.session import Session
 
 __all__ = ["SyncClient"]
@@ -163,6 +164,12 @@ class SyncClient:
       """The viewer's relationships to other accounts, ``client.social``."""
 
       return SyncSocial._of(self)
+
+   @property
+   def stories(self) -> SyncStories:
+      """The stories tray, an account's live stories and its highlights, ``client.stories``."""
+
+      return SyncStories._of(self)
 
    def thread_messages(
       self,

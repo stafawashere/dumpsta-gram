@@ -39,7 +39,7 @@ capture night that unblocks the rest.
 | 2 | Profile tabs over GraphQL, done 2026-09-27 | `probes/e2_profile_tabs.py` | 12, spent 8 on each of 3 runs | 4, spent 0 |
 | 3 | Relationship lists, done 2026-09-27 | `probes/e2_follow_lists.py` | 6, spent 7 on each of 2 runs | 1, spent 1 on each |
 | 4 | Post depth, done 2026-09-27 | `probes/e2_post_depth.py` | 13, spent 13, and 4 of `e2_next_pages.py` | 7, spent 0 |
-| 5 | Stories, read only | `probes/e2_stories.py` | 8 | 4 |
+| 5 | Stories, read only, done 2026-09-27 | `probes/e2_stories.py` | 8, spent 8 | 4, spent 0 |
 | 6 | Own account | `probes/e2_own_account.py` | 7 | 3 |
 | 7 | Discovery feeds | `probes/e2_discovery_feeds.py` | 9 | 5 |
 | 8 | Search | `probes/e2_search.py` | 7 | 3 |
@@ -294,11 +294,34 @@ post.
 
 | Operation | Kind | Status |
 |---|---|---|
-| `PolarisStoriesV3TrayContainerQuery` | the tray | verified, a shipped companion |
-| `PolarisStoriesV3ReelPageStandaloneQuery` | one account's reel, or one highlight | hypothesis, variables observed |
-| `PolarisStoriesV3ReelPageGalleryQuery` | the gallery around a reel | hypothesis, variables observed |
-| `PolarisStoriesV3ReelPageGalleryPaginationQuery` | the gallery's next reels | hypothesis, variables observed |
-| `PolarisStoriesV3SeenMutation` | mark one item seen | hypothesis, variables observed, WRITE-LIKE |
+| `PolarisStoriesV3TrayContainerQuery` | the tray | verified, a shipped companion, public as `stories.tray` |
+| `PolarisStoriesV3ReelPageStandaloneQuery` | one account's reel, or one highlight | verified 2026-09-27, public as `stories.reel` and `stories.highlight` |
+| `PolarisStoriesV3ReelPageGalleryQuery` | the gallery around a reel | verified 2026-09-27, no capability and not sent (W71) |
+| `PolarisStoriesV3ReelPageGalleryPaginationQuery` | the gallery's next reels | hypothesis, never answered |
+| `PolarisStoriesV3SeenMutation` | mark one item seen | hypothesis, variables observed, WRITE-LIKE, never sent (W68) |
+
+**Status: done on 2026-09-27 for the reads, rulings W68 to W72.** `probes/e2_stories.py` ran once
+with 8 requests and no conditional one, in run `run-2026-09-27-014102`: the tray with 33 reels,
+the owner's one highlight twice with 18 items, the owner's own reel once with no reel, since he
+had no live story, and the gallery over his highlights twice. The reads shipped as
+`client.stories.tray() -> tuple[TrayReel, ...]`, `client.stories.reel(user_id) -> StoryReel |
+None` and `client.stories.highlight(highlight_id) -> StoryReel`, on both clients with no flat
+twin, with the new public models `TrayReel`, `StoryReel`, `StoryItem`, `StoryOwner`,
+`StoryVideo`, `StoryMention` and `StoryMusic`, and as `dumpsta stories-tray`, `story` and
+`highlight`. W68 amends W42: the reads ship before the seen mutation is verified and send no
+seen marking, a named departure from W6 until batch 12; `mark_seen` and
+`Behavior.mark_stories_seen` arrive with that run. The CLI acceptance,
+`probes/e2_stories_cli_acceptance.py`, is written and has not run. What the run found that the
+plan did not know:
+
+- The tray rows carry no items, only the owner, times, a seen time and a rank, so the tray is
+  its own model (W69).
+- A story's video renditions carry `url` and `type` and no dimensions, so they are `StoryVideo`
+  rather than `VideoRendition` (W70).
+- No live story item has been read. A highlight's items are story items, and a live reel's are
+  ASSUMED to share their shape (W70).
+- The gallery answered the same reel the standalone query did, one edge, with nothing to page
+  on, so it backs nothing (W71).
 
 Variables. A reel takes `reel_ids_arr` of account ids, observed; a highlight takes
 `is_highlight` true and the highlight's id, INFERENCE. The gallery takes the tray's reel ids.
