@@ -962,8 +962,10 @@ its `items`, and a highlight's `title` and `cover_url`. A `StoryItem` carries it
 shortcode, `owner_id`, `media_type` and `product_type`, `taken_at` and `expiring_at`, its size,
 `images` (`MediaImage`), `videos` (`StoryVideo`: `url` and `version_type` only, since a story
 rendition carries no dimensions), `video_duration`, `has_audio`, `audience` (`besties` for close
-friends), four flags, and its `mentions` (`StoryMention`) and `music` (`StoryMusic`) stickers.
-Only highlights have been read live; a live reel's items are ASSUMED to share their shape (W70).
+friends), four flags, its `mentions` (`StoryMention`) and `music` (`StoryMusic`) stickers, and
+`shared_media` (`StorySharedMedia`: `id`, `code`, `product_type`), the post or reel the item
+shows, which `media.by_code` reads. One live reel of another account has been read: its `title`
+and `cover_url` are `None`, and its one item carried the highlight items' keys (W121).
 `media.download` is typed for `MediaImage` and `VideoRendition`, so a story's image downloads
 through it and a `StoryVideo` has no typed download yet.
 The stories gallery query backs no method (W71).

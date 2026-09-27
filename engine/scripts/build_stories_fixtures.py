@@ -1,14 +1,15 @@
 """Turn the E2 batch 5 captures into the pseudonymised fixtures the stories gates replay.
 
-The inputs are local and outside git: the bodies ``probes/e2_stories.py`` kept under the skill's
-``var/captures/`` on 2026-09-27. The outputs are the three files under ``tests/fixtures/stories/``,
-which are committed, so nothing of a third party may survive into them. The rules are by key,
+The inputs are local and outside git: the bodies ``probes/e2_stories.py`` and
+``probes/live_reel_shape.py`` kept under the skill's ``var/captures/`` on 2026-09-27. The outputs
+are the four files under ``tests/fixtures/stories/``, which are committed, so nothing of a third
+party may survive into them. The rules are by key,
 and a value no rule keeps is replaced:
 
 - enum-like values (``__typename``, ``product_type``, ``reel_type``, ``audience``,
   ``gen_ai_detection_method``) are kept verbatim, and so are booleans and nulls
 - every identifier is replaced by a synthetic one of the same length, consistently across all
-  three files, including both parts of a ``<pk>_<owner id>`` and the number in a
+  four files, including both parts of a ``<pk>_<owner id>`` and the number in a
   ``highlight:<number>``, so an item still names its owner and a tray row's id is still its
   owner's
 - every time (``taken_at``, ``expiring_at``, ``latest_reel_media``, ``seen`` and the rest) is
@@ -43,6 +44,7 @@ LOG_DIR = ENGINE / "logs"
 FIXTURE_DIR = ENGINE / "tests" / "fixtures" / "stories"
 CAPTURES = ENGINE.parent / "skills" / "reverse-engineer" / "var" / "captures"
 STORIES = "e2-stories-2026-09-27-013639"
+LIVE_REEL = "live-reel-shape-2026-09-27-193742"
 
 SHIFTED_EPOCH_SECONDS = 1_577_836_800
 """2020-01-01T00:00:00Z. The oldest time in the inputs lands here."""
@@ -87,6 +89,7 @@ OUTPUTS = {
    "stories_tray.json": f"{STORIES}-02-page-load-stories-tray.json",
    "highlight.json": f"{STORIES}-04-own-highlight-1.json",
    "own_reel_empty.json": f"{STORIES}-06-own-reel.json",
+   "live_reel.json": f"{LIVE_REEL}-02-live-reel-1.json",
 }
 
 

@@ -1109,7 +1109,11 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   modelled, since where it is not empty it lists other people. A username raises `ValueError`
   before anything is sent, and so does a highlight id not in the `highlight:<number>` form
   `Highlight.id` carries. Departure: each is sent alone with the site root as referer, where a
-  browser opens the story viewer, and with no seen mutation after it (W68).
+  browser opens the story viewer, and with no seen mutation after it (W68). Amended 2026-09-27 by
+  W121: the ASSUMPTION about a live reel failed. FACT, one live reel of another account read twice
+  by `probes/live_reel_shape.py`: `reel_type` `user_reel`, `title` and `cover_media` null, and
+  every key the highlight and its items carried, no other, the item adding a non-null
+  `story_feed_media`.
 - **W71. The stories gallery backs no capability and is not sent.** Ruled 2026-09-27 for E2
   batch 5. `PolarisStoriesV3ReelPageGalleryQuery` (finding `read-the-stories-gallery`, replayed
   twice) with `reel_ids` of up to three of the owner's highlight ids, `initial_reel_id`,
@@ -2294,6 +2298,107 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   first seen red on the acceptance's own error before the mapper changed, and a form check on
   `dumpsta explore`; five mutations. Surface 1143 to 1149 lines, six added. The acceptance is to
   be rerun.
+- **W121. `stories.reel()` reads a live reel: `title` and `cover_url` are `None` there, and a
+  story item names the post it shares as `StoryItem.shared_media`.** Ruled 2026-09-27 for the E2
+  closure, amending W70. A shipped defect: `dumpsta story <id> --no-mark-seen` on a public account
+  from the stories tray raised `SchemaChanged: data.xdt_api__v1__feed__reels_media.reels_media[0].title
+  is not a string`, because the mapper read `title` as required wherever the reel carried the key,
+  and a highlight was the only reel ever read (W70's ASSUMPTION). `probes/live_reel_shape.py` read
+  that live reel twice with the read query alone, 3 requests with the bootstrap, no seen mutation,
+  log `logs/live-reel-shape-2026-09-27-193748.json`, bodies under the skill's
+  `var/captures/live-reel-shape-2026-09-27-193742-0{2,3}-*`, 20230 bytes each. FACT, both reads,
+  compared key by key against the 18 highlight items: the reel carried the highlight's keys and no
+  other; `title` and `cover_media` were null where the highlight sent a name and a cover, `seen`
+  was 0 where the highlight sent null, `reel_type` was `user_reel`, and the reel's user added
+  `friendship_status`. The one item, a video with three renditions and one music sticker, carried
+  the highlight items' keys and no other; three differed in type: `ai_label_info` null, `has_liked`
+  false where every highlight item sent null, and `story_feed_media` a list of one object (`id`,
+  `media_code`, `product_type` `clips`, and the sticker's place, size and rotation) where every
+  highlight item sent null. Decided: `title` is read as a string or null and `cover_media` null
+  reads as no cover, the model unchanged since both fields were already optional; the shared post
+  is the new `StorySharedMedia(id, code, product_type)`, a reel or post the story shows, which
+  `media.by_code(code)` reads, on `StoryItem.shared_media: tuple[StorySharedMedia, ...] = ()`,
+  empty on a null, and the JSON form of `dumpsta story` and `highlight` gained `shared_media`.
+  Not modelled: the reel's `seen` and `friendship_status`, which the tray row and a profile read
+  carry; `has_liked`, left until the story like write of E3 can confirm what it reads; the
+  sticker's place and size. Still one live reel of one account with one item, so a live item with
+  a mention or a close friends audience is ASSUMED to share the highlight items' shape, as their
+  keys matched. The reel's seen mutation after a default `reel()` stays INFERENCE (W93).
+- **W122. The notifications badge backs no method; it is chrome, preloaded in the documents the
+  engine already loads.** Ruled 2026-09-27 for the E2 closure. `usePolarisNotificationsNavItemQuery`
+  counts the heart icon's badge. FACT from the captures: it arrived preloaded and complete in the
+  document of every page load recorded with it, the home document (three captures), the owner's
+  and another account's profile, a thread page, the explore page and both post pages, and was
+  never sent there as a request; it was sent as a request once, 1338 ms into the settings route
+  `/accounts/blocked/` of `run-2026-09-27-135628`, `device_id` the `ig_did` cookie, 280 bytes. The
+  answer is `total_count` and four counters, `comments`, `likes`, `relationships` and `usertags`,
+  names `ActivityCounts` of `account.activity` also carries (INFERENCE that they count the same
+  thing, never read at one moment). So it backs nothing, the notifications page renders from
+  `account.activity` (W74), and a document the engine loads receives the preload unread, which is
+  what a browser does with it. Departure, named here: `account.blocked` loads no settings document
+  and so does not send the badge the settings route sent (W110). The finding stays a hypothesis
+  with no replay, and nothing registers it.
+- **W123. The thread header is a companion of the thread page load, which no read makes; what
+  only it carries belongs to E4.** Ruled 2026-09-27 for the E2 closure. FACT, finding
+  `direct-inbox-header-for-open-thread` (verified twice) and the captures: `IGDInboxHeaderOffMsysQuery`
+  was sent on each of the three thread cold loads of `run-2026-09-23-004555`, 613 ms in beside
+  the open thread's `IGDThreadDetailQuery`, `thread_fbid` the thread key and `min_uq_seq_id`
+  null, and three times more in `run-2026-09-23-005544` as threads were opened, with a sequence id;
+  never on an inbox load (W88). Its answer, `get_slide_thread_nullable`, is one thread's header:
+  the participants with name, picture, verification and story times, `thread_title`, and three
+  things no `DirectThread` carries, the thread's `nicknames`, `reachability_status` and each
+  participant's `is_restricted` and `blocking`. `direct.messages` does not load the thread page;
+  `ThreadFirstPage` documents that neither route sends the rest of the thread load, and the header
+  is part of that named departure. Nicknames and reachability are thread settings, E4's by the
+  census; restriction and blocking are the subject of E3's relationship writes. It backs nothing in E2 and is not
+  registered.
+- **W124. The floating chat tabs back nothing and are not registered.** Ruled 2026-09-27 for the
+  E2 closure. `IGDChatTabsContentOffMsysQuery` has no finding. FACT, two captures: sent once on
+  the home page 20.5 s into `run-2026-09-23-005544` and once on a profile 14.4 s into
+  `run-2026-09-23-145957`, beside `IGDChatTabsJewelOffMsysQuery` and the omni picker, root
+  `get_slide_mailbox_for_iris_subscription`, about 113 kB: the mailbox's first 15 threads with a
+  cursor and the pinned threads, the shape of the inbox's first page, which `direct.inbox` reads.
+  So it is chrome that repeats a shipped read. Whether it belongs to the page load or to opening
+  the chat tabs is UNRESOLVED: both sends came seconds after the load's burst. The home and
+  profile companions send the jewel and not the content, a departure named here, which a finding
+  and a replay would close.
+- **W125. The liked by line and the GraphQL activity view keep the audit's reasons.** Ruled
+  2026-09-27 for the E2 closure, ratifying the closure audit. `PolarisLikedByTextDaisyReduxQuery`:
+  FACT, neither cold post page load of `run-2026-09-27-131354` sent it and W112's companions do
+  not include it, and what the line shows is `like_count` and the sample `media.likers` reads, so
+  it backs nothing; W86's reason, waiting on the post page, lapsed with W111.
+  `PolarisActivityFeedStoriesViewQuery`: FACT from one observation (finding
+  `notifications-panel-open`), the website's notifications panel sends REST `news/inbox`, the read
+  `account.activity` makes, and not this query; it backs nothing, and its variables and
+  `mark_as_seen` stay unobserved.
+- **W126. The story archive is not shipped in E2 and is deferred with its reason.** Ruled 2026-09-27 for the E2
+  closure. `GET /api/v1/archive/reel/day_shells/` and the archive's `POST /api/v1/feed/reels_media/`
+  were captured once in `run-2026-09-27-131354` and never replayed, because the page token the
+  archive request carries was never observed at its source, so a replay would send a value
+  recalled from one capture. Reason recorded; deferred. It closes with a `reverse-engineer` run that
+  finds the token's source and replays both twice, then `account.archive` ships, additively.
+  E3's highlight create reads the archive, so it lands there at the latest.
+- **W127. A named saved collection's posts are not shipped in E2 and are deferred with their
+  reason.** Ruled 2026-09-27 for the E2 closure. The owner has no named collection, so neither
+  the collection's type in the saved tab (W106 reads it as `SavedCollectionKind.OTHER`) nor a
+  request for its posts has been observed. Reason recorded; deferred. It closes when the owner has
+  a named collection, by hand or through E3's collection create, and a capture reads its posts.
+- **W128. The text form of `dumpsta comments` prints each comment's reply count.** Ruled
+  2026-09-27 for the E2 closure. A comment line reads `<created>  <id>  <author>  replies <n>
+  <text>` wherever `Comment.reply_count` is not `None`, zero included, and is unchanged where it
+  is `None`, as on a reply, so the thread renders as text by `comments` then `replies <pk> <id>`
+  on a comment whose count is above zero. `post-page` prints its first comments the same way.
+  The JSON form is unchanged, it already carried `reply_count`.
+- **W129. Gates, the harnesses and the surface for the closure pass.** Ruled 2026-09-27. Three
+  gates: in `tests/test_stories.py`, a live reel read on the new fixture `live_reel.json`,
+  pseudonymised from the first 19:37 answer by `scripts/build_stories_fixtures.py` (459 values
+  replaced over the four files, none surviving, the other three fixtures byte for byte unchanged), seen red on the
+  acceptance's own `SchemaChanged` before the mapper changed, and a highlight item sharing nothing;
+  in `tests/test_comments.py`, the reply counts on the recorded comment page of batch 4, fourteen
+  comments, three with none and counts up to 52, seen red before the renderer changed.
+  `scripts/verify_stories_gates.py` gained six mutations, 77 of 77 fired, and one existing
+  anchor followed the title line it names; `scripts/verify_comments_gates.py` gained three, 28 of
+  28. Surface 1149 to 1156 lines, seven added, none changed. No live request was sent.
 
 ## Standing rules for every phase
 
@@ -2482,6 +2587,39 @@ each, one capture night and one arranged story run, in [e2-execution.md](e2-exec
 public capability or has a recorded reason it is not. `dumpsta` can render, as text, each page a
 signed-in user sees on the website: home, explore, reels, a profile with each tab, a post with
 threaded comments, a story, search results, notifications, saved, and the inbox with requests.
+
+**Status on 2026-09-27, after `d3c7e3b`: the stop condition is met, three items stay open on
+shipped reads, and `1.2.0` is not cut.** E2 added 48 public methods to each client, 47 reads of which 8 are
+iterators and one write, `stories.mark_seen`, with 53 public models, three route enums and five
+`Behavior` settings (`follow_list_statuses`, `inbox_route`, `post_route`, `typeahead_route`,
+`mark_stories_seen`), and 37 `dumpsta` commands. The surface grew from 536 lines at `1.1.0` to
+1149, two lines changed (W119) and none of the Phase 3 baseline. The batches and their commits:
+batch 1, the direct read side, `ab09f0f`, before this range; batch 2 `607104f`; batch 3
+`7623fc4`; batch 4 `5b67332`; batch 5 `5669b52`, its acceptance recorded in `525f2ac`; batch 6
+`4331649`; batch 7 `a33f370`; batch 8 `d59c20a`; batch 9 `35f7142`; the capture night's replay
+probe `810e9f3`; batch 12 and account B's first read `2a674b7`; batch 11a `fd940d4`; 11b
+`8d9eb53`; 11c `132fd7f`; 11d `3779149`; 11e `d3c7e3b`. `ac41656` in the same range is app work,
+not E2. Live traffic, summed from the rulings, the commits and the acceptance logs: 415 engine
+requests, 187 of them discovery probes and replays and 228 acceptance runs through `dumpsta`,
+the stopped first runs of batches 2, 4, 9 and 11e included, and 456 browser requests to the site
+in the two counted capture runs, `run-2026-09-27-131354` (366) and `run-2026-09-27-182013` (90).
+The browser loads of `run-2026-09-27-135628`, the owner's highlight and the blocked list, were not
+counted. The closure pass added `probes/live_reel_shape.py`, 3 requests; the `dumpsta story` run
+that met the W121 defect is not counted. The closure audit at the end of [e2-execution.md](e2-execution.md) holds the read by read
+table. The closure pass after `d3c7e3b` fixed one shipped defect, a live reel raising on its null
+title (W121), ruled the reads the audit found without a reason (W122 to W125), deferred the story
+archive and a named collection's posts with their reasons (W126, W127), and made the text form of
+`comments` print reply counts (W128), adding one model, `StorySharedMedia`, and the surface is
+1156 lines. **Verdict: the stop condition is
+met.** Every census read on an E2 page backs a public method, rides in a modelled page load or
+carries a recorded reason, and every page the condition names renders as text through `dumpsta`.
+Three items stay open, each on a shipped read and none a gap in the condition, and none can be
+closed by the engine alone: a message request row has never been read, because the folder has
+always been empty and account B, a day old, cannot start a thread on the web, so B must message
+the owner from the phone app (W51, W47); B's own story and highlight have not been read as another
+account's, which needs B to post from the phone (W51); and the mutual followers' next page (W117)
+needs a public account the owner follows that shares more than twelve followers with him.
+INFERENCE: none of them changes a shipped signature. `1.2.0` is not cut.
 
 ## E3, 1.3.0: own-account writes and content management
 

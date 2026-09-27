@@ -10,15 +10,25 @@ Built from the answers ``probes/e2_stories.py`` kept on 2026-09-27. Dropped, and
   ``reel_media_seen_timestamp``, ``is_unpublished`` and the two live broadcast fields, which
   repeat the row or were null; beside the tray, ``broadcasts``, empty, the suggested accounts
   under ``ayml``, which the variables ask to show none of, and ``xdt_viewer``
-- on a reel, ``seen`` and ``muted``, null on the highlight, ``unviewable_authors_infos``, empty,
-  and the owner's ``aigm_account_label_info``, ``interop_messaging_user_fbid`` and three
-  transparency fields
+- on a reel, ``seen`` and ``muted``, null on the highlight, and on the live reel of W121 ``seen``
+  zero and ``muted`` null, since the tray row carries both, ``unviewable_authors_infos``, empty,
+  and the owner's ``aigm_account_label_info``, ``interop_messaging_user_fbid``, three
+  transparency fields and, on the live reel only, ``friendship_status``, which a profile read
+  carries
 - on an item, every field null on all 18 (``caption``, ``accessibility_caption``, ``link``,
   ``story_link_stickers``, ``story_locations``, ``story_hashtags``, ``story_questions``,
   ``story_sliders``, ``story_countdowns``, ``story_cta`` and the rest), ``viewers``, an empty
   list on every item and a list of other people where it is not, ``video_dash_manifest``, since
   ``video_duration`` is sent, ``organic_tracking_token``, ``ai_label_info``,
-  ``sharing_friction_info``, and flags false on all 18 that no reader needs
+  ``sharing_friction_info``, and flags false on all 18 that no reader needs; on the live item
+  of W121, ``has_liked``, null on every highlight item and false there, left until the story
+  like write of E3 can confirm what it reads, and the place and size of the shared media
+  sticker
+
+``probes/live_reel_shape.py`` read the first live reel of another account twice on 2026-09-27.
+It carried every reel and item key the highlight carried and no other; ``title`` and
+``cover_media`` were null where the highlight sent a name and a cover, and the item's
+``story_feed_media`` named the reel it shares.
 """
 
 from __future__ import annotations
@@ -44,6 +54,7 @@ from dumpstagram.models import (
    StoryMusic,
    StoryOwner,
    StoryReel,
+   StorySharedMedia,
    StoryVideo,
    TrayReel,
 )
@@ -253,6 +264,26 @@ def _music(item: dict[str, Any], path: str) -> tuple[StoryMusic, ...]:
    return tuple(built)
 
 
+def _shared_media(item: dict[str, Any], path: str) -> tuple[StorySharedMedia, ...]:
+   """The post or reel the item shares, null on every highlight item and one reel on the live
+   item read (W121)."""
+
+   built: list[StorySharedMedia] = []
+
+   for index, entry in enumerate(_objects_or_none(item, "story_feed_media", path)):
+      entry_path = f"{path}.story_feed_media[{index}]"
+
+      built.append(
+         StorySharedMedia(
+            id=_required_string(entry, "id", entry_path),
+            code=_required_string(entry, "media_code", entry_path),
+            product_type=_required_string(entry, "product_type", entry_path),
+         )
+      )
+
+   return tuple(built)
+
+
 def _item(node: Any, path: str) -> StoryItem:
    item = _as_object(node, path)
    owner = _as_object(_required(item, "user", path), f"{path}.user")
@@ -279,11 +310,16 @@ def _item(node: Any, path: str) -> StoryItem:
       audience=_optional_string(item, "audience", path),
       mentions=_mentions(item, path),
       music=_music(item, path),
+      shared_media=_shared_media(item, path),
    )
 
 
 def _cover_url(reel: dict[str, Any], path: str) -> str | None:
-   if "cover_media" not in reel:
+   """A highlight's cover. A live reel sends ``cover_media`` as null (W121)."""
+
+   carries_no_cover = reel.get("cover_media") is None
+
+   if carries_no_cover:
       return None
 
    cover = _object_at(reel, ("cover_media", "cropped_image_version"))
@@ -295,7 +331,7 @@ def _reel(node: Any, path: str) -> StoryReel:
    reel = _as_object(node, path)
    items = _list_of(reel, "items", path)
    carries_title = "title" in reel
-   title = _required_string(reel, "title", path) if carries_title else None
+   title = _optional_string(reel, "title", path) if carries_title else None
 
    return StoryReel(
       id=_required_string(reel, "id", path),

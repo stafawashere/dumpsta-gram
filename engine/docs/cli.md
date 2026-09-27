@@ -483,7 +483,9 @@ DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta delete-comment PK COMMENT_
 
 `comments PK` reads one page of the comments on the post whose `pk` is `PK`, and `--after
 CURSOR` reads the page after an earlier one. The text form prints one line per comment, its time,
-id, author and text, then a count and either the next cursor or `no more comments`. The JSON form
+id, author, `replies N` where the comment carries a reply count, and text, then a count and either
+the next cursor or `no more comments`; a comment with `replies` above zero is the one to read with
+`replies PK COMMENT_ID` (W128). The JSON form
 is `command`, `pk`, `comment_count`, `more_available`, `end_cursor` and `comments`, each comment
 carrying `id`, `text`, `created_at`, `author` with `id`, `username` and `is_verified`, then
 `like_count`, `reply_count`, `parent_comment_id` and `has_liked`. `more_available` is the
@@ -578,7 +580,9 @@ story, with `id`, `reel_type`,
 `code`, `owner_id`, `media_type`, `product_type`, `taken_at`, `expiring_at`, `original_width`,
 `original_height`, `audience`, `can_reply`, `can_reshare`, `is_paid_partnership`,
 `is_story_edited`, `has_audio`, `video_duration`, `images`, `videos` (`url`, `version_type`),
-`mentions` (`username`, `full_name`) and `music` (`title`, `artist`, `should_mute`) (W70).
+`mentions` (`username`, `full_name`), `music` (`title`, `artist`, `should_mute`) (W70) and
+`shared_media` (`id`, `code`, `product_type`), the post or reel the item shows. A live reel's
+`title` and `cover_url` are null (W121).
 
 `story` refuses a username and `highlight` a bare number, with exit code 2 before a client is
 opened. All four take `--user-agent` and `--no-session-writeback`. The live acceptance,

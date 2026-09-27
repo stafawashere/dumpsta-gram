@@ -97,6 +97,10 @@ def _describe_item(item: StoryItem) -> dict[str, Any]:
          {"title": track.title, "artist": track.artist, "should_mute": track.should_mute}
          for track in item.music
       ],
+      "shared_media": [
+         {"id": shared.id, "code": shared.code, "product_type": shared.product_type}
+         for shared in item.shared_media
+      ],
    }
 
 

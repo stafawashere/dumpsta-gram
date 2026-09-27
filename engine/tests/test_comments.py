@@ -28,6 +28,7 @@ in this file touches the network.
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 from datetime import UTC, datetime
@@ -440,6 +441,50 @@ def test_the_cli_reads_the_named_page_and_reports_the_servers_terminator() -> No
    assert code == 0
    assert client.calls == [("comments", MEDIA_PK, CURSOR)]
    assert json.loads(out)["more_available"] is True
+
+
+class RecordedPageClient(RecordingClient):
+   def __init__(self, page: Page[Comment]) -> None:
+      super().__init__()
+      self.page = page
+
+   def comments(self, post_pk: str, *, after: str | None = None) -> Page[Comment]:
+      return self.page
+
+
+def test_dumpsta_comments_prints_each_comments_reply_count_where_it_carries_one() -> None:
+   """Catches the text form dropping the reply count, reading it from another field, or
+   printing one on a comment that carries none, such as a reply."""
+
+   fixture = Path(__file__).resolve().parent / "fixtures" / "post_depth" / "comment_page.json"
+   page = parse_comment_page(json.loads(fixture.read_text(encoding="utf-8")))
+   counts = [comment.reply_count for comment in page.items]
+
+   code, out = run_cli(["--session", "s.json", "comments", MEDIA_PK], RecordedPageClient(page))
+   lines = out.splitlines()
+
+   assert code == 0
+   assert 0 in counts
+   assert len(set(counts)) > 2
+   assert len(lines) == len(page.items) + 1
+
+   for comment, line in zip(page.items, lines, strict=False):
+      assert f"  {comment.id}  " in line
+      assert f"  replies {comment.reply_count}  " in line
+
+   without_count = Page(
+      items=(replace_count(page.items[0], None),), has_next_page=False, end_cursor=None
+   )
+   code, out = run_cli(
+      ["--session", "s.json", "comments", MEDIA_PK], RecordedPageClient(without_count)
+   )
+
+   assert code == 0
+   assert "replies" not in out.splitlines()[0]
+
+
+def replace_count(comment: Comment, reply_count: int | None) -> Comment:
+   return dataclasses.replace(comment, reply_count=reply_count)
 
 
 def test_the_cli_writes_the_named_text_to_the_named_post() -> None:

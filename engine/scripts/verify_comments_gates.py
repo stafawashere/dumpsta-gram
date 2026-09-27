@@ -27,6 +27,7 @@ LOG_DIR = ENGINE / "logs"
 
 
 COMMANDS_MEDIA = "dumpstagram/_cli/commands/media.py"
+RENDER_MEDIA = "dumpstagram/_cli/render/media.py"
 PARSE_MEDIA = "dumpstagram/_private/web/parse/media.py"
 REQUESTS_MEDIA = "dumpstagram/_private/web/requests/media.py"
 READ = "dumpstagram/_core/comments.py"
@@ -53,7 +54,45 @@ def gate(name: str) -> str:
    return f"{GATES}::{name}"
 
 
+REPLY_COUNT_TEXT = gate(
+   "test_dumpsta_comments_prints_each_comments_reply_count_where_it_carries_one"
+)
+
+
 MUTATIONS: list[dict[str, object]] = [
+   {
+      "gate": REPLY_COUNT_TEXT,
+      "defect": "the text form of comments drops the reply count",
+      "edits": [
+         (
+            RENDER_MEDIA,
+            'replies = f"replies {comment.reply_count}  " if carries_a_reply_count else ""',
+            'replies = ""',
+         )
+      ],
+   },
+   {
+      "gate": REPLY_COUNT_TEXT,
+      "defect": "the reply count is printed from the like count",
+      "edits": [
+         (
+            RENDER_MEDIA,
+            'replies = f"replies {comment.reply_count}  " if carries_a_reply_count else ""',
+            'replies = f"replies {comment.like_count}  " if carries_a_reply_count else ""',
+         )
+      ],
+   },
+   {
+      "gate": REPLY_COUNT_TEXT,
+      "defect": "a comment carrying no reply count prints one",
+      "edits": [
+         (
+            RENDER_MEDIA,
+            "carries_a_reply_count = comment.reply_count is not None",
+            "carries_a_reply_count = True",
+         )
+      ],
+   },
    {
       "gate": gate("test_a_short_page_that_says_more_exist_is_not_the_end"),
       "defect": "the page is taken as the last one when it comes back short",

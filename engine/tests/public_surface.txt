@@ -94,6 +94,7 @@ alias dumpstagram.StoryMention -> dumpstagram.models.stories.StoryMention
 alias dumpstagram.StoryMusic -> dumpstagram.models.stories.StoryMusic
 alias dumpstagram.StoryOwner -> dumpstagram.models.stories.StoryOwner
 alias dumpstagram.StoryReel -> dumpstagram.models.stories.StoryReel
+alias dumpstagram.StorySharedMedia -> dumpstagram.models.stories.StorySharedMedia
 alias dumpstagram.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
@@ -323,6 +324,7 @@ alias dumpstagram.models.StoryMention -> dumpstagram.models.stories.StoryMention
 alias dumpstagram.models.StoryMusic -> dumpstagram.models.stories.StoryMusic
 alias dumpstagram.models.StoryOwner -> dumpstagram.models.stories.StoryOwner
 alias dumpstagram.models.StoryReel -> dumpstagram.models.stories.StoryReel
+alias dumpstagram.models.StorySharedMedia -> dumpstagram.models.stories.StorySharedMedia
 alias dumpstagram.models.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.models.TaggedPlace -> dumpstagram.models.feed.TaggedPlace
@@ -864,6 +866,7 @@ field dumpstagram.models.stories.StoryItem.original_width: int
 field dumpstagram.models.stories.StoryItem.owner_id: str
 field dumpstagram.models.stories.StoryItem.pk: str
 field dumpstagram.models.stories.StoryItem.product_type: str
+field dumpstagram.models.stories.StoryItem.shared_media: tuple[StorySharedMedia, ...] = ()
 field dumpstagram.models.stories.StoryItem.taken_at: datetime
 field dumpstagram.models.stories.StoryItem.video_duration: float | None = None
 field dumpstagram.models.stories.StoryItem.videos: tuple[StoryVideo, ...] = ()
@@ -890,6 +893,10 @@ field dumpstagram.models.stories.StoryReel.latest_item_at: datetime
 field dumpstagram.models.stories.StoryReel.owner: StoryOwner
 field dumpstagram.models.stories.StoryReel.reel_type: str
 field dumpstagram.models.stories.StoryReel.title: str | None = None
+class dumpstagram.models.stories.StorySharedMedia()
+field dumpstagram.models.stories.StorySharedMedia.code: str
+field dumpstagram.models.stories.StorySharedMedia.id: str
+field dumpstagram.models.stories.StorySharedMedia.product_type: str
 class dumpstagram.models.stories.StoryVideo()
 field dumpstagram.models.stories.StoryVideo.url: str
 field dumpstagram.models.stories.StoryVideo.version_type: int

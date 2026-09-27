@@ -83,6 +83,7 @@ from dumpstagram.models.stories import (
    StoryMusic,
    StoryOwner,
    StoryReel,
+   StorySharedMedia,
    StoryVideo,
    TrayReel,
 )
@@ -166,6 +167,7 @@ __all__ = [
    "StoryMusic",
    "StoryOwner",
    "StoryReel",
+   "StorySharedMedia",
    "StoryVideo",
    "SuggestedAccount",
    "TaggedPosts",

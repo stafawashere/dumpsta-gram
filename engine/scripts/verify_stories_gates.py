@@ -64,6 +64,8 @@ def parity(name: str, qualified: str) -> str:
 TRAY_MAP = gate("test_the_tray_maps_every_row_in_order_with_its_owner_and_its_times")
 HIGHLIGHT_MAP = gate("test_a_highlight_maps_every_item_from_its_own_keys")
 PHOTO = gate("test_a_photo_item_carries_no_video_and_a_null_audio_flag_reads_as_unknown")
+LIVE_REEL = gate("test_a_live_reel_reads_with_no_title_or_cover_and_names_the_post_it_shares")
+SHARES_NOTHING = gate("test_a_highlight_item_shares_nothing")
 EMPTY = gate("test_no_live_story_is_none_and_a_highlight_with_no_reel_is_not_found")
 DOUBLED = gate("test_more_than_one_reel_for_one_id_is_a_schema_change")
 VIDEO_TYPE = gate("test_a_story_video_without_its_type_is_a_schema_change")
@@ -91,6 +93,66 @@ REACHES_CORE = "test_a_namespace_method_reaches_the_core_capability_the_table_na
 FORWARDS = "test_a_blocking_namespace_method_forwards_every_argument_on_the_loop_thread"
 
 MUTATIONS: list[dict[str, object]] = [
+   {
+      "gate": LIVE_REEL,
+      "defect": "a live reel's null title raises, the W70 defect",
+      "edits": [
+         (
+            PARSE,
+            'title = _optional_string(reel, "title", path) if carries_title else None',
+            'title = _required_string(reel, "title", path) if carries_title else None',
+         )
+      ],
+   },
+   {
+      "gate": LIVE_REEL,
+      "defect": "a live reel's null cover raises",
+      "edits": [
+         (
+            PARSE,
+            'carries_no_cover = reel.get("cover_media") is None',
+            'carries_no_cover = "cover_media" not in reel',
+         )
+      ],
+   },
+   {
+      "gate": LIVE_REEL,
+      "defect": "the shared post's code is read from its id",
+      "edits": [
+         (
+            PARSE,
+            'code=_required_string(entry, "media_code", entry_path),',
+            'code=_required_string(entry, "id", entry_path),',
+         )
+      ],
+   },
+   {
+      "gate": LIVE_REEL,
+      "defect": "an item's shared post is dropped",
+      "edits": [(PARSE, "      shared_media=_shared_media(item, path),\n", "")],
+   },
+   {
+      "gate": LIVE_REEL,
+      "defect": "the JSON form drops an item's shared post",
+      "edits": [
+         (
+            RENDER,
+            "         for shared in item.shared_media\n",
+            "         for shared in item.shared_media[1:]\n",
+         )
+      ],
+   },
+   {
+      "gate": SHARES_NOTHING,
+      "defect": "the shared post is read from the music stickers",
+      "edits": [
+         (
+            PARSE,
+            '_objects_or_none(item, "story_feed_media", path)',
+            '_objects_or_none(item, "story_music_stickers", path)',
+         )
+      ],
+   },
    {
       "gate": TRAY_MAP,
       "defect": "the tray drops its first row",
@@ -207,7 +269,7 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE,
-            'title = _required_string(reel, "title", path) if carries_title else None',
+            'title = _optional_string(reel, "title", path) if carries_title else None',
             "title = None",
          )
       ],

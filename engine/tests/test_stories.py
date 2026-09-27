@@ -26,9 +26,10 @@ And a command can take a username where an id is meant, drop items in either out
 when told not to, or mark an item other than the one named.
 
 The payloads are the recorded answers of 2026-09-27, pseudonymised by
-``scripts/build_stories_fixtures.py``, and the seen answer, which carries nothing personal. No
-live reel was recorded, so the live reel here is the recorded highlight with its id and type
-recast. Nothing in this file touches the network.
+``scripts/build_stories_fixtures.py``, and the seen answer, which carries nothing personal. One
+live reel was recorded later the same day, one item with a null title and cover (W121); the seen
+gates still recast the highlight as a live reel, since they need more than one item. Nothing in
+this file touches the network.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._cli.main import main
+from dumpstagram._cli.render.stories import describe_story_reel
 from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.stories import read_highlight, read_stories_tray, read_story_reel
@@ -70,7 +72,7 @@ from dumpstagram.errors import (
    TransportFailure,
    UpstreamRejected,
 )
-from dumpstagram.models import StoryItem, StoryReel, TrayReel
+from dumpstagram.models import StoryItem, StoryReel, StorySharedMedia, TrayReel
 from dumpstagram.session import Session
 from tests.test_direct import (
    FakeClock,
@@ -228,6 +230,57 @@ def test_a_photo_item_carries_no_video_and_a_null_audio_flag_reads_as_unknown() 
    assert photos[0].has_audio is None
    assert all(len(item.videos) == 3 for item in videos)
    assert {item.has_audio for item in videos} == {True}
+
+
+def test_a_live_reel_reads_with_no_title_or_cover_and_names_the_post_it_shares() -> None:
+   """Catches the W70 defect, a live reel's null ``title`` or ``cover_media`` raising, and the
+   post a story item shares dropped or read from the wrong key."""
+
+   payload = recorded("live_reel.json")
+   node = payload["data"][REELS_ROOT]["reels_media"][0]
+   item_node = node["items"][0]
+   shared_node = item_node["story_feed_media"][0]
+   reel = parse_story_reel(payload)
+
+   assert node["title"] is None
+   assert node["cover_media"] is None
+   assert isinstance(reel, StoryReel)
+   assert reel.reel_type == "user_reel"
+   assert reel.title is None
+   assert reel.cover_url is None
+   assert reel.owner.id == node["user"]["pk"]
+   assert [item.pk for item in reel.items] == [item_node["pk"]]
+
+   item = reel.items[0]
+
+   assert item.owner_id == item_node["user"]["pk"]
+   assert item.media_type == 2
+   assert len(item.videos) == 3
+   assert item.mentions == ()
+   assert len(item.music) == 1
+   assert item.shared_media == (
+      StorySharedMedia(
+         id=shared_node["id"],
+         code=shared_node["media_code"],
+         product_type="clips",
+      ),
+   )
+
+   described = describe_story_reel(reel)["reel"]
+
+   assert described["title"] is None
+   assert described["items"][0]["shared_media"] == [
+      {"id": shared_node["id"], "code": shared_node["media_code"], "product_type": "clips"}
+   ]
+
+
+def test_a_highlight_item_shares_nothing() -> None:
+   """Catches a null ``story_feed_media``, as every highlight item sent, read as other than
+   empty."""
+
+   reel = parse_highlight_reel(recorded("highlight.json"))
+
+   assert {item.shared_media for item in reel.items} == {()}
 
 
 def test_no_live_story_is_none_and_a_highlight_with_no_reel_is_not_found() -> None:

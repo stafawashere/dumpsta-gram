@@ -220,13 +220,24 @@ def describe_comment_page(page: Page[Comment]) -> dict[str, Any]:
    }
 
 
-def render_comment_page(page: Page[Comment]) -> str:
-   """The human form: one line per comment in the upstream's order, then the terminator."""
+def _render_comment_line(comment: Comment) -> str:
+   carries_a_reply_count = comment.reply_count is not None
+   replies = f"replies {comment.reply_count}  " if carries_a_reply_count else ""
 
-   lines = [
-      f"{comment.created_at.isoformat()}  {comment.id}  {comment.author.username}  {comment.text}"
-      for comment in page.items
-   ]
+   return (
+      f"{comment.created_at.isoformat()}  {comment.id}  {comment.author.username}  "
+      f"{replies}{comment.text}"
+   )
+
+
+def render_comment_page(page: Page[Comment]) -> str:
+   """The human form: one line per comment in the upstream's order, then the terminator.
+
+   A comment's line carries its reply count wherever the comment carries one, so which comment
+   has replies to read with ``dumpsta replies`` shows without ``--json``.
+   """
+
+   lines = [_render_comment_line(comment) for comment in page.items]
    more = f"more after {page.end_cursor}" if page.has_next_page else "no more comments"
    lines.append(f"{len(page.items)} comments, {more}")
 

@@ -183,7 +183,7 @@ night (batch 10) and shipped in batch 11a.
 | `REST GET /api/v1/friendships/{user_id}/followers/` | followers, a page | verified 2026-09-27, public as `profiles.followers`, next pages on `max_id` |
 | `REST POST /api/v1/friendships/show_many/` | the viewer's relationship to many ids | verified 2026-09-27, sent after each followers page, folded into the rows (W59) |
 | `REST GET /api/v1/friendships/{user_id}/following/` | following, a page | verified 2026-09-27, public as `profiles.following` in batch 11a (W99) |
-| mutual followers | | not captured, both accounts opened showed 0, still waiting |
+| `REST GET /api/v1/friendships/{user_id}/mutual_followers/` | mutual followers, first page | verified 2026-09-27, public as `profiles.mutual_followers` in batch 11e (W117) |
 
 **Status: done on 2026-09-27 for the followers, rulings W58 to W60.** The probe ran twice at 7
 requests, 14, the conditional next page sent on both runs, and both findings were promoted to
@@ -205,8 +205,9 @@ ran on 2026-09-27 with both steps exit 0 and 5 requests: 19 followers over two p
   `blocking`, so batch 2's model fits as it was (W59).
 - Neither REST read has a `doc_id`, so the doctor's canary does not replay them (W60).
 
-Following shipped in batch 11a. Mutual followers are not implemented: the capture night opened
-two followed accounts whose mutual followers line read 0, so no request was observed.
+Following shipped in batch 11a. Mutual followers were not captured on the capture night, whose
+two followed accounts showed a count of 0; browser run `run-2026-09-27-182013` captured them and
+they shipped in batch 11e (W117).
 
 Variables. The followers page takes the account's numeric id in the path and the query
 `count` 12 and `search_surface` follow_list_page, observed on the owner's own followers. The
@@ -318,8 +319,9 @@ plan did not know:
   its own model (W69).
 - A story's video renditions carry `url` and `type` and no dimensions, so they are `StoryVideo`
   rather than `VideoRendition` (W70).
-- No live story item has been read. A highlight's items are story items, and a live reel's are
-  ASSUMED to share their shape (W70).
+- No live story item had been read, and a live reel's items were ASSUMED to share a highlight's
+  shape (W70). The assumption failed on the first live reel read, whose null title raised; fixed
+  in the closure pass (W121).
 - The gallery answered the same reel the standalone query did, one edge, with nothing to page
   on, so it backs nothing (W71).
 
@@ -361,8 +363,8 @@ Also in the bundle: `REST /api/v1/feed/reels_media/`, an alternate reel route ne
 | `PolarisProfileSavedTabContentQuery` | the saved tab's collections | verified 2026-09-27, public as `account.collections` in batch 11c |
 | `REST GET /api/v1/feed/saved/posts/` | saved posts, the "All posts" view | verified 2026-09-27, public as `account.saved` in batch 11c |
 | Bloks app `close_friends_screen_v2` | the close friends list | verified 2026-09-27, public as `account.close_friends` in batch 11c |
-| Bloks app `blocked_accounts_v2` and action `blocked_accounts_reloader` | the blocked list | hypothesis, captured, replay probe written, not shipped (W108) |
-| archive | | capture first |
+| Bloks app `blocked_accounts_v2` and action `blocked_accounts_reloader` | the blocked list | verified 2026-09-27, public as `account.blocked` in batch 11d (W110) |
+| `REST GET /api/v1/archive/reel/day_shells/`, then `feed/reels_media/` | the story archive | captured 2026-09-27, hypothesis, never replayed, a gap in the closure audit |
 
 **Status: done on 2026-09-27 for the follow requests and the activity feed, rulings W73 to
 W76.** `probes/e2_own_account.py` ran once with 7 requests and no conditional one, in run
@@ -433,7 +435,7 @@ empty answers only; the non-empty shapes wait for E6, where block and follow req
 | `PolarisClipsTabRootPaginationQuery` | its next pages, as guessed | not sent, not registered |
 | `PolarisClipsTabDesktopContainerQuery` | the reels feed's first page | verified 2026-09-27, public as `feeds.reels` in batch 11b |
 | `PolarisClipsTabDesktopPaginationQuery` | its next pages | verified 2026-09-27, public as `feeds.reels` with a cursor in batch 11b |
-| audio page | | capture first |
+| `POST /api/v1/clips/music/` | an audio's page | verified 2026-09-27, public as `feeds.audio` in batch 11e (W116) |
 
 **Status: done on 2026-09-27 for the explore grid, a place's header and first grid page, and the
 new posts check, rulings W77 to W81.** `probes/e2_discovery_feeds.py` ran once with 11 requests,
@@ -643,7 +645,7 @@ requests, not yet run. What it found:
 | `PolarisProfileReelsTabContentQuery` | the reels tab's first page | verified 2026-09-27, public as `profiles.reels` |
 | `PolarisProfileTaggedTabContentQuery` | the tagged tab's first page | verified 2026-09-27, public as `profiles.tagged` |
 | `REST GET /api/v1/friendships/{user_id}/following/` | following, a page, `max_id` a numeric offset | verified 2026-09-27, public as `profiles.following` |
-| mutual followers | | not captured, still waiting |
+| mutual followers | | not captured that night, shipped in batch 11e (W117) |
 
 **Status: done on 2026-09-27, rulings W97 to W100.** The browser captured each read in
 `run-2026-09-27-131354`, and `probes/e2_capture_replays.py --stage profile` replayed each twice in
@@ -838,8 +840,9 @@ browser shows first, and the tray marks nothing (W94). **Reading another account
 the engine now puts the viewer in its seen list, as the website does.** `dumpsta story` and
 `highlight` mark by default and take `--no-mark-seen`, and `dumpsta story-seen REEL_ID ITEM_PK`
 marks one item (W95). W68's departure is closed. The live acceptance,
-`probes/e2_story_seen_cli_acceptance.py`, is written for the owner's own highlight only, five
-requests, and has not run.
+`probes/e2_story_seen_cli_acceptance.py`, on the owner's own highlight only, ran on 2026-09-27
+with 5 requests, two of them seen mutations, every step exit 0, log
+`logs/e2-story-seen-cli-2026-09-27-151052.json`.
 
 ## Visibility and second account, collected
 
@@ -859,3 +862,276 @@ Local, never committed: the 39 hypothesis findings of `run-2026-09-23-231418` in
 `skills/reverse-engineer/var/runs/run-2026-09-23-231418/bundle-artifacts.json`, and the patterns
 that run recorded. Each probe reads its contracts from those files at run time. A finding whose
 replay passes twice becomes the verified evidence an engine change cites.
+
+## E2 closure audit
+
+Written 2026-09-27 at `d3c7e3b`, offline, and brought up to date the same day by the closure pass
+(W121 to W129), whose only live traffic was `probes/live_reel_shape.py`, 3 requests. It checks
+the E2 stop condition of [web-parity-plan.md](web-parity-plan.md) against the local census
+(`skills/reverse-engineer/knowledge/census.md`, 265 operations), the rulings W41 to W129, this
+list, the knowledge base's findings and `engine/docs/cli.md`. No `doc_id` is written here, per W41.
+
+How to read the tables. **Backs** names the public method that sends the read, on the W1
+namespaces, or the page load it rides in as a companion. **Reason** is the recorded reason it
+backs nothing: a census exclusion, a census phase later than E2, a line of this list's batch
+sections, or a ruling. The audit first found five rows with no reason and two with a reason only
+it gave; W122 to W127 ruled all seven, so no row is a gap. Only queries and the one subscription
+are listed, since the stop condition names reads; mutations are E3 and later, except the story
+seen write, which is `stories.mark_seen`.
+
+### Census reads, by page type
+
+Home, 6 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisFeedRootPaginationCachedQuery_subscribe` | `feeds.home`, `iter_home`, flat `feed` | |
+| `PolarisAPICheckNewFeedPostsExistQuery` | `feeds.has_new_posts` (W80) | |
+| `PolarisSuggestedUserListQuery` | `profiles.suggested_for_you` (W55) | |
+| `PolarisSuggestedUserListRefetchQuery` | | alternate of the list, same root (batch 2) |
+| `PolarisFeedTimelineRootV2Query` | | alternate route of the shipped home feed (batch 7) |
+| `FeedScrollBreakInterstitial_scrollBreakContentQuery` | | chrome, the scroll break interstitial (batch 9) |
+
+Explore, 0 census queries. The grid is REST, below.
+
+Reels, 15 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisClipsTabDesktopContainerQuery` | `feeds.reels` (W101) | |
+| `PolarisClipsTabDesktopPaginationQuery` | `feeds.reels(after=...)`, `iter_reels` (W101) | |
+| `PolarisClipsHomeRootQuery` | | not sent by a `/reels/` load, not registered (W101) |
+| `PolarisClipsTabRootPaginationQuery` | | not sent by a `/reels/` load, not registered (batch 7, W101) |
+| `PolarisClipsHomeNonProfiledQuery` | | alternate route into the reels connection (batch 7) |
+| `PolarisClipsTabNonProfiledPaginationQuery` | | alternate route into the reels connection (batch 7) |
+| `PolarisChannelsClipsTabDesktopPaginationQuery` | | alternate route into the reels connection (batch 7) |
+| `PolarisChannelsImmersiveFeedPostModalChainedClipsQuery` | | chained reels under a post, an alternate route (batch 7) |
+| `PolarisChannelsImmersiveFeedPostModalChainedClipsPaginationQuery` | | chained reels under a post, an alternate route (batch 7) |
+| `PolarisImmersiveFeedPostModalChainedClipsQuery` | | chained reels under a post, an alternate route (batch 7) |
+| `PolarisImmersiveFeedPostModalChainedClipsPaginationQuery` | | chained reels under a post, an alternate route (batch 7) |
+| `PolarisClipsAdsPoolQuery` | | ads (batch 7, W101) |
+| `PolarisClipsProgressBarSpritesheetQuery` | | a player's seek bar thumbnails (batch 7) |
+| `PolarisLongformScrubberSpritesheetQuery` | | a player's seek bar thumbnails (batch 7) |
+| `PolarisClipsViewerGenAISummaryPillQuery` | | generated text (batch 7) |
+
+Profile, 15 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisProfilePageContentQuery` | `profiles.by_username`, `by_id`, flat `profile`, `profile_by_id` | |
+| `PolarisProfilePostsQuery` | `profiles.posts` first page, username resolution | |
+| `PolarisProfilePostsTabContentQuery_connection` | `profiles.posts(after=...)`, `iter_posts` (W53) | |
+| `PolarisProfileStoryHighlightsTrayContentQuery` | `profiles.highlights` (W54), and a profile page companion | |
+| `ProfileStoryHighlightsTrayContentQuery_connection` | | first page only, no tray with a second page has been read (W54) |
+| `PolarisProfileSuggestedUsersWithLazyQueryQuery` | `profiles.suggested` (W55) | |
+| `PolarisProfileSuggestedUsersWithPreloadableQuery` | profile page companion | |
+| `PolarisProfileNoteBubbleQuery` | profile page companion | |
+| `PolarisSchoolPartnerProfileBadgeQuery` | profile page companion | |
+| `PolarisCreatorMarketplaceProfileBadgeQuery` | | chrome for professional accounts (batch 9) |
+| `PolarisProfilePageViewInsightsQuery` | | chrome for professional accounts (batch 9) |
+| `PolarisProfileDirectOrPartnershipInboxMessageEligibilityQuery` | | chrome, the messaging eligibility (batch 9) |
+| `usePolarisFriendingConfirmationEntryPointDialogQuery` | | chrome, the follow confirmation dialog (batch 9) |
+| `PolarisOwnerToTimelineMediaLoggedOutQuery` | | census exclusion, logged-out surface |
+| `PolarisOwnerToTimelineMediaLoggedOutQuery_connection` | | census exclusion, logged-out surface |
+
+Post, 22 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisPostRootQuery` | `media.by_code`, flat `post`, preloaded under `PostRoute.PAGE` (W111, W112) | |
+| `PolarisPostCommentsContainerQuery` | `media.page`, preloaded, never sent as a request (W111) | |
+| `PolarisDesktopPostPageRelatedMediaGridQuery` | `media.more_from_author` (W64), and `media.page` preloaded (W111) | |
+| `PolarisPostCommentsPaginationQuery` | `media.comments`, `iter_comments`, flat `comments` (W111 departure) | |
+| `PolarisPostChildCommentsQuery` | `media.replies` (W61) | |
+| `PolarisPostCommentsChildrenPaginationtQuery` | `media.replies(after=...)`, `iter_replies` (W61) | |
+| `PolarisPostActionLoadPostQueryMediaIdQuery` | `media.by_id` (W63) | |
+| `PolarisPostModalContextQuery` | | repeats what the post reads carry (W66) |
+| `PolarisLikedByTextDaisyReduxQuery` | | the post page load does not send it and the line it renders is `like_count` plus the sample `media.likers` reads (W125) |
+| `PolarisPostActionLoadPostQuerySharerQuery` | | answers only for a link carrying a share id (batch 4) |
+| `PolarisSharerInfoQuery` | | answers only for a link carrying a share id (batch 4) |
+| `PolarisPostCaptionGenAISummaryQuery` | | generated text (batch 4) |
+| `PolarisCommentActionsTranslateCommentQuery` | | machine translation, E5 parity closure (batch 4) |
+| `PolarisCommentTranslationPromptQuery` | | machine translation, E5 parity closure (batch 4) |
+| `PolarisPostCommentTranslationPromptQuery` | | machine translation, E5 parity closure (batch 4) |
+| `PolarisAdToolsUtilsFetchBoostStatusQuery` | | census exclusion, ads and boost |
+| `PolarisAdToolsUtilsFetchLegacyAsyncJobStatusQuery` | | census exclusion, ads and boost |
+| `PolarisBoostCanSkipPro2ProQuery` | | census exclusion, ads and boost |
+| `PolarisPostBoostButtonQuery` | | census exclusion, ads and boost |
+| `usePolarisAdToolsPartnerContentAvailableQuery` | | census exclusion, ads and boost |
+| `PolarisFRXReportModalFetaSupervisionQuery`, `PolarisFRXReportModalFollowUpActionSectionFetaSupervisionQuery` | | census exclusion, reporting (W5) |
+
+Stories, 6 queries, and the seen write.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisStoriesV3TrayContainerQuery` | `stories.tray` (W69), and a page load companion | |
+| `PolarisStoriesV3ReelPageStandaloneQuery` | `stories.reel`, `stories.highlight` (W70), a live reel read since W121 | |
+| `PolarisStoriesV3SeenMutation` | `stories.mark_seen`, sent after `reel` and `highlight` by default (W93, W94) | |
+| `PolarisStoriesV3ReelPageGalleryQuery` | | answered the reel the standalone query does, nothing to page (W71) |
+| `PolarisStoriesV3ReelPageGalleryPaginationQuery` | | the gallery backs nothing (W71) |
+| `PolarisStoriesV3AdsPoolQuery`, `PolarisStoriesV3AdsPoolWWWQuery` | | ads (batch 5) |
+
+Inbox, 18 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisDirectInboxQuery` | `direct.inbox` first page, the events poll (W45, W87) | |
+| `IGDThreadListOffMsysPaginationQuery` | `direct.inbox(after=...)`, `iter_inbox` (W46) | |
+| `IGDMessageRequestLeftRailStandaloneQuery` | `direct.message_requests` (W45) | |
+| `useIGDSystemFolderUnreadThreadCountQuery` | `direct.unread_counts` (W47) | |
+| `IGDInboxTrayQuery` | `direct.notes`, flat `notes` (W87, W91) | |
+| `PolarisAutomaticPreviewsDisabledContextProviderQuery` | inbox load companion (W87) | |
+| `useFeatureLimitsOffMsysQuery` | inbox load companion (W87) | |
+| `PolarisDirectInboxQPInterstitialQuery` | inbox load companion (W87) | |
+| `IGDThreadListHeaderAccountSwitcherOffMsysQuery` | inbox load companion (W87) | |
+| `IGDThreadlineContainerQuerySuggestedQuery` | | sent by no captured inbox load, conditional, INFERENCE (W88) |
+| `useIGDShouldShowAdResponsesTabQuery` | | sent by no captured inbox load, professional accounts, INFERENCE (W88) |
+| `IGDInboxHeaderOffMsysQuery` | | a companion of the thread page load, which `direct.messages` does not make (`ThreadFirstPage`); what only it carries, nicknames, reachability and the restricted and blocking flags, is E4's and E3's (W123) |
+| `IGDPartnershipInboxLeftRailStandaloneQuery`, `IGDPartnershipInboxNullStateQuery`, `IGDPartnershipInboxThreadListButtonOffMsysQuery` | | professional accounts only, ASSUMPTION (batch 1) |
+| `IGDThreadListProfessionalOffMsysPaginationQuery`, `IGDThreadListProfessionalOffMsysThreadsBySystemFolderPaginationQuery` | | professional accounts only, ASSUMPTION (batch 1) |
+| `WmiIgdFetchIrisSeqIdQuery` | | E4 by the census, the realtime sequence id |
+
+Thread, 18 queries and one subscription.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `IGDThreadDetailQuery` | `direct.messages` newest page, flat `thread_messages`, the inbox load's prefetch (W89) | |
+| `IGDMessageListOffMsysQuery` | `direct.messages` older pages, `iter_messages`, the poller's read back | |
+| `useIGDMessageListPaginationQuery` | shipped per the census, `thread_messages` | |
+| `IGDInboxInfoOffMsysQuery` | | adds nothing a `DirectThread` lacks (W47) |
+| `IGDThreadlineContainerQueryChatQuery` | | reel shares inside a thread, E4 message kinds (batch 9) |
+| `EBMessageMetadataQueryQuery`, `IGDComposerSavedReplySuggestionTrayOffMsysQuery`, `IGDEventThreadDetailOffMsysQuery`, `IGDMessageListAnchorMessageRangeAfterOffMsysQuery`, `IGDMessageListAnchorMessageRangeBeforeOffMsysQuery`, `IGDMessageListMusicStickerWithVideoPlayerControllerOffMsysConsumptionQuery`, `IGDMessageTranslationStoreQuery`, `IGDSlideAsyncFetchAndInsertIGDViewerThreadQuery`, `IGDSlideDeltaProcessorQuery`, `IGDTypingIndicatorClientSubscription` | | E4 by the census |
+| `IGDCreateOptimisticSlideThreadUpdateQuery`, `IGDCreateSlideMessageUpdateQuery`, `IGDSlideDeltaParticipantsAddedToGroupThreadHandlerUpdateQuery` | | census exclusion, client store update |
+| `PolarisDirectVerifiedUserCallingNotEnabledModalQuery` | | census exclusion, calls |
+
+Notifications, 1 query.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `usePolarisNotificationsNavItemQuery` | | chrome, the heart icon's badge, preloaded complete in every document captured with it and sent as a request only on a settings route; its four counters are named as `ActivityCounts`' are, and the page renders from `account.activity` (W122) |
+
+Search, 4 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisSearchNullStateQuery` | `search.recent` (W82) | |
+| `PolarisSearchBoxRefetchableQuery` | `search.top`, `search.accounts` by default (W102) | |
+| `PolarisSearchBoxNonProfiledRefetchableQuery` | `search.accounts` and `search.top` under `TypeaheadRoute.NON_PERSONALISED` (W83, W102) | |
+| `PolarisSearchBoxContainerQuery` | | not sent by the signed-in box, not registered (W102) |
+
+Saved, 4 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisProfileSavedTabContentQuery` | `account.collections` (W106) | |
+| `PolarisProfileSavedTabContentQuery_connection` | | no next page of the tab observed, first page with `has_more` (W106) |
+| `PolarisSavedCollectionPickerQuery` | | answered empty, the saved tab's own query ships instead (W75, W106) |
+| `PolarisSavedCollectionPickerPaginationQuery` | | unregistered with the picker (W106) |
+
+Settings, where E2 reads it. `PolarisViewerSettingsQuery` is an inbox load companion (W87) and
+backs nothing, since it answers only the reduce motion flag (batch 9).
+`PolarisSettingsDesktopContainerQuery` is E5 by the census and is not sent beside the close friends
+fetch, a named departure (W107). The other 21 settings queries are E5 by the census or census
+exclusions for teen supervision. The two settings lists E2 reads are Bloks, below.
+
+Hashtag, 3 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisHashtagHeaderActionButtonsQuery` | `search.hashtag` (W84) | |
+| `PolarisKeywordSearchExplorePageRelayQuery` | `search.keyword`, and a hashtag's posts as `keyword("#" + tag)` (W103) | |
+| `PolarisKeywordSearchExplorePageRelayPaginationQuery` | | the page was never scrolled, first page with `has_more` (W103) |
+
+Location, 3 queries.
+
+| Operation | Backs | Reason |
+|---|---|---|
+| `PolarisExploreLocationsContainerQuery` | `feeds.place` (W78) | |
+| `PolarisLocationPageTabContentQuery` | `feeds.location` (W79) | |
+| `PolarisLocationPageTabContentQuery_connection` | | answered the cursor it was sent, not registered (W79) |
+
+Audio, 0 census queries. The page is a comet form, below.
+
+Shared chrome the census marks E2, 4 queries. `IGPresenceUnifiedSetupQuery` is an inbox load
+companion (W87). `PolarisProfileNavItemBadgeQuery` and `PolarisThreadsNavItemWithBadgeQuery`
+count the Threads app (batch 9). `IGDChatTabsContentOffMsysQuery` is chrome that answers the
+inbox's first page of threads, which `direct.inbox` reads, and the home and profile companions
+leave it out as a named departure until a finding exists (W124). The shipped shared companions, the badge count, the chat tabs jewel, the omni picker, the
+quick promotion call and the cookie sync, are unchanged.
+
+### Reads outside the census
+
+The census counts Relay operations only, so the REST, comet, Bloks and document reads below are
+not in it. What E2 shipped:
+
+| Read | Backs |
+|---|---|
+| `GET /api/v1/friendships/<id>/followers/` | `profiles.followers`, `iter_followers` (W58) |
+| `GET /api/v1/friendships/<id>/following/` | `profiles.following`, `iter_following` (W99) |
+| `GET /api/v1/friendships/<id>/mutual_followers/` | `profiles.mutual_followers` (W117) |
+| `POST /api/v1/friendships/show_many/` | the statuses after each follow list page, under `follow_list_statuses` (W59, W99, W117) |
+| `GET /api/v1/friendships/pending/` | `account.follow_requests` (W73), and an inbox load companion (W88) |
+| `POST /api/v1/news/inbox/` | `account.activity` (W74), and an inbox load companion (W88) |
+| `GET /api/v1/discover/web/explore_grid/` | `feeds.explore`, `explore_posts`, `iter_explore` (W77, W115) |
+| `GET /api/v1/feed/saved/posts/` | `account.saved` (W105) |
+| `POST /api/v1/clips/music/` | `feeds.audio`, `audio_clips`, `iter_audio` (W116) |
+| Bloks `close_friends_screen_v2` | `account.close_friends` (W107) |
+| Bloks `blocked_accounts_v2`, then `blocked_accounts_reloader` | `account.blocked` (W110) |
+| `PolarisProfileReelsTabContentQuery`, lazy | `profiles.reels` (W97) |
+| `PolarisProfileTaggedTabContentQuery`, lazy | `profiles.tagged` (W98) |
+| document `GET /direct/inbox/` | the default route of `notes`, `direct.inbox` and `unread_counts` (W87) |
+| document `GET /p/<code>/` | `media.page`, and the default route of `media.by_code` (W111, W112) |
+
+Outside the census and not shipped:
+
+| Read | Reason |
+|---|---|
+| `POST /api/v1/news/inbox_seen/` | a write on the viewer's own badge, never sent, a named departure (W74, W88) |
+| `close_friend_count_updater`, a Bloks action | effect UNRESOLVED, never sent (W107) |
+| `POST /video/unified_cvc/` | a view report, and the engine plays nothing (W101) |
+| `PolarisActivityFeedStoriesViewQuery`, lazy | the website's notifications panel sends REST `news/inbox`, the read `account.activity` makes, and not this query (W125) |
+| `GET /api/v1/archive/reel/day_shells/` and the archive's `POST /api/v1/feed/reels_media/` | deferred: captured once and never replayed, because the page token the archive request carries was never observed at its source (W126) |
+| a named saved collection's posts | deferred: the owner has no named collection, so no request for its posts has been observed (W127) |
+| `REST /api/v1/direct_v2/pending_inbox/`, `REST /api/v1/media/<id>/likers/`, `REST /api/v1/feed/reels_media/`, `REST /api/v1/fbsearch/search_engine_result_page/` | alternates in the bundle never observed on the wire (batches 1, 4, 5 and 8) |
+
+### The pages of the stop condition, against `dumpsta`
+
+| Page | Commands | Holds |
+|---|---|---|
+| home | `feed`, `new-posts` | yes |
+| explore | `explore --pages` | yes |
+| reels | `reels --pages` | yes |
+| a profile with each tab | `profile`, `posts`, `profile-reels`, `tagged`, `highlights`, `followers`, `following`, `mutual-followers`, `suggested` | yes, each tab a first page where no next page was read |
+| a post with threaded comments | `post`, `post-page`, `comments`, `replies`, `likers` | yes by composition: `comments` prints each comment's reply count, and `replies` reads a comment's thread (W128) |
+| a story | `stories-tray`, `story`, `highlight` | yes. A live reel of another account was read in the closure pass, and `story` reads it since W121 |
+| search results | `search`, `search-top`, `keyword`, `recent-searches`, `hashtag` | yes |
+| notifications | `activity`, `follow-requests` | yes, the REST panel the website sends. The badge count is chrome (W122) |
+| saved | `saved`, `collections` | yes for "All posts" and the automatic collections. A named collection's posts are deferred (W127) |
+| the inbox with requests | `inbox`, `message-requests`, `unread`, `thread` | the inbox yes. The request folders were empty on every read, so a request row has never been rendered (W47) |
+
+### What is still open
+
+| Item | Owner | What closes it |
+|---|---|---|
+| A message request row, non-empty | account B from the phone app, then the engine as the owner | W51 moved it into E2. The folder was empty on every read, and a day old account cannot start a direct thread on the web (pattern `a-day-old-account-cannot-start-a-direct-thread-on-the-web`), so B messages the owner from the phone app. Then `message-requests` reads the row without opening it (W43), checking it against the inbox row mapping W47 assumed |
+| B's own story and highlight, read as another account's | account B from the phone app, then the engine | B posts a story and a highlight; the owner reads them. B is not another person (W49), so the default seen mark may land. Closes the W51 bullet. A live reel of another account was read in the closure pass (W121) |
+| The mutual followers' next page | a larger account, then a `reverse-engineer` run | a public account the owner follows that shares more than twelve followers with him, so `next_max_id` is not null and the `max_id` of W117 can be observed and replayed twice |
+
+Deferred with a recorded reason, and so not open against the condition: the story archive (W126)
+and a named collection's posts (W127).
+
+### Verdict
+
+**The E2 stop condition is met.** Every census read on the E2 pages backs a public method, rides
+in a modelled page load, or carries a recorded reason: 35 census reads back a method, 13 reads
+outside the census back one, with the statuses read and two documents riding inside them, and the
+seven rows this audit first found without a settled reason were ruled in W122 to W127. Every page
+the condition names renders as text through `dumpsta`, the story page on a live reel since W121
+and a post's threads through `comments` then `replies` since W128. Three items stay open, all on
+shipped reads, none a gap in the condition, and none closable by the engine alone: two need
+account B to act from the phone app and one needs a larger account. `1.2.0` is not cut.
+
+Correction found by this audit: `probes/e2_story_seen_cli_acceptance.py` did run on 2026-09-27,
+5 requests, every step exit 0, log `logs/e2-story-seen-cli-2026-09-27-151052.json`, as commit
+`2a674b7` says. Batch 12's status above and the engine brief said it had not; both now say it did.
+W96 is left as ruled.

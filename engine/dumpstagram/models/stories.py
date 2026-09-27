@@ -28,6 +28,7 @@ __all__ = [
    "StoryMusic",
    "StoryOwner",
    "StoryReel",
+   "StorySharedMedia",
    "StoryVideo",
    "TrayReel",
 ]
@@ -91,6 +92,21 @@ class StoryMusic:
 
 
 @dataclass(frozen=True)
+class StorySharedMedia:
+   """A post or reel a story shares, from the item's ``story_feed_media``.
+
+   ``id`` is the shared media's own number and ``code`` its shortcode, which
+   :meth:`~dumpstagram.namespaces.media.AsyncMedia.by_code` reads.
+   ``product_type`` is the shared media's, ``clips`` on the one observed. The sticker's place and
+   size on the story are not modelled.
+   """
+
+   id: str
+   code: str
+   product_type: str
+
+
+@dataclass(frozen=True)
 class StoryItem:
    """One photo or video in a reel or a highlight.
 
@@ -106,7 +122,9 @@ class StoryItem:
 
    ``audience`` is the upstream's own word for who can see the item, ``besties`` for close
    friends on 2 of the 18, and ``None`` otherwise. ``mentions`` and ``music`` are the item's
-   mention and music stickers in the upstream's order, empty when it sent null. Links,
+   mention and music stickers in the upstream's order, empty when it sent null.
+   ``shared_media`` is the post or reel the item shares, empty when it sent null, as every
+   highlight item did; a live item shared one reel (W121). Links,
    locations, hashtags, polls, questions, sliders and countdowns were null on every item read,
    so none of them is modelled.
    """
@@ -132,6 +150,7 @@ class StoryItem:
    audience: str | None = None
    mentions: tuple[StoryMention, ...] = ()
    music: tuple[StoryMusic, ...] = ()
+   shared_media: tuple[StorySharedMedia, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -144,8 +163,9 @@ class StoryReel:
    :attr:`Highlight.id <dumpstagram.models.Highlight.id>` carries. ``latest_item_at`` is the
    newest item's ``taken_at``.
 
-   ``title`` and ``cover_url`` are a highlight's name and its cover picture. A live reel has not
-   been read, so each is ``None`` where the reel does not carry it.
+   ``title`` and ``cover_url`` are a highlight's name and its cover picture, and ``None`` on a
+   live reel, which sent both as null (W121). ``reel_type`` was ``user_reel`` on the one live reel
+   read.
    """
 
    id: str
