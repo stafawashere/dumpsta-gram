@@ -42,6 +42,11 @@ from dumpstagram._cli.commands.direct import (
    run_inbox_command,
    run_thread,
 )
+from dumpstagram._cli.commands.discovery import (
+   DISCOVERY_COMMANDS,
+   add_discovery_parsers,
+   run_discovery_command,
+)
 from dumpstagram._cli.commands.doctor import (
    DoctorFactory,
    PlanFactory,
@@ -143,6 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
    add_post_depth_parsers(commands)
    add_stories_parsers(commands)
    add_account_parsers(commands)
+   add_discovery_parsers(commands)
    add_events_parser(commands)
    add_doctor_parser(commands)
    add_posting_parsers(commands)
@@ -217,6 +223,9 @@ def main(
 
       if arguments.command in ACCOUNT_COMMANDS:
          return run_account_command(arguments, chosen_environment, out, client_factory)
+
+      if arguments.command in DISCOVERY_COMMANDS:
+         return run_discovery_command(arguments, chosen_environment, out, client_factory)
 
       if arguments.command in POSTING_COMMANDS:
          return run_posting_command(arguments, chosen_environment, out, client_factory)

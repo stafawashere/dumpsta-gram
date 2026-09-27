@@ -20,6 +20,8 @@ alias dumpstagram.EXPORT -> dumpstagram.behavior.EXPORT
 alias dumpstagram.Event -> dumpstagram.models.events.Event
 alias dumpstagram.EventListener -> dumpstagram.listener.EventListener
 alias dumpstagram.EventsDropped -> dumpstagram.models.events.EventsDropped
+alias dumpstagram.ExploreGrid -> dumpstagram.models.discovery.ExploreGrid
+alias dumpstagram.ExploreSection -> dumpstagram.models.discovery.ExploreSection
 alias dumpstagram.FAST -> dumpstagram.behavior.FAST
 alias dumpstagram.FeedFirstPage -> dumpstagram.behavior.FeedFirstPage
 alias dumpstagram.FeedItem -> dumpstagram.models.feed.FeedItem
@@ -31,6 +33,8 @@ alias dumpstagram.HighlightTray -> dumpstagram.models.highlights.HighlightTray
 alias dumpstagram.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.Location -> dumpstagram.models.feed.Location
+alias dumpstagram.LocationPosts -> dumpstagram.models.discovery.LocationPosts
+alias dumpstagram.LocationTab -> dumpstagram.models.discovery.LocationTab
 alias dumpstagram.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
@@ -44,6 +48,7 @@ alias dumpstagram.OperationCancelled -> dumpstagram.errors.OperationCancelled
 alias dumpstagram.OutcomeUnknown -> dumpstagram.errors.OutcomeUnknown
 alias dumpstagram.PARITY -> dumpstagram.behavior.PARITY
 alias dumpstagram.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.Place -> dumpstagram.models.discovery.Place
 alias dumpstagram.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
@@ -221,6 +226,8 @@ alias dumpstagram.models.CommentAuthor -> dumpstagram.models.comments.CommentAut
 alias dumpstagram.models.DirectThread -> dumpstagram.models.threads.DirectThread
 alias dumpstagram.models.Event -> dumpstagram.models.events.Event
 alias dumpstagram.models.EventsDropped -> dumpstagram.models.events.EventsDropped
+alias dumpstagram.models.ExploreGrid -> dumpstagram.models.discovery.ExploreGrid
+alias dumpstagram.models.ExploreSection -> dumpstagram.models.discovery.ExploreSection
 alias dumpstagram.models.FeedItem -> dumpstagram.models.feed.FeedItem
 alias dumpstagram.models.FeedItemKind -> dumpstagram.models.feed.FeedItemKind
 alias dumpstagram.models.FollowRequests -> dumpstagram.models.account.FollowRequests
@@ -230,6 +237,8 @@ alias dumpstagram.models.HighlightTray -> dumpstagram.models.highlights.Highligh
 alias dumpstagram.models.ListFriendshipStatus -> dumpstagram.models.profiles.ListFriendshipStatus
 alias dumpstagram.models.ListenerStopped -> dumpstagram.models.events.ListenerStopped
 alias dumpstagram.models.Location -> dumpstagram.models.feed.Location
+alias dumpstagram.models.LocationPosts -> dumpstagram.models.discovery.LocationPosts
+alias dumpstagram.models.LocationTab -> dumpstagram.models.discovery.LocationTab
 alias dumpstagram.models.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
@@ -239,6 +248,7 @@ alias dumpstagram.models.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.models.Note -> dumpstagram.models.notes.Note
 alias dumpstagram.models.NoteAudience -> dumpstagram.models.notes.NoteAudience
 alias dumpstagram.models.Page -> dumpstagram.models.pagination.Page
+alias dumpstagram.models.Place -> dumpstagram.models.discovery.Place
 alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
@@ -333,6 +343,33 @@ field dumpstagram.models.comments.CommentAuthor.id: str
 field dumpstagram.models.comments.CommentAuthor.is_verified: bool
 field dumpstagram.models.comments.CommentAuthor.profile_pic_url: str
 field dumpstagram.models.comments.CommentAuthor.username: str
+module dumpstagram.models.discovery
+class dumpstagram.models.discovery.ExploreGrid()
+field dumpstagram.models.discovery.ExploreGrid.more_available: bool
+property dumpstagram.models.discovery.ExploreGrid.posts -> tuple[Post, ...]
+field dumpstagram.models.discovery.ExploreGrid.sections: tuple[ExploreSection, ...]
+class dumpstagram.models.discovery.ExploreSection()
+field dumpstagram.models.discovery.ExploreSection.featured: tuple[Post, ...]
+field dumpstagram.models.discovery.ExploreSection.feed_type: str
+field dumpstagram.models.discovery.ExploreSection.posts: tuple[Post, ...]
+class dumpstagram.models.discovery.LocationPosts()
+field dumpstagram.models.discovery.LocationPosts.has_more: bool
+field dumpstagram.models.discovery.LocationPosts.posts: tuple[PostThumbnail, ...]
+class dumpstagram.models.discovery.LocationTab(enum.StrEnum)
+data dumpstagram.models.discovery.LocationTab.RANKED: LocationTab = <LocationTab.RANKED: 'ranked'>
+class dumpstagram.models.discovery.Place()
+field dumpstagram.models.discovery.Place.address: str
+field dumpstagram.models.discovery.Place.category: str
+field dumpstagram.models.discovery.Place.city: str
+field dumpstagram.models.discovery.Place.id: str
+field dumpstagram.models.discovery.Place.lat: float
+field dumpstagram.models.discovery.Place.lng: float
+field dumpstagram.models.discovery.Place.media_count: int
+field dumpstagram.models.discovery.Place.name: str
+field dumpstagram.models.discovery.Place.phone: str
+field dumpstagram.models.discovery.Place.price_range: int
+field dumpstagram.models.discovery.Place.slug: str
+field dumpstagram.models.discovery.Place.zip_code: str
 module dumpstagram.models.events
 class dumpstagram.models.events.Event()
 class dumpstagram.models.events.EventsDropped(dumpstagram.models.events.Event)
@@ -731,12 +768,20 @@ def dumpstagram.namespaces.direct.SyncDirect.unsend(self, thread_fbid: str, mess
 module dumpstagram.namespaces.feeds
 class dumpstagram.namespaces.feeds.AsyncFeeds()
 def dumpstagram.namespaces.feeds.AsyncFeeds.__init__(self) -> None
+def dumpstagram.namespaces.feeds.AsyncFeeds.explore(self) -> ExploreGrid
+def dumpstagram.namespaces.feeds.AsyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.AsyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
 def dumpstagram.namespaces.feeds.AsyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[FeedItem]
+def dumpstagram.namespaces.feeds.AsyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
+def dumpstagram.namespaces.feeds.AsyncFeeds.place(self, location_id: str) -> Place
 class dumpstagram.namespaces.feeds.SyncFeeds()
 def dumpstagram.namespaces.feeds.SyncFeeds.__init__(self) -> None
+def dumpstagram.namespaces.feeds.SyncFeeds.explore(self) -> ExploreGrid
+def dumpstagram.namespaces.feeds.SyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.SyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
 def dumpstagram.namespaces.feeds.SyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> Iterator[FeedItem]
+def dumpstagram.namespaces.feeds.SyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
+def dumpstagram.namespaces.feeds.SyncFeeds.place(self, location_id: str) -> Place
 module dumpstagram.namespaces.media
 class dumpstagram.namespaces.media.AsyncMedia()
 def dumpstagram.namespaces.media.AsyncMedia.__init__(self) -> None

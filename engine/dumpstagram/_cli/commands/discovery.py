@@ -1,0 +1,143 @@
+"""The discovery commands: the explore grid, a place's header and posts, and whether the home
+feed has new posts."""
+
+from __future__ import annotations
+
+import argparse
+import re
+from collections.abc import Mapping
+from typing import Any, TextIO
+
+from dumpstagram._cli.commands.common import (
+   Client,
+   ClientFactory,
+   Subcommands,
+   add_request_options,
+   emit,
+   resolve_session_path,
+)
+from dumpstagram._cli.exits import EXIT_OK
+from dumpstagram._cli.render.discovery import (
+   describe_explore_grid,
+   describe_location_posts,
+   describe_place,
+   render_explore_grid,
+   render_location_posts,
+   render_new_posts,
+   render_place,
+)
+
+__all__ = [
+   "DISCOVERY_COMMANDS",
+   "add_discovery_parsers",
+   "run_discovery_command",
+]
+
+DISCOVERY_COMMANDS = ("explore", "place", "location", "new-posts")
+
+_LOCATION_ID = re.compile(r"[0-9]{1,30}")
+
+
+def location_id(value: str) -> str:
+   is_a_location_id = _LOCATION_ID.fullmatch(value) is not None
+
+   if not is_a_location_id:
+      raise argparse.ArgumentTypeError(
+         "a place is named by its numeric id, the location id a post tagged there carries"
+      )
+
+   return value
+
+
+def _discovery_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
+   if arguments.command == "explore":
+      grid = client.feeds.explore()
+
+      return {"command": "explore", **describe_explore_grid(grid)}, render_explore_grid(grid)
+
+   if arguments.command == "place":
+      place = client.feeds.place(arguments.location_id)
+
+      return {"command": "place", "place": describe_place(place)}, render_place(place)
+
+   if arguments.command == "location":
+      page = client.feeds.location(arguments.location_id)
+      payload: dict[str, Any] = {
+         "command": "location",
+         "location_id": arguments.location_id,
+         **describe_location_posts(page),
+      }
+
+      return payload, render_location_posts(page)
+
+   has_new_posts = client.feeds.has_new_posts()
+
+   return {"command": "new-posts", "new_posts": has_new_posts}, render_new_posts(has_new_posts)
+
+
+def run_discovery_command(
+   arguments: argparse.Namespace,
+   environment: Mapping[str, str],
+   stdout: TextIO,
+   client_factory: ClientFactory,
+) -> int:
+   path = resolve_session_path(arguments.session, environment)
+   client = client_factory(path, user_agent=arguments.user_agent)
+   token_before_the_read = client.session.fb_dtsg
+
+   try:
+      payload, text = _discovery_result(client, arguments)
+
+      harvested_a_new_token = client.session.fb_dtsg != token_before_the_read
+      may_write_back = not arguments.no_session_writeback
+
+      if harvested_a_new_token and may_write_back:
+         client.session.save(path)
+   finally:
+      client.close()
+
+   emit(payload, text, as_json=arguments.json, stream=stdout)
+
+   return EXIT_OK
+
+
+def add_discovery_parsers(commands: Subcommands) -> None:
+   explore = commands.add_parser(
+      "explore",
+      help="read the first page of the explore grid, one live request",
+      description=(
+         "Reads the explore grid's first page, section by section, and says whether the grid "
+         "goes on. No later page is read."
+      ),
+   )
+   add_request_options(explore)
+
+   place = commands.add_parser(
+      "place",
+      help="read a place's name, address and post count, one live request",
+      description="Reads the header of the page of the place whose numeric id is LOCATION_ID.",
+   )
+   place.add_argument(
+      "location_id", metavar="LOCATION_ID", type=location_id, help="the place's numeric id"
+   )
+   add_request_options(place)
+
+   location = commands.add_parser(
+      "location",
+      help="read the first page of the posts tagged at a place, one live request",
+      description=(
+         "Reads the first page of the ranked grid of the place whose numeric id is "
+         "LOCATION_ID, and says whether the grid goes on. No later page is read."
+      ),
+   )
+   location.add_argument(
+      "location_id", metavar="LOCATION_ID", type=location_id, help="the place's numeric id"
+   )
+   add_request_options(location)
+
+   new_posts = commands.add_parser(
+      "new-posts",
+      help="ask whether the home feed has new posts, one live request",
+      description="Asks whether the home feed has posts newer than you last loaded.",
+   )
+   add_request_options(new_posts)

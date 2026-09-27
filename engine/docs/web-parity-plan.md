@@ -1232,6 +1232,120 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   requests, four at most, and checks from the counter's log that each sent exactly one API
   request; it ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log
   `logs/e2-own-account-cli-2026-09-27-042111.json`.
+- **W77. The explore grid is `feeds.explore() -> ExploreGrid`, the first page only, its posts
+  read from the REST media shape.** Ruled 2026-09-27 for E2 batch 7. `GET
+  https://www.instagram.com/api/v1/discover/web/explore_grid/` (finding `read-the-explore-grid`,
+  verified twice in run `run-2026-09-27-014102`) with the five parameters of the recorded browse,
+  `include_fixed_destinations` true, `is_nonpersonalized_explore` false, `is_prefetch` false,
+  `module` `explore_popular` and `omit_cover_media` false, on W58's header set with `/explore/`
+  as referer. It carries no page token, so it spends no bootstrap. FACT over both answers, 1.09 MB
+  and 1.28 MB: status `ok`, `more_available` true, `next_max_id` `"0"`, a 276 character `max_id`
+  and `session_paging_token`, a 36 character `rank_token`, one `explore_all` cluster, and four
+  `sectional_items`, each with `feed_type` `clips`, a `layout_type` of `one_by_two_right` or
+  `one_by_two_left`, and a `layout_content` of exactly two blocks, `one_by_two_item.clips` with
+  one reel in `items` and four `fill_items`, so 20 posts per answer. No next page was asked for,
+  so under W45 the read is the first page with `more_available` carried and no cursor. The
+  parameters a next page sends are not observed; INFERENCE, `max_id`, `session_paging_token` and
+  `rank_token` would go back, and nothing sends them. The model is `ExploreGrid(sections,
+  more_available)` with a `posts` property, each section's featured posts first, and
+  `ExploreSection(feed_type, featured, posts)`; the layout, the column counts and the large
+  tile's cluster fields are presentation and are dropped. The posts are `Post`, since every item
+  carries a full media node, but in the REST shape, which differs from the timeline's GraphQL
+  node by leaving keys out where that node sends null. Over the 40 posts of both answers, 37
+  reels, 2 photos and 1 carousel: `is_seen` was absent on all 40, `accessibility_caption` on the
+  37 reels, `carousel_media` and `carousel_media_count` on the 39 that are not a carousel, and
+  `clips_metadata`, `has_audio`, `video_versions` and `video_dash_manifest` on the 2 photos and
+  the carousel, and each of the carousel's 16 photo slides lacked `video_versions` and
+  `video_dash_manifest`. Those eight keys, `REST_KEYS_ABSENT_AS_NULL` in
+  `parse/discovery.py`, read as null when absent, and any other key the post mapper needs still
+  raises when it is missing. `is_seen` then reads False, W53's reasoning, since the grid is not a
+  feed the viewer has seen things in. `location` and `usertags`, absent on 35 and 34, read as not
+  carried, `None`, as on every post read; on this shape absence may mean none (INFERENCE). Every
+  other key the mapper reads was present with the timeline's types, the author's `full_name` and
+  high resolution picture included, and each reel's manifest duration matched the node's own
+  `video_duration` to a tenth of a second, which a gate holds. A section carrying a block other
+  than the two raises `SchemaChanged` rather than dropping its posts, the `FeedItemKind` rule, so
+  a layout not yet seen fails the read (ASSUMPTION that other layouts exist; none appeared in
+  eight sections). Departure: sent alone with `/explore/` as referer, where a browser reads it
+  inside that page's load.
+- **W78. A place's header is `feeds.place(location_id) -> Place`, and `search` does not open for
+  it.** Ruled 2026-09-27 for E2 batch 7. `PolarisExploreLocationsContainerQuery` (finding
+  `read-a-location-s-info`, replayed twice, 521 bytes each) with `location_id_str` and
+  `show_nearby` false, on `/api/graphql` with the place's page, `/explore/locations/<pk>/`, as
+  referer. FACT over both answers, the same place: root `xdt_location_get_web_info` whose
+  `native_location_data.location_info` carried `name`, `phone`, `category`, `media_count`,
+  `price_range`, `lat`, `lng`, `slug`, `location_id`, `location_address`, `location_city`,
+  `location_zip`, `ig_business.profile` null and `hours.status` an empty string. The model is
+  `Place(id, name, category, lat, lng, media_count, slug, address, city, zip_code, phone,
+  price_range)`, the strings as sent, empty ones included (the city, zip code and phone were
+  empty); `ig_business` and `hours` are dropped, since only their empty forms were seen. It is a
+  new model rather than batch 4's `Location` extended: `Location` is a post's tag, four fields
+  present on all 39 read, and the header carries eight that no post's location does, which would
+  be `None` on every post. The plan named `search.place`. The header is not a search and is read
+  from the same page as the grid, so both place reads sit on `feeds`, and `search` still opens
+  with batch 8's first search under W20. The id is digits only, refused before sending. One place
+  was read, a country-level one, so a business's `ig_business` and `hours` are unobserved.
+- **W79. A place's grid is `feeds.location(location_id, *, tab=LocationTab.RANKED) ->
+  LocationPosts`, the first page only, and its posts are `PostThumbnail`.** Ruled 2026-09-27 for
+  E2 batch 7. `PolarisLocationPageTabContentQuery` (finding `read-a-location-page-tab`, replayed
+  twice) on `/graphql/query` with `x-root-field-name` `xdt_location_get_web_info_tab`, variables
+  `location_id`, `first` 12, `after` null, `tab` `ranked`, `page_size_override` null and the
+  short drama provider false, the place's page as referer. FACT: 21 edges on both answers,
+  `has_next_page` true and a 32 character cursor, a different cursor on each. The next page query,
+  `PolarisLocationPageTabContentQuery_connection` (finding `read-a-location-page-tab-next-page`),
+  was replayed twice on the first answer's cursor and answered twice with 24 edges and
+  `has_next_page` true, but FACT: both times its `end_cursor` was the very cursor it was sent, the
+  two answers held the same 24 posts, and 20 of those were already on the first page. So
+  following it is not shown to read further, and a walk on it would send the same cursor for
+  ever. The grid therefore ships as the first page, W45's pattern: `LocationPosts(posts,
+  has_more)`, `has_more` the page's own `has_next_page`, with no cursor and no `iter_location`.
+  `Page[PostThumbnail]` is not used, because it carries a cursor nothing can follow and the
+  parity gate requires an iterator beside every `Page` read. The next page query is not
+  registered and nothing sends it, which a gate holds. INFERENCE: the ranked grid's cursor is tied
+  to a ranking session, and a browser's scroll sends something the replay did not; the capture
+  night can observe it. The posts are W64's `PostThumbnail`: on all 90 nodes read, 25 distinct
+  posts, the author carried no `full_name` and no `hd_profile_pic_url_info`, no node carried
+  `is_seen`, and none of the 92 slides carried `product_type`, so a `Post` would need a guessed
+  `PostAuthor.full_name`; `media.by_code` with the post's `code` reads the whole post. The edge
+  `cursor` was null on every edge. The tab: the compiled artifact names `ranked` and `recent`,
+  only `ranked` was sent, so `LocationTab` is an enum with the one member `RANKED`, which a
+  verified `recent` joins as an added line, and any other value raises `ValueError` before
+  sending. Departure: sent alone, where a browser reads it inside the place's page load.
+- **W80. The new posts check is `feeds.has_new_posts() -> bool`.** Ruled 2026-09-27 for E2 batch 7.
+  `PolarisAPICheckNewFeedPostsExistQuery` (finding `check-for-new-feed-posts`, replayed twice,
+  199 bytes each) with no variables, on `/api/graphql` with the site root as referer. FACT: root
+  `xdt_api__v1__new_feed_posts_exist` carrying only `new_feed_posts_exist`, false both times, so
+  the method returns that flag and a true answer is unobserved. What turns it true is not
+  observed; INFERENCE, a post newer than the viewer's last home load. Departure: asked alone,
+  where a browser asks from the home page.
+- **W81. The canary replays twenty-seven reads, three doctor literals followed, and the commands
+  are `explore`, `place`, `location` and `new-posts`.** Ruled 2026-09-27 for E2 batch 7.
+  `READ_QUERIES` gained the place's header, its grid and the new posts check, so a live doctor
+  run goes from at most 26 paced requests to at most 29. The explore grid is REST and is not
+  replayed, W60's rule. The two place steps are keyed on the first place a post names on the home
+  timeline or, failing that, on the viewer's own grid, and are skipped without one; the new posts
+  check needs nothing. W48's pattern. `tests/test_doctor.py` followed in three literals, each
+  seen red before the edit and green after: the registry count, 42 to 45 (`assert 45 == 42`), the
+  dry run's paced total, 26 to 29 (`assert 29 == 26`), and the stated plan, 24 reads to 27. The
+  recorded grid the doctor's answers use carries no place, so its first post is tagged there at
+  the batch's recorded place, and a new gate holds both place steps to that place and to being
+  skipped without one. The commands are `dumpsta explore`, `place LOCATION_ID`, `location
+  LOCATION_ID` and `new-posts`, text and JSON: `location` keeps the website's own name for the
+  page, `/explore/locations/`, and `place` names the header, so neither shadows the other. Both
+  refuse anything but digits with exit 2. `Client` in `_cli/commands/common.py` gained `feeds`.
+  The gate fixtures are the recorded answers, pseudonymised by
+  `scripts/build_discovery_fixtures.py`, the explore answers trimmed to their first section and to
+  the carousel, the grid to its first four edges, 957 values checked absent.
+  `tests/test_discovery.py` holds 13 gates and `scripts/verify_discovery_gates.py` 35 mutations,
+  each seen red then green; one, the grid's text form dropping its first post, did not fire on
+  the first run, and its gate was strengthened to check every line. `ARGUMENT_FOR_PARAMETER` in
+  `tests/test_facade_parity.py` gained `location_id` and `tab` and the core table the four
+  methods. The surface grew from 850 lines to 895, 45 added and none removed or changed. Live
+  traffic for the discovery: `probes/e2_discovery_feeds.py` 11 requests. The CLI acceptance,
+  `probes/e2_discovery_feeds_cli_acceptance.py`, reads the explore grid, then the header and grid
+  of the first place a post on it is tagged at, or `IG_E2_LOCATION_ID`, then the new posts check,
+  four requests, eight at most, and checks that no next page query went out; it ran on 2026-09-27, 4 requests, every step exit 0,
+  log `logs/e2-discovery-feeds-cli-2026-09-27-045328.json`.
 
 ## Standing rules for every phase
 

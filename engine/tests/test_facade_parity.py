@@ -44,7 +44,7 @@ from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY
 from dumpstagram.client import SyncClient
 from dumpstagram.listener import EventListener
-from dumpstagram.models import NoteAudience, Page, VideoRendition
+from dumpstagram.models import LocationTab, NoteAudience, Page, VideoRendition
 from dumpstagram.session import Session
 from tests.test_direct import FakeClock, a_bootstrapped_session
 
@@ -362,6 +362,7 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "highlight_id": "highlight:17912345678901234",
    "image": b"\xff\xd8not-read-before-the-core",
    "images": [b"\xff\xd8first", b"\xff\xd8second"],
+   "location_id": "212345678901234",
    "message_id": "mid.$abcdefghijklmnop",
    "newer_than_message_id": "mid.$olderthanthatone",
    "note_id": "17901234567890123",
@@ -374,6 +375,7 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
       height=1280,
       version_type=101,
    ),
+   "tab": LocationTab.RANKED,
    "text": "a text",
    "thread_fbid": "1234567890123456",
    "user_id": "71234567",
@@ -760,7 +762,11 @@ CORE_FUNCTION_FOR_ALIAS = {
    "direct.set_note": "dumpstagram._core.writes.notes.set_note",
    "direct.unread_counts": "dumpstagram._core.inbox.read_unread_counts",
    "direct.unsend": "dumpstagram._core.writes.direct.unsend_message",
+   "feeds.explore": "dumpstagram._core.discovery.read_explore_grid",
+   "feeds.has_new_posts": "dumpstagram._core.discovery.read_new_feed_posts",
    "feeds.home": "dumpstagram._core.feed.read_feed_page",
+   "feeds.location": "dumpstagram._core.discovery.read_location_posts",
+   "feeds.place": "dumpstagram._core.discovery.read_location_info",
    "media.by_code": "dumpstagram._core.posts.read_post",
    "media.by_id": "dumpstagram._core.posts.read_post_by_id",
    "media.comment": "dumpstagram._core.writes.comments.create_comment",

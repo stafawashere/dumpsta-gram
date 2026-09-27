@@ -5,7 +5,8 @@ here, built with the request builder its capability uses and read with the mappe
 uses, so a replay that passes is a query the capability would still get an answer from. A replay
 that needs an argument takes it from an earlier one: a thread from the inbox listing, a post from
 the timeline, a username from the viewer's own profile, a grid cursor from the viewer's grid, a
-comment with replies from the post's comments, a highlight from the viewer's highlights tray.
+comment with replies from the post's comments, a highlight from the viewer's highlights tray, a
+place from the first post that names one on the timeline or the viewer's grid.
 Nothing is supplied by the caller, and a step whose argument never turned up is skipped rather
 than sent with a guess.
 
@@ -14,7 +15,7 @@ Only ``_core`` sends. This module builds and reads.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,6 +29,11 @@ from dumpstagram._private.web.documents.direct import (
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
+)
+from dumpstagram._private.web.documents.discovery import (
+   LOCATION_INFO,
+   LOCATION_POSTS,
+   NEW_FEED_POSTS,
 )
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
 from dumpstagram._private.web.documents.media import (
@@ -59,6 +65,11 @@ from dumpstagram._private.web.parse.direct import (
    parse_thread_detail,
    parse_thread_message_page,
 )
+from dumpstagram._private.web.parse.discovery import (
+   parse_location_info,
+   parse_location_posts,
+   parse_new_feed_posts,
+)
 from dumpstagram._private.web.parse.feed import parse_feed_page
 from dumpstagram._private.web.parse.media import (
    parse_comment_page,
@@ -88,6 +99,11 @@ from dumpstagram._private.web.requests.direct import (
    build_thread_older_page_request,
    build_thread_page_request,
 )
+from dumpstagram._private.web.requests.discovery import (
+   build_location_info_request,
+   build_location_posts_request,
+   build_new_feed_posts_request,
+)
 from dumpstagram._private.web.requests.feed import build_feed_page_request
 from dumpstagram._private.web.requests.media import (
    build_comment_page_request,
@@ -109,6 +125,7 @@ from dumpstagram._private.web.requests.stories import (
    build_highlight_request,
    build_stories_tray_request,
 )
+from dumpstagram.models import Post
 from dumpstagram.session import Session
 
 __all__ = [
@@ -142,6 +159,7 @@ class ReplayArguments:
    parent_comment_id: str | None = None
    replies_cursor: str | None = None
    highlight_id: str | None = None
+   location_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -172,8 +190,23 @@ def _learn_first_thread(payload: Any, arguments: ReplayArguments) -> None:
       arguments.inbox_cursor = end_cursor
 
 
+def _learn_first_location(posts: Iterable[Post], arguments: ReplayArguments) -> None:
+   """The first place any of ``posts`` is tagged at, unless an earlier step found one, which the
+   place steps read."""
+
+   if arguments.location_id is not None:
+      return
+
+   for post in posts:
+      if post.location is not None:
+         arguments.location_id = post.location.id
+
+         return
+
+
 def _learn_first_post(payload: Any, arguments: ReplayArguments) -> None:
    page = parse_feed_page(payload)
+   _learn_first_location((item.post for item in page.items if item.post is not None), arguments)
 
    for item in page.items:
       if item.post is not None:
@@ -194,6 +227,7 @@ def _learn_grid_cursor(payload: Any, arguments: ReplayArguments) -> None:
 
    page = parse_profile_posts_page(payload)
    parse_user_id(payload)
+   _learn_first_location(page.items, arguments)
 
    if page.has_next_page:
       arguments.posts_cursor = page.end_cursor
@@ -453,6 +487,30 @@ REPLAY_STEPS: tuple[ReplayStep, ...] = (
          session, _required(arguments.highlight_id), user_agent=user_agent
       ),
       read=_mapped_by(parse_highlight_reel),
+   ),
+   ReplayStep(
+      query=LOCATION_INFO,
+      requires="location_id",
+      build=lambda session, arguments, user_agent: build_location_info_request(
+         session, _required(arguments.location_id), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_location_info),
+   ),
+   ReplayStep(
+      query=LOCATION_POSTS,
+      requires="location_id",
+      build=lambda session, arguments, user_agent: build_location_posts_request(
+         session, _required(arguments.location_id), user_agent=user_agent
+      ),
+      read=_mapped_by(parse_location_posts),
+   ),
+   ReplayStep(
+      query=NEW_FEED_POSTS,
+      requires=None,
+      build=lambda session, arguments, user_agent: build_new_feed_posts_request(
+         session, user_agent=user_agent
+      ),
+      read=_mapped_by(parse_new_feed_posts),
    ),
 )
 """The reads in replay order, the order of ``READ_QUERIES``, each arguments' source first."""

@@ -41,7 +41,7 @@ capture night that unblocks the rest.
 | 4 | Post depth, done 2026-09-27 | `probes/e2_post_depth.py` | 13, spent 13, and 4 of `e2_next_pages.py` | 7, spent 0 |
 | 5 | Stories, read only, done 2026-09-27 | `probes/e2_stories.py` | 8, spent 8 | 4, spent 0 |
 | 6 | Own account, done 2026-09-27 | `probes/e2_own_account.py` | 7, spent 7 | 3, spent 0 |
-| 7 | Discovery feeds | `probes/e2_discovery_feeds.py` | 9 | 5 |
+| 7 | Discovery feeds, done 2026-09-27 | `probes/e2_discovery_feeds.py` | 9, spent 11 | 5, spent 2 |
 | 8 | Search | `probes/e2_search.py` | 7 | 3 |
 | 9 | Page models, companions | `probes/e2_page_models.py` | 10 | 4 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
@@ -421,14 +421,40 @@ empty answers only; the non-empty shapes wait for E6, where block and follow req
 
 | Operation | Kind | Status |
 |---|---|---|
-| `REST GET /api/v1/discover/web/explore_grid/` | the explore grid | hypothesis, observed once |
-| `PolarisExploreLocationsContainerQuery` | a location's header | hypothesis |
-| `PolarisLocationPageTabContentQuery` | a location's grid | hypothesis |
-| `PolarisLocationPageTabContentQuery_connection` | its next pages | hypothesis |
-| `PolarisAPICheckNewFeedPostsExistQuery` | new posts on the home feed | hypothesis |
+| `REST GET /api/v1/discover/web/explore_grid/` | the explore grid | verified 2026-09-27, public as `feeds.explore`, first page only |
+| `PolarisExploreLocationsContainerQuery` | a location's header | verified 2026-09-27, public as `feeds.place` |
+| `PolarisLocationPageTabContentQuery` | a location's grid | verified 2026-09-27, public as `feeds.location`, first page only |
+| `PolarisLocationPageTabContentQuery_connection` | its next pages | verified as answering 2026-09-27, but it answered the cursor it was sent, so not registered or sent (W79) |
+| `PolarisAPICheckNewFeedPostsExistQuery` | new posts on the home feed | verified 2026-09-27, public as `feeds.has_new_posts` |
 | `PolarisClipsHomeRootQuery` | the reels feed | hypothesis, capture first |
 | `PolarisClipsTabRootPaginationQuery` | its next pages | hypothesis, capture first |
 | audio page | | capture first |
+
+**Status: done on 2026-09-27 for the explore grid, a place's header and first grid page, and the
+new posts check, rulings W77 to W81.** `probes/e2_discovery_feeds.py` ran once with 11 requests,
+two of them the conditional next page, in run `run-2026-09-27-014102`: the explore grid twice,
+four sections and 20 posts each, the header of the first place its posts named twice, that
+place's ranked grid twice with 21 posts, its next page twice with 24, and the new posts check
+twice, false. The reads shipped as `client.feeds.explore() -> ExploreGrid`,
+`client.feeds.place(location_id) -> Place`, `client.feeds.location(location_id, *,
+tab=LocationTab.RANKED) -> LocationPosts` and `client.feeds.has_new_posts() -> bool`, on both
+clients with no flat twin, with the new public models `ExploreGrid`, `ExploreSection`, `Place`,
+`LocationPosts` and `LocationTab`, and as `dumpsta explore`, `place`, `location` and `new-posts`.
+The CLI acceptance, `probes/e2_discovery_feeds_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 4 requests, none a next page query: 4 explore sections and 20 posts, a place header, 21 posts on its grid and no new posts, log `logs/e2-discovery-feeds-cli-2026-09-27-045328.json`. What the run found that the plan did not know:
+
+- The explore grid's posts are REST media nodes, which leave out eight keys a GraphQL node sends
+  null; they read as null, and the posts are the timeline's `Post` (W77). No next page was sent,
+  so the grid is its first page with `more_available`, and there is no `iter_explore`.
+- The header is not a search, so it is `feeds.place` rather than the plan's `search.place`, and a
+  new `Place` model rather than `Location` extended (W78).
+- The grid's next page query, sent the first page's cursor, answered that same cursor twice, with
+  20 of its 24 posts already on the first page. Paging is not shown to advance, so the grid is its
+  first page with `has_more`, and there is no `iter_location` (W79).
+- The grid's author carries no full name, so its posts are `PostThumbnail` (W79).
+- The new posts check carries one flag, false both times (W80).
+
+The reels feed and audio pages wait on the capture night. The doctor replays twenty-seven reads,
+the place steps keyed on the first place a timeline or grid post names (W81).
 
 Variables. The explore grid takes five observed constants; its next page parameter is not
 observed. A location takes its `pk`, which a post's `location` carries, and `tab` ranked or

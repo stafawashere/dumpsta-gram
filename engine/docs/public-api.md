@@ -407,7 +407,7 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests and activity feed, read without marking anything seen |
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
-| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines |
+| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, and whether the home feed has new posts |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
 | `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, highlights tray and followers, and the suggested accounts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
@@ -876,6 +876,50 @@ account a follow button acts on with the viewer's relationship to it (`follow_ac
 new and priority items are ASSUMED to share their shape. Saved collections, saved posts, the
 archive, the close friends and blocked lists and the notifications badge are not part of it
 (W75).
+
+### Discovery
+
+Landed 2026-09-27, E2 batch 7 of [web-parity-plan.md](web-parity-plan.md), rulings W77 to W81.
+Four methods on the `feeds` namespace, on both clients, with no flat twin:
+
+| Method | Returns | Live requests |
+|---|---|---|
+| `feeds.explore()` | `ExploreGrid` | one |
+| `feeds.place(location_id)` | `Place` | one, plus a bootstrap when the session holds no token |
+| `feeds.location(location_id, *, tab=LocationTab.RANKED)` | `LocationPosts` | one, plus a bootstrap when the session holds no token |
+| `feeds.has_new_posts()` | `bool` | one, plus a bootstrap when the session holds no token |
+
+```python
+grid = client.feeds.explore()
+for post in grid.posts:
+   print(post.code, post.author.username, post.video_duration)
+
+tagged = next(post.location for post in grid.posts if post.location is not None)
+place = client.feeds.place(tagged.id)
+page = client.feeds.location(tagged.id)
+print(place.name, place.media_count, len(page.posts), page.has_more)
+```
+
+**The explore grid.** `ExploreGrid` holds `sections` and `more_available`, the upstream's flag
+that the grid goes on, and `posts` joins every section's posts. An `ExploreSection` carries
+`feed_type`, the `featured` posts of its large tile and the smaller tiles' `posts`. Every post is
+a `Post`, read from the grid's REST media shape: keys that shape leaves out where the timeline
+sends null read as null, and `is_seen` is always False, since the grid never sends it (W77). Only
+the first page is read, because how a browser asks for the next one has not been observed, so
+there is no cursor and no `iter_explore`.
+
+**A place.** `location_id` is the place's numeric `pk`, the `Location.id` a tagged post carries,
+and anything but digits raises `ValueError` before anything is sent. `Place` carries `id`,
+`name`, `category`, `lat`, `lng`, `media_count`, `slug`, `address`, `city`, `zip_code`, `phone`
+and `price_range`, the strings as the upstream sends them, empty where the place has none (W78).
+`LocationPosts` is the first page of the place's grid as `posts` and the upstream's `has_more`.
+Its posts are `PostThumbnail`, because the grid sends no author's full name; `media.by_code`
+reads a whole post. The query that pages the grid answered the cursor it was sent, so no later
+page is read and there is no `iter_location` (W79). `LocationTab` has one member, `RANKED`, the
+only tab observed.
+
+**New posts.** `has_new_posts()` returns the upstream's flag for whether the home feed has posts
+newer than the viewer last loaded; only `False` has been observed (W80).
 
 ## Stability contract
 

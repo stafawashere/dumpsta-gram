@@ -1,0 +1,28 @@
+{
+ "data": {
+  "xdt_location_get_web_info": {
+   "native_location_data": {
+    "location_info": {
+     "name": "p21",
+     "phone": "",
+     "category": "p567xxxxxxxxxx",
+     "media_count": 20669042,
+     "price_range": 0,
+     "lat": 0.0,
+     "lng": 0.0,
+     "slug": "p56",
+     "location_id": "900000000000210",
+     "location_address": "p212xxxxxxxxxxxxxxxxxxxx",
+     "location_city": "",
+     "location_zip": "",
+     "ig_business": {
+      "profile": null
+     },
+     "hours": {
+      "status": ""
+     }
+    }
+   }
+  }
+ }
+}

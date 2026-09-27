@@ -21,6 +21,11 @@ from dumpstagram._private.web.documents.direct import (
    THREAD_MESSAGE_PAGE,
    THREAD_OLDER_PAGE,
 )
+from dumpstagram._private.web.documents.discovery import (
+   LOCATION_INFO,
+   LOCATION_POSTS,
+   NEW_FEED_POSTS,
+)
 from dumpstagram._private.web.documents.feed import HOME_TIMELINE_FEED
 from dumpstagram._private.web.documents.media import (
    COMMENT_PAGE,
@@ -89,6 +94,9 @@ READ_QUERIES: tuple[PersistedQuery, ...] = (
    MORE_FROM_AUTHOR,
    STORIES_TRAY,
    STORY_REEL,
+   LOCATION_INFO,
+   LOCATION_POSTS,
+   NEW_FEED_POSTS,
 )
 """The queries whose answers a capability reads, in the order the canary replays them."""
 

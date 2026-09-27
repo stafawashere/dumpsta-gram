@@ -207,6 +207,23 @@ until the arranged run of E2 batch 12 verifies the mutation on the owner's own s
 the engine today does not mark it seen. The stories gallery query is not sent (W71). Findings
 `page-load-stories-tray` and `read-one-account-s-stories-or-a-highlight`.
 
+**A place's two reads and the new posts check are each sent alone, a recorded departure.** Added
+2026-09-27 with E2 batch 7, rulings W78 to W80. `LOCATION_INFO` (`28572807415659320`,
+`PolarisExploreLocationsContainerQuery`) is sent on `API_GRAPHQL_URL` with `location_id_str` and
+`show_nearby` false. `LOCATION_POSTS` (`28211016731901625`, `PolarisLocationPageTabContentQuery`)
+answers on `GRAPHQL_QUERY_URL` with `x-bloks-version-id` and `x-root-field-name`
+`xdt_location_get_web_info_tab`, and is sent with `location_id`, `first` 12, `after` null, `tab`
+`ranked`, `page_size_override` null and
+`__relay_internal__pv__PolarisShortDramaEnabledrelayprovider` false. Both have the place's page,
+`https://www.instagram.com/explore/locations/<pk>/`, as their referer, where a browser reads both
+inside that page's load. The grid's next page query,
+`PolarisLocationPageTabContentQuery_connection`, is not registered or sent: replayed on the first
+page's cursor it answered that same cursor, so paging is not shown to advance, and the grid is
+read as its first page only (W79). `NEW_FEED_POSTS` (`29095516470048516`,
+`PolarisAPICheckNewFeedPostsExistQuery`) is sent on `API_GRAPHQL_URL` with no variables and the
+site root as referer, where a browser asks from the home page. Findings `read-a-location-s-info`,
+`read-a-location-page-tab`, `read-a-location-page-tab-next-page` and `check-for-new-feed-posts`.
+
 **A field error beside an answer does not fail the request.** Added 2026-09-27, W52. `classify`
 returns an answer whose every `errors` entry has a `path` of two elements or more under a `data`
 root that is present and not null, the errored fields null, and refuses any other `errors` array
@@ -654,6 +671,30 @@ did not keep, so the two fields and their order are the replay's, which answered
 - Neither read's next page is sent. The pending requests answered `next_max_id` null and the
   feed `is_last_page` true with `continuation_token` 0 on both replays, so no next page request
   has been observed (W73, W74).
+
+## The explore grid, 2026-09-27
+
+E2 batch 7 added a third REST read, in `_private/web/requests/discovery.py`, sent by
+`read_explore_grid` in `_core/discovery.py` alone and answered through `parse_explore_grid`.
+Finding `read-the-explore-grid`, replayed twice in run `run-2026-09-27-014102` by
+`probes/e2_discovery_feeds.py`, first seen in the recorded browse of `run-2026-09-21-034918`.
+Ruling W77.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Explore grid | `GET https://www.instagram.com/api/v1/discover/web/explore_grid/` | `include_fixed_destinations=true`, `is_nonpersonalized_explore=false`, `is_prefetch=false`, `module=explore_popular`, `omit_cover_media=false` | the followers page's, with `referer` the explore page, `https://www.instagram.com/explore/` |
+
+The answer is REST and reports failure in `status`, refused unless `ok`. The GET carries no page
+token, so it spends no bootstrap. Its posts are REST media nodes, which leave out eight keys the
+timeline's GraphQL node sends null, read as null when absent (W77).
+
+**Recorded departures.**
+
+- A browser reads the grid inside the `/explore/` page load. The engine sends it alone, with that
+  page as referer.
+- No next page is sent. The answer carries `more_available`, `next_max_id`, `max_id`,
+  `rank_token` and `session_paging_token`, but a browser's next page request has not been
+  observed, so the grid is read as its first page with `more_available` (W77).
 
 ## What is not implemented here
 

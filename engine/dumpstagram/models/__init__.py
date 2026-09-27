@@ -15,6 +15,13 @@ from dumpstagram.models.account import (
    FollowRequests,
 )
 from dumpstagram.models.comments import Comment, CommentAuthor
+from dumpstagram.models.discovery import (
+   ExploreGrid,
+   ExploreSection,
+   LocationPosts,
+   LocationTab,
+   Place,
+)
 from dumpstagram.models.events import Event, EventsDropped, ListenerStopped, NewMessage
 from dumpstagram.models.feed import (
    AudioKind,
@@ -74,6 +81,8 @@ __all__ = [
    "DirectThread",
    "Event",
    "EventsDropped",
+   "ExploreGrid",
+   "ExploreSection",
    "FeedItem",
    "FeedItemKind",
    "FriendshipStatus",
@@ -82,6 +91,8 @@ __all__ = [
    "ListFriendshipStatus",
    "ListenerStopped",
    "Location",
+   "LocationPosts",
+   "LocationTab",
    "MediaAudio",
    "MediaImage",
    "Message",
@@ -91,6 +102,7 @@ __all__ = [
    "Note",
    "NoteAudience",
    "Page",
+   "Place",
    "Post",
    "PostAuthor",
    "PostDetail",

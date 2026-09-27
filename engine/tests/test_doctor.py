@@ -48,6 +48,11 @@ from dumpstagram._private.web.documents.catalog import (
 )
 from dumpstagram._private.web.documents.common import PersistedQuery
 from dumpstagram._private.web.documents.direct import DIRECT_INBOX, THREAD_DETAIL
+from dumpstagram._private.web.documents.discovery import (
+   LOCATION_INFO,
+   LOCATION_POSTS,
+   NEW_FEED_POSTS,
+)
 from dumpstagram._private.web.documents.media import (
    COMMENT_REPLIES,
    COMMENT_REPLIES_NEXT_PAGE,
@@ -63,6 +68,8 @@ from dumpstagram.errors import CheckpointRequired
 from dumpstagram.session import Session
 from tests.test_comments import page_payload as comment_page_payload
 from tests.test_direct_read import recorded as recorded_direct_read
+from tests.test_discovery import location_id as recorded_place_id
+from tests.test_discovery import recorded as recorded_discovery
 from tests.test_feed import AUTHOR_ID as FEED_AUTHOR_ID
 from tests.test_feed import item as feed_item
 from tests.test_feed import payload as feed_payload
@@ -160,6 +167,24 @@ def html_response(html: str, url: str) -> Response:
    )
 
 
+GRID_ROOT = "xdt_api__v1__feed__user_timeline_graphql_connection"
+
+
+def a_grid_whose_first_post_names_a_place() -> Any:
+   """The recorded grid, none of whose posts is tagged at a place, with its first post tagged at
+   the recorded place in the grid's own shape, so the place steps have one to read."""
+
+   grid = recorded_profile_tabs("author_grid_first_page.json")
+   grid["data"][GRID_ROOT]["edges"][0]["node"]["location"] = {
+      "pk": int(recorded_place_id()),
+      "name": "a place",
+      "lat": 0.0,
+      "lng": 0.0,
+   }
+
+   return grid
+
+
 def answers_for_every_read() -> dict[str, Any]:
    """A payload per read that the capability's own mapper accepts."""
 
@@ -184,7 +209,7 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisPostRootQuery": post_payload([post_item()]),
       "PolarisPostCommentsPaginationQuery": recorded_post_depth("comment_page.json"),
       "PolarisProfilePageContentQuery": profile_payload(),
-      "PolarisProfilePostsQuery": recorded_profile_tabs("author_grid_first_page.json"),
+      "PolarisProfilePostsQuery": a_grid_whose_first_post_names_a_place(),
       "IGDThreadListOffMsysPaginationQuery": recorded_direct_read("inbox_next_page.json"),
       "IGDMessageRequestLeftRailStandaloneQuery": recorded_direct_read("message_requests.json"),
       "useIGDSystemFolderUnreadThreadCountQuery": recorded_direct_read("inbox_unread_rows.json"),
@@ -203,6 +228,9 @@ def answers_for_every_read() -> dict[str, Any]:
       "PolarisDesktopPostPageRelatedMediaGridQuery": recorded_post_depth("more_from_author.json"),
       "PolarisStoriesV3TrayContainerQuery": recorded_stories("stories_tray.json"),
       "PolarisStoriesV3ReelPageStandaloneQuery": recorded_stories("highlight.json"),
+      "PolarisExploreLocationsContainerQuery": recorded_discovery("location_info.json"),
+      "PolarisLocationPageTabContentQuery": recorded_discovery("location_posts.json"),
+      "PolarisAPICheckNewFeedPostsExistQuery": recorded_discovery("new_feed_posts.json"),
    }
 
 
@@ -424,7 +452,7 @@ def test_the_catalog_lists_every_registry_query_exactly_once() -> None:
 
    catalogued = list(EVERY_QUERY)
 
-   assert len(registry) == 42
+   assert len(registry) == 45
    assert sorted(catalogued, key=id) == sorted(set(registry), key=id)
    assert len(set(catalogued)) == len(catalogued)
    assert all(query.friendly_name.endswith("Mutation") for query in WRITE_QUERIES)
@@ -597,6 +625,30 @@ def test_the_story_reel_is_replayed_on_the_viewers_first_highlight_and_skipped_w
    assert bare_report.reads_sent == len(READ_QUERIES) - 1
 
 
+def test_the_place_steps_read_the_first_place_a_post_names_and_are_skipped_without_one() -> None:
+   """Catches the place steps keyed on anything but the first place a timeline or grid post is
+   tagged at, sent with no place, and the new posts check skipped with them."""
+
+   bundles = every_query_compiled()
+   site = a_site(bundles)
+   report = run_doctor(site, FakeBundles(bundles))
+   no_place = answers_for_every_read()
+   no_place["PolarisProfilePostsQuery"] = recorded_profile_tabs("author_grid_first_page.json")
+   bare_site = a_site(bundles, answers=no_place)
+   bare_report = run_doctor(bare_site, FakeBundles(bundles))
+   place_reads = ("PolarisExploreLocationsContainerQuery", "PolarisLocationPageTabContentQuery")
+
+   assert site.variables_of(place_reads[0])["location_id_str"] == recorded_place_id()
+   assert site.variables_of(place_reads[1])["location_id"] == recorded_place_id()
+   assert check_for(report, LOCATION_INFO).replay is ReplayVerdict.OK
+   assert check_for(report, LOCATION_POSTS).replay is ReplayVerdict.OK
+   assert check_for(bare_report, LOCATION_INFO).replay is ReplayVerdict.SKIPPED
+   assert check_for(bare_report, LOCATION_POSTS).replay is ReplayVerdict.SKIPPED
+   assert set(place_reads).isdisjoint(bare_site.sent)
+   assert check_for(bare_report, NEW_FEED_POSTS).replay is ReplayVerdict.OK
+   assert bare_report.reads_sent == len(READ_QUERIES) - 2
+
+
 def test_the_bundle_scan_stops_once_every_stored_operation_is_located() -> None:
    """Catches a scan that fetches every bundle a document names after it already has its
    answer. The home document names a bundle the scan never needs."""
@@ -663,7 +715,7 @@ def test_a_dry_run_sends_nothing_opens_no_client_and_states_the_plan() -> None:
    assert payload["live"] is False
    assert payload["plan"]["documents"] == 2
    assert payload["plan"]["reads"] == [query.friendly_name for query in READ_QUERIES]
-   assert payload["plan"]["paced_requests_at_most"] == 26
+   assert payload["plan"]["paced_requests_at_most"] == 29
    assert payload["plan"]["writes_checked_by_artifact"] == [
       query.friendly_name for query in WRITE_QUERIES
    ]
@@ -759,5 +811,5 @@ def test_a_live_run_states_what_it_will_send_on_stderr_before_it_sends() -> None
    _, doctor = live_run(a_report(a_check(BundleVerdict.OK)))
    stated = doctor.stderr_when_run_began[0]
 
-   assert "2 documents and at most 24 reads" in stated
+   assert "2 documents and at most 27 reads" in stated
    assert "at most 1000 cookieless bundle fetches" in stated
