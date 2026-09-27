@@ -33,6 +33,7 @@ from dumpstagram.models import (
    PostDetail,
    PostThumbnail,
    ProfileSummary,
+   TaggedPlace,
    UserTag,
    VideoRendition,
 )
@@ -48,6 +49,7 @@ __all__ = [
    "POST_PATH",
    "REPLIES_PATH",
    "UNLIKE_ANSWER_ROOT",
+   "audio_page_id",
    "comment_was_deleted",
    "parse_comment",
    "parse_comment_page",
@@ -58,6 +60,7 @@ __all__ = [
    "parse_post",
    "parse_post_by_media_id",
    "parse_post_detail",
+   "tagged_place",
    "parse_reply_page",
 ]
 
@@ -358,6 +361,48 @@ def _audio(
    return None
 
 
+def audio_page_id(node: dict[str, Any], path: str) -> str | None:
+   """The id of the audio page of the track a node names, whether or not :func:`_audio` can read
+   the track (W118).
+
+   A song's page is keyed on its ``audio_cluster_id`` and an original sound's on its
+   ``audio_asset_id``, the ids both captured audio pages carried in their address. ``None`` when
+   the node carries no ``clips_metadata`` or neither slot is filled; both filled raises, as it does
+   in :func:`_audio`.
+   """
+
+   metadata = node.get("clips_metadata")
+
+   if metadata is None:
+      return None
+
+   metadata_path = f"{path}.clips_metadata"
+
+   if not isinstance(metadata, dict):
+      raise SchemaChanged(f"{metadata_path} is not an object or null", path=metadata_path)
+
+   music = metadata.get("music_info")
+   original = metadata.get("original_sound_info")
+   has_music = music is not None
+   has_original = original is not None
+
+   if has_music and has_original:
+      raise SchemaChanged(
+         f"{metadata_path} filled both music_info and original_sound_info", path=metadata_path
+      )
+
+   if has_music:
+      music_path = f"{metadata_path}.music_info"
+      asset = _required(music, "music_asset_info", music_path)
+
+      return _required_string(asset, "audio_cluster_id", f"{music_path}.music_asset_info")
+
+   if has_original:
+      return _required_string(original, "audio_asset_id", f"{metadata_path}.original_sound_info")
+
+   return None
+
+
 def _account_row(row: Any, path: str) -> ProfileSummary:
    """An account a post names, read as a list row is read.
 
@@ -420,6 +465,27 @@ def _location(node: dict[str, Any], path: str) -> Location | None:
       name=_required_string(raw, "name", location_path),
       lat=_coordinate(raw, "lat", location_path),
       lng=_coordinate(raw, "lng", location_path),
+   )
+
+
+def tagged_place(node: dict[str, Any], path: str) -> TaggedPlace | None:
+   """The place's id and name wherever the node names a place, whether or not it sends the
+   coordinates :func:`_location` requires (W120). ``None`` when the node sends null or does not
+   carry the key."""
+
+   place = node.get("location")
+
+   if place is None:
+      return None
+
+   location_path = f"{path}.location"
+
+   if not isinstance(place, dict):
+      raise SchemaChanged(f"{location_path} is not an object or null", path=location_path)
+
+   return TaggedPlace(
+      id=_place_id(place, location_path),
+      name=_required_string(place, "name", location_path),
    )
 
 
@@ -667,6 +733,8 @@ def parse_post(node: Any, path: str, *, null_is_unseen: bool = False) -> Post:
       location=_location(node, path),
       user_tags=_user_tags(node, path),
       collaborators=_collaborators(node, path),
+      audio_id=audio_page_id(node, path),
+      tagged_place=tagged_place(node, path),
    )
 
 

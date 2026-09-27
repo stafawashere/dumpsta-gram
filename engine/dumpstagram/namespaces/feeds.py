@@ -1,5 +1,5 @@
 """``client.feeds``, the timelines a signed-in account reads: the home timeline, the explore grid,
-a place's page, whether the home feed has new posts, and the reels feed."""
+a place's page, whether the home feed has new posts, the reels feed, and an audio's page."""
 
 from __future__ import annotations
 
@@ -7,6 +7,9 @@ from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING
 
 from dumpstagram._core.discovery import (
+   audio_clips_page,
+   explore_posts_page,
+   read_audio_page,
    read_explore_grid,
    read_location_info,
    read_location_posts,
@@ -16,6 +19,7 @@ from dumpstagram._core.discovery import (
 from dumpstagram._core.feed import read_feed_page
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram.models import (
+   AudioPage,
    ExploreGrid,
    FeedItem,
    LocationPosts,
@@ -103,18 +107,22 @@ class AsyncFeeds:
 
       return iterate_pages(lambda cursor: self.home(after=cursor), limit=limit, after=after)
 
-   async def explore(self) -> ExploreGrid:
-      """Read the first page of the explore grid. One live request.
+   async def explore(self, *, after: str | None = None) -> ExploreGrid:
+      """Read one page of the explore grid. One live request.
 
-      The grid arrives in sections, each a large tile's reel and the smaller tiles beside it,
-      and every post is a :class:`~dumpstagram.models.Post`, read from the explore grid's own
-      media shape. ``is_seen`` reads False on every post, since the grid never sends it.
-      :attr:`~dumpstagram.models.ExploreGrid.more_available` is the upstream's flag that the grid
-      goes on. No later page is read, because how a browser asks for one has not been observed,
-      so there is no cursor and no ``iter_explore``.
+      ``after`` is the ``end_cursor`` of a page this method returned, and omitting it asks for
+      the first page. The grid arrives in sections, each a large tile's reel and the smaller tiles
+      beside it, and every post is a :class:`~dumpstagram.models.Post`, read from the explore
+      grid's own media shape. ``is_seen`` reads False on every post, since the grid never sends
+      it. A first page read carried 20 posts in four sections and a later page 18 in six.
 
-      A browser reads the grid inside the ``/explore/`` page load. This sends it alone, with that
-      page as its referer, a departure recorded in ``docs/web-request-contract.md``.
+      :attr:`~dumpstagram.models.ExploreGrid.more_available` is the upstream's own flag that the
+      grid goes on, and it is the only thing that ends a walk; it was true on every page read.
+      :meth:`iter_explore` walks the grid post by post.
+
+      A browser reads the first page inside the ``/explore/`` page load and each later page as the
+      grid is scrolled. This sends each alone, with that page as its referer, a departure recorded
+      in ``docs/web-request-contract.md``.
       """
 
       client = self._client
@@ -124,8 +132,41 @@ class AsyncFeeds:
          read_explore_grid(
             client._sender,
             client._session,
+            after=after,
             user_agent=client._user_agent,
          )
+      )
+
+   async def explore_posts(self, *, after: str | None = None) -> Page[Post]:
+      """Read one page of the explore grid as a plain page of posts. One live request.
+
+      The same read as :meth:`explore`, returned as a :class:`~dumpstagram.models.Page`: every
+      post in the grid's order, ``has_next_page`` the upstream's ``more_available`` and
+      ``end_cursor`` the same cursor :meth:`explore` hands out, so the two take each other's
+      cursors. It is the page :meth:`iter_explore` walks.
+      """
+
+      grid = await self.explore(after=after)
+
+      return explore_posts_page(grid)
+
+   def iter_explore(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]:
+      """Walk the explore grid post by post, reading a page with :meth:`explore_posts` each time
+      the one before it is used up. Use it with ``async for``, and do not await it.
+
+      ``limit`` is required and counts posts. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks until the upstream's
+      ``more_available`` is false, which on the explore grid may be never. ``after`` starts the
+      walk from a cursor :meth:`explore` or :meth:`explore_posts` returned. Each page is one
+      read, paced as any read is, and never read ahead of the caller. A page that says more
+      exist with no cursor raises :class:`~dumpstagram.errors.SchemaChanged`, and a negative
+      ``limit`` raises :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.explore_posts(after=cursor), limit=limit, after=after
       )
 
    async def place(self, location_id: str) -> Place:
@@ -262,6 +303,74 @@ class AsyncFeeds:
 
       return iterate_pages(lambda cursor: self.reels(after=cursor), limit=limit, after=after)
 
+   async def audio(self, audio_id: str, *, after: str | None = None) -> AudioPage:
+      """Read one page of an audio's page, the track and the reels that use it. One live
+      request.
+
+      ``audio_id`` is the track's numeric id, :attr:`Post.audio_id
+      <dumpstagram.models.Post.audio_id>` on a reel that uses it or :attr:`MediaAudio.audio_id
+      <dumpstagram.models.MediaAudio.audio_id>`, and anything but digits raises
+      :class:`ValueError` before anything is sent. ``after`` is the ``end_cursor`` of a page this
+      method returned, and omitting it asks for the first page. A song's page carried 12 reels a
+      page, and a one-reel original sound's first page its one reel.
+
+      :attr:`~dumpstagram.models.AudioPage.more_available` is the upstream's own flag and the
+      only thing that ends a walk. It can say true when nothing follows: the one-reel page said
+      true, and its next page carried no reels and said false, so reading to the end of a short
+      page spends one read that returns nothing. :attr:`~dumpstagram.models.AudioPage.audio` and
+      ``clips_count`` describe the track on a first page and may not on a later one, see
+      :class:`~dumpstagram.models.AudioPage`.
+
+      A browser reads the first page after loading the ``/reels/audio/<id>/`` document and each
+      later page as the grid is scrolled. This sends the read alone, with that page as its
+      referer, a departure recorded in ``docs/web-request-contract.md``. Nothing is played.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_audio_page(
+            client._sender,
+            client._session,
+            audio_id,
+            after=after,
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def audio_clips(self, audio_id: str, *, after: str | None = None) -> Page[Post]:
+      """Read one page of an audio's reels as a plain page of posts. One live request.
+
+      The same read as :meth:`audio`, returned as a :class:`~dumpstagram.models.Page` of its
+      reels, ``has_next_page`` the upstream's ``more_available`` and ``end_cursor`` the same
+      cursor :meth:`audio` hands out. It is the page :meth:`iter_audio` walks.
+      """
+
+      page = await self.audio(audio_id, after=after)
+
+      return audio_clips_page(page)
+
+   def iter_audio(
+      self, audio_id: str, *, limit: int | None, after: str | None = None
+   ) -> AsyncIterator[Post]:
+      """Walk an audio's reels one by one, reading a page with :meth:`audio_clips` each time the
+      one before it is used up. Use it with ``async for``, and do not await it.
+
+      ``limit`` is required and counts reels. The walk stops once that many have been yielded,
+      without reading a page it would not use, and ``limit=None`` walks until the upstream's
+      ``more_available`` is false, which on a one-reel page came after one empty read. ``after``
+      starts the walk from a cursor :meth:`audio` or :meth:`audio_clips` returned. Each page is
+      one read, paced as any read is, and never read ahead of the caller. A negative ``limit``
+      raises :class:`ValueError` before anything is sent.
+      """
+
+      check_limit(limit)
+
+      return iterate_pages(
+         lambda cursor: self.audio_clips(audio_id, after=cursor), limit=limit, after=after
+      )
+
 
 class SyncFeeds:
    """The timelines, as ``client.feeds`` on :class:`~dumpstagram.client.SyncClient`. Each
@@ -311,17 +420,48 @@ class SyncFeeds:
 
       return iterate_pages_blocking(read_page, limit=limit, after=after)
 
-   def explore(self) -> ExploreGrid:
-      """Read the first page of the explore grid. Blocks until it has it.
+   def explore(self, *, after: str | None = None) -> ExploreGrid:
+      """Read one page of the explore grid. Blocks until it has it.
 
       The same call as :meth:`AsyncFeeds.explore`, run on the shared loop thread. One live
       request.
       """
 
       return self._client._loop.run(
-         self._client._impl.feeds.explore(),
+         self._client._impl.feeds.explore(after=after),
          operation="SyncClient.feeds.explore",
       )
+
+   def explore_posts(self, *, after: str | None = None) -> Page[Post]:
+      """Read one page of the explore grid as a plain page of posts. Blocks until it has it.
+
+      The same call as :meth:`AsyncFeeds.explore_posts`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.feeds.explore_posts(after=after),
+         operation="SyncClient.feeds.explore_posts",
+      )
+
+   def iter_explore(self, *, limit: int | None, after: str | None = None) -> Iterator[Post]:
+      """Walk the explore grid post by post. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncFeeds.iter_explore`, with the same ``limit``, each page read
+      on the shared loop thread. Closing the iterator early leaves nothing running, because no
+      page is read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Post]:
+         return client._loop.run(
+            client._impl.feeds.explore_posts(after=cursor),
+            operation="SyncClient.feeds.iter_explore",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)
 
    def place(self, location_id: str) -> Place:
       """Read the header of a place's page. Blocks until it has it.
@@ -386,6 +526,51 @@ class SyncFeeds:
          return client._loop.run(
             client._impl.feeds.reels(after=cursor),
             operation="SyncClient.feeds.iter_reels",
+         )
+
+      return iterate_pages_blocking(read_page, limit=limit, after=after)
+
+   def audio(self, audio_id: str, *, after: str | None = None) -> AudioPage:
+      """Read one page of an audio's page. Blocks until it has it.
+
+      The same call as :meth:`AsyncFeeds.audio`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.feeds.audio(audio_id, after=after),
+         operation="SyncClient.feeds.audio",
+      )
+
+   def audio_clips(self, audio_id: str, *, after: str | None = None) -> Page[Post]:
+      """Read one page of an audio's reels as a plain page of posts. Blocks until it has it.
+
+      The same call as :meth:`AsyncFeeds.audio_clips`, run on the shared loop thread. One live
+      request.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.feeds.audio_clips(audio_id, after=after),
+         operation="SyncClient.feeds.audio_clips",
+      )
+
+   def iter_audio(
+      self, audio_id: str, *, limit: int | None, after: str | None = None
+   ) -> Iterator[Post]:
+      """Walk an audio's reels one by one. Blocks while each page is read.
+
+      The same walk as :meth:`AsyncFeeds.iter_audio`, with the same ``limit``, each page read on
+      the shared loop thread. Closing the iterator early leaves nothing running, because no page
+      is read ahead.
+      """
+
+      check_limit(limit)
+      client = self._client
+
+      def read_page(cursor: str | None) -> Page[Post]:
+         return client._loop.run(
+            client._impl.feeds.audio_clips(audio_id, after=cursor),
+            operation="SyncClient.feeds.iter_audio",
          )
 
       return iterate_pages_blocking(read_page, limit=limit, after=after)

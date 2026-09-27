@@ -2165,6 +2165,135 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   Live traffic for the batch: the blocked list replays, 6 requests, and the post stage of
   `run-2026-09-27-151121`; `probes/e2_post_page_cli_acceptance.py`, seventeen requests, twenty at
   most, ran on 2026-09-27, 17 requests, every step exit 0, log `logs/e2-post-page-cli-2026-09-27-181927.json`.
+- **W115. The explore grid pages on its root `max_id`, `explore(*, after=None)` takes it, and
+  only `more_available` ends a walk.** Ruled 2026-09-27 for E2 batch 11e on the owner's
+  delegation, amending W77. Finding `read-the-explore-grid-next-page` is verified by two engine
+  replays in `run-2026-09-27-183420` (`probes/e2_last_reads_replay.py --stage explore`, 3 requests
+  with the first page), each answering 18 posts in six sections, none of them on the first page.
+  FACT over the six next page GETs of browser run `run-2026-09-27-182013`: each sent the first
+  page's five parameters and `max_id`, alphabetically, and each `max_id` equalled the previous
+  answer's root `max_id`. FACT over five answers, the two first pages of
+  `run-2026-09-27-014102`, the first page and both next pages of `run-2026-09-27-183420`: the root
+  `max_id` equalled the root `session_paging_token`, `next_max_id` was a one-character page
+  counter, and `more_available` was true; on the later pages every large tile's cluster carried
+  its own `max_id` besides. So `ExploreGrid.end_cursor` is the root `max_id`, and the request adds it where the
+  browser's order puts it. That a REST first page's cursor pages like the document's is now FACT
+  from the two replays; the browser's first page came inside the document. A later page lays each
+  section out as one `medias` list of fill tiles (`{"media"}`) and large tiles (`{"clips":
+  {"items"}}`), `layout_type` `dynamic_grid`, on all 12 sections read, and the mapper reads it
+  into the same `featured` and `posts`; a section whose one block is `medias` is that layout,
+  anything else beside the first page's two blocks still raises, and so does an entry of another
+  shape. The walk ends only when `more_available` is false, which no page read has said; a page
+  saying true with no `max_id` raises `SchemaChanged` through the shared walk, rather than ending
+  it quietly. `iter_explore` walks `explore_posts(*, after=None) -> Page[Post]`, the same read as
+  a `Page`, see W119. `dumpsta explore` gained `--pages` and `--after`.
+- **W116. An audio's page is `feeds.audio(audio_id, *, after=None) -> AudioPage`, its reels are
+  `Post`, and a walk reads the empty page the upstream asks for.** Ruled 2026-09-27 for E2 batch
+  11e on the owner's delegation. Findings `read-an-audio-page` and `read-an-audio-page-next-page`
+  are verified by two engine replays each in `run-2026-09-27-183420` (`--stage audio`), on a
+  one-reel original sound: the first page answered 1 reel, `more_available` true and a 44
+  character cursor, and the next page on that cursor answered 0 reels and `more_available` false
+  with no cursor, both times, as the browser's own second request on that page did. That the
+  cursor pages further is FACT from the browser only: on a licensed song of 2869 reels five
+  scrolled pages each sent the previous answer's `payload.paging_info.max_id` (5 of 5), 12 reels
+  a page, and the engine's request is the same form (INFERENCE that it pages alike). The request
+  is the page's: the form's three fields first, `max_id` empty on the first page as both captured
+  first pages sent it, then the comet envelope without the fields the engine never produces, and
+  the header set with `x-fb-lsd` and `x-ig-d` and no `x-csrftoken`, as the probe's
+  `comet_route` sent it. The walk ends only on `more_available`, so a short page that says more
+  costs one empty read: the upstream's own signal, which a length heuristic would pre-empt and
+  which no other signal on the page contradicts. The model: FACT over 11 answers, the track is in
+  `metadata` as a reel's `clips_metadata` carries it, so it is read with the same readers into
+  `MediaAudio`; on all five later pages of the song `metadata` held three nulls and
+  `media_count.clips_count` 0, so `audio` is `MediaAudio | None` and `clips_count` is the number
+  as sent, documented as a count only on a first page. The reels are the explore grid's REST
+  media, 75 read, which map to `Post` with three adjustments, each on all 75: `accessibility_caption`
+  absent reads as null (the REST rule of W77), the author's `hd_profile_pic_url_info` absent reads
+  as null, and `coauthor_producers` is not read, since its rows sent `pk` as a number and a
+  relationship without the two request flags `ListFriendshipStatus` requires, so `collaborators`
+  is `None`. `Post` fits, where `ReelThumbnail` would drop the author and caption the page sends.
+  `iter_audio` walks `audio_clips(audio_id, *, after=None) -> Page[Post]`, see W119. Nothing is
+  played. `dumpsta audio AUDIO_ID` with `--pages` and `--after`. The capture's browser bodies
+  record `pk`, `pk_id`, `username` and `full_name` redacted, so the song fixtures carry one
+  placeholder for each; the original sound's pages come whole from the engine replays.
+- **W117. The mutual followers are `profiles.mutual_followers(user_id) -> MutualFollowers`, the
+  first page with `has_more`, and the statuses follow it under `follow_list_statuses`.** Ruled
+  2026-09-27 for E2 batch 11e on the owner's delegation. Finding `read-mutual-followers` is
+  verified by two engine replays in `run-2026-09-27-183420` (`--stage mutual`) on a public account
+  the owner follows, 1 account each, and the browser capture of `run-2026-09-27-182013`, 4
+  accounts. On all three `next_max_id` was null and `big_list` false, so no second page exists to
+  replay and none is built: `has_more` is true when `next_max_id` is not null, the W45 and W73
+  pattern, and there is no cursor or iterator. The `max_id` a second page would take is
+  INFERENCE by analogy with the follow lists and stays unsent. FACT from the browser capture:
+  opening the list sent the GET with `page_size` 12 alone, then `show_many` with the four ids it
+  returned, the followers page's request. So the read is the follow lists' action through their
+  shared code, the page then its statuses, and `Behavior.follow_list_statuses` governs it as it
+  governs both lists (W59, W99), one setting, since the browser sends the same request after
+  each. A row sends `pk` as a number and `id` as the same id as a string on all 5 rows read, so
+  `id` is read. The referer is the site root, the follow lists' departure.
+- **W118. `Post.audio_id` names the track's audio page wherever the node names its track.**
+  Ruled 2026-09-27 for E2 batch 11e. A caller reaching an audio's page from a reel needs its id,
+  and `Post.audio` does not always carry it: a reels feed reel whose original sound lacks the mute
+  flag has `audio` `None` (W101), which was every original sound in that feed. So `Post` gained
+  `audio_id: str | None = None`, read by every post mapper from `clips_metadata` as sent: a song's
+  `music_info.music_asset_info.audio_cluster_id`, an original sound's
+  `original_sound_info.audio_asset_id`, the ids both captured audio pages carried in their
+  address, `None` when neither slot is filled, and both filled raises as `audio` does. The reels
+  mapper reads it before the soundless original sound is set aside. FACT from the replays: every
+  reel of the reels feed replayed named an id, and the audio page's reels all named the page's
+  own. `PostDetail` does not gain it; the `post` command's JSON leaves the key out, every other
+  post form carries it.
+- **W119. Gates, the harness, the surface, the two page twins and what else changed for batch
+  11e.** Ruled 2026-09-27. Every iterator walks a namespace read that returns `Page` (W23), and
+  `tests/test_facade_parity.py` holds that as two gates: the iterator table's page reads must be
+  exactly the reads returning `Page`, and an iterator's item type is its read's page item. `explore`
+  returns `ExploreGrid` and `audio` `AudioPage`, which carry what a page cannot, so each gained a
+  twin returning `Page[Post]` over the same read, `explore_posts` and `audio_clips`, which the
+  iterators walk; no gate was changed to admit another shape. The new `tests/test_last_reads.py`
+  holds 31 gates on fixtures pseudonymised by `scripts/build_last_reads_fixtures.py`: the engine's
+  later explore page trimmed to two sections, the song's first page trimmed to three reels and its
+  second to two, the original sound's two pages, and the browser's mutual followers and statuses
+  pair, 592 values checked absent, with 14 words that are key names or kept enums listed as
+  unchecked. `scripts/verify_last_reads_gates.py` holds 45 mutations, 45 of 45 fired, after one
+  gate was strengthened to name the blocking walk's cursor when its first mutation did not fire.
+  The parity tables gained `feeds.audio`, `feeds.audio_clips`, `feeds.explore_posts`,
+  `profiles.mutual_followers`, `feeds.iter_explore` and `feeds.iter_audio`, and the argument
+  table an `audio_id`. No existing gate changed. New code was worded so every anchor of the other
+  harnesses stays unique: the reels mapper keeps `_reel` whole behind a wrapper, and loop and
+  constant names avoid five anchors of `scripts/verify_discovery_gates.py`,
+  `scripts/verify_discovery_search_gates.py` and `scripts/verify_follow_lists_gates.py`; every one
+  of the 1097 anchors across the harnesses resolved once and `scripts/check_harness_exits.py`
+  held all 47. The doctor does not change: all three reads are REST with no `doc_id` (W60). The
+  surface grew from 1115 lines to 1143, 30 added and 2 changed: the two `feeds.explore` lines
+  gained the keyword-only `after=None`, a compatible change the brief asked for, outside the
+  Phase 3 baseline, so the additive check still passes; it is the one departure from this plan's
+  additions-only practice and is named here. `probes/cli_request_counter/` names the explore
+  grid, audio page and statuses paths so the acceptance can tell the steps apart. Live traffic:
+  the replays, 18 requests in `run-2026-09-27-183420`; `probes/e2_last_reads_cli_acceptance.py`,
+  ten requests, eleven at most, ran on 2026-09-27, 9 requests, every step exit 0, log `logs/e2-last-reads-cli-2026-09-27-192842.json`.
+- **W120. A reels feed reel's place without coordinates is `Post.tagged_place`, and its
+  `location` is `None`.** Ruled 2026-09-27 for E2 batch 11e, closing a batch 11b gap found by the
+  batch's live acceptance: `dumpsta reels` exited 8 on
+  `...edges[0].node.media.location.lat is missing from the payload`, log
+  `logs/e2-last-reads-cli-stopped-2026-09-27-191226.json`. FACT over the four reels answers
+  `probes/e2_capture_replays.py --stage reels` kept at 19:12 (5 requests): three held one reel
+  each tagged at a place, and each such `location` carried `name` and `pk` (a number) and nothing
+  else. FACT over every other E2 capture whose media carries a location: the home timeline, the
+  owner's grid, the explore grid first and later pages, a place's grid, the saved posts and both
+  audio pages, 145 location objects in all, every one with `lat` and `lng`; the keyword grid's answers
+  carried no located post, so its shape is UNRESOLVED. `Location` requires `lat` and `lng`, lines
+  the additive rule keeps, and inventing coordinates would be a guess, so the reels mapper sets a
+  place without both aside, as W101 set aside a sound without its mute flag, and `location` is
+  `None` there. The place is not lost: `Post` gained `tagged_place: TaggedPlace | None = None`,
+  the new `TaggedPlace(id, name)`, read by every post mapper wherever the node names a place, so
+  on every read a located post carries both, and on a reel from the feed only `tagged_place`;
+  `feeds.place(tagged_place.id)` reads the rest. Only the reels feed allows the thin shape; every
+  other read still raises on a missing coordinate, which a gate holds. The post JSON form gained
+  `tagged_place`, left out of `post` as `audio_id` is. Gates: two in `tests/test_last_reads.py` on
+  the fixture `reels_thin_location_page.json`, pseudonymised from the 19:12 next page answer, the
+  first seen red on the acceptance's own error before the mapper changed, and a form check on
+  `dumpsta explore`; five mutations. Surface 1143 to 1149 lines, six added. The acceptance is to
+  be rerun.
 
 ## Standing rules for every phase
 

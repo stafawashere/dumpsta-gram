@@ -585,8 +585,22 @@ class E2Replay:
       referer: str,
       params: dict[str, str] | None = None,
       form: dict[str, str] | None = None,
+      comet_route: str | None = None,
    ) -> dict[str, Any] | None:
-      """One replay of a hypothesis REST route, GET without a form and POST with one."""
+      """One replay of a hypothesis REST route, GET without a form and POST with one.
+
+      With ``comet_route`` the POST goes out as a comet page sends one: the form followed by the
+      page envelope naming that route as ``__crn``, and the header set with ``x-fb-lsd`` and
+      ``x-ig-d`` in place of ``x-csrftoken``, ``x-ig-app-id`` and the other ``x-`` headers.
+      """
+
+      is_comet_post = form is not None and comet_route is not None
+
+      if is_comet_post:
+         request = self._comet_post(url, referer=referer, form=form, route=comet_route)
+         parsed = await self._send(label, request)
+
+         return parsed if isinstance(parsed, dict) else None
 
       is_post = form is not None
       headers = {
@@ -625,6 +639,58 @@ class E2Replay:
       parsed = await self._send(label, request)
 
       return parsed if isinstance(parsed, dict) else None
+
+   def _comet_post(self, url: str, *, referer: str, form: dict[str, str], route: str) -> Request:
+      """The comet envelope without the fields the engine has never produced (``__s``,
+      ``__dyn``, ``__csr``, ``__hsdp``, ``__hblp``, ``__sjsp``), as the other comet probes send it."""
+
+      session = self.session
+      spin = session.spin
+      revision = (spin.revision if spin is not None else None) or ""
+      fb_dtsg = session.fb_dtsg or ""
+      lsd = session.lsd or ""
+      envelope = {
+         "__d": "www",
+         "__user": "0",
+         "__a": "1",
+         "__req": "1",
+         "__hs": session.haste_session or "",
+         "dpr": "2",
+         "__ccg": "EXCELLENT",
+         "__rev": revision,
+         "__hsi": session.hsi or "",
+         "__comet_req": "7",
+         "fb_dtsg": fb_dtsg,
+         "jazoest": jazoest_for(fb_dtsg),
+         "lsd": lsd,
+         "__spin_r": revision,
+         "__spin_b": (spin.branch if spin is not None else None) or "",
+         "__spin_t": (spin.timestamp if spin is not None else None) or "",
+         "__crn": route,
+      }
+      headers = {
+         "accept": "*/*",
+         "accept-language": "en-US,en;q=0.9",
+         "content-type": "application/x-www-form-urlencoded",
+         "origin": ORIGIN,
+         "referer": referer,
+         "sec-fetch-dest": "empty",
+         "sec-fetch-mode": "cors",
+         "sec-fetch-site": "same-origin",
+         "user-agent": self.user_agent,
+         "x-asbd-id": "359341",
+         "x-fb-lsd": lsd,
+         "x-ig-d": "www",
+         "x-ig-max-touch-points": "0",
+      }
+
+      return Request(
+         method="POST",
+         url=url,
+         headers=headers,
+         content=urlencode({**form, **envelope}).encode("ascii"),
+         follow_redirects=False,
+      )
 
    def record(self, label: str, value: Any) -> None:
       self.report[label] = value

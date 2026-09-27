@@ -23,6 +23,7 @@ from dumpstagram.models.account import (
 )
 from dumpstagram.models.comments import Comment, CommentAuthor
 from dumpstagram.models.discovery import (
+   AudioPage,
    ExploreGrid,
    ExploreSection,
    LocationPosts,
@@ -40,6 +41,7 @@ from dumpstagram.models.feed import (
    MediaImage,
    Post,
    PostAuthor,
+   TaggedPlace,
    UserTag,
    VideoRendition,
 )
@@ -60,6 +62,7 @@ from dumpstagram.models.profiles import (
    BioLink,
    FriendshipStatus,
    ListFriendshipStatus,
+   MutualFollowers,
    Profile,
    ProfileSummary,
    SuggestedAccount,
@@ -108,6 +111,7 @@ __all__ = [
    "DirectThread",
    "Event",
    "EventsDropped",
+   "AudioPage",
    "ExploreGrid",
    "ExploreSection",
    "FeedItem",
@@ -118,6 +122,7 @@ __all__ = [
    "Highlight",
    "HighlightTray",
    "ListFriendshipStatus",
+   "MutualFollowers",
    "ListenerStopped",
    "Location",
    "LocationPosts",
@@ -134,6 +139,7 @@ __all__ = [
    "Place",
    "Post",
    "PostAuthor",
+   "TaggedPlace",
    "PostDetail",
    "PostPage",
    "PostThumbnail",

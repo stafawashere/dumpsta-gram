@@ -1,5 +1,5 @@
-"""The discovery commands: the explore grid, a place's header and posts, whether the home feed
-has new posts, and pages of the reels feed."""
+"""The discovery commands: pages of the explore grid, a place's header and posts, whether the
+home feed has new posts, pages of the reels feed, and pages of an audio's page."""
 
 from __future__ import annotations
 
@@ -19,17 +19,19 @@ from dumpstagram._cli.commands.common import (
 )
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.discovery import (
-   describe_explore_grid,
+   describe_audio_pages,
+   describe_explore_pages,
    describe_location_posts,
    describe_place,
    describe_reels_pages,
-   render_explore_grid,
+   render_audio_pages,
+   render_explore_pages,
    render_location_posts,
    render_new_posts,
    render_place,
    render_reels_pages,
 )
-from dumpstagram.models import Page, Post
+from dumpstagram.models import AudioPage, ExploreGrid, Page, Post
 
 __all__ = [
    "DISCOVERY_COMMANDS",
@@ -37,9 +39,22 @@ __all__ = [
    "run_discovery_command",
 ]
 
-DISCOVERY_COMMANDS = ("explore", "place", "location", "new-posts", "reels")
+DISCOVERY_COMMANDS = ("explore", "place", "location", "new-posts", "reels", "audio")
 
 _LOCATION_ID = re.compile(r"[0-9]{1,30}")
+
+_AUDIO_ID = re.compile(r"[0-9]{1,30}")
+
+
+def audio_id(value: str) -> str:
+   is_an_audio_id = _AUDIO_ID.fullmatch(value) is not None
+
+   if not is_an_audio_id:
+      raise argparse.ArgumentTypeError(
+         "an audio is named by its numeric id, the audio_id a reel that uses it carries"
+      )
+
+   return value
 
 
 def location_id(value: str) -> str:
@@ -72,6 +87,46 @@ def read_reels_pages(client: Client, arguments: argparse.Namespace) -> list[Page
    return pages
 
 
+def read_explore_pages(client: Client, arguments: argparse.Namespace) -> list[ExploreGrid]:
+   """Read up to ``--pages`` pages of the explore grid, stopping on the page's own
+   ``more_available``. The first page is asked for with no cursor unless ``--after`` gives one."""
+
+   grids: list[ExploreGrid] = []
+   cursor = arguments.after
+
+   for _ in range(arguments.pages):
+      grid = client.feeds.explore() if cursor is None else client.feeds.explore(after=cursor)
+
+      grids.append(grid)
+
+      if not grid.more_available:
+         break
+
+      cursor = grid.end_cursor
+
+   return grids
+
+
+def read_audio_pages(client: Client, arguments: argparse.Namespace) -> list[AudioPage]:
+   """Read up to ``--pages`` pages of the audio's page, stopping on the page's own
+   ``more_available``."""
+
+   pages: list[AudioPage] = []
+   cursor = arguments.after
+
+   for _ in range(arguments.pages):
+      audio_page = client.feeds.audio(arguments.audio_id, after=cursor)
+
+      pages.append(audio_page)
+
+      if not audio_page.more_available:
+         break
+
+      cursor = audio_page.end_cursor
+
+   return pages
+
+
 def _discovery_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
    if arguments.command == "reels":
       pages = read_reels_pages(client, arguments)
@@ -79,9 +134,18 @@ def _discovery_result(client: Client, arguments: argparse.Namespace) -> tuple[di
       return {"command": "reels", **describe_reels_pages(pages)}, render_reels_pages(pages)
 
    if arguments.command == "explore":
-      grid = client.feeds.explore()
+      grids = read_explore_pages(client, arguments)
 
-      return {"command": "explore", **describe_explore_grid(grid)}, render_explore_grid(grid)
+      return {"command": "explore", **describe_explore_pages(grids)}, render_explore_pages(grids)
+
+   if arguments.command == "audio":
+      audio_pages = read_audio_pages(client, arguments)
+      payload_for_audio = {
+         "command": "audio",
+         **describe_audio_pages(arguments.audio_id, audio_pages),
+      }
+
+      return payload_for_audio, render_audio_pages(audio_pages)
 
    if arguments.command == "place":
       place = client.feeds.place(arguments.location_id)
@@ -132,12 +196,20 @@ def run_discovery_command(
 def add_discovery_parsers(commands: Subcommands) -> None:
    explore = commands.add_parser(
       "explore",
-      help="read the first page of the explore grid, one live request",
+      help="read pages of the explore grid, one live request per page",
       description=(
-         "Reads the explore grid's first page, section by section, and says whether the grid "
-         "goes on. No later page is read."
+         "Reads the explore grid as the /explore/ page scrolls it, section by section, stopping "
+         "on the grid's own more_available."
       ),
    )
+   explore.add_argument(
+      "--pages",
+      type=page_count,
+      default=1,
+      metavar="N",
+      help="how many pages to read at most, default 1",
+   )
+   explore.add_argument("--after", metavar="CURSOR", help="an end_cursor from an earlier page")
    add_request_options(explore)
 
    place = commands.add_parser(
@@ -187,3 +259,24 @@ def add_discovery_parsers(commands: Subcommands) -> None:
    )
    reels.add_argument("--after", metavar="CURSOR", help="an end_cursor from an earlier page")
    add_request_options(reels)
+
+   audio = commands.add_parser(
+      "audio",
+      help="read pages of an audio's page, the track and the reels using it, one live request "
+      "per page",
+      description=(
+         "Reads the /reels/audio/AUDIO_ID/ page's track and reels as the page scrolls them, "
+         "stopping on the page's own more_available, which can say true before a page with no "
+         "reels. Nothing is played."
+      ),
+   )
+   audio.add_argument("audio_id", metavar="AUDIO_ID", type=audio_id, help="the audio's numeric id")
+   audio.add_argument(
+      "--pages",
+      type=page_count,
+      default=1,
+      metavar="N",
+      help="how many pages to read at most, default 1",
+   )
+   audio.add_argument("--after", metavar="CURSOR", help="an end_cursor from an earlier page")
+   add_request_options(audio)

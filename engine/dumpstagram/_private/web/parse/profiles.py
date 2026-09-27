@@ -51,6 +51,7 @@ __all__ = [
    "parse_followers_page",
    "parse_following_page",
    "parse_friendship_statuses",
+   "parse_mutual_followers_page",
    "parse_highlight_tray",
    "parse_profile",
    "parse_profile_posts_page",
@@ -553,6 +554,59 @@ def _follow_list_page(payload: Any, follow_list_path: str) -> Page[ProfileSummar
    )
 
    return Page(items=accounts, has_next_page=has_more, end_cursor=next_max_id)
+
+
+_MUTUAL_FOLLOWERS = "<mutual followers>"
+
+
+def _mutual_cursor(raw: Any) -> str | None:
+   """``next_max_id`` as a string, a string or a number, since which one a filled cursor is has
+   not been observed; anything else raises."""
+
+   if raw is None:
+      return None
+
+   is_a_number = isinstance(raw, int) and not isinstance(raw, bool)
+
+   if is_a_number:
+      return str(raw)
+
+   if not isinstance(raw, str):
+      path = f"{_MUTUAL_FOLLOWERS}.next_max_id"
+
+      raise SchemaChanged(f"{path} is not a string, a number or null", path=path)
+
+   return raw
+
+
+def parse_mutual_followers_page(payload: Any) -> Page[ProfileSummary]:
+   """The first page of the accounts following both the viewer and another account, in the
+   upstream's order (W117).
+
+   A row sends ``pk`` as a number and ``id`` as the same id in a string, on all 5 rows read, so
+   ``id`` is read, as the follow requests are (W73). The answer carries no ``has_more``: the page
+   has a next page when ``next_max_id`` is not null, which it was on neither answer read, and
+   ``end_cursor`` is that value as a string. A row carries no relationship; the statuses are a
+   second request, attached by :func:`attach_friendship_statuses`.
+
+   Dropped: ``big_list``, false on both, ``page_size``, the count of rows sent (4 and 1), and
+   ``friend_requests``, an empty object on both, and on a row ``fbid_v2``, ``pk_id``,
+   ``strong_id__``, ``profile_pic_id``, ``has_anonymous_profile_picture``, ``account_badges``,
+   ``latest_reel_media``, ``reel_media_seen_timestamp`` and ``third_party_downloads_enabled``.
+
+   Finding: ``read-mutual-followers``.
+   """
+
+   _raise_unless_ok(payload, "mutual followers")
+
+   users = _list_of(payload, "users", _MUTUAL_FOLLOWERS)
+   end_cursor = _mutual_cursor(payload.get("next_max_id"))
+   accounts = tuple(
+      parse_profile_summary(user, f"{_MUTUAL_FOLLOWERS}.users[{row_index}]", id_key="id")
+      for row_index, user in enumerate(users)
+   )
+
+   return Page(items=accounts, has_next_page=end_cursor is not None, end_cursor=end_cursor)
 
 
 def parse_friendship_statuses(payload: Any) -> dict[str, ListFriendshipStatus]:

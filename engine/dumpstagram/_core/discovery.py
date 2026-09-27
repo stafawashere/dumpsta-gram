@@ -1,10 +1,11 @@
-"""The explore grid, a place's header and grid, the new posts check, and the reels feed,
-asynchronously.
+"""The explore grid, a place's header and grid, the new posts check, the reels feed, and an
+audio's page, asynchronously.
 
 Each read is one request sent alone. A browser reads the explore grid and a place's two reads
 inside the page loads of ``/explore/`` and ``/explore/locations/<pk>/``, and polls the new posts
 check from the home page; the page loads are not modelled, a named departure from ADR-0013 as
-every read before these. A browser on ``/reels/`` also plays each reel and reports the view, and
+every read before these. An audio's page is read as its page reads it, without the page's
+document (W116). A browser on ``/reels/`` also plays each reel and reports the view, and
 asks for an ads pool; the engine plays nothing, so neither is sent (W101). None of them changes
 anything another person can see.
 """
@@ -16,6 +17,7 @@ from dumpstagram._core.tokens import with_token_recovery
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.discovery import (
+   parse_audio_page,
    parse_explore_grid,
    parse_location_info,
    parse_location_posts,
@@ -23,6 +25,7 @@ from dumpstagram._private.web.parse.discovery import (
    parse_reels_feed_page,
 )
 from dumpstagram._private.web.requests.discovery import (
+   build_audio_page_request,
    build_explore_grid_request,
    build_location_info_request,
    build_location_posts_request,
@@ -30,13 +33,25 @@ from dumpstagram._private.web.requests.discovery import (
    build_reels_feed_first_page_request,
    build_reels_feed_next_page_request,
    refuse_what_is_not_a_location_id,
+   refuse_what_is_not_an_audio_id,
 )
 from dumpstagram._private.web.requests.profiles import new_web_session_id
-from dumpstagram.models import ExploreGrid, LocationPosts, LocationTab, Page, Place, Post
+from dumpstagram.models import (
+   AudioPage,
+   ExploreGrid,
+   LocationPosts,
+   LocationTab,
+   Page,
+   Place,
+   Post,
+)
 from dumpstagram.session import Session
 
 __all__ = [
    "REELS_CURSOR_SEPARATOR",
+   "audio_clips_page",
+   "explore_posts_page",
+   "read_audio_page",
    "read_explore_grid",
    "read_location_info",
    "read_location_posts",
@@ -100,21 +115,38 @@ def _public_reels_page(page: Page[Post]) -> Page[Post]:
    return Page(items=page.items, has_next_page=page.has_next_page, end_cursor=end_cursor)
 
 
+def explore_posts_page(grid: ExploreGrid) -> Page[Post]:
+   """An explore page as the page walk reads it: every post in the grid's order, the upstream's
+   ``more_available`` as the terminator, and the root ``max_id`` as the cursor (W115)."""
+
+   return Page(items=grid.posts, has_next_page=grid.more_available, end_cursor=grid.end_cursor)
+
+
+def audio_clips_page(page: AudioPage) -> Page[Post]:
+   """An audio page as the page walk reads it: its reels, the upstream's ``more_available`` as the
+   terminator, and ``paging_info.max_id`` as the cursor (W116)."""
+
+   return Page(items=page.clips, has_next_page=page.more_available, end_cursor=page.end_cursor)
+
+
 async def read_explore_grid(
    sender: PacedSender,
    session: Session,
    *,
+   after: str | None = None,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
 ) -> ExploreGrid:
-   """The explore grid's first page, one live request (W77).
+   """One page of the explore grid, the first when ``after`` is None, one live request (W77,
+   W115).
 
-   The GET carries no page token, so no bootstrap is spent on it, as with the followers page.
+   ``after`` is a previous page's ``end_cursor``, the root ``max_id``, sent back as it came. The
+   GET carries no page token, so no bootstrap is spent on it, as with the followers page.
    """
 
    async def attempt() -> ExploreGrid:
       request = build_explore_grid_request(
-         session, web_session_id=new_web_session_id(), user_agent=user_agent
+         session, web_session_id=new_web_session_id(), after=after, user_agent=user_agent
       )
       response = await sender.send(request)
 
@@ -232,5 +264,37 @@ async def read_reels_feed_page(
       response = await sender.send(request)
 
       return _public_reels_page(parse_reels_feed_page(classify(response)))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_audio_page(
+   sender: PacedSender,
+   session: Session,
+   audio_id: str,
+   *,
+   after: str | None = None,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> AudioPage:
+   """One page of the audio whose id is ``audio_id``, the first when ``after`` is None, one live
+   request (W116).
+
+   ``audio_id`` must be digits, refused before anything is sent. The form carries the page token
+   and ``lsd``, so a session without them is bootstrapped first.
+   """
+
+   refuse_what_is_not_an_audio_id(audio_id)
+
+   async def attempt() -> AudioPage:
+      lacks_page_tokens = not session.fb_dtsg or not session.lsd
+
+      if lacks_page_tokens:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      request = build_audio_page_request(session, audio_id, after=after, user_agent=user_agent)
+      response = await sender.send(request)
+
+      return parse_audio_page(classify(response))
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

@@ -33,6 +33,7 @@ Built from the answers ``probes/e2_discovery_feeds.py`` kept on 2026-09-27. Drop
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from dumpstagram._private.web.parse.common import (
@@ -43,25 +44,36 @@ from dumpstagram._private.web.parse.common import (
    _required_integer,
    _required_string,
 )
-from dumpstagram._private.web.parse.media import _post_thumbnail, parse_post
+from dumpstagram._private.web.parse.media import (
+   _music,
+   _original_sound,
+   _post_thumbnail,
+   audio_page_id,
+   parse_post,
+   tagged_place,
+)
 from dumpstagram._private.web.parse.posting import _raise_unless_ok
 from dumpstagram._private.web.parse.profiles import _list_of
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
+   AudioPage,
    ExploreGrid,
    ExploreSection,
    LocationPosts,
+   MediaAudio,
    Page,
    Place,
    Post,
 )
 
 __all__ = [
+   "AUDIO_PAGE_PATH",
    "LOCATION_INFO_PATH",
    "LOCATION_POSTS_PATH",
    "NEW_FEED_POSTS_PATH",
    "REELS_FEED_PATH",
    "REST_KEYS_ABSENT_AS_NULL",
+   "parse_audio_page",
    "parse_explore_grid",
    "parse_location_info",
    "parse_location_posts",
@@ -117,9 +129,17 @@ key outside this set that the mapper needs still raises when it is absent. ``loc
 ``usertags``, absent on 35 and 34, are read as not carried, as on every post read.
 """
 
+AUDIO_PAGE_PATH = ("payload",)
+"""The path to the audio page inside the ``for (;;);`` wrapper, whose other keys are ``__ar``,
+``rid`` and ``lid``."""
+
 _EXPLORE = "<explore grid>"
 
 _SECTION_CONTENT_KEYS = frozenset({"one_by_two_item", "fill_items"})
+
+_DYNAMIC_GRID_CONTENT_KEYS = frozenset({"medias"})
+"""The one block a later explore page's section carried, on all 12 sections of both replays of
+the next page (W115)."""
 
 
 def _absent_as_null(node: Any) -> Any:
@@ -166,6 +186,11 @@ def _explore_section(section: Any, path: str) -> ExploreSection:
 
    content_path = f"{path}.layout_content"
    content = _object_at(section, ("layout_content",))
+   is_a_dynamic_grid = set(content) == _DYNAMIC_GRID_CONTENT_KEYS
+
+   if is_a_dynamic_grid:
+      return _dynamic_grid_section(section, content, path)
+
    unknown = sorted(set(content) - _SECTION_CONTENT_KEYS)
 
    if unknown:
@@ -192,10 +217,72 @@ def _explore_section(section: Any, path: str) -> ExploreSection:
    )
 
 
-def parse_explore_grid(payload: Any) -> ExploreGrid:
-   """The explore grid's first page, its sections in the upstream's order.
+def _dynamic_grid_section(
+   section: dict[str, Any], content: dict[str, Any], path: str
+) -> ExploreSection:
+   """One section of a later page, whose one ``medias`` block holds the large tile and the fill
+   tiles in a single list (W115).
 
-   Finding: ``read-the-explore-grid``.
+   An entry is a fill tile, ``{"media": ...}``, or a large tile, ``{"clips": {"items": [{"media":
+   ...}]}}``. On all 12 sections read each held two fill tiles and one large tile of one reel, the
+   large tile first on half of them and last on the other half. The large tiles' posts are the
+   section's ``featured`` and the fill tiles its ``posts``, as on a first page, so where the large
+   tile sat is not kept. An entry of any other shape raises, because a post it held would go
+   missing.
+   """
+
+   medias_path = f"{path}.layout_content.medias"
+   entries = _list_of(content, "medias", f"{path}.layout_content")
+   featured: list[Post] = []
+   posts: list[Post] = []
+
+   for index, entry in enumerate(entries):
+      entry_path = f"{medias_path}[{index}]"
+      keys = set(entry) if isinstance(entry, dict) else None
+
+      if keys == {"media"}:
+         posts.append(_media_of(entry, entry_path))
+
+         continue
+
+      if keys != {"clips"}:
+         raise SchemaChanged(
+            f"{entry_path} is neither a fill tile nor a large tile", path=entry_path
+         )
+
+      tile_path = f"{entry_path}.clips"
+      tile = _object_at(entry, ("clips",))
+      items = _list_of(tile, "items", tile_path)
+      featured.extend(
+         _media_of(item, f"{tile_path}.items[{item_index}]")
+         for item_index, item in enumerate(items)
+      )
+
+   return ExploreSection(
+      feed_type=_required_string(section, "feed_type", path),
+      featured=tuple(featured),
+      posts=tuple(posts),
+   )
+
+
+def _cursor_if_carried(node: dict[str, Any], path: str) -> str | None:
+   """``max_id`` where the answer carries it, ``None`` where the key is absent or null, as it was
+   absent on the last audio page read. A value of another type raises."""
+
+   if node.get("max_id") is None:
+      return None
+
+   return _required_string(node, "max_id", path)
+
+
+def parse_explore_grid(payload: Any) -> ExploreGrid:
+   """One page of the explore grid, first or later, its sections in the upstream's order.
+
+   ``end_cursor`` is the root ``max_id``, which equalled the root ``session_paging_token`` on all
+   five answers read and is what the next page is asked for with. The root ``next_max_id``, a page
+   counter, and the ``max_id`` each large tile's cluster carries are not the paging value (W115).
+
+   Findings: ``read-the-explore-grid`` and ``read-the-explore-grid-next-page``.
    """
 
    _raise_unless_ok(payload, "explore grid")
@@ -208,6 +295,7 @@ def parse_explore_grid(payload: Any) -> ExploreGrid:
          for index, section in enumerate(sections)
       ),
       more_available=_required_flag(payload, "more_available", _EXPLORE),
+      end_cursor=_cursor_if_carried(payload, _EXPLORE),
    )
 
 
@@ -298,6 +386,10 @@ def _reel_feed_node(media: Any) -> Any:
      ``hd_profile_pic_url`` is ``None``; the author's ``profile_pic_url_hd`` is not read.
    - ``coauthor_producers`` carried ``pk`` and ``id`` only on the one reel that had one, with no
      username, so it is not read and ``collaborators`` is ``None``, not carried.
+   - A location sent with only ``name`` and ``pk``, on all 3 located reels of the answers kept at
+     19:12 on 2026-09-27, reads as no location, since :class:`~dumpstagram.models.Location`
+     requires its coordinates; the post's ``tagged_place`` still names it (W120). A location
+     with both coordinates is read whole.
    - An original sound carried no ``should_mute_audio`` on any of the 8 read, which
      :class:`~dumpstagram.models.MediaAudio` requires, so such a reel's ``audio`` is ``None``
      rather than a guessed flag, W63's rule for the post read by media pk. A song carries the flag
@@ -315,6 +407,12 @@ def _reel_feed_node(media: Any) -> Any:
 
    if isinstance(author, dict):
       node["user"] = {"hd_profile_pic_url_info": None, **author}
+
+   place = node.get("location")
+   is_a_place_without_coordinates = isinstance(place, dict) and not {"lat", "lng"} <= set(place)
+
+   if is_a_place_without_coordinates:
+      node["location"] = None
 
    metadata = node.get("clips_metadata") or {}
    original = metadata.get("original_sound_info") if isinstance(metadata, dict) else None
@@ -334,6 +432,24 @@ def _reel(edge: Any, path: str) -> Post:
    return parse_post(_reel_feed_node(media), f"{node_path}.media", null_is_unseen=True)
 
 
+def _reel_naming_its_audio(edge: Any, path: str) -> Post:
+   """One reel of the feed with ``audio_id`` and ``tagged_place`` read off the media as sent,
+   before an original sound without its mute flag or a place without coordinates is set aside, so
+   a reel with no ``audio`` or ``location`` still names its audio page and its place (W118,
+   W120)."""
+
+   post = _reel(edge, path)
+   media = _required(_object_at(edge, ("node",)), "media", f"{path}.node")
+
+   media_path = f"{path}.node.media"
+
+   return replace(
+      post,
+      audio_id=audio_page_id(media, media_path),
+      tagged_place=tagged_place(media, media_path),
+   )
+
+
 def parse_reels_feed_page(payload: Any) -> Page[Post]:
    """One reels feed page, first or later, the reels in the upstream's order.
 
@@ -347,7 +463,8 @@ def parse_reels_feed_page(payload: Any) -> Page[Post]:
    connection_path = ".".join(REELS_FEED_PATH)
    edges = _list_of(connection, "edges", connection_path)
    reels = tuple(
-      _reel(edge, f"{connection_path}.edges[{index}]") for index, edge in enumerate(edges)
+      _reel_naming_its_audio(edge, f"{connection_path}.edges[{edge_index}]")
+      for edge_index, edge in enumerate(edges)
    )
    page_info_path = f"{connection_path}.page_info"
    page_info = _object_at(connection, ("page_info",))
@@ -356,4 +473,97 @@ def parse_reels_feed_page(payload: Any) -> Page[Post]:
       items=reels,
       has_next_page=_required_flag(page_info, "has_next_page", page_info_path),
       end_cursor=_optional_string(page_info, "end_cursor", page_info_path),
+   )
+
+
+_AUDIO_PAGE = "<audio page>"
+
+
+def _audio_clip_node(media: Any) -> Any:
+   """``media`` as the post mapper reads it, with what an audio page's reel leaves out or sends in
+   another shape made explicit (W116). Anything but an object is returned untouched, for the post
+   mapper to refuse.
+
+   - :data:`REST_KEYS_ABSENT_AS_NULL` read as null when absent, as on the explore grid's REST
+     media: ``accessibility_caption`` was absent on all 75 reels of the 11 answers read.
+   - The author's ``hd_profile_pic_url_info``, absent on all 75, reads as null, so the author's
+     ``hd_profile_pic_url`` is ``None``.
+   - ``coauthor_producers`` rows sent ``pk`` as a number and a relationship without the two
+     request flags :class:`~dumpstagram.models.ListFriendshipStatus` requires, on both reels that
+     had one, so they are not read and ``collaborators`` is ``None``, not carried.
+   """
+
+   if not isinstance(media, dict):
+      return media
+
+   node = {
+      key: value for key, value in _absent_as_null(media).items() if key != "coauthor_producers"
+   }
+   author = node.get("user")
+
+   if isinstance(author, dict):
+      node["user"] = {"hd_profile_pic_url_info": None, **author}
+
+   return node
+
+
+def _audio_clip(item: Any, path: str) -> Post:
+   media = _required(item, "media", path)
+
+   return parse_post(_audio_clip_node(media), f"{path}.media", null_is_unseen=True)
+
+
+def _page_audio(metadata: dict[str, Any], path: str) -> MediaAudio | None:
+   """The track the page describes, read as a reel's ``clips_metadata`` is: a song from
+   ``music_info``, an original sound from ``original_sound_info``, ``None`` when both are null,
+   and both filled raises. ``additional_audio_info`` was null on all 11 answers and is not read."""
+
+   music = _required(metadata, "music_info", path)
+   original = _required(metadata, "original_sound_info", path)
+   has_music = music is not None
+   has_original = original is not None
+
+   if has_music and has_original:
+      raise SchemaChanged(f"{path} filled both music_info and original_sound_info", path=path)
+
+   if has_music:
+      return _music(music, f"{path}.music_info")
+
+   if has_original:
+      return _original_sound(original, f"{path}.original_sound_info")
+
+   return None
+
+
+def parse_audio_page(payload: Any) -> AudioPage:
+   """One page of an audio's page, first or later, the reels in the upstream's order.
+
+   The answer arrives inside the ``for (;;);`` wrapper the classifier strips, as ``payload``
+   beside ``__ar``, ``rid`` and ``lid``. ``end_cursor`` is ``paging_info.max_id``, absent on the
+   last page read. Dropped: ``audio_page_reporting_id``, ``music_canonical_id``,
+   ``formatted_media_count``, the count as display text, ``media_count.photos_count``, 0 on every
+   answer, ``audio_ranking_info``, ``auto_created_reels_preview_metadata`` and
+   ``audio_page_segments``, empty lists on every answer, ``available_tabs``, the page's tab bar,
+   ``spotify_track_metadata``, a link to the song on another service, and on the track everything
+   :class:`~dumpstagram.models.MediaAudio` does not carry.
+
+   Findings: ``read-an-audio-page`` and ``read-an-audio-page-next-page``.
+   """
+
+   page = _object_at(payload, AUDIO_PAGE_PATH)
+   metadata_path = f"{_AUDIO_PAGE}.metadata"
+   metadata = _object_at(page, ("metadata",))
+   counts = _object_at(page, ("media_count",))
+   paging = _object_at(page, ("paging_info",))
+   items = _list_of(page, "items", _AUDIO_PAGE)
+
+   return AudioPage(
+      audio=_page_audio(metadata, metadata_path),
+      clips_count=_required_integer(counts, "clips_count", f"{_AUDIO_PAGE}.media_count"),
+      is_restricted=_required_flag(page, "is_music_page_restricted", _AUDIO_PAGE),
+      clips=tuple(
+         _audio_clip(item, f"{_AUDIO_PAGE}.items[{index}]") for index, item in enumerate(items)
+      ),
+      more_available=_required_flag(paging, "more_available", f"{_AUDIO_PAGE}.paging_info"),
+      end_cursor=_cursor_if_carried(paging, f"{_AUDIO_PAGE}.paging_info"),
    )

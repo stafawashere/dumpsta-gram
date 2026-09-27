@@ -1,6 +1,6 @@
 """The profile command, by username or by numeric account id, and the profile tab commands: the
-posts grid, the reels and tagged tabs, the highlights tray, the followers and the accounts
-followed, and the suggested accounts."""
+posts grid, the reels and tagged tabs, the highlights tray, the followers, the accounts followed
+and the mutual followers, and the suggested accounts."""
 
 from __future__ import annotations
 
@@ -29,12 +29,14 @@ from dumpstagram._cli.render.profiles import (
    describe_follower_pages,
    describe_grid_pages,
    describe_highlight_tray,
+   describe_mutual_followers,
    describe_profile,
    describe_profile_summary,
    describe_suggested_account,
    render_followers,
    render_grid,
    render_highlight_tray,
+   render_mutual_followers,
    render_profile,
    render_profile_summaries,
    render_suggested_accounts,
@@ -56,6 +58,7 @@ PROFILE_TAB_COMMANDS = (
    "highlights",
    "followers",
    "following",
+   "mutual-followers",
    "profile-reels",
    "tagged",
    "suggested",
@@ -194,6 +197,16 @@ def _profile_tab_result(
 
       return payload, render_followers(follower_pages)
 
+   if arguments.command == "mutual-followers":
+      mutual = client.profiles.mutual_followers(arguments.user_id)
+      payload = {
+         "command": "mutual-followers",
+         "user_id": arguments.user_id,
+         **describe_mutual_followers(mutual),
+      }
+
+      return payload, render_mutual_followers(mutual)
+
    if arguments.command == "profile-reels":
       reels = client.profiles.reels(arguments.user_id)
       payload = {"command": "profile-reels", **describe_profile_reels(reels)}
@@ -331,6 +344,21 @@ def add_profile_tab_parsers(commands: Subcommands) -> None:
       "--after", metavar="CURSOR", help="a next_cursor from an earlier following run"
    )
    add_request_options(following)
+
+   mutual_followers = commands.add_parser(
+      "mutual-followers",
+      help="list the accounts following both you and an account, the first page, with your "
+      "relationship to each, two live requests",
+      description=(
+         "Reads the list a profile's Followed by line opens, in the upstream's order, and asks "
+         "for your relationship to the accounts on it, as the website does. Only the first page "
+         "can be read, and more_available says when there is more."
+      ),
+   )
+   mutual_followers.add_argument(
+      "user_id", metavar="USER_ID", type=account_id, help="the account's numeric id"
+   )
+   add_request_options(mutual_followers)
 
    profile_reels = commands.add_parser(
       "profile-reels",

@@ -52,6 +52,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `suggested-for-you` | 1, plus 1 if the session has no token yet | Lists the accounts suggested to the viewer, each with the reason the website shows |
 | `followers USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of an account's followers with the viewer's relationship to each |
 | `following USER_ID` | 2 per page, plus 1 if the session has no token yet | Reads pages of the accounts an account follows with the viewer's relationship to each |
+| `mutual-followers USER_ID` | 2, plus 1 if the session has no token yet | Lists the accounts that follow both the viewer and an account, the first page, with the viewer's relationship to each |
 | `profile-reels USER_ID` | 1, plus 1 if the session has no token yet | Lists an account's reels tab, its first page |
 | `tagged USER_ID` | 1, plus 1 if the session has no token yet | Lists the posts an account is tagged in, the tab's first page |
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
@@ -75,11 +76,12 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `collections` | 1, plus 1 if the session has no token yet | Lists the viewer's saved collections with their kinds and post counts |
 | `close-friends` | 1, plus 1 if the session has no token yet | Lists the viewer's close friends. Changes nothing |
 | `blocked` | 2, plus 1 if the session has no token yet | Lists the accounts the viewer has blocked and whether each block was extended automatically. Changes nothing |
-| `explore` | 1 | Reads the explore grid's first page, section by section, and whether it goes on |
+| `explore` | 1 per page | Reads pages of the explore grid, section by section, and whether it goes on |
 | `place LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads a place's header: name, category, address, coordinates and post count |
 | `location LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads the first page of the posts tagged at a place, and whether more exist |
 | `new-posts` | 1, plus 1 if the session has no token yet | Asks whether the home feed has new posts |
 | `reels` | 1 per page, plus 1 if the session has no token yet | Reads pages of the reels feed. Plays nothing, so reports no view |
+| `audio AUDIO_ID` | 1 per page, plus 1 if the session has no token yet | Reads pages of an audio's page: the track, how many reels use it, and the reels. Plays nothing |
 | `recent-searches` | 1, plus 1 if the session has no token yet | Reads your recent searches, accounts and keywords |
 | `search QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts QUERY matches, as the search box ranks them, or without your profile with `--non-personalised` |
 | `search-top QUERY` | 1, plus 1 if the session has no token yet | Reads the accounts and keyword suggestions the search box offers for QUERY, in its order |
@@ -654,7 +656,7 @@ requests, five at most, and checks each sent exactly one request of its own kind
 ### `explore`, `place`, `location` and `new-posts`
 
 ```bash
-DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta explore
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta explore --pages 2
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json place 212345678901234
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta location 212345678901234
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta new-posts
@@ -662,9 +664,11 @@ DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta new-posts
 
 `explore` prints each section's heading, then one line per post, its shortcode, author, likes,
 comments and the first line of its caption, the large tile's post marked `featured`, then
-`sections: N  posts: N  more_available: B`. Only the first page is read (W77). The JSON form is
-`command`, `section_count`, `post_count`, `more_available` and `sections`, each with `feed_type`,
-`featured` and `posts` in the `post` command's form.
+`sections: N  posts: N  more_available: B` over every page read. `--pages N`, 1 by default, reads
+up to N pages, each on the root `max_id` of the page before it, and stops on the grid's own
+`more_available`; `--after CURSOR` starts from an `end_cursor` an earlier run printed (W115). The
+JSON form is `command`, `pages_read`, `section_count`, `post_count`, `more_available`, `sections`,
+each with `feed_type`, `featured` and `posts` in the `post` command's form, and `end_cursor`.
 
 `place` prints the place's name, id and category, its post count and coordinates, and its
 address and phone where it has them. The JSON form is `command` and `place`, with `id`, `name`,
@@ -684,6 +688,40 @@ refuse anything else with exit 2. All four take `--user-agent` and `--no-session
 live acceptance, `probes/e2_discovery_feeds_cli_acceptance.py`, runs `explore`, then `place` and
 `location` on the first place a post on the grid names, then `new-posts`, four requests, and
 checks that no next page query went out. It ran on 2026-09-27 with every step exit 0 and 4 requests, none a next page query: 4 explore sections and 20 posts, a place header, 21 posts on its grid and no new posts, log `logs/e2-discovery-feeds-cli-2026-09-27-045328.json`.
+
+### `audio` and `mutual-followers`
+
+```bash
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta audio 1234567890123456 --pages 3
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json mutual-followers 71234567
+```
+
+`audio` prints the track's title, artist, kind and id, `reels using it: N`, one line per reel in
+the page's order, its shortcode, author, likes, comments and caption, then
+`pages: N  reels: N  more_available: B`. AUDIO_ID is the numeric id a post's `audio_id` carries in
+the JSON form of `reels`, `explore` and the other post commands, and anything else is refused with
+exit 2. `--pages N`, 1 by default, reads up to N pages and stops only on the page's own
+`more_available`, which said true on a one-reel page whose next page held nothing, so the last
+read may print no reels; `--after CURSOR` starts from an earlier `end_cursor` (W116). The JSON form
+is `command`, `audio_id`, `audio` (`kind`, `audio_id`, `title`, `artist`, `artist_id`,
+`is_explicit`, `should_mute`, null when the first page read sends no track), `clips_count` and
+`is_restricted` from the first page read, `pages_read`, `clip_count`, `more_available`,
+`end_cursor` and `clips` in the `post` command's form.
+
+`mutual-followers` prints one line per account, its id, username, full name and whether you
+follow it, then `accounts: N  more_available: B`. Only the first page is read, since no later one
+has been observed (W117). The JSON form is `command`, `user_id`, `account_count`,
+`more_available` and `accounts` in the `followers` form. It takes the numeric account id and
+refuses a username with exit 2.
+
+The post form of every command gained `audio_id` in batch 11e, null on a post that names no track
+(W118), and `tagged_place`, the place's `id` and `name` wherever the post names one, which on a
+reels feed reel whose place comes without coordinates is the only place given (W120); `post` and
+`post --by-id` leave both out, since `PostDetail` does not carry them. Both commands
+take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`probes/e2_last_reads_cli_acceptance.py`, runs `explore --pages 2`, `reels --pages 2`, `audio` on
+the last reel that names an audio, `following` on the owner and `mutual-followers` on its first
+public account, ten requests, eleven at most. It ran on 2026-09-27, 9 requests, every step exit 0, log `logs/e2-last-reads-cli-2026-09-27-192842.json`.
 
 ### `recent-searches`, `search` and `hashtag`
 
@@ -897,8 +935,9 @@ come back: one was read live on 2026-09-21 with `media_type` 2 and `product_type
 and it mapped without its video-specific fields.
 
 One field the upstream sends on a profile is not modelled, `mutual_followers_count`. It is null
-on the viewer's own profile and was a number on another account's on 2026-09-23, and nothing yet
-says what it counts against. `friendship_status`, the other field that was null on the viewer's
+on the viewer's own profile and was a number on another account's on 2026-09-23; on the one
+account captured on 2026-09-27 it equalled the accounts `mutual-followers` listed, 4, which is
+INFERENCE for what it counts and not yet a model field. `friendship_status`, the other field that was null on the viewer's
 own profile, is modelled since Step 17.
 
 ## Verification
@@ -913,7 +952,7 @@ for the four `note set` and `note delete` gates in `tests/test_notes.py`, and
 and `unsend-message` mutations on the three gates in `tests/test_direct_send.py`, and
 `scripts/verify_comments_gates.py` for the four comment command gates in `tests/test_comments.py`,
 and `scripts/verify_poller_gates.py` for the five `events` gates in `tests/test_cli.py`, and
-`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`, and `scripts/verify_search_gates.py` for the seven `recent-searches`, `search` and `hashtag` mutations on the two command gates in `tests/test_search.py`, and `scripts/verify_own_account_more_gates.py` for the four `saved`, `collections` and `close-friends` mutations on the three command gates in `tests/test_own_account_more.py`. The live acceptance run for the thread command is recorded in
+`scripts/verify_posting_gates.py` for the eight posting command gates in `tests/test_posting.py`, and `scripts/verify_direct_read_gates.py` for the four `inbox`, `unread` and `message-requests` mutations on the three command gates in `tests/test_direct_read.py`, and `scripts/verify_profile_tabs_gates.py` for the six `posts`, `highlights`, `suggested` and `suggested-for-you` mutations on the four command gates in `tests/test_profile_tabs.py`, and `scripts/verify_follow_lists_gates.py` for the five `followers` mutations on the three command gates in `tests/test_follow_lists.py`, and `scripts/verify_post_depth_gates.py` for the five `replies`, `post --by-id` and `more-from-author` mutations on the three command gates in `tests/test_post_depth.py`, and `scripts/verify_stories_gates.py` for the six `stories-tray`, `story` and `highlight` mutations on the two command gates in `tests/test_stories.py`, and `scripts/verify_account_gates.py` for the four `follow-requests` and `activity` mutations on the two command gates in `tests/test_account.py`, and `scripts/verify_discovery_gates.py` for the six `explore`, `place`, `location` and `new-posts` mutations on the two command gates in `tests/test_discovery.py`, and `scripts/verify_search_gates.py` for the seven `recent-searches`, `search` and `hashtag` mutations on the two command gates in `tests/test_search.py`, and `scripts/verify_own_account_more_gates.py` for the four `saved`, `collections` and `close-friends` mutations on the three command gates in `tests/test_own_account_more.py`, and `scripts/verify_last_reads_gates.py` for the six `explore`, `audio` and `mutual-followers` mutations on the four command gates in `tests/test_last_reads.py`. The live acceptance run for the thread command is recorded in
 `logs/cli-acceptance-2026-09-21-025734.json`: three requests, one page of 20 messages, then
 two pages of 40 distinct messages in 3394 ms, which is the pacer's floor showing up as wall
 time.

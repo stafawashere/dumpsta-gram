@@ -45,7 +45,7 @@ capture night that unblocks the rest.
 | 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
 | 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
-| 11 | Replays the capture unblocks, 11a profile, 11b reels and search, 11c saved and close friends, 11d the blocked list and the post page done 2026-09-27 | `probes/e2_capture_replays.py`, `probes/e2_blocked_list_replay.py` | 27, profile stage spent 10 | 7 |
+| 11 | Replays the capture unblocks, 11a profile, 11b reels and search, 11c saved and close friends, 11d the blocked list and the post page, 11e the explore next page, the audio page and the mutual followers, done 2026-09-27 | `probes/e2_capture_replays.py`, `probes/e2_blocked_list_replay.py`, `probes/e2_last_reads_replay.py` | 27, profile stage spent 10; 11e 13, spent 18 | 7; 11e 4 |
 | 12 | Story seen, done 2026-09-27 on the owner's own highlight | `probes/story_seen_own_highlight.py` | 4, spent 4 | |
 
 Batches 1 to 9 spend 80 requests, 114 at most, 9 of them bootstraps, at the probe spacing of
@@ -777,6 +777,44 @@ batch found:
 - The page's companions are the badge count, the stories tray, the jewel pair and one quick
   promotion call, six requests with the document (W112).
 - Writes stay single, since no capture pairs a page load with a like or a comment (W113).
+
+## Batch 11e: the explore next page, the audio page and the mutual followers
+
+| Operation | Kind | Status |
+|---|---|---|
+| `GET /api/v1/discover/web/explore_grid/` with `max_id` | the explore grid's later pages | verified 2026-09-27 by two replays, public as `feeds.explore(after=...)`, `explore_posts` and `iter_explore` |
+| `POST /api/v1/clips/music/` | an audio's page, first and later | verified 2026-09-27 by two replays each, public as `feeds.audio`, `audio_clips` and `iter_audio` |
+| `GET /api/v1/friendships/<id>/mutual_followers/`, then `show_many` | the mutual followers, first page | verified 2026-09-27 by two replays, public as `profiles.mutual_followers` |
+
+**Status: done on 2026-09-27, rulings W115 to W120.** Browser run `run-2026-09-27-182013`
+captured the four reads, and `probes/e2_last_reads_replay.py` replayed each twice in run
+`run-2026-09-27-183420`, all three stages, 18 requests, every replay 200, logs
+`logs/e2-last-reads-replay-2026-09-27-183434.json`, `-183506.json` and `-183534.json`. It shipped
+`client.feeds.explore(*, after=None)` with `ExploreGrid.end_cursor`, `feeds.explore_posts` and
+`feeds.iter_explore`; `feeds.audio(audio_id, *, after=None) -> AudioPage`, `feeds.audio_clips` and
+`feeds.iter_audio`; `profiles.mutual_followers(user_id) -> MutualFollowers`; and `Post.audio_id`,
+on both clients, with `dumpsta explore --pages`, `audio` and `mutual-followers`. The live
+acceptance, `probes/e2_last_reads_cli_acceptance.py`, ten requests, eleven at most, ran on 2026-09-27, 9 requests, every step exit 0, log `logs/e2-last-reads-cli-2026-09-27-192842.json`. What the batch found:
+
+- The explore grid's cursor is the answer's root `max_id`, equal to its `session_paging_token` on
+  all five answers read; the root `next_max_id` is a page counter. A REST first page's cursor
+  paged, 18 posts with none repeated, on both replays (W115).
+- A later explore page lays each section out as one `medias` list of tiles, `dynamic_grid`, which
+  the mapper reads into the same featured and fill posts (W115).
+- An audio's one-reel page said `more_available` true and its next page was empty and said false,
+  in the browser and on both replays, so a walk spends that empty read (W116).
+- A song's later pages send no track and a clip count of 0; the track and count are a first
+  page's (W116).
+- The mutual followers answer carries no `has_more`; `next_max_id` was null on all three answers,
+  so the read is a first page, and the browser followed it with `show_many` (W117).
+- A reels feed reel whose original sound lacks the mute flag has no `audio`, so `Post.audio_id`
+  carries the audio page's id from the node itself (W118).
+- The reels feed sends some reels' place with only its name and pk, which stopped the first
+  acceptance run at `dumpsta reels`; such a reel's `location` is `None` and `Post.tagged_place`
+  names the place on every read, a batch 11b gap closed here (W120).
+- The iterators walk `Page` reads, so `explore_posts` and `audio_clips` are the pages
+  `iter_explore` and `iter_audio` walk, and the two `feeds.explore` surface lines changed to gain
+  `after` (W119).
 
 ## Batch 12: story seen
 

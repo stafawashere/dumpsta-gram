@@ -193,7 +193,8 @@ class Behavior:
    ``follow_list_statuses`` sends, after each page of an account's followers or of the accounts
    it follows, the request a browser's list sends beside it for the viewer's relationship to
    every account on the page, and fills each row's ``friendship_status`` from its answer. One
-   setting governs both lists, because the browser sends the same request after each. It is one
+   setting governs both lists and the mutual followers, because the browser sends the same
+   request after each (W117). It is one
    request more per page, inside the page's own action. False leaves it out, and each row's
    ``friendship_status`` is ``None``.
 

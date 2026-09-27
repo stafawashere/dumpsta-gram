@@ -1,4 +1,5 @@
-"""Typed representations of the discovery reads: the explore grid and a place's page.
+"""Typed representations of the discovery reads: the explore grid, a place's page and an
+audio's page.
 
 Every field below was observed on the answers ``probes/e2_discovery_feeds.py`` kept on
 2026-09-27, run ``run-2026-09-27-014102``: the explore grid read twice with four sections each, a
@@ -13,10 +14,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from dumpstagram.models.feed import Post
+from dumpstagram.models.feed import MediaAudio, Post
 from dumpstagram.models.posts import PostThumbnail
 
 __all__ = [
+   "AudioPage",
    "ExploreGrid",
    "ExploreSection",
    "LocationPosts",
@@ -43,14 +45,17 @@ class ExploreSection:
 
 @dataclass(frozen=True)
 class ExploreGrid:
-   """The first page of the explore grid.
+   """One page of the explore grid, the first or a later one.
 
-   ``more_available`` is the upstream's own flag that the grid goes on. It was true on both
-   answers read, but no next page has been asked for, so nothing here reads one (W77).
+   ``more_available`` is the upstream's own flag that the grid goes on, and the only thing that
+   ends a walk (W115). It was true on all five answers read, first pages and later ones, so no
+   last page has been seen. ``end_cursor`` is the cursor that reaches the next page, the answer's
+   root ``max_id``, and ``None`` where the answer carries none.
    """
 
    sections: tuple[ExploreSection, ...]
    more_available: bool
+   end_cursor: str | None = None
 
    @property
    def posts(self) -> tuple[Post, ...]:
@@ -59,6 +64,35 @@ class ExploreGrid:
       return tuple(
          post for section in self.sections for post in (*section.featured, *section.posts)
       )
+
+
+@dataclass(frozen=True)
+class AudioPage:
+   """One page of an audio's page, the ``/reels/audio/<id>/`` page: the track and the reels that
+   use it, in the upstream's order.
+
+   ``audio`` is the track as :class:`~dumpstagram.models.MediaAudio` describes it on a reel, a
+   song or an original sound. It is ``None`` where the upstream sends no description of the
+   track, which every later page of the licensed song read did, while the original sound's later
+   page repeated it. ``clips_count`` is the upstream's ``media_count.clips_count`` as sent: the
+   number of reels using the track on a first page, and 0 on every later page of the song read,
+   where the upstream no longer counts, so only a first page's is a count. ``is_restricted`` is
+   the upstream's flag that the audio's page is restricted, false on every answer read.
+
+   ``clips`` are the reels on the page, each a :class:`~dumpstagram.models.Post`. ``more_available``
+   is the upstream's own flag and the only thing that ends a walk (W116). It can say true on a
+   page whose next page is empty: a one-reel original sound said true and its next page carried
+   no reels and said false, in the browser and on both engine replays. ``end_cursor`` is the
+   cursor that reaches the next page, ``None`` where the answer carries none, as the last page
+   did.
+   """
+
+   audio: MediaAudio | None
+   clips_count: int
+   is_restricted: bool
+   clips: tuple[Post, ...]
+   more_available: bool
+   end_cursor: str | None = None
 
 
 class LocationTab(StrEnum):

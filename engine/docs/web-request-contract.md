@@ -910,9 +910,64 @@ timeline's GraphQL node sends null, read as null when absent (W77).
 
 - A browser reads the grid inside the `/explore/` page load. The engine sends it alone, with that
   page as referer.
-- No next page is sent. The answer carries `more_available`, `next_max_id`, `max_id`,
-  `rank_token` and `session_paging_token`, but a browser's next page request has not been
-  observed, so the grid is read as its first page with `more_available` (W77).
+- The first page is a REST GET. A browser's cold `/explore/` load carries the first page inside
+  the document and sends no first page GET; the engine's GET answered with the same keys and a
+  root `max_id` equal to its `session_paging_token`, which its next page accepted (W115).
+
+**The next page, 2026-09-27, E2 batch 11e (W115).** `read_explore_grid(after=...)` sends the
+same GET with `max_id` added between `is_prefetch` and `module`, the order the browser's six
+next page GETs of `run-2026-09-27-182013` sent it in, the six parameters alphabetical, and the
+same headers and referer. `max_id` is the previous answer's root `max_id`, equal to its
+`session_paging_token` on all five answers read; neither the root `next_max_id`, a page counter,
+nor the `max_id` each large tile's cluster carries is sent. Finding
+`read-the-explore-grid-next-page`, two engine replays in `run-2026-09-27-183420` on a REST first
+page's cursor, 18 posts each, none on the first page. The browser sends each later page as the
+grid is scrolled; the engine sends one when the caller asks, alone, the same departure as the
+first page.
+
+## An audio's page, 2026-09-27
+
+E2 batch 11e added the first REST read sent in the comet envelope, in
+`_private/web/requests/discovery.py`, sent by `read_audio_page` in `_core/discovery.py` alone and
+answered through `parse_audio_page`. Findings `read-an-audio-page` and
+`read-an-audio-page-next-page`, captured on two audio pages in `run-2026-09-27-182013` and
+replayed twice each in `run-2026-09-27-183420` by `probes/e2_last_reads_replay.py --stage audio`.
+Ruling W116.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Audio page | `POST https://www.instagram.com/api/v1/clips/music/` | form in the page's order: `audio_cluster_id` and `max_id` and `original_sound_audio_asset_id`, both ids the audio's and `max_id` empty on the first page and the previous answer's `payload.paging_info.max_id` after it, then `__d` www, `__user` 0, `__a` 1, `__req`, `__hs`, `dpr` 2, `__ccg`, `__rev`, `__hsi`, `__comet_req` 7, `fb_dtsg`, `jazoest`, `lsd`, `__spin_r`, `__spin_b`, `__spin_t`, `__crn` `comet.igweb.PolarisClipsAudioRoute` | `accept */*`, `accept-language`, `content-type: application/x-www-form-urlencoded`, `origin`, `referer` the audio page `https://www.instagram.com/reels/audio/<id>/`, the three `sec-fetch-*`, `user-agent`, `x-asbd-id`, `x-fb-lsd`, `x-ig-d: www`, `x-ig-max-touch-points: 0`; no `x-csrftoken`, no `x-ig-app-id` |
+
+The answer arrives behind `for (;;);` as `__ar`, `rid`, `payload` and `lid`, and the classifier
+strips the guard. The form carries the page token and `lsd`, so a session without either is
+bootstrapped first.
+
+**Recorded departures.**
+
+- A browser loads the `/reels/audio/<id>/` document first and then sends this POST; the engine
+  sends the POST alone, with that page as referer.
+- The comet form leaves out the fields the engine has never produced (`__s`, `__dyn`, `__csr`,
+  `__hsdp`, `__hblp`, `__sjsp`), as the delete post and Bloks forms do, and `__req` is 1 on every
+  request.
+- `qpl_active_flow_ids` and `x-fb-qpl-active-flows`, which the one-reel page sent once on its
+  self-requested second page, are not sent.
+
+## The mutual followers, 2026-09-27
+
+E2 batch 11e, in `_private/web/requests/profiles.py`, sent by `read_mutual_followers` in
+`_core/profiles.py` inside one action with the follow lists' statuses, and answered through
+`parse_mutual_followers_page`. Finding `read-mutual-followers`, one browser capture in
+`run-2026-09-27-182013` and two engine replays in `run-2026-09-27-183420`. Ruling W117.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Mutual followers | `GET https://www.instagram.com/api/v1/friendships/<user id>/mutual_followers/` | `page_size` 12, alone | the followers page's |
+| Relationship statuses | `POST https://www.instagram.com/api/v1/friendships/show_many/` | the followers page's, the list's ids in its order | the followers page's |
+
+The browser sent the statuses after the list, with the four ids it returned. No later page was
+observed, so none is built. The recorded departures are the followers page's: the site root as
+referer where the browser sent the profile page, and the statuses sent as soon as the list is
+mapped. `Behavior.follow_list_statuses` set to False leaves the statuses out, as on both lists.
 
 ## The direct inbox page load, 2026-09-27
 

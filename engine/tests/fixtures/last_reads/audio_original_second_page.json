@@ -1,0 +1,79 @@
+{
+ "__ar": 0,
+ "rid": "p591xxxxxxxxxxxxxxxxxxx",
+ "payload": {
+  "items": [],
+  "audio_page_reporting_id": "90000000000000576",
+  "formatted_media_count": "p588xx",
+  "music_canonical_id": "90000000000000576",
+  "auto_created_reels_preview_metadata": [],
+  "audio_page_segments": [],
+  "metadata": {
+   "additional_audio_info": null,
+   "music_info": null,
+   "original_sound_info": {
+    "is_eligible_for_vinyl_sticker": true,
+    "fb_downstream_use_xpost_metadata": {
+     "downstream_use_xpost_deny_reason": "p13x"
+    },
+    "allow_creator_to_rename": true,
+    "audio_asset_id": "90000000000000577",
+    "audio_filter_infos": null,
+    "audio_parts": [],
+    "audio_parts_by_filter": [],
+    "can_remix_be_shared_to_fb": true,
+    "can_remix_be_shared_to_fb_expansion": true,
+    "consumption_info": {
+     "display_media_id": null,
+     "is_bookmarked": false,
+     "is_trending_in_clips": false,
+     "should_mute_audio_reason": "",
+     "should_mute_audio_reason_type": null,
+     "user_notes": null
+    },
+    "dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT53.427666S\"/>",
+    "duration_in_ms": 0,
+    "formatted_clips_media_count": "p588xx",
+    "hide_remixing": false,
+    "ig_artist": {
+     "strong_id__": "90000000557",
+     "id": "90000000557",
+     "full_name": "p579x",
+     "is_private": false,
+     "is_verified": true,
+     "pk": 0,
+     "pk_id": "90000000557",
+     "profile_pic_id": "9000000000000000580_90000000557",
+     "profile_pic_url": "https://example.invalid/592",
+     "username": "p582xxxxxxx"
+    },
+    "is_audio_automatically_attributed": false,
+    "is_eligible_for_audio_effects": true,
+    "is_explicit": false,
+    "is_original_audio_download_eligible": true,
+    "is_reuse_disabled": false,
+    "is_xpost_from_fb": false,
+    "music_canonical_id": null,
+    "oa_owner_is_music_artist": false,
+    "original_audio_subtype": "p36xxxx",
+    "original_audio_title": "p37xxxxxxxxxxx",
+    "original_media_id": "9000000000000000556",
+    "progressive_download_url": "https://example.invalid/593",
+    "should_mute_audio": false,
+    "time_created": 0,
+    "trend_rank": null,
+    "xpost_fb_creator_info": null
+   }
+  },
+  "audio_ranking_info": {},
+  "is_music_page_restricted": false,
+  "media_count": {
+   "clips_count": 1,
+   "photos_count": 0
+  },
+  "paging_info": {
+   "more_available": false
+  }
+ },
+ "lid": "9000000000000000594"
+}

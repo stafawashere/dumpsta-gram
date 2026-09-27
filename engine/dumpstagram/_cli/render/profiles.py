@@ -10,6 +10,7 @@ from dumpstagram.models import (
    FriendshipStatus,
    HighlightTray,
    ListFriendshipStatus,
+   MutualFollowers,
    Page,
    Post,
    Profile,
@@ -22,12 +23,14 @@ __all__ = [
    "describe_friendship_status",
    "describe_grid_pages",
    "describe_highlight_tray",
+   "describe_mutual_followers",
    "describe_profile",
    "describe_profile_summary",
    "describe_suggested_account",
    "render_followers",
    "render_grid",
    "render_highlight_tray",
+   "render_mutual_followers",
    "render_profile",
    "render_profile_summaries",
    "render_suggested_accounts",
@@ -288,5 +291,25 @@ def render_followers(pages: list[Page[ProfileSummary]]) -> str:
 
    if described["end_cursor"]:
       lines.append(f"next_cursor: {described['end_cursor']}")
+
+   return "\n".join(lines)
+
+
+def describe_mutual_followers(mutual: MutualFollowers) -> dict[str, Any]:
+   """The accounts in the upstream's order, how many, and whether more exist. Every key is part
+   of the CLI's contract."""
+
+   return {
+      "account_count": len(mutual.accounts),
+      "more_available": mutual.has_more,
+      "accounts": [describe_profile_summary(account) for account in mutual.accounts],
+   }
+
+
+def render_mutual_followers(mutual: MutualFollowers) -> str:
+   """One line per account in the upstream's order, then the trailer."""
+
+   lines = [_summary_line(account) for account in mutual.accounts]
+   lines.append(f"accounts: {len(mutual.accounts)}  more_available: {mutual.has_more}")
 
    return "\n".join(lines)

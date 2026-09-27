@@ -1,0 +1,46 @@
+{
+ "friendship_statuses": {
+  "90000000595": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000598": {
+   "following": true,
+   "is_bestie": true,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000602": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": true,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  },
+  "90000000605": {
+   "following": true,
+   "is_bestie": false,
+   "is_feed_favorite": false,
+   "is_private": false,
+   "is_restricted": false,
+   "text_post_app_pre_following": false,
+   "incoming_request": false,
+   "outgoing_request": false
+  }
+ },
+ "status": "ok",
+ "status_code": "960"
+}

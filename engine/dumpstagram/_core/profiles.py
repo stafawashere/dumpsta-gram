@@ -52,6 +52,7 @@ from dumpstagram._private.web.parse.profiles import (
    parse_following_page,
    parse_friendship_statuses,
    parse_highlight_tray,
+   parse_mutual_followers_page,
    parse_profile,
    parse_profile_posts_page,
    parse_profile_reels,
@@ -67,6 +68,7 @@ from dumpstagram._private.web.requests.profiles import (
    build_following_request,
    build_friendship_statuses_request,
    build_highlight_tray_request,
+   build_mutual_followers_request,
    build_profile_page_requests,
    build_profile_posts_request,
    build_profile_reels_request,
@@ -83,6 +85,7 @@ from dumpstagram.behavior import ProfileRoute
 from dumpstagram.errors import NotFound
 from dumpstagram.models import (
    HighlightTray,
+   MutualFollowers,
    Page,
    Post,
    Profile,
@@ -97,6 +100,7 @@ __all__ = [
    "read_followers_page",
    "read_following_page",
    "read_highlight_tray",
+   "read_mutual_followers",
    "read_profile",
    "read_profile_by_id",
    "read_profile_from_page",
@@ -483,6 +487,49 @@ async def _read_follow_list_page(
       return attach_friendship_statuses(page, statuses)
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_mutual_followers(
+   sender: PacedSender,
+   session: Session,
+   user_id: str,
+   *,
+   with_statuses: bool = True,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> MutualFollowers:
+   """The first page of the accounts following both the viewer and ``user_id``, one action of one
+   or two live requests, the follow lists' steps (W117).
+
+   The page is read first, then, when ``with_statuses`` is on and the page lists anyone, the
+   viewer's relationship to every account on it, as the browser's list sent it beside the page.
+   """
+
+   def build_page(
+      session: Session,
+      user_id: str,
+      *,
+      after: str | None,
+      web_session_id: str,
+      user_agent: str,
+   ) -> Request:
+      return build_mutual_followers_request(
+         session, user_id, web_session_id=web_session_id, user_agent=user_agent
+      )
+
+   page = await _read_follow_list_page(
+      sender,
+      session,
+      user_id,
+      build_page=build_page,
+      parse_page=parse_mutual_followers_page,
+      after=None,
+      with_statuses=with_statuses,
+      user_agent=user_agent,
+      deadline=deadline,
+   )
+
+   return MutualFollowers(accounts=page.items, has_more=page.has_next_page)
 
 
 async def read_profile_reels(

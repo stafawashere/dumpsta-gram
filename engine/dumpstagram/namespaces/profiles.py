@@ -1,6 +1,6 @@
 """``client.profiles``, reading one account's profile, its posts grid, its reels and tagged tabs,
-its highlights tray, its followers and the accounts it follows, and the accounts suggested beside
-it or to the viewer."""
+its highlights tray, its followers, the accounts it follows and the followers it shares with the
+viewer, and the accounts suggested beside it or to the viewer."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from dumpstagram._core.profiles import (
    read_followers_page,
    read_following_page,
    read_highlight_tray,
+   read_mutual_followers,
    read_profile,
    read_profile_by_id,
    read_profile_posts_page,
@@ -22,6 +23,7 @@ from dumpstagram._core.profiles import (
 )
 from dumpstagram.models import (
    HighlightTray,
+   MutualFollowers,
    Page,
    Post,
    Profile,
@@ -284,6 +286,40 @@ class AsyncProfiles:
          )
       )
 
+   async def mutual_followers(self, user_id: str) -> MutualFollowers:
+      """Read the accounts that follow both the viewer and another account, the first page of
+      them. Two live requests.
+
+      ``user_id`` is the numeric account id, :attr:`Profile.id <dumpstagram.models.Profile.id>`,
+      and a username raises :class:`ValueError` before anything is sent. Twelve are asked for, as
+      the website's list asks, and the upstream decides how many come back; the list the profile
+      page's "Followed by" line opens held 4 and 1 on the two accounts read.
+      :attr:`~dumpstagram.models.MutualFollowers.has_more` says the list goes on past this page,
+      and no later page is read, because how a browser asks for one has not been observed.
+
+      Each account's ``friendship_status`` is the viewer's relationship to it, read by the request
+      the browser's list sent beside the page, inside the same action, as :meth:`followers` does.
+      :attr:`~dumpstagram.behavior.Behavior.follow_list_statuses` set to False leaves that
+      request out, one live request, and every ``friendship_status`` is then ``None``.
+
+      A browser opens the list from the profile page, so its referer is that page. This sends the
+      site root, because the method has an id and no username, a departure recorded in
+      ``docs/web-request-contract.md``.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_mutual_followers(
+            client._sender,
+            client._session,
+            user_id,
+            with_statuses=client._behavior.follow_list_statuses,
+            user_agent=client._user_agent,
+         )
+      )
+
    async def reels(self, user_id: str) -> ProfileReels:
       """Read an account's reels tab, its first page, newest first. One live request.
 
@@ -526,6 +562,19 @@ class SyncProfiles:
       return self._client._loop.run(
          self._client._impl.profiles.following(user_id, after=after),
          operation="SyncClient.profiles.following",
+      )
+
+   def mutual_followers(self, user_id: str) -> MutualFollowers:
+      """Read the accounts that follow both the viewer and another account. Blocks until it has
+      them.
+
+      The same call as :meth:`AsyncProfiles.mutual_followers`, run on the shared loop thread. Two
+      live requests.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.profiles.mutual_followers(user_id),
+         operation="SyncClient.profiles.mutual_followers",
       )
 
    def reels(self, user_id: str) -> ProfileReels:

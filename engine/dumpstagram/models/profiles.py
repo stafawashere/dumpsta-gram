@@ -26,6 +26,7 @@ __all__ = [
    "BioLink",
    "FriendshipStatus",
    "ListFriendshipStatus",
+   "MutualFollowers",
    "Profile",
    "ProfileSummary",
    "SuggestedAccount",
@@ -183,6 +184,20 @@ class ProfileSummary:
    is_private: bool | None = None
    hd_profile_pic_url: str | None = None
    friendship_status: ListFriendshipStatus | None = None
+
+
+@dataclass(frozen=True)
+class MutualFollowers:
+   """The accounts that follow both the viewer and another account, the first page of them.
+
+   ``has_more`` is true when the answer carries a ``next_max_id``, which says the list goes on
+   past this page. Every answer read, of 4 accounts and of 1, carried it null, so no second page
+   has been read and nothing here reads one (W117). Each account's ``friendship_status`` is the
+   viewer's relationship to it where the read asked for it.
+   """
+
+   accounts: tuple[ProfileSummary, ...]
+   has_more: bool
 
 
 @dataclass(frozen=True)

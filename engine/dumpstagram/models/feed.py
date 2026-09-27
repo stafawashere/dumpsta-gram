@@ -44,6 +44,7 @@ __all__ = [
    "MediaImage",
    "Post",
    "PostAuthor",
+   "TaggedPlace",
    "UserTag",
    "VideoRendition",
 ]
@@ -173,6 +174,20 @@ class Location:
 
 
 @dataclass(frozen=True)
+class TaggedPlace:
+   """The place a post is tagged at, as far as every read names it: its ``pk`` as ``id``, what
+   :meth:`~dumpstagram.namespaces.feeds.AsyncFeeds.place` takes, and its ``name``.
+
+   Every location read carried both. The reels feed sent a location with nothing else on all 3
+   of its located reels read on 2026-09-27, so there :attr:`Post.location` is ``None`` and this is
+   the post's place (W120).
+   """
+
+   id: str
+   name: str
+
+
+@dataclass(frozen=True)
 class CarouselChild:
    """One slide of a carousel, with its own kind.
 
@@ -278,6 +293,16 @@ class Post:
    ``None`` only when the read does not carry the field at all, so ``None`` means unknown rather
    than none. Collaborators were seen on one of the 37 distinct timeline and grid posts read on
    2026-09-27.
+
+   ``audio_id`` is the id of the track's audio page, the one
+   :meth:`~dumpstagram.namespaces.feeds.AsyncFeeds.audio` takes: a song's ``audio_cluster_id`` or
+   an original sound's ``audio_asset_id``. It is read wherever the node names its track, including
+   a reel whose ``audio`` is ``None`` because the read leaves out a flag :class:`MediaAudio`
+   requires, and it is ``None`` on a post that names no track (W118).
+
+   ``tagged_place`` is the place's id and name wherever the node names a place, and ``None`` where
+   it names none. ``location`` is the same place with its coordinates, and it is ``None`` also
+   where the read sends the place without them, which the reels feed does (W120).
    """
 
    id: str
@@ -307,6 +332,8 @@ class Post:
    location: Location | None = None
    user_tags: tuple[UserTag, ...] | None = None
    collaborators: tuple[ProfileSummary, ...] | None = None
+   audio_id: str | None = None
+   tagged_place: TaggedPlace | None = None
 
 
 @dataclass(frozen=True)

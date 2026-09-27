@@ -7,6 +7,7 @@ alias dumpstagram.ActivityMedia -> dumpstagram.models.account.ActivityMedia
 alias dumpstagram.ActivitySection -> dumpstagram.models.account.ActivitySection
 alias dumpstagram.AsyncClient -> dumpstagram.aio.AsyncClient
 alias dumpstagram.AudioKind -> dumpstagram.models.feed.AudioKind
+alias dumpstagram.AudioPage -> dumpstagram.models.discovery.AudioPage
 alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFailed
 alias dumpstagram.Behavior -> dumpstagram.behavior.Behavior
 alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
@@ -45,6 +46,7 @@ alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.MutualFollowers -> dumpstagram.models.profiles.MutualFollowers
 alias dumpstagram.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.NotFound -> dumpstagram.errors.NotFound
 alias dumpstagram.Note -> dumpstagram.models.notes.Note
@@ -95,6 +97,7 @@ alias dumpstagram.StoryReel -> dumpstagram.models.stories.StoryReel
 alias dumpstagram.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
 alias dumpstagram.SyncClient -> dumpstagram.client.SyncClient
+alias dumpstagram.TaggedPlace -> dumpstagram.models.feed.TaggedPlace
 alias dumpstagram.TaggedPosts -> dumpstagram.models.posts.TaggedPosts
 alias dumpstagram.ThreadFirstPage -> dumpstagram.behavior.ThreadFirstPage
 alias dumpstagram.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
@@ -256,6 +259,7 @@ alias dumpstagram.models.ActivityLink -> dumpstagram.models.account.ActivityLink
 alias dumpstagram.models.ActivityMedia -> dumpstagram.models.account.ActivityMedia
 alias dumpstagram.models.ActivitySection -> dumpstagram.models.account.ActivitySection
 alias dumpstagram.models.AudioKind -> dumpstagram.models.feed.AudioKind
+alias dumpstagram.models.AudioPage -> dumpstagram.models.discovery.AudioPage
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
 alias dumpstagram.models.BlockedAccount -> dumpstagram.models.account.BlockedAccount
 alias dumpstagram.models.CarouselChild -> dumpstagram.models.feed.CarouselChild
@@ -285,6 +289,7 @@ alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
 alias dumpstagram.models.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
+alias dumpstagram.models.MutualFollowers -> dumpstagram.models.profiles.MutualFollowers
 alias dumpstagram.models.NewMessage -> dumpstagram.models.events.NewMessage
 alias dumpstagram.models.Note -> dumpstagram.models.notes.Note
 alias dumpstagram.models.NoteAudience -> dumpstagram.models.notes.NoteAudience
@@ -320,6 +325,7 @@ alias dumpstagram.models.StoryOwner -> dumpstagram.models.stories.StoryOwner
 alias dumpstagram.models.StoryReel -> dumpstagram.models.stories.StoryReel
 alias dumpstagram.models.StoryVideo -> dumpstagram.models.stories.StoryVideo
 alias dumpstagram.models.SuggestedAccount -> dumpstagram.models.profiles.SuggestedAccount
+alias dumpstagram.models.TaggedPlace -> dumpstagram.models.feed.TaggedPlace
 alias dumpstagram.models.TaggedPosts -> dumpstagram.models.posts.TaggedPosts
 alias dumpstagram.models.ThreadParticipant -> dumpstagram.models.threads.ThreadParticipant
 alias dumpstagram.models.TrayReel -> dumpstagram.models.stories.TrayReel
@@ -452,7 +458,15 @@ field dumpstagram.models.comments.CommentAuthor.is_verified: bool
 field dumpstagram.models.comments.CommentAuthor.profile_pic_url: str
 field dumpstagram.models.comments.CommentAuthor.username: str
 module dumpstagram.models.discovery
+class dumpstagram.models.discovery.AudioPage()
+field dumpstagram.models.discovery.AudioPage.audio: MediaAudio | None
+field dumpstagram.models.discovery.AudioPage.clips: tuple[Post, ...]
+field dumpstagram.models.discovery.AudioPage.clips_count: int
+field dumpstagram.models.discovery.AudioPage.end_cursor: str | None = None
+field dumpstagram.models.discovery.AudioPage.is_restricted: bool
+field dumpstagram.models.discovery.AudioPage.more_available: bool
 class dumpstagram.models.discovery.ExploreGrid()
+field dumpstagram.models.discovery.ExploreGrid.end_cursor: str | None = None
 field dumpstagram.models.discovery.ExploreGrid.more_available: bool
 property dumpstagram.models.discovery.ExploreGrid.posts -> tuple[Post, ...]
 field dumpstagram.models.discovery.ExploreGrid.sections: tuple[ExploreSection, ...]
@@ -536,6 +550,7 @@ field dumpstagram.models.feed.MediaImage.width: int
 class dumpstagram.models.feed.Post()
 field dumpstagram.models.feed.Post.accessibility_caption: str | None = None
 field dumpstagram.models.feed.Post.audio: MediaAudio | None = None
+field dumpstagram.models.feed.Post.audio_id: str | None = None
 field dumpstagram.models.feed.Post.author: PostAuthor
 field dumpstagram.models.feed.Post.caption: str | None = None
 field dumpstagram.models.feed.Post.carousel_children: tuple[CarouselChild, ...] = ()
@@ -557,6 +572,7 @@ field dumpstagram.models.feed.Post.original_height: int | None = None
 field dumpstagram.models.feed.Post.original_width: int | None = None
 field dumpstagram.models.feed.Post.pk: str
 field dumpstagram.models.feed.Post.product_type: str
+field dumpstagram.models.feed.Post.tagged_place: TaggedPlace | None = None
 field dumpstagram.models.feed.Post.taken_at: datetime
 field dumpstagram.models.feed.Post.user_tags: tuple[UserTag, ...] | None = None
 field dumpstagram.models.feed.Post.video_duration: float | None = None
@@ -571,6 +587,9 @@ field dumpstagram.models.feed.PostAuthor.is_private: bool
 field dumpstagram.models.feed.PostAuthor.is_verified: bool
 field dumpstagram.models.feed.PostAuthor.profile_pic_url: str
 field dumpstagram.models.feed.PostAuthor.username: str
+class dumpstagram.models.feed.TaggedPlace()
+field dumpstagram.models.feed.TaggedPlace.id: str
+field dumpstagram.models.feed.TaggedPlace.name: str
 class dumpstagram.models.feed.UserTag()
 field dumpstagram.models.feed.UserTag.account: ProfileSummary
 field dumpstagram.models.feed.UserTag.position: tuple[float, float] | None = None
@@ -735,6 +754,9 @@ field dumpstagram.models.profiles.ListFriendshipStatus.is_bestie: bool
 field dumpstagram.models.profiles.ListFriendshipStatus.is_feed_favorite: bool
 field dumpstagram.models.profiles.ListFriendshipStatus.is_restricted: bool
 field dumpstagram.models.profiles.ListFriendshipStatus.outgoing_request: bool
+class dumpstagram.models.profiles.MutualFollowers()
+field dumpstagram.models.profiles.MutualFollowers.accounts: tuple[ProfileSummary, ...]
+field dumpstagram.models.profiles.MutualFollowers.has_more: bool
 class dumpstagram.models.profiles.Profile()
 field dumpstagram.models.profiles.Profile.account_type: int | None = None
 field dumpstagram.models.profiles.Profile.bio_links: tuple[BioLink, ...] = ()
@@ -957,9 +979,14 @@ def dumpstagram.namespaces.direct.SyncDirect.unsend(self, thread_fbid: str, mess
 module dumpstagram.namespaces.feeds
 class dumpstagram.namespaces.feeds.AsyncFeeds()
 def dumpstagram.namespaces.feeds.AsyncFeeds.__init__(self) -> None
-def dumpstagram.namespaces.feeds.AsyncFeeds.explore(self) -> ExploreGrid
+def dumpstagram.namespaces.feeds.AsyncFeeds.audio(self, audio_id: str, *, after: str | None = None) -> AudioPage
+def dumpstagram.namespaces.feeds.AsyncFeeds.audio_clips(self, audio_id: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.feeds.AsyncFeeds.explore(self, *, after: str | None = None) -> ExploreGrid
+def dumpstagram.namespaces.feeds.AsyncFeeds.explore_posts(self, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.feeds.AsyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.AsyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.namespaces.feeds.AsyncFeeds.iter_audio(self, audio_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
+def dumpstagram.namespaces.feeds.AsyncFeeds.iter_explore(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
 def dumpstagram.namespaces.feeds.AsyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[FeedItem]
 def dumpstagram.namespaces.feeds.AsyncFeeds.iter_reels(self, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
 def dumpstagram.namespaces.feeds.AsyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
@@ -967,9 +994,14 @@ def dumpstagram.namespaces.feeds.AsyncFeeds.place(self, location_id: str) -> Pla
 def dumpstagram.namespaces.feeds.AsyncFeeds.reels(self, *, after: str | None = None) -> Page[Post]
 class dumpstagram.namespaces.feeds.SyncFeeds()
 def dumpstagram.namespaces.feeds.SyncFeeds.__init__(self) -> None
-def dumpstagram.namespaces.feeds.SyncFeeds.explore(self) -> ExploreGrid
+def dumpstagram.namespaces.feeds.SyncFeeds.audio(self, audio_id: str, *, after: str | None = None) -> AudioPage
+def dumpstagram.namespaces.feeds.SyncFeeds.audio_clips(self, audio_id: str, *, after: str | None = None) -> Page[Post]
+def dumpstagram.namespaces.feeds.SyncFeeds.explore(self, *, after: str | None = None) -> ExploreGrid
+def dumpstagram.namespaces.feeds.SyncFeeds.explore_posts(self, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.feeds.SyncFeeds.has_new_posts(self) -> bool
 def dumpstagram.namespaces.feeds.SyncFeeds.home(self, *, after: str | None = None) -> Page[FeedItem]
+def dumpstagram.namespaces.feeds.SyncFeeds.iter_audio(self, audio_id: str, *, limit: int | None, after: str | None = None) -> Iterator[Post]
+def dumpstagram.namespaces.feeds.SyncFeeds.iter_explore(self, *, limit: int | None, after: str | None = None) -> Iterator[Post]
 def dumpstagram.namespaces.feeds.SyncFeeds.iter_home(self, *, limit: int | None, after: str | None = None) -> Iterator[FeedItem]
 def dumpstagram.namespaces.feeds.SyncFeeds.iter_reels(self, *, limit: int | None, after: str | None = None) -> Iterator[Post]
 def dumpstagram.namespaces.feeds.SyncFeeds.location(self, location_id: str, *, tab: LocationTab = <LocationTab.RANKED: 'ranked'>) -> LocationPosts
@@ -1025,6 +1057,7 @@ def dumpstagram.namespaces.profiles.AsyncProfiles.highlights(self, user_id: str)
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_following(self, user_id: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.AsyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> AsyncIterator[Post]
+def dumpstagram.namespaces.profiles.AsyncProfiles.mutual_followers(self, user_id: str) -> MutualFollowers
 def dumpstagram.namespaces.profiles.AsyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.profiles.AsyncProfiles.reels(self, user_id: str) -> ProfileReels
 def dumpstagram.namespaces.profiles.AsyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]
@@ -1040,6 +1073,7 @@ def dumpstagram.namespaces.profiles.SyncProfiles.highlights(self, user_id: str) 
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_followers(self, user_id: str, *, limit: int | None, after: str | None = None) -> Iterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_following(self, user_id: str, *, limit: int | None, after: str | None = None) -> Iterator[ProfileSummary]
 def dumpstagram.namespaces.profiles.SyncProfiles.iter_posts(self, username: str, *, limit: int | None, after: str | None = None) -> Iterator[Post]
+def dumpstagram.namespaces.profiles.SyncProfiles.mutual_followers(self, user_id: str) -> MutualFollowers
 def dumpstagram.namespaces.profiles.SyncProfiles.posts(self, username: str, *, after: str | None = None) -> Page[Post]
 def dumpstagram.namespaces.profiles.SyncProfiles.reels(self, user_id: str) -> ProfileReels
 def dumpstagram.namespaces.profiles.SyncProfiles.suggested(self, user_id: str) -> tuple[ProfileSummary, ...]

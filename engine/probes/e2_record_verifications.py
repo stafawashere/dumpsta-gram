@@ -94,6 +94,12 @@ LABEL_TO_FINDING = {
       "close friends list": "read-the-close-friends-list",
       "post page document": "read-a-post-page-document",
    },
+   "e2-last-reads-replay": {
+      "explore grid next page": "read-the-explore-grid-next-page",
+      "audio page next page": "read-an-audio-page-next-page",
+      "audio page": "read-an-audio-page",
+      "mutual followers page": "read-mutual-followers",
+   },
 }
 
 

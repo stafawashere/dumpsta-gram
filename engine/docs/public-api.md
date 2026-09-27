@@ -444,9 +444,9 @@ client.media.like(post.pk)
 |---|---|---|---|
 | `account` | `AsyncAccount` | `SyncAccount` | The viewer's own pending follow requests, activity feed, saved posts and collections, and close friends list, read without marking or changing anything |
 | `direct` | `AsyncDirect` | `SyncDirect` | Threads, sending and unsending, the inbox, the message requests, the unread counts, and the notes tray on the inbox |
-| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, whether the home feed has new posts, and the reels feed |
+| `feeds` | `AsyncFeeds` | `SyncFeeds` | The timelines, the explore grid, a place's header and posts, whether the home feed has new posts, the reels feed, and an audio's page |
 | `media` | `AsyncMedia` | `SyncMedia` | One post by shortcode or pk, its likes and likers, its comments and their replies, the more posts from its author, downloading its renditions, and publishing and deleting the viewer's own |
-| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, reels and tagged tabs, highlights tray, followers and following, and the suggested accounts |
+| `profiles` | `AsyncProfiles` | `SyncProfiles` | Profiles, a profile's posts grid, reels and tagged tabs, highlights tray, followers, following and the followers it shares with the viewer, and the suggested accounts |
 | `search` | `AsyncSearch` | `SyncSearch` | The viewer's recent searches, what the search box offers for a query, the accounts a query matches, a hashtag's header, and the keyword grid, which is also a hashtag's posts |
 | `social` | `AsyncSocial` | `SyncSocial` | Follows |
 | `stories` | `AsyncStories` | `SyncStories` | The stories tray, an account's live stories and one highlight, read without marking anything seen |
@@ -498,6 +498,8 @@ only there, with no flat twin:
 | `direct.inbox(*, after)` | `direct.iter_inbox(*, limit, after=None)` | `DirectThread`, newest activity first |
 | `feeds.home(*, after)` | `feeds.iter_home(*, limit, after=None)` | `FeedItem` |
 | `feeds.reels(*, after)` | `feeds.iter_reels(*, limit, after=None)` | `Post`, a reel, in the feed's order |
+| `feeds.explore_posts(*, after)` | `feeds.iter_explore(*, limit, after=None)` | `Post`, section by section, each section's featured posts first |
+| `feeds.audio_clips(audio_id, *, after)` | `feeds.iter_audio(audio_id, *, limit, after=None)` | `Post`, a reel using the audio, in the page's order |
 | `media.comments(post_pk, *, after)` | `media.iter_comments(post_pk, *, limit, after=None)` | `Comment` |
 | `media.replies(post_pk, comment_id, *, after)` | `media.iter_replies(post_pk, comment_id, *, limit, after=None)` | `Comment`, oldest first |
 | `profiles.posts(username, *, after)` | `profiles.iter_posts(username, *, limit, after=None)` | `Post`, newest first, pinned posts first |
@@ -808,8 +810,17 @@ read seconds apart held 11 of the same 12 accounts in a different order, so an o
 meet an account twice or miss one; nothing here deduplicates, since dropping a repeat would hide
 what the upstream sent.
 
+**Mutual followers.** Landed 2026-09-27, E2 batch 11e, ruling W117.
+`profiles.mutual_followers(user_id) -> MutualFollowers`, two requests, one with
+`follow_list_statuses` off, reads the list a profile's "Followed by" line opens: its REST page,
+`page_size` 12, then the relationship statuses of the accounts on it inside the same action, as
+the browser's list sent them. `MutualFollowers` carries `accounts`, `ProfileSummary` rows read
+from their string `id`, and `has_more`, true when the answer carries a `next_max_id`. Both
+answers read, of 4 accounts and of 1, carried it null, so no later page has been read and there
+is no cursor and no iterator, the `FollowRequests` pattern.
+
 A browser reads each tab when it is clicked on the profile page, beside the suggested accounts
-query, and opens the following list from the profile page. Each method here sends its read alone
+query, and opens the following and mutual followers lists from the profile page. Each method here sends its read alone
 with the site root as its referer, departures recorded in
 [web-request-contract.md](web-request-contract.md).
 
@@ -1062,7 +1073,7 @@ Four methods on the `feeds` namespace, on both clients, with no flat twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
-| `feeds.explore()` | `ExploreGrid` | one |
+| `feeds.explore(*, after=None)` | `ExploreGrid` | one |
 | `feeds.place(location_id)` | `Place` | one, plus a bootstrap when the session holds no token |
 | `feeds.location(location_id, *, tab=LocationTab.RANKED)` | `LocationPosts` | one, plus a bootstrap when the session holds no token |
 | `feeds.has_new_posts()` | `bool` | one, plus a bootstrap when the session holds no token |
@@ -1082,9 +1093,14 @@ print(place.name, place.media_count, len(page.posts), page.has_more)
 that the grid goes on, and `posts` joins every section's posts. An `ExploreSection` carries
 `feed_type`, the `featured` posts of its large tile and the smaller tiles' `posts`. Every post is
 a `Post`, read from the grid's REST media shape: keys that shape leaves out where the timeline
-sends null read as null, and `is_seen` is always False, since the grid never sends it (W77). Only
-the first page is read, because how a browser asks for the next one has not been observed, so
-there is no cursor and no `iter_explore`.
+sends null read as null, and `is_seen` is always False, since the grid never sends it (W77).
+Since E2 batch 11e the grid pages (W115): `end_cursor` is the answer's root `max_id`, passed back
+as `explore(after=...)`, and `more_available` is the only thing that ends a walk; it was true on
+every page read. A later page lays each section out as one list of tiles rather than two blocks,
+read into the same `featured` and `posts`. `feeds.explore_posts(*, after=None) -> Page[Post]` is
+the same read as a plain page of posts, the page `feeds.iter_explore(*, limit, after=None)` walks,
+because every iterator walks a read returning `Page` (W23); the two methods take each other's
+cursors.
 
 **A place.** `location_id` is the place's numeric `pk`, the `Location.id` a tagged post carries,
 and anything but digits raises `ValueError` before anything is sent. `Place` carries `id`,
@@ -1120,9 +1136,42 @@ The feed is ranked, so two walks do not see the same reels. Each reel is a `Post
 `is_paid_partnership` read False and carry no information, since the feed sends neither; the
 author's `hd_profile_pic_url` and the post's `collaborators` are `None`, not carried; and a reel
 whose original sound comes without the mute flag, which every one read did, has `audio` `None`,
-while a song is read. A browser plays each reel, reports each view and asks for advertisements to
+while a song is read. A reel tagged at a place the feed sends without coordinates, only its
+name and pk, has `location` `None` and names the place in `tagged_place`, a `TaggedPlace(id,
+name)` every post read now carries wherever the node names a place (W120). A browser plays each reel, reports each view and asks for advertisements to
 place between them; the engine plays nothing and sends neither, so nobody sees the viewer as
 having watched a reel.
+
+**An audio's page.** Landed 2026-09-27, E2 batch 11e, rulings W116 and W118.
+`feeds.audio(audio_id, *, after=None) -> AudioPage` reads one page of the `/reels/audio/<id>/`
+page, one request, plus a bootstrap when the session holds no token;
+`feeds.audio_clips(audio_id, *, after=None) -> Page[Post]` is the same read as a plain page of its
+reels, and `feeds.iter_audio(audio_id, *, limit, after=None)` walks them.
+
+```python
+reel = client.feeds.reels().items[0]
+page = client.feeds.audio(reel.audio_id)
+print(page.audio.title if page.audio else None, page.clips_count)
+
+for clip in client.feeds.iter_audio(reel.audio_id, limit=36):
+   print(clip.code, clip.author.username)
+```
+
+`audio_id` is the track's numeric id and anything but digits raises `ValueError` before anything
+is sent. Every `Post` read from a payload that names its track now carries it as
+`Post.audio_id`, a song's `audio_cluster_id` or an original sound's `audio_asset_id`, including a
+reels feed reel whose `audio` is `None` (W118); `MediaAudio.audio_id` is the same value where
+`audio` is read. `AudioPage` carries `audio`, the track as a `MediaAudio`, `clips_count`,
+`is_restricted`, the page's `clips` as `Post`, `more_available` and `end_cursor`. A song's later
+pages send no track and a count of 0, so `audio` is `None` there and only a first page's
+`clips_count` is a count. A song's page carried 12 reels a page. `more_available` is the only
+thing that ends a walk, and it can say true when nothing follows: a one-reel original sound said
+true and its next page was empty and said false, in the browser and on both replays, so reading
+such a page to its end costs one read that returns nothing (W116). A reel on this page carries
+no `hd_profile_pic_url` for its author, `is_seen` False, and `collaborators` `None`, since the
+page's collaborator rows carry a relationship without the two request flags. A browser loads the
+audio page's document first; this sends the page's own read alone, with that page as referer, a
+departure recorded in [web-request-contract.md](web-request-contract.md). Nothing is played.
 
 ### Search
 

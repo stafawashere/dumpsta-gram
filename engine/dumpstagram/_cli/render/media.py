@@ -12,6 +12,7 @@ from dumpstagram.models import (
    PostDetail,
    ProfileSummary,
    PublishedPost,
+   TaggedPlace,
    UserTag,
 )
 
@@ -64,6 +65,13 @@ def _describe_collaborators(
    return [_describe_account(account) for account in collaborators]
 
 
+def _describe_tagged_place(place: TaggedPlace | None) -> dict[str, str] | None:
+   if place is None:
+      return None
+
+   return {"id": place.id, "name": place.name}
+
+
 def describe_post(post: Post) -> dict[str, Any]:
    """The JSON form of one post. Every key here is part of the CLI's contract.
 
@@ -75,6 +83,9 @@ def describe_post(post: Post) -> dict[str, Any]:
 
    ``location`` is null when the post has none. ``user_tags`` and ``collaborators`` are lists,
    empty when there are none, and null when the read that produced the post does not carry them.
+   ``audio_id`` is the id ``dumpsta audio`` takes, null on a post that names no track.
+   ``tagged_place`` is the place's ``id`` and ``name`` wherever the post names one, including a
+   reel whose ``location`` is null because the reels feed sends no coordinates.
    """
 
    return {
@@ -112,13 +123,16 @@ def describe_post(post: Post) -> dict[str, Any]:
       "location": _describe_location(post.location),
       "user_tags": _describe_user_tags(post.user_tags),
       "collaborators": _describe_collaborators(post.collaborators),
+      "audio_id": post.audio_id,
+      "tagged_place": _describe_tagged_place(post.tagged_place),
    }
 
 
 def describe_post_detail(post: PostDetail) -> dict[str, Any]:
    """The JSON form of one post read on its own. Every key here is part of the CLI's contract.
 
-   The same keys as :func:`describe_post` without ``is_seen``, which this read does not carry.
+   The same keys as :func:`describe_post` without ``is_seen``, ``audio_id`` and ``tagged_place``,
+   which this model does not carry.
    """
 
    described = describe_post(
@@ -148,6 +162,8 @@ def describe_post_detail(post: PostDetail) -> dict[str, Any]:
       )
    )
    del described["is_seen"]
+   del described["audio_id"]
+   del described["tagged_place"]
 
    return described
 

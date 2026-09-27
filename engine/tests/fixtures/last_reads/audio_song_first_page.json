@@ -1,0 +1,1881 @@
+{
+ "__ar": 0,
+ "rid": "p341xxxxxxxxxxxxxxxxxxx",
+ "payload": {
+  "items": [
+   {
+    "media": {
+     "strong_id__": "9000000000000000342_90000343",
+     "id": "9000000000000000342_90000343",
+     "pk": "p344xxxxxxxxxxxxx",
+     "fbid": "90000000000000345",
+     "media_type": 2,
+     "like_and_view_counts_disabled": false,
+     "code": "p346xxxxxxx",
+     "taken_at": 1577836800,
+     "product_type": "clips",
+     "caption_is_edited": true,
+     "can_viewer_reshare": true,
+     "can_viewer_save": true,
+     "comment_count": 0,
+     "are_remixes_crosspostable": true,
+     "video_versions": [
+      {
+       "url": "https://example.invalid/347",
+       "height": 720,
+       "width": 960,
+       "type": 101,
+       "id": "p348xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/347",
+       "height": 720,
+       "width": 960,
+       "type": 102,
+       "id": "p348xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/347",
+       "height": 720,
+       "width": 960,
+       "type": 103,
+       "id": "p348xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      }
+     ],
+     "image_versions2": {
+      "candidates": [
+       {
+        "estimated_scans_sizes": [],
+        "height": 1594,
+        "scans_profile": null,
+        "url": "https://example.invalid/349",
+        "width": 896
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1281,
+        "scans_profile": null,
+        "url": "https://example.invalid/350",
+        "width": 720
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1139,
+        "scans_profile": null,
+        "url": "https://example.invalid/351",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 854,
+        "scans_profile": null,
+        "url": "https://example.invalid/352",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 569,
+        "scans_profile": null,
+        "url": "https://example.invalid/353",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 427,
+        "scans_profile": null,
+        "url": "https://example.invalid/354",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 896,
+        "scans_profile": null,
+        "url": "https://example.invalid/355",
+        "width": 896
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 750,
+        "scans_profile": null,
+        "url": "https://example.invalid/356",
+        "width": 750
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 640,
+        "scans_profile": null,
+        "url": "https://example.invalid/357",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 480,
+        "scans_profile": null,
+        "url": "https://example.invalid/358",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 320,
+        "scans_profile": null,
+        "url": "https://example.invalid/359",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 240,
+        "scans_profile": null,
+        "url": "https://example.invalid/360",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 150,
+        "scans_profile": null,
+        "url": "https://example.invalid/361",
+        "width": 150
+       }
+      ],
+      "additional_candidates": {
+       "first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 480,
+        "scans_profile": null,
+        "url": "https://example.invalid/362",
+        "width": 640
+       },
+       "igtv_first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 480,
+        "scans_profile": null,
+        "url": "https://example.invalid/362",
+        "width": 640
+       },
+       "smart_frame": null
+      },
+      "scrubber_spritesheet_info_candidates": {
+       "default": {
+        "sprite_urls": [
+         "https://example.invalid/363"
+        ],
+        "file_size_kb": 0,
+        "max_thumbnails_per_sprite": 0,
+        "rendered_width": 0,
+        "sprite_height": 0,
+        "sprite_width": 0,
+        "thumbnail_duration": 0.0,
+        "thumbnail_height": 0,
+        "thumbnail_width": 0,
+        "thumbnails_per_row": 0,
+        "total_thumbnail_num_per_sprite": 0,
+        "video_length": 0.0
+       }
+      },
+      "smart_thumbnail_enabled": null
+     },
+     "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT89.861221S\"/>",
+     "has_audio": true,
+     "like_count": 0,
+     "locations": [],
+     "is_dash_eligible": 0,
+     "is_unified_video": false,
+     "video_subtitles_locale": "p56xx",
+     "community_notes_info": {
+      "has_viewer_submitted_note": false,
+      "note_submission_disabled": false,
+      "enable_submission_friction": false,
+      "is_eligible_for_request_a_note": true
+     },
+     "enable_media_notes_production": true,
+     "play_count": 0,
+     "ig_play_count": 0,
+     "is_third_party_downloads_eligible": true,
+     "original_width": 1440,
+     "original_height": 1080,
+     "is_reuse_allowed": true,
+     "has_shared_to_fb": 0,
+     "has_privately_liked": false,
+     "ig_media_sharing_disabled": false,
+     "organic_tracking_token": "p364xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_views_fetching": true,
+     "video_duration": 0.0,
+     "is_post_live_clips_media": false,
+     "is_quiet_post": false,
+     "is_comments_gif_composer_enabled": true,
+     "has_high_risk_gen_ai_inform_treatment": false,
+     "media_cropping_info": {
+      "four_by_three_crop": {
+       "crop_left": 0,
+       "crop_right": 0,
+       "crop_top": 0.0,
+       "crop_bottom": 0.0
+      }
+     },
+     "clips_tab_pinned_user_ids": [],
+     "collaborator_edit_eligibility": false,
+     "translated_langs_for_autodub": [],
+     "original_lang_for_translations": "p5",
+     "client_cache_key": "p365xxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_tagged_users": true,
+     "video_sticker_locales": [],
+     "filter_type": 0,
+     "device_timestamp": 0,
+     "profile_grid_control_enabled": false,
+     "is_visual_reply_commenter_notice_enabled": true,
+     "should_request_ads": false,
+     "meta_ai_suggested_prompts": [],
+     "clips_metadata": {
+      "achievements_info": {
+       "num_earned_achievements": null,
+       "show_achievements": false
+      },
+      "additional_audio_info": {
+       "additional_audio_username": null,
+       "audio_reattribution_info": {
+        "should_allow_restore": false
+       }
+      },
+      "asset_recommendation_info": null,
+      "audio_ranking_info": {
+       "best_audio_cluster_id": "9000000000000366"
+      },
+      "audio_type": "p237xxxxxxxxxx",
+      "branded_content_tag_info": {
+       "can_add_tag": false
+      },
+      "clips_creation_entry_point": "p367",
+      "content_appreciation_info": {
+       "enabled": true,
+       "entry_point_container": {
+        "comment": {
+         "action_type": "p72xxxx"
+        },
+        "overflow": null,
+        "pill": {
+         "action_type": "p72xxxx",
+         "priority": 0
+        }
+       }
+      },
+      "contextual_highlight_info": null,
+      "cutout_sticker_info": [],
+      "disable_use_in_clips_client_cache": false,
+      "featured_label": null,
+      "is_fan_club_promo_video": false,
+      "is_public_chat_welcome_video": false,
+      "is_shared_to_fb": false,
+      "mashup_info": {
+       "can_toggle_mashups_allowed": false,
+       "formatted_mashups_count": null,
+       "has_been_mashed_up": false,
+       "has_nonmimicable_additional_audio": true,
+       "is_creator_requesting_mashup": false,
+       "is_light_weight_check": true,
+       "is_pivot_page_available": false,
+       "is_light_weight_reuse_allowed_check": false,
+       "is_reuse_allowed": true,
+       "mashup_type": null,
+       "mashups_allowed": true,
+       "non_privacy_filtered_mashups_media_count": 0,
+       "original_media": null,
+       "privacy_filtered_mashups_media_count": null
+      },
+      "music_canonical_id": "90000000000000368",
+      "music_info": {
+       "music_asset_info": {
+        "allows_saving": true,
+        "artist_id": "900000000000369",
+        "audio_asset_id": "900000000000370",
+        "audio_cluster_id": "9000000000000366",
+        "cover_artwork_thumbnail_uri": "https://example.invalid/371",
+        "cover_artwork_uri": "https://example.invalid/372",
+        "dark_message": null,
+        "dash_manifest": null,
+        "display_artist": "p373xxxxxxxxxxx",
+        "duration_in_ms": 0,
+        "fast_start_progressive_download_url": "https://example.invalid/374",
+        "has_lyrics": true,
+        "highlight_start_times_in_ms": [
+         0,
+         0,
+         0
+        ],
+        "id": "900000000000370",
+        "ig_username": "p375xxxxxxxxx",
+        "is_eligible_for_audio_effects": true,
+        "is_explicit": true,
+        "progressive_download_url": "https://example.invalid/374",
+        "reactive_audio_download_url": null,
+        "sanitized_title": null,
+        "subtitle": "",
+        "title": "p376xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "spotify_track_metadata": {
+         "spotify_listen_uri": "https://example.invalid/377",
+         "spotify_track_id": "p378xxxxxxxxxxxxxxxxxx"
+        },
+        "lyrics": null,
+        "song_monetization_info": "p379xxxx",
+        "licensed_music_subtype": "p247xxx",
+        "is_eligible_for_vinyl_sticker": true,
+        "web_30s_preview_download_url": "https://example.invalid/380"
+       },
+       "music_consumption_info": {
+        "allow_media_creation_with_music": true,
+        "audio_asset_start_time_in_ms": 0,
+        "derived_content_start_time_in_composition_in_ms": 0,
+        "display_labels": null,
+        "audio_filter_infos": [],
+        "audio_muting_info": {
+         "allow_audio_editing": false,
+         "mute_audio": false,
+         "mute_reason_str": "",
+         "show_muted_audio_toast": false
+        },
+        "contains_lyrics": null,
+        "derived_content_id": null,
+        "ig_artist": {
+         "strong_id__": "90000343",
+         "id": "90000343",
+         "full_name": "p381xxxxxxxxxxxxx",
+         "is_private": false,
+         "is_verified": true,
+         "pk": 0,
+         "pk_id": "p382xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000383_90000343",
+         "profile_pic_url": "https://example.invalid/384",
+         "username": "p385xxxxxxxxxxxxx"
+        },
+        "is_bookmarked": false,
+        "is_trending_in_clips": false,
+        "overlap_duration_in_ms": 0,
+        "placeholder_profile_pic_url": "https://example.invalid/386",
+        "should_allow_music_editing": false,
+        "should_mute_audio": false,
+        "should_mute_audio_reason": "",
+        "should_render_soundwave": false,
+        "trend_rank": null,
+        "previous_trend_rank": null
+       }
+      },
+      "nux_info": null,
+      "original_sound_info": null,
+      "originality_info": null,
+      "professional_clips_upsell_type": 0,
+      "show_achievements": false,
+      "reels_on_the_rise_info": null,
+      "reusable_text_attribute_string": null,
+      "reusable_text_info": null,
+      "shopping_info": null,
+      "template_info": null,
+      "viewer_interaction_settings": null
+     },
+     "number_of_qualities": 0,
+     "related_ads_pivots_media_info": "p12xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "subtype_name_for_REST__": "p8xxxxxxxxxxx",
+     "is_eligible_for_poe": true,
+     "eligible_insights_entrypoints": "p13x",
+     "igbio_product": null,
+     "hidden_likes_string_variant": 0,
+     "is_social_ufi_disabled": false,
+     "boost_unavailable_reason": null,
+     "boost_unavailable_identifier": null,
+     "boost_unavailable_reason_v2": null,
+     "can_reply": false,
+     "photo_of_you": false,
+     "media_repost_count": 0,
+     "media_attributions_data": [],
+     "media_ui_attributions_data": [],
+     "media_ui_attributions_data_v2": [],
+     "can_view_more_preview_comments": false,
+     "mezql_token": "",
+     "is_eligible_content_for_post_roll_ad": false,
+     "is_cutout_sticker_allowed": true,
+     "is_photo_comments_composer_enabled_for_author": false,
+     "hide_view_all_comment_entrypoint": true,
+     "has_liked": false,
+     "is_organic_product_tagging_eligible": true,
+     "view_state_item_type": 0,
+     "top_likers": [
+      "p387xxxxxxxxx"
+     ],
+     "is_paid_partnership": false,
+     "is_in_profile_grid": false,
+     "is_tagged_media_shared_to_viewer_profile_grid": false,
+     "should_show_author_pog_for_tagged_media_shared_to_profile_grid": false,
+     "integrity_review_decision": "p5xxxxx",
+     "has_delayed_metadata": false,
+     "deleted_reason": 0,
+     "is_reshare_of_text_post_app_media_in_ig": false,
+     "timeline_pinned_user_ids": [],
+     "is_open_to_public_submission": false,
+     "can_see_insights_as_brand": false,
+     "media_reposter_bottomsheet_enabled": false,
+     "coauthor_producer_can_see_organic_insights": false,
+     "share_count_disabled": false,
+     "subscribe_cta_visible": false,
+     "commerce_integrity_review_decision": "",
+     "sharing_friction_info": {
+      "bloks_app_url": null,
+      "sharing_friction_payload": null,
+      "should_have_sharing_friction": false
+     },
+     "media_overlay_info": null,
+     "media_notes": {
+      "items": []
+     },
+     "fb_user_tags": {
+      "in": []
+     },
+     "coauthor_producers": [],
+     "crosspost_metadata": {
+      "fb_downstream_use_xpost_metadata": {
+       "downstream_use_xpost_deny_reason": "p13x"
+      }
+     },
+     "cutout_sticker_info": [],
+     "invited_coauthor_producers": [],
+     "gen_ai_detection_method": {
+      "detection_method": "p13x"
+     },
+     "floating_context_items": [],
+     "comment_inform_treatment": {
+      "should_have_inform_treatment": false,
+      "text": "",
+      "action_type": null,
+      "url": null
+     },
+     "creative_config": null,
+     "facepile_top_likers": [
+      {
+       "id": "90000000388",
+       "full_name": "p389xxxxxxxxxxxxx",
+       "is_private": true,
+       "is_verified": false,
+       "pk": 0,
+       "pk_id": "p390xxxxxxxxxxxxx",
+       "profile_pic_id": "9000000000000000391_90000000388",
+       "profile_pic_url": "https://example.invalid/392",
+       "strong_id__": "90000000388",
+       "username": "p385xxxxxxxxxxxxx"
+      }
+     ],
+     "usertags": {
+      "in": [
+       {
+        "show_category_of_user": null,
+        "position": [
+         0,
+         0
+        ],
+        "user": {
+         "strong_id__": "900393",
+         "id": "900393",
+         "full_name": "p390xxxxxxxxxxxxx",
+         "has_onboarded_to_text_post_app": null,
+         "is_private": false,
+         "is_verified": true,
+         "pk": "p394xxxxxxxxxxxx",
+         "pk_id": "p394xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000395_900393",
+         "profile_pic_url": "https://example.invalid/396",
+         "username": "p397xxxxxxxxxxxxx"
+        }
+       },
+       {
+        "show_category_of_user": null,
+        "position": [
+         0,
+         0
+        ],
+        "user": {
+         "strong_id__": "900398",
+         "id": "900398",
+         "full_name": "p399xxxxxxxxxxxxx",
+         "has_onboarded_to_text_post_app": null,
+         "is_private": false,
+         "is_verified": true,
+         "pk": "p394xxxxxxxxxxxx",
+         "pk_id": "p394xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000400_900398",
+         "profile_pic_url": "https://example.invalid/401",
+         "username": "p402xxxxxxxxxxxx"
+        }
+       },
+       {
+        "show_category_of_user": null,
+        "position": [
+         0,
+         0
+        ],
+        "user": {
+         "strong_id__": "90000403",
+         "id": "90000403",
+         "full_name": "p404xxxxxxxxxxxxx",
+         "has_onboarded_to_text_post_app": null,
+         "is_private": false,
+         "is_verified": true,
+         "pk": "p382xxxxxxxxxxxx",
+         "pk_id": "p382xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000405_90000403",
+         "profile_pic_url": "https://example.invalid/406",
+         "username": "p382xxxxxxxxxxxx"
+        }
+       },
+       {
+        "show_category_of_user": null,
+        "position": [
+         0,
+         0
+        ],
+        "user": {
+         "strong_id__": "9000000407",
+         "id": "9000000407",
+         "full_name": "p381xxxxxxxxxxxxx",
+         "has_onboarded_to_text_post_app": null,
+         "is_private": false,
+         "is_verified": true,
+         "pk": "p399xxxxxxxxxxxxx",
+         "pk_id": "p399xxxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000408_9000000407",
+         "profile_pic_url": "https://example.invalid/409",
+         "username": "p402xxxxxxxxxxxx"
+        }
+       }
+      ]
+     },
+     "caption": {
+      "strong_id__": "90000000000000410",
+      "pk": "p411xxxxxxxxxxxxx",
+      "bit_flags": 0,
+      "content_type": "p81xxxx",
+      "created_at": 0,
+      "created_at_utc": 0,
+      "did_report_as_spam": false,
+      "is_covered": false,
+      "is_ranked_comment": false,
+      "media_id": "9000000000000000342",
+      "private_reply_status": 0,
+      "share_enabled": false,
+      "status": "Active",
+      "text": "p412xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "type": 1,
+      "user": {
+       "strong_id__": "90000343",
+       "id": "90000343",
+       "pk": 0,
+       "pk_id": "p382xxxxxxxxxxxx",
+       "username": "p385xxxxxxxxxxxxx",
+       "full_name": "p381xxxxxxxxxxxxx",
+       "is_private": false,
+       "is_verified": true,
+       "profile_pic_id": "9000000000000000383_90000343",
+       "profile_pic_url": "https://example.invalid/384",
+       "fbid_v2": "90000000000000413",
+       "is_unpublished": false
+      },
+      "user_id": 0
+     },
+     "music_metadata": null,
+     "user": {
+      "is_embeds_disabled": false,
+      "id": "90000343",
+      "pk": 0,
+      "pk_id": "p382xxxxxxxxxxxx",
+      "strong_id__": "90000343",
+      "fbid_v2": "90000000000000413",
+      "profile_pic_id": "9000000000000000383_90000343",
+      "profile_pic_url": "https://example.invalid/384",
+      "eligible_for_text_app_activation_badge": false,
+      "interop_messaging_user_fbid": 0,
+      "username": "p385xxxxxxxxxxxxx",
+      "full_name": "p381xxxxxxxxxxxxx",
+      "is_private": false,
+      "is_unpublished": false,
+      "is_verified": true,
+      "is_ring_creator": false,
+      "show_ring_award": false,
+      "show_account_transparency_details": true,
+      "transparency_product_enabled": false,
+      "third_party_downloads_enabled": 0,
+      "feed_post_reshare_disabled": false,
+      "is_favorite": false,
+      "account_badges": [],
+      "account_type": 0,
+      "has_anonymous_profile_picture": false,
+      "friendship_status": {
+       "following": false,
+       "is_bestie": false,
+       "is_feed_favorite": false,
+       "is_private": false,
+       "is_restricted": false,
+       "is_muting_reel": false,
+       "followed_by": false
+      },
+      "latest_reel_media": 0,
+      "fan_club_info": {
+       "autosave_to_exclusive_highlight": null,
+       "connected_member_count": null,
+       "fan_club_id": null,
+       "fan_club_name": null,
+       "fan_consideration_page_revamp_eligiblity": null,
+       "has_enough_subscribers_for_ssc": null,
+       "is_fan_club_gifting_eligible": null,
+       "is_fan_club_referral_eligible": null,
+       "subscriber_count": null,
+       "has_created_ssc": null,
+       "is_free_trial_eligible": null,
+       "largest_public_bc_id": null,
+       "should_show_playlists_in_profile_tab": null
+      },
+      "user_activation_info": {}
+     }
+    }
+   },
+   {
+    "media": {
+     "strong_id__": "9000000000000000414_90000000415",
+     "id": "9000000000000000414_90000000415",
+     "pk": "p344xxxxxxxxxxxxx",
+     "fbid": "90000000000000416",
+     "media_type": 2,
+     "like_and_view_counts_disabled": false,
+     "code": "p417xxxxxxx",
+     "taken_at": 1587601227,
+     "product_type": "clips",
+     "caption_is_edited": false,
+     "can_viewer_reshare": true,
+     "can_viewer_save": true,
+     "comment_count": 0,
+     "are_remixes_crosspostable": true,
+     "video_versions": [
+      {
+       "url": "https://example.invalid/418",
+       "height": 1280,
+       "width": 720,
+       "type": 101,
+       "id": "p419xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/418",
+       "height": 1280,
+       "width": 720,
+       "type": 102,
+       "id": "p419xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/418",
+       "height": 1280,
+       "width": 720,
+       "type": 103,
+       "id": "p419xxxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      }
+     ],
+     "image_versions2": {
+      "candidates": [
+       {
+        "estimated_scans_sizes": [],
+        "height": 2096,
+        "scans_profile": null,
+        "url": "https://example.invalid/420",
+        "width": 1179
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1280,
+        "scans_profile": null,
+        "url": "https://example.invalid/421",
+        "width": 720
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1138,
+        "scans_profile": null,
+        "url": "https://example.invalid/422",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 853,
+        "scans_profile": null,
+        "url": "https://example.invalid/423",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 569,
+        "scans_profile": null,
+        "url": "https://example.invalid/424",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 427,
+        "scans_profile": null,
+        "url": "https://example.invalid/425",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1080,
+        "scans_profile": null,
+        "url": "https://example.invalid/426",
+        "width": 1080
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 750,
+        "scans_profile": null,
+        "url": "https://example.invalid/427",
+        "width": 750
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 640,
+        "scans_profile": null,
+        "url": "https://example.invalid/428",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 480,
+        "scans_profile": null,
+        "url": "https://example.invalid/429",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 320,
+        "scans_profile": null,
+        "url": "https://example.invalid/430",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 240,
+        "scans_profile": null,
+        "url": "https://example.invalid/431",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 150,
+        "scans_profile": null,
+        "url": "https://example.invalid/432",
+        "width": 150
+       }
+      ],
+      "additional_candidates": {
+       "first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 1136,
+        "scans_profile": null,
+        "url": "https://example.invalid/433",
+        "width": 640
+       },
+       "igtv_first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 1136,
+        "scans_profile": null,
+        "url": "https://example.invalid/433",
+        "width": 640
+       },
+       "smart_frame": null
+      },
+      "scrubber_spritesheet_info_candidates": {
+       "default": {
+        "sprite_urls": [
+         "https://example.invalid/434"
+        ],
+        "file_size_kb": 0,
+        "max_thumbnails_per_sprite": 0,
+        "rendered_width": 0,
+        "sprite_height": 0,
+        "sprite_width": 0,
+        "thumbnail_duration": 0.0,
+        "thumbnail_height": 0,
+        "thumbnail_width": 0,
+        "thumbnails_per_row": 0,
+        "total_thumbnail_num_per_sprite": 0,
+        "video_length": 0.0
+       }
+      },
+      "smart_thumbnail_enabled": null
+     },
+     "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT37.266666S\"/>",
+     "has_audio": true,
+     "like_count": 0,
+     "locations": [],
+     "is_dash_eligible": 0,
+     "is_unified_video": false,
+     "community_notes_info": {
+      "has_viewer_submitted_note": false,
+      "note_submission_disabled": false,
+      "enable_submission_friction": false,
+      "is_eligible_for_request_a_note": true
+     },
+     "enable_media_notes_production": true,
+     "play_count": 0,
+     "fb_play_count": 0,
+     "ig_play_count": 0,
+     "is_third_party_downloads_eligible": true,
+     "original_width": 540,
+     "original_height": 960,
+     "is_reuse_allowed": true,
+     "has_shared_to_fb": 0,
+     "fb_like_count": 0,
+     "has_privately_liked": false,
+     "ig_media_sharing_disabled": false,
+     "organic_tracking_token": "p435xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_views_fetching": true,
+     "video_duration": 0.0,
+     "is_post_live_clips_media": false,
+     "is_quiet_post": false,
+     "is_comments_gif_composer_enabled": true,
+     "has_high_risk_gen_ai_inform_treatment": false,
+     "media_cropping_info": {
+      "four_by_three_crop": {
+       "crop_left": 0,
+       "crop_right": 0,
+       "crop_top": 0.0,
+       "crop_bottom": 0.0
+      }
+     },
+     "clips_tab_pinned_user_ids": [],
+     "collaborator_edit_eligibility": false,
+     "translated_langs_for_autodub": [],
+     "client_cache_key": "p436xxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_tagged_users": false,
+     "video_sticker_locales": [],
+     "filter_type": 0,
+     "device_timestamp": 0,
+     "profile_grid_control_enabled": false,
+     "is_visual_reply_commenter_notice_enabled": true,
+     "should_request_ads": false,
+     "meta_ai_suggested_prompts": [],
+     "clips_metadata": {
+      "achievements_info": {
+       "num_earned_achievements": null,
+       "show_achievements": false
+      },
+      "additional_audio_info": {
+       "additional_audio_username": null,
+       "audio_reattribution_info": {
+        "should_allow_restore": false
+       }
+      },
+      "asset_recommendation_info": null,
+      "audio_ranking_info": {
+       "best_audio_cluster_id": "9000000000000366"
+      },
+      "audio_type": "p237xxxxxxxxxx",
+      "branded_content_tag_info": {
+       "can_add_tag": false
+      },
+      "clips_creation_entry_point": "p31xx",
+      "content_appreciation_info": {
+       "enabled": false,
+       "entry_point_container": null
+      },
+      "contextual_highlight_info": null,
+      "cutout_sticker_info": [],
+      "disable_use_in_clips_client_cache": false,
+      "featured_label": null,
+      "is_fan_club_promo_video": false,
+      "is_public_chat_welcome_video": false,
+      "is_shared_to_fb": false,
+      "mashup_info": {
+       "can_toggle_mashups_allowed": false,
+       "formatted_mashups_count": null,
+       "has_been_mashed_up": false,
+       "has_nonmimicable_additional_audio": true,
+       "is_creator_requesting_mashup": false,
+       "is_light_weight_check": true,
+       "is_pivot_page_available": false,
+       "is_light_weight_reuse_allowed_check": false,
+       "is_reuse_allowed": true,
+       "mashup_type": null,
+       "mashups_allowed": true,
+       "non_privacy_filtered_mashups_media_count": 0,
+       "original_media": null,
+       "privacy_filtered_mashups_media_count": null
+      },
+      "music_canonical_id": "90000000000000368",
+      "music_info": {
+       "music_asset_info": {
+        "allows_saving": true,
+        "artist_id": "900000000000369",
+        "audio_asset_id": "900000000000370",
+        "audio_cluster_id": "9000000000000366",
+        "cover_artwork_thumbnail_uri": "https://example.invalid/371",
+        "cover_artwork_uri": "https://example.invalid/372",
+        "dark_message": null,
+        "dash_manifest": null,
+        "display_artist": "p373xxxxxxxxxxx",
+        "duration_in_ms": 0,
+        "fast_start_progressive_download_url": "https://example.invalid/374",
+        "has_lyrics": true,
+        "highlight_start_times_in_ms": [
+         0,
+         0,
+         0
+        ],
+        "id": "900000000000370",
+        "ig_username": "p375xxxxxxxxx",
+        "is_eligible_for_audio_effects": true,
+        "is_explicit": true,
+        "progressive_download_url": "https://example.invalid/374",
+        "reactive_audio_download_url": null,
+        "sanitized_title": null,
+        "subtitle": "",
+        "title": "p376xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "spotify_track_metadata": {
+         "spotify_listen_uri": "https://example.invalid/377",
+         "spotify_track_id": "p378xxxxxxxxxxxxxxxxxx"
+        },
+        "lyrics": null,
+        "song_monetization_info": "p379xxxx",
+        "licensed_music_subtype": "p247xxx",
+        "is_eligible_for_vinyl_sticker": true,
+        "web_30s_preview_download_url": "https://example.invalid/380"
+       },
+       "music_consumption_info": {
+        "allow_media_creation_with_music": true,
+        "audio_asset_start_time_in_ms": 0,
+        "derived_content_start_time_in_composition_in_ms": 0,
+        "display_labels": null,
+        "audio_filter_infos": [],
+        "audio_muting_info": {
+         "allow_audio_editing": false,
+         "mute_audio": false,
+         "mute_reason_str": "",
+         "show_muted_audio_toast": false
+        },
+        "contains_lyrics": null,
+        "derived_content_id": null,
+        "ig_artist": {
+         "strong_id__": "90000343",
+         "id": "90000343",
+         "full_name": "p381xxxxxxxxxxxxx",
+         "is_private": false,
+         "is_verified": true,
+         "pk": 0,
+         "pk_id": "p382xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000383_90000343",
+         "profile_pic_url": "https://example.invalid/384",
+         "username": "p385xxxxxxxxxxxxx"
+        },
+        "is_bookmarked": false,
+        "is_trending_in_clips": false,
+        "overlap_duration_in_ms": 0,
+        "placeholder_profile_pic_url": "https://example.invalid/386",
+        "should_allow_music_editing": false,
+        "should_mute_audio": false,
+        "should_mute_audio_reason": "",
+        "should_render_soundwave": false,
+        "trend_rank": null,
+        "previous_trend_rank": null
+       }
+      },
+      "nux_info": null,
+      "original_sound_info": null,
+      "originality_info": null,
+      "professional_clips_upsell_type": 0,
+      "show_achievements": false,
+      "reels_on_the_rise_info": null,
+      "reusable_text_attribute_string": null,
+      "reusable_text_info": null,
+      "shopping_info": null,
+      "template_info": null,
+      "viewer_interaction_settings": null
+     },
+     "number_of_qualities": 0,
+     "related_ads_pivots_media_info": "p12xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "subtype_name_for_REST__": "p8xxxxxxxxxxx",
+     "is_eligible_for_poe": false,
+     "eligible_insights_entrypoints": "p13x",
+     "igbio_product": null,
+     "fb_comment_count": 0,
+     "hidden_likes_string_variant": 0,
+     "is_social_ufi_disabled": false,
+     "boost_unavailable_reason": null,
+     "boost_unavailable_identifier": null,
+     "boost_unavailable_reason_v2": null,
+     "can_reply": false,
+     "media_repost_count": 0,
+     "media_attributions_data": [],
+     "media_ui_attributions_data": [],
+     "media_ui_attributions_data_v2": [],
+     "can_view_more_preview_comments": false,
+     "mezql_token": "",
+     "is_eligible_content_for_post_roll_ad": false,
+     "is_cutout_sticker_allowed": true,
+     "is_photo_comments_composer_enabled_for_author": true,
+     "hide_view_all_comment_entrypoint": true,
+     "has_liked": false,
+     "is_organic_product_tagging_eligible": true,
+     "view_state_item_type": 0,
+     "top_likers": [],
+     "is_paid_partnership": false,
+     "is_in_profile_grid": false,
+     "is_tagged_media_shared_to_viewer_profile_grid": false,
+     "should_show_author_pog_for_tagged_media_shared_to_profile_grid": false,
+     "integrity_review_decision": "p5xxxxx",
+     "has_delayed_metadata": false,
+     "deleted_reason": 0,
+     "is_reshare_of_text_post_app_media_in_ig": false,
+     "timeline_pinned_user_ids": [],
+     "is_open_to_public_submission": false,
+     "can_see_insights_as_brand": false,
+     "media_reposter_bottomsheet_enabled": false,
+     "coauthor_producer_can_see_organic_insights": false,
+     "share_count_disabled": false,
+     "subscribe_cta_visible": false,
+     "sharing_friction_info": {
+      "bloks_app_url": null,
+      "sharing_friction_payload": null,
+      "should_have_sharing_friction": false
+     },
+     "media_overlay_info": null,
+     "media_notes": {
+      "items": []
+     },
+     "fb_user_tags": {
+      "in": []
+     },
+     "coauthor_producers": [],
+     "crosspost_metadata": {
+      "fb_downstream_use_xpost_metadata": {
+       "downstream_use_xpost_deny_reason": "p13x"
+      },
+      "unified_feedback_enabled": true,
+      "is_feedback_aggregated": true
+     },
+     "cutout_sticker_info": [],
+     "invited_coauthor_producers": [],
+     "gen_ai_detection_method": {
+      "detection_method": "p13x"
+     },
+     "floating_context_items": [],
+     "comment_inform_treatment": {
+      "should_have_inform_treatment": false,
+      "text": "",
+      "action_type": null,
+      "url": null
+     },
+     "creative_config": null,
+     "facepile_top_likers": [],
+     "caption": {
+      "strong_id__": "90000000000000437",
+      "pk": "p411xxxxxxxxxxxxx",
+      "bit_flags": 0,
+      "content_type": "p81xxxx",
+      "created_at": 0,
+      "created_at_utc": 0,
+      "did_report_as_spam": false,
+      "is_covered": false,
+      "is_ranked_comment": false,
+      "media_id": "9000000000000000414",
+      "private_reply_status": 0,
+      "share_enabled": false,
+      "status": "Active",
+      "text": "p438xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "type": 1,
+      "user": {
+       "strong_id__": "90000000415",
+       "id": "90000000415",
+       "pk": 0,
+       "pk_id": "p390xxxxxxxxxxxxx",
+       "username": "p404xxxxxxxxxxxxx",
+       "full_name": "p439xxxxxxxxxxxxx",
+       "is_private": false,
+       "is_verified": false,
+       "profile_pic_id": "9000000000000000440_90000000415",
+       "profile_pic_url": "https://example.invalid/441",
+       "fbid_v2": "90000000000000442",
+       "is_unpublished": false
+      },
+      "user_id": 0
+     },
+     "music_metadata": null,
+     "user": {
+      "is_embeds_disabled": false,
+      "id": "90000000415",
+      "pk": 0,
+      "pk_id": "p390xxxxxxxxxxxxx",
+      "strong_id__": "90000000415",
+      "fbid_v2": "90000000000000442",
+      "profile_pic_id": "9000000000000000440_90000000415",
+      "profile_pic_url": "https://example.invalid/441",
+      "eligible_for_text_app_activation_badge": false,
+      "interop_messaging_user_fbid": "90000000000000443",
+      "username": "p404xxxxxxxxxxxxx",
+      "full_name": "p439xxxxxxxxxxxxx",
+      "is_private": false,
+      "is_unpublished": false,
+      "is_verified": false,
+      "is_ring_creator": false,
+      "show_ring_award": false,
+      "show_account_transparency_details": true,
+      "transparency_product_enabled": false,
+      "third_party_downloads_enabled": 0,
+      "feed_post_reshare_disabled": false,
+      "is_favorite": false,
+      "account_badges": [],
+      "account_type": 0,
+      "has_anonymous_profile_picture": false,
+      "friendship_status": {
+       "following": false,
+       "is_bestie": false,
+       "is_feed_favorite": false,
+       "is_private": false,
+       "is_restricted": false,
+       "is_muting_reel": false,
+       "followed_by": false
+      },
+      "latest_reel_media": 0,
+      "fan_club_info": {
+       "autosave_to_exclusive_highlight": null,
+       "connected_member_count": null,
+       "fan_club_id": null,
+       "fan_club_name": null,
+       "fan_consideration_page_revamp_eligiblity": null,
+       "has_enough_subscribers_for_ssc": null,
+       "is_fan_club_gifting_eligible": null,
+       "is_fan_club_referral_eligible": null,
+       "subscriber_count": null,
+       "has_created_ssc": null,
+       "is_free_trial_eligible": null,
+       "largest_public_bc_id": null,
+       "should_show_playlists_in_profile_tab": null
+      },
+      "user_activation_info": {}
+     }
+    }
+   },
+   {
+    "media": {
+     "strong_id__": "9000000000000000444_90000000445",
+     "id": "9000000000000000444_90000000445",
+     "pk": "p344xxxxxxxxxxxxx",
+     "fbid": "90000000000000446",
+     "media_type": 2,
+     "like_and_view_counts_disabled": false,
+     "code": "p447xxxxxxx",
+     "taken_at": 1587416200,
+     "product_type": "clips",
+     "caption_is_edited": false,
+     "can_viewer_reshare": true,
+     "can_viewer_save": true,
+     "comment_count": 0,
+     "are_remixes_crosspostable": true,
+     "video_versions": [
+      {
+       "url": "https://example.invalid/448",
+       "height": 1280,
+       "width": 720,
+       "type": 101,
+       "id": "p449xxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/448",
+       "height": 1280,
+       "width": 720,
+       "type": 102,
+       "id": "p449xxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      },
+      {
+       "url": "https://example.invalid/448",
+       "height": 1280,
+       "width": 720,
+       "type": 103,
+       "id": "p449xxxxxxxxxxxx",
+       "fallback": null,
+       "url_expiration_timestamp_us": null,
+       "bandwidth": 0,
+       "progressive_identifier": "p17x"
+      }
+     ],
+     "image_versions2": {
+      "candidates": [
+       {
+        "estimated_scans_sizes": [],
+        "height": 2096,
+        "scans_profile": null,
+        "url": "https://example.invalid/450",
+        "width": 1179
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1280,
+        "scans_profile": null,
+        "url": "https://example.invalid/451",
+        "width": 720
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1138,
+        "scans_profile": null,
+        "url": "https://example.invalid/452",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 853,
+        "scans_profile": null,
+        "url": "https://example.invalid/453",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 569,
+        "scans_profile": null,
+        "url": "https://example.invalid/454",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 427,
+        "scans_profile": null,
+        "url": "https://example.invalid/455",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 1080,
+        "scans_profile": null,
+        "url": "https://example.invalid/456",
+        "width": 1080
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 750,
+        "scans_profile": null,
+        "url": "https://example.invalid/457",
+        "width": 750
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 640,
+        "scans_profile": null,
+        "url": "https://example.invalid/458",
+        "width": 640
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 480,
+        "scans_profile": null,
+        "url": "https://example.invalid/459",
+        "width": 480
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 320,
+        "scans_profile": null,
+        "url": "https://example.invalid/460",
+        "width": 320
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 240,
+        "scans_profile": null,
+        "url": "https://example.invalid/461",
+        "width": 240
+       },
+       {
+        "estimated_scans_sizes": [],
+        "height": 150,
+        "scans_profile": null,
+        "url": "https://example.invalid/462",
+        "width": 150
+       }
+      ],
+      "additional_candidates": {
+       "first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 1136,
+        "scans_profile": null,
+        "url": "https://example.invalid/463",
+        "width": 640
+       },
+       "igtv_first_frame": {
+        "estimated_scans_sizes": [],
+        "height": 1136,
+        "scans_profile": null,
+        "url": "https://example.invalid/463",
+        "width": 640
+       },
+       "smart_frame": null
+      },
+      "scrubber_spritesheet_info_candidates": {
+       "default": {
+        "sprite_urls": [
+         "https://example.invalid/464"
+        ],
+        "file_size_kb": 0,
+        "max_thumbnails_per_sprite": 0,
+        "rendered_width": 0,
+        "sprite_height": 0,
+        "sprite_width": 0,
+        "thumbnail_duration": 0.0,
+        "thumbnail_height": 0,
+        "thumbnail_width": 0,
+        "thumbnails_per_row": 0,
+        "total_thumbnail_num_per_sprite": 0,
+        "video_length": 0.0
+       }
+      },
+      "smart_thumbnail_enabled": null
+     },
+     "video_dash_manifest": "<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\" mediaPresentationDuration=\"PT22.088755S\"/>",
+     "has_audio": true,
+     "like_count": 0,
+     "locations": [],
+     "is_dash_eligible": 0,
+     "is_unified_video": false,
+     "collab_follow_button_info": {
+      "is_owner_in_author_exp": true,
+      "show_follow_button": true
+     },
+     "community_notes_info": {
+      "has_viewer_submitted_note": false,
+      "note_submission_disabled": false,
+      "enable_submission_friction": false,
+      "is_eligible_for_request_a_note": true
+     },
+     "enable_media_notes_production": true,
+     "play_count": 0,
+     "fb_play_count": 0,
+     "ig_play_count": 0,
+     "is_third_party_downloads_eligible": true,
+     "original_width": 540,
+     "original_height": 960,
+     "is_reuse_allowed": false,
+     "has_shared_to_fb": 0,
+     "fb_like_count": 0,
+     "has_privately_liked": false,
+     "ig_media_sharing_disabled": false,
+     "organic_tracking_token": "p465xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_views_fetching": true,
+     "video_duration": 0.0,
+     "is_post_live_clips_media": false,
+     "is_quiet_post": false,
+     "is_comments_gif_composer_enabled": true,
+     "has_high_risk_gen_ai_inform_treatment": false,
+     "clips_tab_pinned_user_ids": [],
+     "collaborator_edit_eligibility": false,
+     "translated_langs_for_autodub": [],
+     "original_lang_for_translations": "p4",
+     "client_cache_key": "p467xxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "has_tagged_users": true,
+     "video_sticker_locales": [],
+     "filter_type": 0,
+     "device_timestamp": 0,
+     "profile_grid_control_enabled": false,
+     "is_visual_reply_commenter_notice_enabled": true,
+     "should_request_ads": false,
+     "meta_ai_suggested_prompts": [],
+     "clips_metadata": {
+      "achievements_info": {
+       "num_earned_achievements": null,
+       "show_achievements": false
+      },
+      "additional_audio_info": {
+       "additional_audio_username": null,
+       "audio_reattribution_info": {
+        "should_allow_restore": false
+       }
+      },
+      "asset_recommendation_info": null,
+      "audio_ranking_info": {
+       "best_audio_cluster_id": "9000000000000366"
+      },
+      "audio_type": "p237xxxxxxxxxx",
+      "branded_content_tag_info": {
+       "can_add_tag": false
+      },
+      "clips_creation_entry_point": "p31xx",
+      "content_appreciation_info": {
+       "enabled": false,
+       "entry_point_container": null
+      },
+      "contextual_highlight_info": null,
+      "cutout_sticker_info": [],
+      "disable_use_in_clips_client_cache": false,
+      "featured_label": null,
+      "is_fan_club_promo_video": false,
+      "is_public_chat_welcome_video": false,
+      "is_shared_to_fb": false,
+      "mashup_info": {
+       "can_toggle_mashups_allowed": false,
+       "formatted_mashups_count": null,
+       "has_been_mashed_up": false,
+       "has_nonmimicable_additional_audio": false,
+       "is_creator_requesting_mashup": false,
+       "is_light_weight_check": true,
+       "is_pivot_page_available": false,
+       "is_light_weight_reuse_allowed_check": false,
+       "is_reuse_allowed": false,
+       "mashup_type": null,
+       "mashups_allowed": false,
+       "non_privacy_filtered_mashups_media_count": 0,
+       "original_media": null,
+       "privacy_filtered_mashups_media_count": null
+      },
+      "music_canonical_id": "90000000000000368",
+      "music_info": {
+       "music_asset_info": {
+        "allows_saving": true,
+        "artist_id": "900000000000369",
+        "audio_asset_id": "900000000000370",
+        "audio_cluster_id": "9000000000000366",
+        "cover_artwork_thumbnail_uri": "https://example.invalid/371",
+        "cover_artwork_uri": "https://example.invalid/372",
+        "dark_message": null,
+        "dash_manifest": null,
+        "display_artist": "p373xxxxxxxxxxx",
+        "duration_in_ms": 0,
+        "fast_start_progressive_download_url": "https://example.invalid/374",
+        "has_lyrics": true,
+        "highlight_start_times_in_ms": [
+         0,
+         0,
+         0
+        ],
+        "id": "900000000000370",
+        "ig_username": "p375xxxxxxxxx",
+        "is_eligible_for_audio_effects": true,
+        "is_explicit": true,
+        "progressive_download_url": "https://example.invalid/374",
+        "reactive_audio_download_url": null,
+        "sanitized_title": null,
+        "subtitle": "",
+        "title": "p376xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "spotify_track_metadata": {
+         "spotify_listen_uri": "https://example.invalid/377",
+         "spotify_track_id": "p378xxxxxxxxxxxxxxxxxx"
+        },
+        "lyrics": null,
+        "song_monetization_info": "p379xxxx",
+        "licensed_music_subtype": "p247xxx",
+        "is_eligible_for_vinyl_sticker": true,
+        "web_30s_preview_download_url": "https://example.invalid/380"
+       },
+       "music_consumption_info": {
+        "allow_media_creation_with_music": true,
+        "audio_asset_start_time_in_ms": 0,
+        "derived_content_start_time_in_composition_in_ms": 0,
+        "display_labels": null,
+        "audio_filter_infos": [],
+        "audio_muting_info": {
+         "allow_audio_editing": false,
+         "mute_audio": false,
+         "mute_reason_str": "",
+         "show_muted_audio_toast": false
+        },
+        "contains_lyrics": null,
+        "derived_content_id": null,
+        "ig_artist": {
+         "strong_id__": "90000343",
+         "id": "90000343",
+         "full_name": "p381xxxxxxxxxxxxx",
+         "is_private": false,
+         "is_verified": true,
+         "pk": 0,
+         "pk_id": "p382xxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000383_90000343",
+         "profile_pic_url": "https://example.invalid/384",
+         "username": "p385xxxxxxxxxxxxx"
+        },
+        "is_bookmarked": false,
+        "is_trending_in_clips": false,
+        "overlap_duration_in_ms": 0,
+        "placeholder_profile_pic_url": "https://example.invalid/386",
+        "should_allow_music_editing": false,
+        "should_mute_audio": false,
+        "should_mute_audio_reason": "",
+        "should_render_soundwave": false,
+        "trend_rank": null,
+        "previous_trend_rank": null
+       }
+      },
+      "nux_info": null,
+      "original_sound_info": null,
+      "originality_info": null,
+      "professional_clips_upsell_type": 0,
+      "show_achievements": false,
+      "reels_on_the_rise_info": null,
+      "reusable_text_attribute_string": null,
+      "reusable_text_info": null,
+      "shopping_info": null,
+      "template_info": null,
+      "viewer_interaction_settings": null
+     },
+     "number_of_qualities": 0,
+     "related_ads_pivots_media_info": "p12xxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "subtype_name_for_REST__": "p8xxxxxxxxxxx",
+     "is_eligible_for_poe": false,
+     "eligible_insights_entrypoints": "p13x",
+     "igbio_product": null,
+     "fb_comment_count": 0,
+     "hidden_likes_string_variant": 0,
+     "is_social_ufi_disabled": false,
+     "boost_unavailable_reason": null,
+     "boost_unavailable_identifier": null,
+     "boost_unavailable_reason_v2": null,
+     "can_reply": false,
+     "photo_of_you": false,
+     "media_repost_count": 0,
+     "media_attributions_data": [],
+     "media_ui_attributions_data": [],
+     "media_ui_attributions_data_v2": [],
+     "can_view_more_preview_comments": false,
+     "mezql_token": "",
+     "is_eligible_content_for_post_roll_ad": false,
+     "is_cutout_sticker_allowed": false,
+     "is_photo_comments_composer_enabled_for_author": true,
+     "hide_view_all_comment_entrypoint": true,
+     "has_liked": false,
+     "is_organic_product_tagging_eligible": true,
+     "view_state_item_type": 0,
+     "top_likers": [],
+     "is_paid_partnership": false,
+     "is_in_profile_grid": false,
+     "is_tagged_media_shared_to_viewer_profile_grid": false,
+     "should_show_author_pog_for_tagged_media_shared_to_profile_grid": false,
+     "integrity_review_decision": "p5xxxxx",
+     "has_delayed_metadata": false,
+     "deleted_reason": 0,
+     "is_reshare_of_text_post_app_media_in_ig": false,
+     "timeline_pinned_user_ids": [],
+     "is_open_to_public_submission": false,
+     "can_see_insights_as_brand": false,
+     "media_reposter_bottomsheet_enabled": false,
+     "coauthor_producer_can_see_organic_insights": false,
+     "share_count_disabled": false,
+     "subscribe_cta_visible": false,
+     "lat": 0.0,
+     "lng": 0.0,
+     "location": {
+      "address": "p468xxxxxxxxxxxxxxxxxxxxxxx",
+      "city": "",
+      "external_source": "p469xxxxxxxxxxx",
+      "facebook_places_id": 0,
+      "has_viewer_saved": false,
+      "lat": 0.0,
+      "lng": 0.0,
+      "name": "p470xxxxxx",
+      "pk": 0,
+      "short_name": "p470xxxxxx"
+     },
+     "sharing_friction_info": {
+      "bloks_app_url": null,
+      "sharing_friction_payload": null,
+      "should_have_sharing_friction": false
+     },
+     "media_overlay_info": null,
+     "media_notes": {
+      "items": []
+     },
+     "fb_user_tags": {
+      "in": []
+     },
+     "coauthor_producers": [
+      {
+       "id": "9000000471",
+       "pk_id": "p399xxxxxxxxxxxxx",
+       "strong_id__": "9000000471",
+       "full_name": "p472xxxxxxxxxxxx",
+       "is_private": false,
+       "is_verified": false,
+       "pk": 0,
+       "profile_pic_id": "9000000000000000473_9000000471",
+       "profile_pic_url": "https://example.invalid/474",
+       "username": "p381xxxxxxxxxxxxx",
+       "friendship_status": {
+        "following": false,
+        "is_bestie": false,
+        "is_feed_favorite": false,
+        "is_private": false,
+        "is_restricted": false,
+        "is_muting_reel": false,
+        "followed_by": false
+       }
+      }
+     ],
+     "crosspost_metadata": {
+      "fb_downstream_use_xpost_metadata": {
+       "downstream_use_xpost_deny_reason": "p13x"
+      },
+      "unified_feedback_enabled": true,
+      "is_feedback_aggregated": true
+     },
+     "cutout_sticker_info": [],
+     "invited_coauthor_producers": [],
+     "gen_ai_detection_method": {
+      "detection_method": "p13x"
+     },
+     "floating_context_items": [],
+     "comment_inform_treatment": {
+      "should_have_inform_treatment": false,
+      "text": "",
+      "action_type": null,
+      "url": null
+     },
+     "creative_config": null,
+     "facepile_top_likers": [],
+     "usertags": {
+      "in": [
+       {
+        "show_category_of_user": null,
+        "position": [
+         0,
+         0
+        ],
+        "user": {
+         "strong_id__": "9000000471",
+         "id": "9000000471",
+         "full_name": "p472xxxxxxxxxxxx",
+         "has_onboarded_to_text_post_app": null,
+         "is_private": false,
+         "is_verified": false,
+         "pk": "p399xxxxxxxxxxxxx",
+         "pk_id": "p399xxxxxxxxxxxxx",
+         "profile_pic_id": "9000000000000000473_9000000471",
+         "profile_pic_url": "https://example.invalid/474",
+         "username": "p381xxxxxxxxxxxxx"
+        }
+       }
+      ]
+     },
+     "caption": {
+      "strong_id__": "90000000000000475",
+      "pk": "p411xxxxxxxxxxxxx",
+      "bit_flags": 0,
+      "content_type": "p81xxxx",
+      "created_at": 0,
+      "created_at_utc": 0,
+      "did_report_as_spam": false,
+      "is_covered": false,
+      "is_ranked_comment": false,
+      "media_id": "9000000000000000444",
+      "private_reply_status": 0,
+      "share_enabled": false,
+      "status": "Active",
+      "text": "p476xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "type": 1,
+      "user": {
+       "strong_id__": "90000000445",
+       "id": "90000000445",
+       "pk": 0,
+       "pk_id": "p390xxxxxxxxxxxxx",
+       "username": "p399xxxxxxxxxxxxx",
+       "full_name": "p399xxxxxxxxxxxxx",
+       "is_private": false,
+       "is_verified": false,
+       "profile_pic_id": "9000000000000000477_90000000445",
+       "profile_pic_url": "https://example.invalid/478",
+       "fbid_v2": "90000000000000479",
+       "is_unpublished": false
+      },
+      "user_id": 0
+     },
+     "music_metadata": null,
+     "user": {
+      "is_embeds_disabled": true,
+      "id": "90000000445",
+      "pk": 0,
+      "pk_id": "p390xxxxxxxxxxxxx",
+      "strong_id__": "90000000445",
+      "fbid_v2": "90000000000000479",
+      "profile_pic_id": "9000000000000000477_90000000445",
+      "profile_pic_url": "https://example.invalid/478",
+      "eligible_for_text_app_activation_badge": false,
+      "interop_messaging_user_fbid": "90000000000000480",
+      "username": "p399xxxxxxxxxxxxx",
+      "full_name": "p399xxxxxxxxxxxxx",
+      "is_private": false,
+      "is_unpublished": false,
+      "is_verified": false,
+      "is_ring_creator": false,
+      "show_ring_award": false,
+      "show_account_transparency_details": true,
+      "transparency_product_enabled": false,
+      "third_party_downloads_enabled": 0,
+      "feed_post_reshare_disabled": false,
+      "is_favorite": false,
+      "account_badges": [],
+      "account_type": 0,
+      "has_anonymous_profile_picture": false,
+      "friendship_status": {
+       "following": false,
+       "is_bestie": false,
+       "is_feed_favorite": false,
+       "is_private": false,
+       "is_restricted": false,
+       "is_muting_reel": false,
+       "followed_by": false
+      },
+      "latest_reel_media": 0,
+      "fan_club_info": {
+       "autosave_to_exclusive_highlight": null,
+       "connected_member_count": null,
+       "fan_club_id": null,
+       "fan_club_name": null,
+       "fan_consideration_page_revamp_eligiblity": null,
+       "has_enough_subscribers_for_ssc": null,
+       "is_fan_club_gifting_eligible": null,
+       "is_fan_club_referral_eligible": null,
+       "subscriber_count": null,
+       "has_created_ssc": null,
+       "is_free_trial_eligible": null,
+       "largest_public_bc_id": null,
+       "should_show_playlists_in_profile_tab": null
+      },
+      "user_activation_info": {}
+     }
+    }
+   }
+  ],
+  "audio_page_reporting_id": "90000000000000368",
+  "formatted_media_count": "p481xxxxxx",
+  "music_canonical_id": "90000000000000368",
+  "auto_created_reels_preview_metadata": [],
+  "audio_page_segments": [],
+  "metadata": {
+   "additional_audio_info": null,
+   "music_info": {
+    "music_asset_info": {
+     "allows_saving": true,
+     "artist_id": "900000000000369",
+     "audio_asset_id": "900000000000370",
+     "audio_cluster_id": "9000000000000366",
+     "cover_artwork_thumbnail_uri": "https://example.invalid/371",
+     "cover_artwork_uri": "https://example.invalid/372",
+     "dark_message": null,
+     "dash_manifest": null,
+     "display_artist": "p373xxxxxxxxxxx",
+     "duration_in_ms": 0,
+     "fast_start_progressive_download_url": "https://example.invalid/482",
+     "has_lyrics": true,
+     "highlight_start_times_in_ms": [
+      0,
+      0,
+      0
+     ],
+     "id": "900000000000370",
+     "ig_username": "p375xxxxxxxxx",
+     "is_eligible_for_audio_effects": true,
+     "is_eligible_for_vinyl_sticker": true,
+     "is_explicit": true,
+     "licensed_music_subtype": "p247xxx",
+     "lyrics": null,
+     "progressive_download_url": "https://example.invalid/482",
+     "reactive_audio_download_url": null,
+     "sanitized_title": null,
+     "song_monetization_info": "p379xxxx",
+     "spotify_track_metadata": {
+      "spotify_listen_uri": "https://example.invalid/377",
+      "spotify_track_id": "p378xxxxxxxxxxxxxxxxxx"
+     },
+     "subtitle": "",
+     "title": "p376xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "web_30s_preview_download_url": "https://example.invalid/380"
+    },
+    "music_canonical_id": "90000000000000368",
+    "music_consumption_info": {
+     "allow_media_creation_with_music": true,
+     "audio_asset_start_time_in_ms": 0,
+     "audio_filter_infos": [],
+     "audio_muting_info": {
+      "allow_audio_editing": false,
+      "mute_audio": false,
+      "mute_reason_str": "",
+      "show_muted_audio_toast": false
+     },
+     "contains_lyrics": null,
+     "derived_content_id": null,
+     "display_labels": null,
+     "formatted_clips_media_count": "p481xxxxxx",
+     "ig_artist": {
+      "strong_id__": "90000343",
+      "full_name": "p381xxxxxxxxxxxxx",
+      "id": "90000343",
+      "is_private": false,
+      "is_verified": true,
+      "pk": 0,
+      "pk_id": "p382xxxxxxxxxxxx",
+      "profile_pic_id": "9000000000000000383_90000343",
+      "profile_pic_url": "https://example.invalid/384",
+      "username": "p385xxxxxxxxxxxxx"
+     },
+     "is_bookmarked": false,
+     "is_trending_in_clips": false,
+     "overlap_duration_in_ms": 0,
+     "placeholder_profile_pic_url": "https://example.invalid/386",
+     "previous_trend_rank": null,
+     "should_allow_music_editing": false,
+     "should_mute_audio": false,
+     "should_mute_audio_reason": "",
+     "should_mute_audio_reason_type": null,
+     "should_render_soundwave": false,
+     "trend_rank": null,
+     "user_notes": null,
+     "related_audios": null
+    }
+   },
+   "original_sound_info": null
+  },
+  "audio_ranking_info": {
+   "best_audio_cluster_id": "9000000000000366"
+  },
+  "is_music_page_restricted": false,
+  "available_tabs": [
+   "p31xx"
+  ],
+  "media_count": {
+   "clips_count": 2869,
+   "photos_count": 0
+  },
+  "spotify_track_metadata": {
+   "spotify_listen_uri": "https://example.invalid/377",
+   "spotify_track_id": "p378xxxxxxxxxxxxxxxxxx"
+  },
+  "paging_info": {
+   "max_id": "C000483ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "more_available": true
+  }
+ },
+ "lid": "9000000000000000484"
+}

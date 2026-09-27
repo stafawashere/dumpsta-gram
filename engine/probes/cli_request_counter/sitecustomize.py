@@ -30,9 +30,12 @@ NAMED_REST_PATHS = (
    "/api/v1/friendships/pending/",
    "/api/v1/news/inbox/",
    "/api/v1/news/inbox_seen/",
+   "/api/v1/discover/web/explore_grid/",
+   "/api/v1/clips/music/",
+   "/api/v1/friendships/show_many/",
 )
 """REST paths recorded whole, so a probe can tell the inbox load's reads from the badge write it
-must not send. None of them carries an account name."""
+must not send, and the batch 11e reads from each other. None of them carries an account name."""
 
 
 def install(request_log: Path, request_cap: int, step: str) -> None:

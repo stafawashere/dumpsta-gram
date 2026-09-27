@@ -41,6 +41,7 @@ from dumpstagram.session import Session
 __all__ = [
    "FOLLOWERS_PAGE_SIZE",
    "FOLLOWING_PAGE_SIZE",
+   "MUTUAL_PAGE_SIZE",
    "PROFILE_PAGE_POSTS",
    "PROFILE_TAB_PAGE_SIZE",
    "RESOLUTION_PAGE_SIZE",
@@ -49,6 +50,7 @@ __all__ = [
    "build_following_request",
    "build_friendship_statuses_request",
    "build_highlight_tray_request",
+   "build_mutual_followers_request",
    "build_profile_page_requests",
    "build_profile_posts_request",
    "build_profile_reels_request",
@@ -90,6 +92,11 @@ _FOLLOWERS_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/followe
 _FOLLOWING_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/following/"
 
 _FRIENDSHIP_STATUSES_URL = "https://www.instagram.com/api/v1/friendships/show_many/"
+
+_MUTUAL_FOLLOWERS_URL = "https://www.instagram.com/api/v1/friendships/{user_id}/mutual_followers/"
+
+MUTUAL_PAGE_SIZE = 12
+"""The ``page_size`` the browser's mutual followers list sent, its only query parameter."""
 
 _FOLLOW_LIST_SURFACE = "follow_list_page"
 
@@ -547,6 +554,32 @@ def build_profile_tagged_request(
 
    return build_graphql_request(
       session, PROFILE_TAGGED, variables, referer=f"{ORIGIN}/", user_agent=user_agent
+   )
+
+
+def build_mutual_followers_request(
+   session: Session,
+   user_id: str,
+   *,
+   web_session_id: str,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The first page of the accounts following both the viewer and the account ``user_id``, a
+   GET carrying ``page_size`` alone, on the follow list's header set.
+
+   The browser opened the list from the account's profile page, so its referer was that page;
+   the site root is sent, for the reason :func:`build_followers_request` gives. No later page is
+   built, because none has been observed. The account id is not checked here.
+
+   Finding: ``read-mutual-followers``.
+   """
+
+   return Request(
+      method="GET",
+      url=_MUTUAL_FOLLOWERS_URL.format(user_id=user_id),
+      headers=_rest_read_headers(session, web_session_id, user_agent),
+      params={"page_size": str(MUTUAL_PAGE_SIZE)},
+      follow_redirects=False,
    )
 
 
