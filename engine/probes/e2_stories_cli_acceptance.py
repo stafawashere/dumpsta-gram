@@ -1,4 +1,4 @@
-"""Read only. Not run yet. The E2 batch 5 reads through the dumpsta command. Four requests, three
+"""Read only. Ran 2026-09-27, 4 requests. The E2 batch 5 reads through the dumpsta command. Four requests, three
 when the owner has no highlight, eight at most.
 
 The live acceptance of ``client.stories.tray``, ``reel`` and ``highlight``: the installed console

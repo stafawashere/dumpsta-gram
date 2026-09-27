@@ -311,7 +311,7 @@ twin, with the new public models `TrayReel`, `StoryReel`, `StoryItem`, `StoryOwn
 `highlight`. W68 amends W42: the reads ship before the seen mutation is verified and send no
 seen marking, a named departure from W6 until batch 12; `mark_seen` and
 `Behavior.mark_stories_seen` arrive with that run. The CLI acceptance,
-`probes/e2_stories_cli_acceptance.py`, is written and has not run. What the run found that the
+`probes/e2_stories_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`. What the run found that the
 plan did not know:
 
 - The tray rows carry no items, only the owner, times, a seen time and a rank, so the tray is

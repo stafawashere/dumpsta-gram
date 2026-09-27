@@ -505,7 +505,7 @@ the id asked, `item_count` and `reel`, null when there is no live story, with `i
 `story` refuses a username and `highlight` a bare number, with exit code 2 before a client is
 opened. All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
-highlight, four requests, and no other account's reel; it has not run yet.
+highlight, four requests, and no other account's reel; it ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`.
 
 ### `publish-photo`, `publish-carousel` and `delete-post`
 

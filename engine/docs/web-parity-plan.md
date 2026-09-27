@@ -1145,7 +1145,8 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   discovery: `probes/e2_stories.py` 8 requests. The CLI acceptance,
   `probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
   highlight through `dumpsta highlights` then `highlight`, four requests, and no other account's
-  reel; it has not run.
+  reel; it ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log
+  `logs/e2-stories-cli-2026-09-27-035531.json`.
 
 ## Standing rules for every phase
 
