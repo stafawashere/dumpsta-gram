@@ -1051,7 +1051,9 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   stories method sends only its read query, none named a mutation, and no registry name
   contains `Seen`, seen red under two mutations (a second request beside the reel's query, and
   a seen mutation registered among the writes). W42's rule about the W30 partner stands for
-  acceptance runs: his stories are never read.
+  acceptance runs: his stories are never read. **Closed 2026-09-27 by W93 and W94:** the
+  mutation is verified, `mark_seen` and `Behavior.mark_stories_seen` ship, the default is W6's
+  parity again, and the gate named above is retired for the W94 gates.
 - **W69. The tray is `stories.tray() -> tuple[TrayReel, ...]`, a model of its own.** Ruled
   2026-09-27 for E2 batch 5. `PolarisStoriesV3TrayContainerQuery` (finding
   `page-load-stories-tray`, a verified companion, replayed in run `run-2026-09-27-014102` with
@@ -1561,6 +1563,115 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   `tests/test_notes.py` hold it, the skip seen red on the code before the fix, and
   `scripts/verify_notes_gates.py` gained two mutations, the skip removed and the skip widened to
   items typed `note`, 45 of 45 fired.
+- **W92. A profile's clips count may be null, and it reads as 0 on the frozen field and as `None`
+  on a new one, `Profile.reported_clips_count`.** Ruled 2026-09-27, the orchestrator's ruling on
+  the owner's delegation, for a defect shipped since Step 17. `dumpsta profile --by-id` on account
+  B (W49), read as the owner, exited with `SchemaChanged: data.user.total_clips_count is not an
+  integer`; the same read as B itself answered. B has no posts and no reels, so `profiles.by_id`
+  failed on any other account with no reels. The exact value B's answer carried was not kept. It
+  is INFERENCE that it was null: `_required_integer` says "is not an integer" for a present value
+  of any other type, and "is missing from the payload" for an absent key, so the key was there,
+  and null is the likeliest non-integer an account with nothing to count sends. The mapper now
+  accepts null only: an absent key, a string, a float and a boolean still raise at
+  `data.user.total_clips_count`. `Profile.total_clips_count` is a frozen `int` line, so it cannot
+  become optional; it reads null as 0, the model-default precedent of the three null flags in
+  Step 17, and the new `reported_clips_count: int | None = None` carries the count exactly as
+  sent, `None` on null, so a caller can tell "no reels" from "no count given". Whether null
+  means zero reels or a count withheld from other viewers is UNRESOLVED; one account was seen.
+  The fixture is the existing synthetic other-account profile of `tests/test_follows.py` with
+  `media_count` 0 and `total_clips_count` null. Three gates hold it, the first seen red on the
+  code before the fix with the production text, `SchemaChanged: data.user.total_clips_count is
+  not an integer`, and `scripts/verify_follows_gates.py` gained four mutations (the required
+  reader restored, null read as 1, the new field left unfilled, any value accepted), 26 of 26
+  fired. The surface grew from 932 lines to 933, the one new field, none removed or changed. No
+  live request was sent for the fix.
+
+- **W93. Marking a story item seen is `stories.mark_seen(item, *, reel) -> None`, one write through
+  `send_write`.** Ruled 2026-09-27 for E2 batch 12, the orchestrator's ruling on the owner's
+  delegation. Evidence: finding `mark-a-story-seen`, verified twice in run
+  `run-2026-09-27-135628`. FACT: when the owner opened his own highlight the browser sent
+  `PolarisStoriesV3SeenMutation` once, 1.3 s after the document, on `/api/graphql` with no root
+  field header, carrying exactly `reelId` (the highlight's `highlight:<n>`), `reelMediaId` (the
+  item pk, a string), `reelMediaOwnerId` (the item owner's pk, a string), `reelMediaTakenAt` and
+  `viewSeenAt` (whole seconds, integers), and the highlight's page as referer; it answered 196
+  bytes, `data.xdt_mark_story_reel_seen.__typename` `XDTMarkSeenResponse`. The engine replay by
+  `probes/story_seen_own_highlight.py` on the highlight's second item got the same answer, log
+  `logs/story-seen-own-highlight-2026-09-27-142451.json`. W42 asked for the arranged run on a live
+  story the owner posts and deletes; the verification ran on his own highlight instead, content
+  whose viewer list only he sees, so W42's purpose held and nobody else was shown a viewer, but a
+  live reel's mutation stays unobserved: that its `reelId` is the reel's own id, the owner's
+  account id, is INFERENCE from the finding's template and the tray's rows, and a live reel's
+  items are still ASSUMED to share a highlight's shape (W70). The signature takes the item and
+  the reel it was read in, because the mutation needs the reel's id, which `StoryItem` does not
+  carry, and the owner, pk and time posted come from the item as mapped: an item that is not in
+  `reel.items` raises `ValueError` before anything is sent, so a caller cannot pair one reel's id
+  with another's item or owner. `viewSeenAt` is the clock when the write is built. The write is
+  `mark_story_item_seen` in `_core/writes/stories.py`, through `send_write`, so it waits out the
+  write spacing, counts against the write budget, is sent once and never retried, and a
+  connection failure in flight raises `OutcomeUnknown`. The answer is the only confirmation,
+  since a highlight read carries no seen state, so a null root raises `UpstreamRejected` with
+  code `story_not_marked_seen`, never observed, and a missing root or another `__typename`
+  raises `SchemaChanged`. A live reel's seen state is the tray row's `seen_at`, the reconciling
+  read after `OutcomeUnknown`. `STORY_SEEN` is registered among `WRITE_QUERIES`, so the doctor
+  checks it by artifact only, never sends it, and now checks eleven writes;
+  `PolarisAPIReelSeenMutation` and `PolarisAPIForceStorySeenMutation`, which no browse sent, stay
+  unregistered.
+- **W94. Under the default behavior a reel or highlight read marks its first item seen, and
+  `Behavior.mark_stories_seen = True` is the named departure.** Ruled 2026-09-27 for E2 batch
+  12. W6 makes marking the default and ADR-0013 makes a read behave as a browser's view. A browser
+  marks the item it shows, one at a time, and the one open recorded sent exactly one mutation
+  for the page it opened; a read returns every item at once and shows none. Marking every item
+  would claim the viewer watched the whole reel, which a person opening it does not, and would
+  spend one write per item against a budget of 30 an hour; marking none would keep W68's
+  departure. So a read marks the first item, the one the viewer shows on opening, and
+  `stories.mark_seen` marks any other, which is how a caller walks a reel the way a person taps
+  through it. A browser opening a partly seen live reel starts at the first unseen item, which
+  the reel read does not say, so the engine marks the first item either way, a named difference.
+  **This is visible to other people: reading another account's live reel, or its highlight,
+  through the engine under the default puts the viewer in that item's seen list, exactly as
+  opening it on the website does.** The docstrings of `stories.reel`, `stories.highlight` and
+  `Behavior`, `docs/public-api.md` and `docs/cli.md` say so. The mark is sent after the read,
+  outside the read's token recovery, so a write failure never resends the read and the read's
+  recovery never resends the write. When the mark fails, over the budget, after a write stop or
+  on an error answer, its error is raised and the reel is not returned, because returning it
+  would tell the caller a story was read in parity when it was not; reading again with
+  `mark_stories_seen=False` returns the reel alone. A reel with no items, and an account with no
+  live story, mark nothing. `stories.tray()` marks nothing under any behavior, as a browser's
+  tray does not. Reels read back to back are spaced by the write spacing, 30 s under the
+  default, where a person is faster; that is the placeholder spacing of every write and is not
+  changed here. W42's W30 rule stands: the partner's stories are never read in acceptance.
+- **W95. `dumpsta story` and `highlight` mark the first item unless `--no-mark-seen`, and
+  `dumpsta story-seen REEL_ID ITEM_PK` marks one item.** Ruled 2026-09-27 for E2 batch 12. The
+  commands follow the library default rather than departing from it, so the CLI says what the
+  website does, and `--no-mark-seen` reads through a client scoped with `with_behavior` and
+  `mark_stories_seen=False`, closed after the read; the CLI's client protocol gained `behavior`
+  and `with_behavior` for it, which `SyncClient` already had. Their JSON carries
+  `marked_first_item_seen`. `story-seen` takes an account id or a `highlight:<number>` and an
+  item pk, reads the reel with marking off so the read marks nothing of its own, and marks the
+  named item, two requests; a reel with no live story or no such item exits 7, `NotFound`, and a
+  pk that is not digits exits 2. `stories-tray` is unchanged. `probes/e2_stories_cli_acceptance.py`
+  gained `--no-mark-seen` on its two reads so a rerun stays read only as it ran.
+- **W96. Gates, the harness, the doctor and the surface for batch 12.** Ruled 2026-09-27.
+  `tests/test_stories.py` retired the W68 gate and gained twelve: the five variables, path,
+  document and referer on a highlight and on a live reel recast from the recorded highlight; the
+  membership refusal; four answer checks (a null root raises `story_not_marked_seen`, a missing
+  root, another type, a string root); the write slot; the budget; one departure after a rejection
+  and after a connection failure; the default marking of the first item only on a reel and a
+  highlight with the tray marking nothing; marking off and an empty reel sending no mutation; a
+  refused mark raising rather than returning the reel; the registration; and two CLI gates. The
+  file holds 22 gates, 25 cases, all green. `scripts/verify_stories_gates.py` dropped the two W68 rows and
+  gained 31, 71 mutations, 71 of 71 fired. `tests/test_facade_parity.py` gained `item` and `reel`
+  in `ARGUMENT_FOR_PARAMETER` and `stories.mark_seen` in the core table. One gate followed the
+  deliberate change, the W48 way: the registry count in `tests/test_doctor.py`, 54 to 55, seen
+  red as `assert 55 == 54` before the edit and green after. `scripts/verify_doctor_gates.py` had
+  one anchor, `PROFILE_SCHOOL_BADGE,\n)\n`, that no longer matched since the batch 9 companions
+  moved the end of `COMPANION_QUERIES`, so that harness could not start; it now removes
+  `VIEWER_SETTINGS`, the list's last entry, the same mutation, and ran 24 of 24. The surface grew
+  from 933 lines to 936, `Behavior.mark_stories_seen` and `mark_seen` on both namespaces, none
+  removed or changed. `probes/e2_story_seen_cli_acceptance.py` is written and not run: on the
+  owner's own highlight only, `highlights`, `highlight` with the default mark and `story-seen` on
+  the second item, five requests of which two are seen mutations, eight at most. No live request
+  was sent for the batch beyond the finding's two verifications.
 
 ## Standing rules for every phase
 

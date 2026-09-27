@@ -62,8 +62,9 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `likers PK` | 1, plus 1 if the session has no token yet | Lists the accounts the likes dialog shows for one post, a sample on a popular post |
 | `more-from-author AUTHOR_ID` | 1, plus 1 if the session has no token yet | Lists the posts a post page shows from its author |
 | `stories-tray` | 1, plus 1 if the session has no token yet | Lists the accounts in the stories tray. Reads no items and marks nothing seen |
-| `story USER_ID` | 1, plus 1 if the session has no token yet | Reads one account's live stories, every item. Marks nothing seen |
-| `highlight HIGHLIGHT_ID` | 1, plus 1 if the session has no token yet | Reads one highlight, every item. Marks nothing seen |
+| `story USER_ID` | 1 and 1 write, plus 1 if the session has no token yet; 1 with `--no-mark-seen` | Reads one account's live stories, every item, and marks the first item seen, which the account sees |
+| `highlight HIGHLIGHT_ID` | 1 and 1 write, plus 1 if the session has no token yet; 1 with `--no-mark-seen` | Reads one highlight, every item, and marks the first item seen, which its owner sees |
+| `story-seen REEL_ID ITEM_PK` | 1 and 1 write, plus 1 if the session has no token yet | Marks one story item seen. Writes to the account, and the item's owner sees you among its viewers |
 | `follow-requests` | 1 | Lists the accounts asking to follow the viewer, the first page, and whether more exist |
 | `activity` | 1, plus 1 if the session has no token yet | Reads the viewer's activity feed. Marks nothing seen |
 | `explore` | 1 | Reads the explore grid's first page, section by section, and whether it goes on |
@@ -488,17 +489,25 @@ Every post and comment id is digits only, and anything else is refused by the pa
 code 2 before a client is opened. All three take `--user-agent` and `--no-session-writeback`.
 The live acceptance, `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log `logs/e2-post-depth-cli-2026-09-27-033207.json`.
 
-### `stories-tray`, `story` and `highlight`
+### `stories-tray`, `story`, `highlight` and `story-seen`
 
 ```bash
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta stories-tray
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json story 1234567890
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta story --no-mark-seen 1234567890
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta highlight highlight:17912345678901234
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta story-seen highlight:17912345678901234 3456789012345678901
 ```
 
-None of the three marks anything seen. A browser marks every story item it shows, and the engine
-sends no seen mutation until one is verified on the owner's own story (W68), so reading a story
-here does not put you in its viewers.
+**`story` and `highlight` mark the first item seen, and the account sees you among that item's
+viewers**, as opening the story on the website does (W94, W95). The mark is a write after the
+read: it counts against the write budget, and if it fails the command exits with the write's
+error and prints no reel. `--no-mark-seen` reads without marking anything. `stories-tray` marks
+nothing. `story-seen REEL_ID ITEM_PK` reads the reel `REEL_ID`, an account's numeric id or a
+`highlight:<number>`, with marking off, then marks its item `ITEM_PK` seen, two requests; it prints
+`marked seen: ITEM_PK in REEL_ID`, and its JSON form is `command`, `reel_id`, `item_pk` and
+`marked_seen`. A reel with no live story, or no item with that pk, exits 7, and an `ITEM_PK` that
+is not digits exits 2 before a client is opened.
 
 `stories-tray` prints one line per account in the tray's order, its rank, account id, username,
 the time of its latest item and when you last saw it, or `never`, then `reels: N`. The JSON form
@@ -510,7 +519,8 @@ is `command`, `reel_count` and `reels`, each with `id`, `reel_type`, `owner` (`i
 `highlight HIGHLIGHT_ID` one highlight, in the `highlight:<number>` form `highlights` prints. Both
 print the reel's id, owner and title, one line per item with its time, `pk` and kind, then
 `items: N`; `story` prints `no live story` when the account has none. The JSON form is `command`,
-the id asked, `item_count` and `reel`, null when there is no live story, with `id`, `reel_type`,
+the id asked, `marked_first_item_seen`, `item_count` and `reel`, null when there is no live
+story, with `id`, `reel_type`,
 `title`, `cover_url`, `owner`, `latest_item_at`, `can_reshare` and `items`, each with `id`, `pk`,
 `code`, `owner_id`, `media_type`, `product_type`, `taken_at`, `expiring_at`, `original_width`,
 `original_height`, `audience`, `can_reply`, `can_reshare`, `is_paid_partnership`,
@@ -518,9 +528,12 @@ the id asked, `item_count` and `reel`, null when there is no live story, with `i
 `mentions` (`username`, `full_name`) and `music` (`title`, `artist`, `should_mute`) (W70).
 
 `story` refuses a username and `highlight` a bare number, with exit code 2 before a client is
-opened. All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+opened. All four take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_stories_cli_acceptance.py`, reads the tray, the owner's own reel and his first
-highlight, four requests, and no other account's reel; it ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`.
+highlight, four requests, and no other account's reel, since batch 12 with `--no-mark-seen` on
+both reads; `probes/e2_story_seen_cli_acceptance.py`, written for batch 12 and not run, marks the
+first and second items of the owner's own first highlight through `highlight` and `story-seen`,
+five requests. The batch 5 acceptance ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`.
 
 ### `follow-requests` and `activity`
 
@@ -732,7 +745,7 @@ The numbers are permanent, and reordering them breaks anything that scripts the 
 | 8 | `SchemaChanged` |
 | 9 | `TransportFailure` |
 | 10 | `OperationCancelled` |
-| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set`, `note delete`, `publish-photo`, `publish-carousel` and `delete-post` are the commands that can end with it |
+| 11 | `OutcomeUnknown`: a write may or may not have applied, added 2026-09-23. `like`, `unlike`, `follow`, `unfollow`, `comment`, `delete-comment`, `send-message`, `unsend-message`, `note set`, `note delete`, `publish-photo`, `publish-carousel`, `delete-post`, `story-seen`, and `story` and `highlight` without `--no-mark-seen`, are the commands that can end with it |
 | 12 | `doctor --live` only: a stored `doc_id` differs from the one the site's bundle compiles |
 | 13 | `doctor --live` only: no `doc_id` drifted, and a read replayed once came back failed |
 

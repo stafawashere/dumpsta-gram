@@ -1,10 +1,15 @@
-"""Gates on E2 batch 5, stories, read only: the tray, one account's live stories and one highlight.
+"""Gates on stories: the tray, one account's live stories and one highlight, E2 batch 5, and
+marking an item seen, E2 batch 12.
 
-Five defect classes live here.
+Six defect classes live here.
 
-A read can mark a story seen. The engine sends no seen mutation until the arranged run verifies
-one (W68), so no stories method may send anything but its read query, and the registry may hold
-no seen mutation at all.
+A read can mark the wrong thing seen, or fail to mark what a browser marks. Under the default
+behavior a reel or highlight read marks its first item and nothing else, the tray marks nothing,
+and ``mark_stories_seen`` off marks nothing at all (W94).
+
+The seen mutation can drift from what the browser sent, pair an item with another reel, take a
+null answer as marked, or leave by a path other than the write slot, where it would escape the
+budget or be sent twice (W93).
 
 A mapper can read a field from the wrong key or invent one the answer does not carry. The tray
 carries no items and a reel read no high resolution picture, a story video carries no dimensions,
@@ -17,10 +22,13 @@ upstream changing.
 A request can go to the wrong path, carry other variables, or accept an identifier it should
 refuse before sending.
 
-And a command can take a username where an id is meant, or drop items in either output form.
+And a command can take a username where an id is meant, drop items in either output form, mark
+when told not to, or mark an item other than the one named.
 
 The payloads are the recorded answers of 2026-09-27, pseudonymised by
-``scripts/build_stories_fixtures.py``. Nothing in this file touches the network.
+``scripts/build_stories_fixtures.py``, and the seen answer, which carries nothing personal. No
+live reel was recorded, so the live reel here is the recorded highlight with its id and type
+recast. Nothing in this file touches the network.
 """
 
 from __future__ import annotations
@@ -28,6 +36,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import time
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,9 +46,10 @@ from urllib.parse import parse_qs
 import pytest
 
 from dumpstagram._cli.main import main
-from dumpstagram._core.pacer import Pacer
+from dumpstagram._core.pacer import Pacer, PacingPolicy, WritePolicy
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.stories import read_highlight, read_stories_tray, read_story_reel
+from dumpstagram._core.writes.stories import mark_story_item_seen
 from dumpstagram._private.web.documents.catalog import (
    COMPANION_QUERIES,
    READ_QUERIES,
@@ -52,8 +62,15 @@ from dumpstagram._private.web.parse.stories import (
 )
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY
-from dumpstagram.errors import NotFound, SchemaChanged
-from dumpstagram.models import StoryReel, TrayReel
+from dumpstagram.errors import (
+   NotFound,
+   OutcomeUnknown,
+   RateLimited,
+   SchemaChanged,
+   TransportFailure,
+   UpstreamRejected,
+)
+from dumpstagram.models import StoryItem, StoryReel, TrayReel
 from dumpstagram.session import Session
 from tests.test_direct import (
    FakeClock,
@@ -322,6 +339,197 @@ async def test_a_username_and_a_bare_highlight_number_are_refused_before_anythin
    assert transport.sent == []
 
 
+SEEN_DOC_ID = "26234228992942885"
+SEEN_ROOT = "xdt_mark_story_reel_seen"
+SEEN_ANSWER = {"data": {SEEN_ROOT: {"__typename": "XDTMarkSeenResponse"}}, "extensions": {}}
+"""The 196 byte answer the browser and the engine replay both received on 2026-09-27, its
+``server_metadata`` times left out. ``__typename`` was the root's only field on both."""
+
+VIEWED_AT = 1790533419
+
+
+def a_live_reel() -> dict[str, Any]:
+   """The recorded highlight recast as one account's live reel: its id the owner's account id
+   and its type ``user_reel``, as the tray's rows carry them. No live reel was recorded (W70),
+   so this is constructed, and only the reel's id and type differ from the recording."""
+
+   payload = copy.deepcopy(recorded("highlight.json"))
+   node = payload["data"][REELS_ROOT]["reels_media"][0]
+   node["id"] = node["user"]["pk"]
+   node["reel_type"] = "user_reel"
+
+   return payload
+
+
+def seen_variables_for(node: dict[str, Any], index: int, viewed_at: int) -> dict[str, Any]:
+   """The five variables the browser sent, taken from the recorded answer rather than the
+   mapper, so a mapper reading a field from the wrong key is caught here too."""
+
+   item = node["items"][index]
+
+   return {
+      "reelId": node["id"],
+      "reelMediaId": item["pk"],
+      "reelMediaOwnerId": item["user"]["pk"],
+      "reelMediaTakenAt": item["taken_at"],
+      "viewSeenAt": viewed_at,
+   }
+
+
+@pytest.mark.asyncio
+async def test_the_seen_mutation_sends_the_five_variables_the_browser_sent() -> None:
+   """The parity gate for the seen mutation. Catches another document or path, a variable
+   renamed, reordered in meaning, sent as another type or read off the wrong item, a root field
+   header the browser did not send, and another referer."""
+
+   node = highlight_node()
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   live = parse_story_reel(a_live_reel())
+   transport = ScriptedTransport([json_response(SEEN_ANSWER), json_response(SEEN_ANSWER)])
+   sender = make_paced(transport)
+   session = a_bootstrapped_session()
+
+   assert live is not None
+
+   await mark_story_item_seen(
+      sender, session, highlight, highlight.items[1], clock=lambda: VIEWED_AT + 0.9
+   )
+   await mark_story_item_seen(sender, session, live, live.items[2], clock=lambda: VIEWED_AT)
+
+   highlight_number = node["id"].removeprefix("highlight:")
+   live_node = a_live_reel()["data"][REELS_ROOT]["reels_media"][0]
+
+   assert [request.url for request in transport.sent] == [API_GRAPHQL, API_GRAPHQL]
+   assert [sent_field(request, "doc_id") for request in transport.sent] == [SEEN_DOC_ID] * 2
+   assert [sent_field(request, "fb_api_req_friendly_name") for request in transport.sent] == [
+      "PolarisStoriesV3SeenMutation"
+   ] * 2
+   assert sent_variables(transport.sent[0]) == seen_variables_for(node, 1, VIEWED_AT)
+   assert sent_variables(transport.sent[1]) == seen_variables_for(live_node, 2, VIEWED_AT)
+   assert live_node["id"] == node["user"]["pk"]
+   assert all("x-root-field-name" not in request.headers for request in transport.sent)
+   assert transport.sent[0].headers["referer"] == (
+      f"https://www.instagram.com/stories/highlights/{highlight_number}/"
+   )
+   assert transport.sent[1].headers["referer"] == SITE_ROOT
+
+
+@pytest.mark.asyncio
+async def test_an_item_from_another_reel_is_refused_before_anything_is_sent() -> None:
+   """Catches an item paired with a reel it was not read in, which would send one reel's id
+   with another item's owner."""
+
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   stranger = replace(highlight.items[0], pk="1", owner_id="2")
+   transport = ScriptedTransport([])
+
+   with pytest.raises(ValueError, match="not one of the items"):
+      await mark_story_item_seen(
+         make_paced(transport), a_bootstrapped_session(), highlight, stranger
+      )
+
+   assert transport.sent == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+   ("answer", "raised", "code"),
+   [
+      ({"data": {SEEN_ROOT: None}, "extensions": {}}, UpstreamRejected, "story_not_marked_seen"),
+      ({"data": {}, "extensions": {}}, SchemaChanged, None),
+      ({"data": {SEEN_ROOT: {"__typename": "XDTSomethingElse"}}}, SchemaChanged, None),
+      ({"data": {SEEN_ROOT: "yes"}}, SchemaChanged, None),
+   ],
+)
+async def test_an_answer_that_is_not_the_seen_response_raises(
+   answer: dict[str, Any], raised: type[Exception], code: str | None
+) -> None:
+   """Catches a null root, a missing root or another type taken as marked, which would tell a
+   caller an item was marked when the answer, the only confirmation there is, did not say so."""
+
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   transport = ScriptedTransport([json_response(answer)])
+
+   with pytest.raises(raised) as failure:
+      await mark_story_item_seen(
+         make_paced(transport), a_bootstrapped_session(), highlight, highlight.items[0]
+      )
+
+   if code is not None:
+      assert getattr(failure.value, "code", None) == code
+
+   assert len(transport.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_seen_mutation_departs_only_through_the_write_slot() -> None:
+   """Catches the mutation sent with ``sender.send`` rather than ``send_write``. On an account
+   whose writes are stopped the write slot refuses before the transport sees anything."""
+
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   transport = ScriptedTransport([json_response(SEEN_ANSWER)])
+   sender = make_paced(transport)
+   sender.pacer.stop_writes()
+
+   with pytest.raises(UpstreamRejected):
+      await mark_story_item_seen(sender, a_bootstrapped_session(), highlight, highlight.items[0])
+
+   assert transport.sent == []
+
+
+@pytest.mark.asyncio
+async def test_the_seen_mutation_counts_against_the_write_budget() -> None:
+   """Catches the mutation treated as a read, which would let a stories walk mark past the
+   budget the account's other writes keep to."""
+
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   transport = ScriptedTransport([json_response(SEEN_ANSWER)])
+   sender = make_paced(transport).with_pacing(PacingPolicy(), WritePolicy(budget_per_hour=0))
+
+   with pytest.raises(RateLimited):
+      await mark_story_item_seen(sender, a_bootstrapped_session(), highlight, highlight.items[0])
+
+   assert transport.sent == []
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_or_interrupted_seen_mutation_departs_once() -> None:
+   """Catches the mutation sent again after an error answer or a connection failure. The write
+   stop is off, because with it on the pacer would refuse a second send and hide a retry."""
+
+   highlight = parse_highlight_reel(recorded("highlight.json"))
+   envelope = {"error": "a_code_no_finding_explains"}
+   rejected = ScriptedTransport([json_response(envelope), json_response(envelope)])
+   interrupted = FailingTransport([])
+   policy = WritePolicy(stop_after_unrecognised_rejection=False)
+
+   with pytest.raises(UpstreamRejected):
+      await mark_story_item_seen(
+         make_paced(rejected).with_pacing(PacingPolicy(), policy),
+         a_bootstrapped_session(),
+         highlight,
+         highlight.items[0],
+      )
+
+   with pytest.raises(OutcomeUnknown):
+      await mark_story_item_seen(
+         make_paced(interrupted).with_pacing(PacingPolicy(), policy),
+         a_bootstrapped_session(),
+         highlight,
+         highlight.items[0],
+      )
+
+   assert len(rejected.sent) == 1
+   assert len(interrupted.sent) == 1
+
+
+class FailingTransport(ScriptedTransport):
+   async def send(self, request: Any) -> Any:
+      self.sent.append(request)
+
+      raise TransportFailure("the connection dropped with the write in flight")
+
+
 def paced(transport: ScriptedTransport, client: AsyncClient) -> PacedSender:
    clock = FakeClock()
    pacer = Pacer(clock=clock, sleep=clock.sleep, jitter=lambda: 0.0)
@@ -329,20 +537,9 @@ def paced(transport: ScriptedTransport, client: AsyncClient) -> PacedSender:
    return PacedSender(transport, pacer, client._sender.pacing, client._sender.writes)
 
 
-@pytest.mark.asyncio
-async def test_no_stories_method_sends_a_seen_mutation_and_the_registry_holds_none() -> None:
-   """The W68 gate. Catches any stories method sending a request other than its read query,
-   a mutation among them, and a seen mutation registered anywhere a later change could send it
-   from."""
-
-   transport = ScriptedTransport(
-      [
-         json_response(recorded("stories_tray.json")),
-         json_response(recorded("highlight.json")),
-         json_response(recorded("highlight.json")),
-      ]
-   )
-   client = AsyncClient(a_bootstrapped_session(), behavior=SCRIPTED_BEHAVIOR)
+async def run_the_three_reads(behavior: Any, responses: list[Any]) -> ScriptedTransport:
+   transport = ScriptedTransport(responses)
+   client = AsyncClient(a_bootstrapped_session(), behavior=behavior)
    await client._sender.aclose()
    client._sender = paced(transport, client)
 
@@ -353,27 +550,121 @@ async def test_no_stories_method_sends_a_seen_mutation_and_the_registry_holds_no
    finally:
       await client.aclose()
 
-   read_names = {query.friendly_name for query in READ_QUERIES}
-   registered = {
-      query.friendly_name for query in (*READ_QUERIES, *COMPANION_QUERIES, *WRITE_QUERIES)
-   }
-   sent = friendly_names(transport)
+   return transport
 
-   assert sent == [
+
+@pytest.mark.asyncio
+async def test_under_the_default_a_reel_and_a_highlight_read_mark_their_first_item_only() -> None:
+   """The W94 gate. Catches a reel or highlight read that marks nothing, marks an item other
+   than the first, marks every item, or marks before it has read, and a tray read that marks
+   anything, which a browser's tray does not."""
+
+   before = int(time.time())
+   transport = await run_the_three_reads(
+      SCRIPTED_BEHAVIOR,
+      [
+         json_response(recorded("stories_tray.json")),
+         json_response(a_live_reel()),
+         json_response(SEEN_ANSWER),
+         json_response(recorded("highlight.json")),
+         json_response(SEEN_ANSWER),
+      ],
+   )
+   after = int(time.time())
+
+   live_node = a_live_reel()["data"][REELS_ROOT]["reels_media"][0]
+   highlight = highlight_node()
+   live_seen = sent_variables(transport.sent[2])
+   highlight_seen = sent_variables(transport.sent[4])
+
+   assert friendly_names(transport) == [
+      "PolarisStoriesV3TrayContainerQuery",
+      "PolarisStoriesV3ReelPageStandaloneQuery",
+      "PolarisStoriesV3SeenMutation",
+      "PolarisStoriesV3ReelPageStandaloneQuery",
+      "PolarisStoriesV3SeenMutation",
+   ]
+   assert before <= live_seen["viewSeenAt"] <= after
+   assert before <= highlight_seen["viewSeenAt"] <= after
+   assert live_seen == seen_variables_for(live_node, 0, live_seen["viewSeenAt"])
+   assert highlight_seen == seen_variables_for(highlight, 0, highlight_seen["viewSeenAt"])
+
+
+@pytest.mark.asyncio
+async def test_with_marking_off_no_stories_read_sends_a_seen_mutation() -> None:
+   """Catches ``mark_stories_seen=False`` ignored, and an account with no live story marked
+   anyway, under the default too."""
+
+   off = await run_the_three_reads(
+      replace(SCRIPTED_BEHAVIOR, mark_stories_seen=False),
+      [
+         json_response(recorded("stories_tray.json")),
+         json_response(a_live_reel()),
+         json_response(recorded("highlight.json")),
+      ],
+   )
+   transport = ScriptedTransport([json_response(recorded("own_reel_empty.json"))])
+   client = AsyncClient(a_bootstrapped_session(), behavior=SCRIPTED_BEHAVIOR)
+   await client._sender.aclose()
+   client._sender = paced(transport, client)
+
+   try:
+      nothing_live = await client.stories.reel(USER_ID)
+   finally:
+      await client.aclose()
+
+   assert friendly_names(off) == [
       "PolarisStoriesV3TrayContainerQuery",
       "PolarisStoriesV3ReelPageStandaloneQuery",
       "PolarisStoriesV3ReelPageStandaloneQuery",
    ]
-   assert set(sent) <= read_names
-   assert not any(name.endswith("Mutation") for name in sent)
-   assert not any(name in registered for name in SEEN_MUTATIONS)
-   assert not any("Seen" in name for name in registered)
+   assert nothing_live is None
+   assert friendly_names(transport) == ["PolarisStoriesV3ReelPageStandaloneQuery"]
+
+
+@pytest.mark.asyncio
+async def test_a_read_whose_mark_is_refused_raises_rather_than_returning_unmarked() -> None:
+   """The W94 failure rule. Catches a reel returned as if read in parity when its first item
+   was never marked, here because the write budget refused the mark."""
+
+   transport = ScriptedTransport([json_response(recorded("highlight.json"))])
+   client = AsyncClient(
+      a_bootstrapped_session(), behavior=replace(SCRIPTED_BEHAVIOR, write_budget_per_hour=0)
+   )
+   await client._sender.aclose()
+   client._sender = paced(transport, client)
+
+   try:
+      with pytest.raises(RateLimited):
+         await client.stories.highlight(highlight_id())
+   finally:
+      await client.aclose()
+
+   assert friendly_names(transport) == ["PolarisStoriesV3ReelPageStandaloneQuery"]
+
+
+def test_only_the_seen_mutation_that_was_verified_is_registered_and_as_a_write() -> None:
+   """Catches the seen mutation registered as a read or a companion, where the doctor would
+   replay it, and either alternate compiled route registered without a finding (W93)."""
+
+   read_and_companion = {query.friendly_name for query in (*READ_QUERIES, *COMPANION_QUERIES)}
+   writes = {query.friendly_name for query in WRITE_QUERIES}
+   registered = read_and_companion | writes
+
+   assert "PolarisStoriesV3SeenMutation" in writes
+   assert not any("Seen" in name for name in read_and_companion)
+   assert {name for name in registered if "Seen" in name} == {"PolarisStoriesV3SeenMutation"}
+   assert not any(name in registered for name in SEEN_MUTATIONS[1:])
 
 
 class FakeStories:
-   def __init__(self, reel: StoryReel | None) -> None:
+   def __init__(self, client: FakeStoriesClient, reel: StoryReel | None) -> None:
+      self.client = client
       self.reel_answer = reel
-      self.asked: list[tuple[str, str]] = []
+      self.asked: list[tuple[str, ...]] = []
+
+   def marking(self) -> str:
+      return "marking" if self.client.behavior.mark_stories_seen else "not marking"
 
    def tray(self) -> tuple[TrayReel, ...]:
       self.asked.append(("tray", ""))
@@ -381,21 +672,33 @@ class FakeStories:
       return parse_stories_tray(recorded("stories_tray.json"))
 
    def reel(self, user_id: str) -> StoryReel | None:
-      self.asked.append(("reel", user_id))
+      self.asked.append(("reel", user_id, self.marking()))
 
       return self.reel_answer
 
    def highlight(self, highlight_id: str) -> StoryReel:
-      self.asked.append(("highlight", highlight_id))
+      self.asked.append(("highlight", highlight_id, self.marking()))
 
       return parse_highlight_reel(recorded("highlight.json"))
 
+   def mark_seen(self, item: StoryItem, *, reel: StoryReel) -> None:
+      self.asked.append(("mark_seen", item.pk, reel.id))
+
 
 class FakeStoriesClient:
-   def __init__(self, reel: StoryReel | None = None) -> None:
+   def __init__(self, reel: StoryReel | None = None, behavior: Any = PARITY) -> None:
       self.session = Session(sessionid="s", ds_user_id="1234567890", csrftoken="c")
-      self.stories = FakeStories(reel)
+      self.behavior = behavior
+      self.stories = FakeStories(self, reel)
       self.closed = False
+      self.scoped: list[FakeStoriesClient] = []
+
+   def with_behavior(self, behavior: Any) -> FakeStoriesClient:
+      scoped = FakeStoriesClient(self.stories.reel_answer, behavior)
+      scoped.stories.asked = self.stories.asked
+      self.scoped.append(scoped)
+
+      return scoped
 
    def close(self) -> None:
       self.closed = True
@@ -442,10 +745,10 @@ def test_dumpsta_stories_tray_story_and_highlight_print_every_row_and_item() -> 
    assert tray["reel_count"] == 33
    assert len(tray["reels"]) == 33
    assert tray_text.strip().splitlines()[-1] == "reels: 33"
-   assert empty_client.stories.asked == [("reel", USER_ID)]
+   assert empty_client.stories.asked == [("reel", USER_ID, "marking")]
    assert empty["reel"] is None
    assert empty["item_count"] == 0
-   assert highlight_client.stories.asked == [("highlight", highlight_id())]
+   assert highlight_client.stories.asked == [("highlight", highlight_id(), "marking")]
    assert highlight["item_count"] == 18
    assert len(highlight["reel"]["items"]) == 18
    assert highlight_text.strip().splitlines()[-1] == "items: 18"
@@ -468,3 +771,69 @@ def test_dumpsta_story_refuses_a_username_and_highlight_a_bare_number(
    assert highlight_refused == 2
    assert client.stories.asked == []
    assert "highlight:<number>" in capsys.readouterr().err
+
+
+def test_dumpsta_story_and_highlight_mark_the_first_item_unless_told_not_to() -> None:
+   """The W95 gate. Catches ``--no-mark-seen`` ignored or applied to the wrong client, the
+   scoped client left open, and the JSON claiming a mark that was not asked for."""
+
+   marking = FakeStoriesClient()
+   _, marked_out, _ = run_command(["--json", "highlight", highlight_id()], marking)
+   quiet = FakeStoriesClient()
+   _, quiet_out, _ = run_command(["--json", "highlight", "--no-mark-seen", highlight_id()], quiet)
+   quiet_story = FakeStoriesClient(reel=parse_story_reel(a_live_reel()))
+   _, quiet_story_out, _ = run_command(["--json", "story", "--no-mark-seen", USER_ID], quiet_story)
+
+   assert marking.stories.asked == [("highlight", highlight_id(), "marking")]
+   assert json.loads(marked_out)["marked_first_item_seen"] is True
+   assert marking.scoped == []
+   assert quiet.stories.asked == [("highlight", highlight_id(), "not marking")]
+   assert json.loads(quiet_out)["marked_first_item_seen"] is False
+   assert [scoped.closed for scoped in quiet.scoped] == [True]
+   assert quiet_story.stories.asked == [("reel", USER_ID, "not marking")]
+   assert json.loads(quiet_story_out)["marked_first_item_seen"] is False
+   assert quiet.closed
+   assert quiet_story.closed
+
+
+def test_dumpsta_story_seen_reads_without_marking_then_marks_the_named_item() -> None:
+   """Catches the read before the mark marking an item of its own, the wrong item or reel
+   marked, and a missing item or reel answered with a mark instead of an error."""
+
+   node = highlight_node()
+   third = node["items"][2]["pk"]
+   live_owner = a_live_reel()["data"][REELS_ROOT]["reels_media"][0]["id"]
+   on_highlight = FakeStoriesClient()
+   code, out, _ = run_command(["--json", "story-seen", highlight_id(), third], on_highlight)
+   on_live = FakeStoriesClient(reel=parse_story_reel(a_live_reel()))
+   live_code, _, _ = run_command(["story-seen", live_owner, third], on_live)
+   missing_item = FakeStoriesClient()
+   missing_code, _, _ = run_command(["story-seen", highlight_id(), "1"], missing_item)
+   no_live = FakeStoriesClient(reel=None)
+   no_live_code, _, _ = run_command(["story-seen", USER_ID, third], no_live)
+   refused = FakeStoriesClient()
+   refused_code, _, _ = run_command(["story-seen", highlight_id(), "not-a-pk"], refused)
+
+   assert code == 0
+   assert on_highlight.stories.asked == [
+      ("highlight", highlight_id(), "not marking"),
+      ("mark_seen", third, highlight_id()),
+   ]
+   assert json.loads(out) == {
+      "command": "story-seen",
+      "reel_id": highlight_id(),
+      "item_pk": third,
+      "marked_seen": True,
+   }
+   assert [scoped.closed for scoped in on_highlight.scoped] == [True]
+   assert live_code == 0
+   assert on_live.stories.asked == [
+      ("reel", live_owner, "not marking"),
+      ("mark_seen", third, live_owner),
+   ]
+   assert missing_code == 7
+   assert missing_item.stories.asked == [("highlight", highlight_id(), "not marking")]
+   assert no_live_code == 7
+   assert no_live.stories.asked == [("reel", USER_ID, "not marking")]
+   assert refused_code == 2
+   assert refused.stories.asked == []

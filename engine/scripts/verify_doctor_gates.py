@@ -150,7 +150,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_the_catalog_lists_every_registry_query_exactly_once"),
       "defect": "a registry query is left out of the catalog",
-      "edits": [(CATALOG, "   PROFILE_SCHOOL_BADGE,\n)\n", ")\n")],
+      "edits": [
+         (
+            CATALOG,
+            '   VIEWER_SETTINGS,\n)\n"""The queries sent only',
+            ')\n"""The queries sent only',
+         )
+      ],
    },
    {
       "gate": gate("test_a_checkpoint_on_a_replay_ends_the_run_and_nothing_departs_after_it"),

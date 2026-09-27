@@ -29,6 +29,7 @@ import sys
 import threading
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, get_args, get_origin, get_type_hints
@@ -44,7 +45,15 @@ from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import PARITY
 from dumpstagram.client import SyncClient
 from dumpstagram.listener import EventListener
-from dumpstagram.models import LocationTab, NoteAudience, Page, VideoRendition
+from dumpstagram.models import (
+   LocationTab,
+   NoteAudience,
+   Page,
+   StoryItem,
+   StoryOwner,
+   StoryReel,
+   VideoRendition,
+)
 from dumpstagram.session import Session
 from tests.test_direct import FakeClock, a_bootstrapped_session
 
@@ -352,6 +361,37 @@ FLAT_ALIASES = {
 rather than read off the source, because it is the thing the alias gates below hold the code
 to."""
 
+A_STORY_ITEM = StoryItem(
+   id="3456789012345678902_71234567",
+   pk="3456789012345678902",
+   code="Cyyyyyyyyyy",
+   owner_id="71234567",
+   media_type=1,
+   product_type="story",
+   taken_at=datetime(2026, 9, 26, 12, 0, tzinfo=UTC),
+   expiring_at=datetime(2026, 9, 27, 12, 0, tzinfo=UTC),
+   original_width=1080,
+   original_height=1920,
+   can_reply=True,
+   can_reshare=True,
+   is_paid_partnership=False,
+   is_story_edited=False,
+)
+
+A_STORY_REEL = StoryReel(
+   id="highlight:17912345678901234",
+   reel_type="highlight_reel",
+   owner=StoryOwner(
+      id="71234567",
+      username="someone",
+      profile_pic_url="https://scontent-fixture-1.cdninstagram.com/v/fixture.jpg",
+   ),
+   latest_item_at=datetime(2026, 9, 26, 12, 0, tzinfo=UTC),
+   can_reshare=True,
+   items=(A_STORY_ITEM,),
+)
+"""A highlight holding one item, so the item passes the membership check ``mark_seen`` runs."""
+
 ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "after": "a-cursor",
    "audience": NoteAudience.MUTUAL_FOLLOWS,
@@ -362,6 +402,7 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "highlight_id": "highlight:17912345678901234",
    "image": b"\xff\xd8not-read-before-the-core",
    "images": [b"\xff\xd8first", b"\xff\xd8second"],
+   "item": A_STORY_ITEM,
    "location_id": "212345678901234",
    "message_id": "mid.$abcdefghijklmnop",
    "newer_than_message_id": "mid.$olderthanthatone",
@@ -370,6 +411,7 @@ ARGUMENT_FOR_PARAMETER: dict[str, object] = {
    "path": "never-written.mp4",
    "post_pk": "3456789012345678901",
    "query": "a query",
+   "reel": A_STORY_REEL,
    "rendition": VideoRendition(
       url="https://scontent-fixture-1.cdninstagram.com/v/fixture.mp4",
       width=720,
@@ -796,6 +838,7 @@ CORE_FUNCTION_FOR_ALIAS = {
    "social.follow": "dumpstagram._core.writes.follows.follow_user",
    "social.unfollow": "dumpstagram._core.writes.follows.unfollow_user",
    "stories.highlight": "dumpstagram._core.stories.read_highlight",
+   "stories.mark_seen": "dumpstagram._core.writes.stories.mark_story_item_seen",
    "stories.reel": "dumpstagram._core.stories.read_story_reel",
    "stories.tray": "dumpstagram._core.stories.read_stories_tray",
 }

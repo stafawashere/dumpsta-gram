@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Protocol, TextIO
 
+from dumpstagram.behavior import Behavior
 from dumpstagram.client import SyncClient
 from dumpstagram.models import (
    Comment,
@@ -63,6 +64,11 @@ class Client(Protocol):
 
    @property
    def session(self) -> Session: ...
+
+   @property
+   def behavior(self) -> Behavior: ...
+
+   def with_behavior(self, behavior: Behavior) -> Client: ...
 
    @property
    def media(self) -> SyncMedia: ...

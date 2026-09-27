@@ -94,6 +94,11 @@ class Profile:
    upstream's own numbers. They are reported, not verified, and nothing here reconciles them
    against what a listing would return.
 
+   ``total_clips_count`` is 0 where the upstream sent no count, which another account with no
+   reels did on 2026-09-27 while the same account read by itself sent a number.
+   ``reported_clips_count`` is the count exactly as sent, ``None`` where the upstream sent null,
+   so a caller who needs to tell "no reels" from "no count given" reads that one.
+
    ``friendship_status`` is the viewer's relationship to the account, and ``None`` on the
    viewer's own profile, where the upstream sends null. It is the read that confirms
    :meth:`~dumpstagram.aio.AsyncClient.follow` and
@@ -131,6 +136,7 @@ class Profile:
    has_profile_pic: bool = True
    has_story_archive: bool = False
    friendship_status: FriendshipStatus | None = None
+   reported_clips_count: int | None = None
 
 
 @dataclass(frozen=True)

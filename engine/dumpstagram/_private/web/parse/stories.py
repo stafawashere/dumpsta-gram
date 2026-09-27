@@ -1,4 +1,5 @@
-"""Map the stories tray, one account's live stories and one highlight into typed models.
+"""Map the stories tray, one account's live stories and one highlight into typed models, and read
+the seen mutation's answer.
 
 Built from the answers ``probes/e2_stories.py`` kept on 2026-09-27. Dropped, and why:
 
@@ -49,11 +50,21 @@ from dumpstagram.models import (
 
 __all__ = [
    "REELS_MEDIA_PATH",
+   "SEEN_ANSWER_ROOT",
+   "SEEN_ANSWER_TYPE",
    "STORIES_TRAY_PATH",
    "parse_highlight_reel",
    "parse_stories_tray",
    "parse_story_reel",
+   "story_was_marked_seen",
 ]
+
+SEEN_ANSWER_ROOT = "xdt_mark_story_reel_seen"
+"""The root field the seen mutation answers under."""
+
+SEEN_ANSWER_TYPE = "XDTMarkSeenResponse"
+"""The ``__typename`` of that root on the browser's answer and the engine's, the only field it
+carried on either."""
 
 STORIES_TRAY_PATH = ("data", "xdt_api__v1__feed__reels_tray")
 """The path to the tray in a ``PolarisStoriesV3TrayContainerQuery`` payload, which carries
@@ -350,3 +361,37 @@ def parse_highlight_reel(payload: Any) -> StoryReel:
       raise NotFound("the upstream answered no reel for that highlight")
 
    return _reel(reel, f"{'.'.join(REELS_MEDIA_PATH)}.reels_media[0]")
+
+
+def story_was_marked_seen(payload: Any) -> bool:
+   """Whether a seen mutation's answer says the item was marked, from
+   ``data.xdt_mark_story_reel_seen``.
+
+   Both observed answers, the browser's and the engine's on 2026-09-27, carried that root as an
+   object whose only field was ``__typename`` ``XDTMarkSeenResponse``, and a highlight read
+   carries no seen field to check it against, so the answer is the only confirmation there is.
+   A null root is False, never observed, and read as not marked because a write answered with
+   nothing did not confirm itself. A missing root, or a root of another type, is a schema change.
+   """
+
+   data = _object_at(payload, ("data",))
+   root = _required(data, SEEN_ANSWER_ROOT, "data")
+
+   if root is None:
+      return False
+
+   root_path = f"data.{SEEN_ANSWER_ROOT}"
+
+   if not isinstance(root, dict):
+      raise SchemaChanged(f"{root_path} is not an object or null", path=root_path)
+
+   typename = _required_string(root, "__typename", root_path)
+   is_the_seen_answer = typename == SEEN_ANSWER_TYPE
+
+   if not is_the_seen_answer:
+      raise SchemaChanged(
+         f"{root_path}.__typename is {typename!r}, not {SEEN_ANSWER_TYPE!r}",
+         path=f"{root_path}.__typename",
+      )
+
+   return True

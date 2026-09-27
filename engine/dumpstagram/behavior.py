@@ -158,6 +158,15 @@ class Behavior:
    inside the page's own action. False leaves it out, and each row's ``friendship_status`` is
    ``None``.
 
+   ``mark_stories_seen`` follows every read of an account's live stories or of a highlight with
+   the mutation a browser's story viewer sends for the item it shows first, the reel's first
+   item, one write. It is visible: the story's owner sees the viewer in the item's seen list,
+   exactly as when the story is opened on the website. It counts against the write budget and
+   waits out the write spacing like any write, so reels read back to back are about 30 s apart
+   under the default spacing, where a person tapping through them is faster. The stories tray
+   marks nothing either way, as a browser's tray does not. False reads stories without marking
+   anything, and changes nothing else.
+
    ``write_spacing`` is the gap before a write, measured from the account's previous write. It
    does not delay the reads between two writes, and a write still waits out ``spacing`` from
    whatever request went before it. The default, a 30 s floor plus 5 s mean jitter, is a
@@ -193,6 +202,7 @@ class Behavior:
    page_load_companions: bool = True
    cookie_sync: bool = True
    follow_list_statuses: bool = True
+   mark_stories_seen: bool = True
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
    write_budget_per_hour: int | None = 30
    stop_writes_after_unrecognised_rejection: bool = True

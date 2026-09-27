@@ -120,6 +120,54 @@ MUTATIONS: list[dict[str, object]] = [
       ],
    },
    {
+      "gate": gate(
+         "test_another_accounts_null_clips_count_reads_as_zero_and_is_reported_as_unknown"
+      ),
+      "defect": "total_clips_count is required to be an integer again, the W92 defect",
+      "edits": [
+         (
+            PARSE_PROFILES,
+            'reported_clips_count = _optional_integer(user, "total_clips_count", path)',
+            'reported_clips_count = _required_integer(user, "total_clips_count", path)',
+         )
+      ],
+   },
+   {
+      "gate": gate(
+         "test_another_accounts_null_clips_count_reads_as_zero_and_is_reported_as_unknown"
+      ),
+      "defect": "a null clips count is read as one rather than zero",
+      "edits": [
+         (
+            PARSE_PROFILES,
+            "total_clips_count = 0 if reported_clips_count is None else reported_clips_count",
+            "total_clips_count = 1 if reported_clips_count is None else reported_clips_count",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_clips_count_the_upstream_sends_is_reported_as_sent"),
+      "defect": "reported_clips_count is never filled from the payload",
+      "edits": [
+         (
+            PARSE_PROFILES,
+            "      reported_clips_count=reported_clips_count,\n",
+            "",
+         )
+      ],
+   },
+   {
+      "gate": gate("test_a_clips_count_that_is_neither_integer_nor_null_still_raises"),
+      "defect": "the clips count null allowance accepts any value",
+      "edits": [
+         (
+            PARSE_PROFILES,
+            'reported_clips_count = _optional_integer(user, "total_clips_count", path)',
+            'reported_clips_count = user["total_clips_count"]',
+         )
+      ],
+   },
+   {
       "gate": gate("test_a_flag_that_is_neither_boolean_nor_null_still_raises"),
       "defect": "the null allowance accepts any value",
       "edits": [

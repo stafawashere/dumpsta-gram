@@ -12,6 +12,7 @@ from dumpstagram._private.web.parse.common import (
    _hd_profile_pic_url,
    _object_at,
    _optional_flag,
+   _optional_integer,
    _optional_string,
    _required,
    _required_flag,
@@ -148,11 +149,18 @@ def parse_profile(payload: Any) -> Profile:
    object of ten flags and ``is_professional_account``, ``has_profile_pic`` and
    ``has_story_archive`` as null, so those three read null as the model's default.
 
+   Account B read by the owner on 2026-09-27, an account with no posts and no reels, carried
+   ``total_clips_count`` as something other than an integer, INFERENCE null (W92). Null reads
+   as 0 on the frozen ``total_clips_count`` and as ``None`` on ``reported_clips_count``, and an
+   absent key or any other type still raises.
+
    Finding: `skills/reverse-engineer/knowledge/endpoints/read-a-user-profile.md`.
    """
 
    user = _object_at(payload, PROFILE_PATH)
    path = ".".join(PROFILE_PATH)
+   reported_clips_count = _optional_integer(user, "total_clips_count", path)
+   total_clips_count = 0 if reported_clips_count is None else reported_clips_count
 
    return Profile(
       id=_required_string(user, "id", path),
@@ -164,7 +172,7 @@ def parse_profile(payload: Any) -> Profile:
       follower_count=_required_integer(user, "follower_count", path),
       following_count=_required_integer(user, "following_count", path),
       media_count=_required_integer(user, "media_count", path),
-      total_clips_count=_required_integer(user, "total_clips_count", path),
+      total_clips_count=total_clips_count,
       profile_pic_url=_required_string(user, "profile_pic_url", path),
       hd_profile_pic_url=_hd_profile_pic_url(user, path),
       external_url=_optional_string(user, "external_url", path),
@@ -182,6 +190,7 @@ def parse_profile(payload: Any) -> Profile:
       has_profile_pic=_flag_or_default(user, "has_profile_pic", path, default=True),
       has_story_archive=_flag_or_default(user, "has_story_archive", path, default=False),
       friendship_status=_friendship_status(user, path),
+      reported_clips_count=reported_clips_count,
    )
 
 

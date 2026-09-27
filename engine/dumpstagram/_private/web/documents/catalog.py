@@ -72,7 +72,7 @@ from dumpstagram._private.web.documents.search import (
    RECENT_SEARCHES,
 )
 from dumpstagram._private.web.documents.social import FOLLOW_USER, UNFOLLOW_USER
-from dumpstagram._private.web.documents.stories import STORY_REEL
+from dumpstagram._private.web.documents.stories import STORY_REEL, STORY_SEEN
 
 __all__ = [
    "COMPANION_QUERIES",
@@ -150,5 +150,6 @@ WRITE_QUERIES: tuple[PersistedQuery, ...] = (
    DELETE_NOTE,
    FOLLOW_USER,
    UNFOLLOW_USER,
+   STORY_SEEN,
 )
 """The mutations. The canary compares their ids with the bundle's and never builds one."""

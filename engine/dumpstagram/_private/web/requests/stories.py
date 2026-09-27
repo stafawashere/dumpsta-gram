@@ -1,7 +1,8 @@
-"""The stories reads: the tray, one account's live stories, and one highlight.
+"""The stories requests: the tray, one account's live stories, one highlight, and the mutation
+that marks one item seen.
 
-Every request here is a read. None of them marks anything seen, and nothing in the engine builds
-a seen mutation until the arranged run of E2 batch 12 verifies one (W68).
+The three reads mark nothing seen. The seen mutation is the one write here, built since E2 batch
+12 (W93).
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import re
 from dumpstagram._private.transport import Request
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, ORIGIN
 from dumpstagram._private.web.documents.page_load import STORIES_TRAY
-from dumpstagram._private.web.documents.stories import STORY_REEL
+from dumpstagram._private.web.documents.stories import STORY_REEL, STORY_SEEN
 from dumpstagram._private.web.requests.common import build_graphql_request
 from dumpstagram.session import Session
 
@@ -19,6 +20,7 @@ __all__ = [
    "build_highlight_request",
    "build_stories_tray_request",
    "build_story_reel_request",
+   "build_story_seen_request",
    "refuse_what_is_not_a_highlight_id",
 ]
 
@@ -113,5 +115,46 @@ def build_highlight_request(
       STORY_REEL,
       {"reel_ids_arr": [highlight_id], "is_highlight": True, COMMUNITY_NOTE_PROVIDER: True},
       referer=f"{ORIGIN}/",
+      user_agent=user_agent,
+   )
+
+
+def build_story_seen_request(
+   session: Session,
+   *,
+   reel_id: str,
+   item_pk: str,
+   owner_id: str,
+   taken_at: int,
+   viewed_at: int,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Mark the item ``item_pk`` of the reel ``reel_id`` seen, as viewing it does.
+
+   ``reel_id`` is the reel's own id, ``highlight:<number>`` for a highlight and the owner's
+   account id for a live reel. ``owner_id`` is the item's owner, and ``taken_at`` and
+   ``viewed_at`` are whole seconds. The five variables are the ones the browser sent, in its
+   order. On a highlight the referer is the highlight's page, as the browser and the engine
+   replay sent it; on a live reel, whose page was never recorded around this mutation, it is the
+   site root, as the reel read's is.
+
+   Finding: ``mark-a-story-seen``.
+   """
+
+   is_a_highlight = _HIGHLIGHT_ID.fullmatch(reel_id) is not None
+   highlight_number = reel_id.removeprefix("highlight:")
+   referer = f"{ORIGIN}/stories/highlights/{highlight_number}/" if is_a_highlight else f"{ORIGIN}/"
+
+   return build_graphql_request(
+      session,
+      STORY_SEEN,
+      {
+         "reelId": reel_id,
+         "reelMediaId": item_pk,
+         "reelMediaOwnerId": owner_id,
+         "reelMediaTakenAt": taken_at,
+         "viewSeenAt": viewed_at,
+      },
+      referer=referer,
       user_agent=user_agent,
    )

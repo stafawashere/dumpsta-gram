@@ -127,8 +127,9 @@ does not close the pool. Closing the owner stops both.
 `feed_first_page`, `profile_route`, `thread_first_page`, `page_load_companions`,
 `cookie_sync`, `write_spacing`, `write_budget_per_hour`,
 `stop_writes_after_unrecognised_rejection` and `poll_interval_seconds`, since E2 batch 3
-`follow_list_statuses`, described with the followers below, and since E2 batch 9 `inbox_route`,
-described with `notes()` below. `poll_interval_seconds`, added with the
+`follow_list_statuses`, described with the followers below, since E2 batch 9 `inbox_route`,
+described with `notes()` below, and since E2 batch 12 `mark_stories_seen`, described with the
+stories below, whose default makes a story read visible to the story's owner. `poll_interval_seconds`, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
 zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
 above.
@@ -266,7 +267,10 @@ follow, the unfollow and each read after them were observed; the private account
 whether an unfollow withdraws it, were not. The same step made `profile_by_id` read accounts other
 than the viewer's: another account's profile carries `is_professional_account`,
 `has_profile_pic` and `has_story_archive` as null, which the mapper had refused, and a null on
-those three is now read as the field's own default. What a browser sends around a follow is
+those three is now read as the field's own default. Since W92, another account with no reels
+carries `total_clips_count` as a non-integer, INFERENCE null, which reads as 0 on that frozen
+`int` field and as `None` on `Profile.reported_clips_count: int | None = None`, the count as
+sent; an absent key or any other type still raises. What a browser sends around a follow is
 unrecorded under ruling 23, so each write is sent alone, a departure recorded in
 [web-request-contract.md](web-request-contract.md).
 
@@ -681,7 +685,7 @@ is sent.
 `has_next_page` as `has_more`, because the query that reads further has never answered (W54).
 `Highlight` carries `id` (`highlight:<number>`), `title`, `cover_url`, `owner_id` and
 `owner_username`. Reading the stories inside a highlight is `stories.highlight(highlight.id)`,
-and nothing is marked seen.
+which under the default behavior marks its first item seen (W94).
 
 `ProfileSummary` is one account as a list row shows it: `id`, the numeric account id
 `profiles.by_id` takes, `username`, `full_name`, `is_verified`, `profile_pic_url`, and
@@ -804,14 +808,16 @@ context query backs no method (W66).
 
 ### Stories
 
-Landed 2026-09-27, E2 batch 5 of [web-parity-plan.md](web-parity-plan.md), rulings W68 to W72.
-The `stories` namespace, on both clients, with no flat twin:
+Landed 2026-09-27, E2 batch 5 of [web-parity-plan.md](web-parity-plan.md), rulings W68 to W72,
+and marking seen in E2 batch 12 the same day, rulings W93 to W95. The `stories` namespace, on
+both clients, with no flat twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
-| `stories.tray()` | `tuple[TrayReel, ...]` | one |
-| `stories.reel(user_id)` | `StoryReel \| None` | one |
-| `stories.highlight(highlight_id)` | `StoryReel` | one |
+| `stories.tray()` | `tuple[TrayReel, ...]` | one, nothing marked seen |
+| `stories.reel(user_id)` | `StoryReel \| None` | one, and one write marking the first item under the default |
+| `stories.highlight(highlight_id)` | `StoryReel` | one, and one write marking the first item under the default |
+| `stories.mark_seen(item, *, reel)` | `None` | one write |
 
 ```python
 for row in client.stories.tray():
@@ -823,14 +829,31 @@ for item in highlight.items:
    print(item.taken_at, item.media_type, len(item.videos), [m.username for m in item.mentions])
 
 live = client.stories.reel(profile.id)   # None when the account has no live story
+
+client.stories.mark_seen(highlight.items[3], reel=highlight)
+quiet = client.with_behavior(replace(client.behavior, mark_stories_seen=False))
+unmarked = quiet.stories.reel(profile.id)   # read, nothing marked
 ```
 
-**Reading a story through the engine does not mark it seen.** A browser marks every item it
-shows with a separate mutation, which puts the viewer in the story's seen list. The engine sends
-none, a named departure from browser parity (W6) that holds until the mutation is verified on the
-owner's own story in an arranged run, E2 batch 12. `mark_seen` and `Behavior.mark_stories_seen`
-arrive with that run, and the default then becomes the browser's. Until then no request any
-stories method sends can mark a story seen (W68).
+**Reading a story through the engine marks it seen, and the story's owner sees you.** Since E2
+batch 12, under the default behavior, `stories.reel()` and `stories.highlight()` follow the read
+with `PolarisStoriesV3SeenMutation` for the reel's first item, the item a browser's story viewer
+shows and marks when it opens, so reading another account's live story or highlight puts you in
+that item's seen list exactly as opening it on the website does (W6, W94). Only the first item
+is marked, because a read returns every item at once and a person has seen only the first;
+`stories.mark_seen(item, reel=reel)` marks any other. The mark is a write: it waits out the write
+spacing, counts against the write budget, is sent once and never retried, and when it fails its
+error is raised and the reel is not returned. `Behavior.mark_stories_seen=False` reads without
+marking and changes nothing else. `stories.tray()` never marks anything, as a browser's tray does
+not.
+
+**Marking one item.** `stories.mark_seen(item, *, reel)` takes a `StoryItem` and the `StoryReel`
+it was read in: the reel's id and the item's owner, pk and time posted are what the mutation
+carries, so an item that is not in `reel.items` raises `ValueError` before anything is sent. A
+connection failure in flight raises `OutcomeUnknown`, and an answer with no seen response raises
+`UpstreamRejected` with code `story_not_marked_seen`. The answer is its only confirmation, since a
+highlight read carries no seen state; a live reel's is the tray row's `seen_at` (W93). Verified on
+the owner's own highlight; a live reel's mutation is INFERENCE from the same finding.
 
 **The tray.** One `TrayReel` per account with live stories, in the tray's order: the `owner` (a
 `StoryOwner` with a high resolution picture and no verified or private flag), `latest_item_at`,

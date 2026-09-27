@@ -46,7 +46,7 @@ capture night that unblocks the rest.
 | 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
 | 11 | Replays the capture unblocks | written after batch 10 | about 40, HYPOTHESIS | |
-| 12 | Story seen, arranged | written after batch 5 | about 4 | |
+| 12 | Story seen, done 2026-09-27 on the owner's own highlight | `probes/story_seen_own_highlight.py` | 4, spent 4 | |
 
 Batches 1 to 9 spend 80 requests, 114 at most, 9 of them bootstraps, at the probe spacing of
 2850 ms, four to six minutes of wire time for all nine. With batches 11 and 12 the E2
@@ -298,7 +298,7 @@ post.
 | `PolarisStoriesV3ReelPageStandaloneQuery` | one account's reel, or one highlight | verified 2026-09-27, public as `stories.reel` and `stories.highlight` |
 | `PolarisStoriesV3ReelPageGalleryQuery` | the gallery around a reel | verified 2026-09-27, no capability and not sent (W71) |
 | `PolarisStoriesV3ReelPageGalleryPaginationQuery` | the gallery's next reels | hypothesis, never answered |
-| `PolarisStoriesV3SeenMutation` | mark one item seen | hypothesis, variables observed, WRITE-LIKE, never sent (W68) |
+| `PolarisStoriesV3SeenMutation` | mark one item seen | verified 2026-09-27, a write, public as `stories.mark_seen` and sent after `reel` and `highlight` by default (W93, W94) |
 
 **Status: done on 2026-09-27 for the reads, rulings W68 to W72.** `probes/e2_stories.py` ran once
 with 8 requests and no conditional one, in run `run-2026-09-27-014102`: the tray with 33 reels,
@@ -310,7 +310,8 @@ twin, with the new public models `TrayReel`, `StoryReel`, `StoryItem`, `StoryOwn
 `StoryVideo`, `StoryMention` and `StoryMusic`, and as `dumpsta stories-tray`, `story` and
 `highlight`. W68 amends W42: the reads ship before the seen mutation is verified and send no
 seen marking, a named departure from W6 until batch 12; `mark_seen` and
-`Behavior.mark_stories_seen` arrive with that run. The CLI acceptance,
+`Behavior.mark_stories_seen` arrive with that run, which closed the departure on 2026-09-27
+(W93, W94). The CLI acceptance,
 `probes/e2_stories_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 4 requests, each a read query and none a seen mutation: 33 tray reels, no live reel of the owner's, 1 highlight and its 18 items, log `logs/e2-stories-cli-2026-09-27-035531.json`. What the run found that the
 plan did not know:
 
@@ -631,11 +632,36 @@ requests, not yet run. What it found:
   writes, and the orchestrator's first attempt to include them was refused by the session's
   permission check, so they wait for the owner.
 
+## Batch 12: story seen
+
+| Operation | Kind | Status |
+|---|---|---|
+| `PolarisStoriesV3SeenMutation` | mark one item seen, a write the item's owner sees | verified twice 2026-09-27, run `run-2026-09-27-135628` |
+
+**Status: done on 2026-09-27, rulings W93 to W96, on the owner's own highlight rather than a live
+story.** The owner opened his own highlight in the browser, which sent the mutation once with
+the five variables the finding records, and `probes/story_seen_own_highlight.py` replayed it on
+the highlight's second item, 4 requests, the same 196 byte answer, log
+`logs/story-seen-own-highlight-2026-09-27-142451.json`. No other person was shown as a viewer.
+A live reel's mutation was not observed: its `reelId` as the owner's account id is INFERENCE, and
+the arranged run on a story posted from the owner's phone that W42 described was not needed for
+the verification and has not run.
+
+It shipped `client.stories.mark_seen(item, *, reel) -> None` on both clients, one write through
+`send_write` (W93), and `Behavior.mark_stories_seen: bool = True`: under the default,
+`stories.reel()` and `stories.highlight()` mark their first item seen after the read, the item a
+browser shows first, and the tray marks nothing (W94). **Reading another account's story through
+the engine now puts the viewer in its seen list, as the website does.** `dumpsta story` and
+`highlight` mark by default and take `--no-mark-seen`, and `dumpsta story-seen REEL_ID ITEM_PK`
+marks one item (W95). W68's departure is closed. The live acceptance,
+`probes/e2_story_seen_cli_acceptance.py`, is written for the owner's own highlight only, five
+requests, and has not run.
+
 ## Visibility and second account, collected
 
 | Item | Flag |
 |---|---|
-| Story seen mutation | Visible to the story's owner. Only on the owner's own story, arranged (W42). |
+| Story seen mutation | Visible to the story's owner. Verified on the owner's own highlight (W93); the engine's default now sends it on any story it reads (W94). |
 | Another person's story, read | Read query only, behind a flag, never the W30 partner (W42). |
 | Opening a message request thread | Marks it seen to the sender, INFERENCE. Never run (W43). |
 | `news/inbox_seen`, activity `mark_as_seen` | The owner's own badge only. Not sent in discovery. |

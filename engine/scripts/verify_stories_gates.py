@@ -6,9 +6,11 @@ restored from an in-memory copy in a ``finally`` so an interrupted run cannot le
 behind.
 
 The mutations cover the tray's mapper, the reel and highlight mapper and its items, an empty
-answer and a doubled one, the three requests and their refusals, the W68 gate that no seen
-mutation is sent or registered, the commands, the canary's new step and the namespace parity
-gates for the new methods.
+answer and a doubled one, the three requests and their refusals, the commands, the canary's new
+step and the namespace parity gates for the new methods. Since E2 batch 12 the two rows of the
+retired W68 gate are gone, and the rows for the seen mutation, the default marking of W94, the
+failure rule, the registration, the commands of W95 and the parity of ``mark_seen`` took their
+place.
 
 Run from ``engine/`` with ``uv run python scripts/verify_stories_gates.py``. Writes its result to
 ``engine/logs/``.
@@ -33,12 +35,22 @@ DOCUMENTS = "dumpstagram/_private/web/documents/stories.py"
 CATALOG = "dumpstagram/_private/web/documents/catalog.py"
 CANARY = "dumpstagram/_private/web/canary.py"
 CORE = "dumpstagram/_core/stories.py"
+WRITE = "dumpstagram/_core/writes/stories.py"
+BEHAVIOR = "dumpstagram/behavior.py"
 NAMESPACE = "dumpstagram/namespaces/stories.py"
 COMMANDS = "dumpstagram/_cli/commands/stories.py"
 RENDER = "dumpstagram/_cli/render/stories.py"
 GATES = "tests/test_stories.py"
 DOCTOR_GATES = "tests/test_doctor.py"
 PARITY_GATES = "tests/test_facade_parity.py"
+
+
+SEND_THE_SEEN_WRITE = (
+   '   payload = await send_write(sender, session, WriteRequest(request, "mark_story_seen"))'
+)
+MARK_THE_FIRST_ITEM = (
+   "await mark_story_item_seen(sender, session, reel, reel.items[0], user_agent=user_agent)"
+)
 
 
 def gate(name: str) -> str:
@@ -57,7 +69,18 @@ DOUBLED = gate("test_more_than_one_reel_for_one_id_is_a_schema_change")
 VIDEO_TYPE = gate("test_a_story_video_without_its_type_is_a_schema_change")
 REQUESTS_GATE = gate("test_the_three_reads_send_the_variables_replayed_live")
 REFUSALS = gate("test_a_username_and_a_bare_highlight_number_are_refused_before_anything_is_sent")
-NO_SEEN = gate("test_no_stories_method_sends_a_seen_mutation_and_the_registry_holds_none")
+SEEN_SHAPE = gate("test_the_seen_mutation_sends_the_five_variables_the_browser_sent")
+SEEN_MEMBERSHIP = gate("test_an_item_from_another_reel_is_refused_before_anything_is_sent")
+SEEN_ANSWER = gate("test_an_answer_that_is_not_the_seen_response_raises")
+SEEN_WRITE_SLOT = gate("test_the_seen_mutation_departs_only_through_the_write_slot")
+SEEN_BUDGET = gate("test_the_seen_mutation_counts_against_the_write_budget")
+SEEN_ONCE = gate("test_a_rejected_or_interrupted_seen_mutation_departs_once")
+DEFAULT_MARK = gate("test_under_the_default_a_reel_and_a_highlight_read_mark_their_first_item_only")
+MARKING_OFF = gate("test_with_marking_off_no_stories_read_sends_a_seen_mutation")
+MARK_REFUSED = gate("test_a_read_whose_mark_is_refused_raises_rather_than_returning_unmarked")
+SEEN_REGISTERED = gate("test_only_the_seen_mutation_that_was_verified_is_registered_and_as_a_write")
+DUMPSTA_MARKS = gate("test_dumpsta_story_and_highlight_mark_the_first_item_unless_told_not_to")
+DUMPSTA_STORY_SEEN = gate("test_dumpsta_story_seen_reads_without_marking_then_marks_the_named_item")
 DUMPSTA_PRINTS = gate("test_dumpsta_stories_tray_story_and_highlight_print_every_row_and_item")
 DUMPSTA_REFUSES = gate("test_dumpsta_story_refuses_a_username_and_highlight_a_bare_number")
 CANARY_REEL = (
@@ -65,6 +88,7 @@ CANARY_REEL = (
    "test_the_story_reel_is_replayed_on_the_viewers_first_highlight_and_skipped_without_one"
 )
 REACHES_CORE = "test_a_namespace_method_reaches_the_core_capability_the_table_names"
+FORWARDS = "test_a_blocking_namespace_method_forwards_every_argument_on_the_loop_thread"
 
 MUTATIONS: list[dict[str, object]] = [
    {
@@ -375,39 +399,352 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [(CORE, "   refuse_what_is_not_a_user_id(user_id)\n\n", "")],
    },
    {
-      "gate": NO_SEEN,
-      "defect": "the reel read sends a second request beside its query",
+      "gate": SEEN_SHAPE,
+      "defect": "the time posted is sent as a string",
+      "edits": [(REQUESTS, '"reelMediaTakenAt": taken_at,', '"reelMediaTakenAt": str(taken_at),')],
+   },
+   {
+      "gate": SEEN_SHAPE,
+      "defect": "the reel's id is sent as the item's owner",
+      "edits": [(REQUESTS, '"reelMediaOwnerId": owner_id,', '"reelMediaOwnerId": reel_id,')],
+   },
+   {
+      "gate": SEEN_SHAPE,
+      "defect": "a highlight's seen mutation carries the site root as referer",
       "edits": [
          (
-            CORE,
-            "      request = build_story_reel_request(session, user_id, user_agent=user_agent)\n"
-            "      response = await sender.send(request)",
-            "      request = build_story_reel_request(session, user_id, user_agent=user_agent)\n"
-            "      await sender.send(request)\n"
-            "      response = await sender.send(request)",
+            REQUESTS,
+            '   referer = f"{ORIGIN}/stories/highlights/{highlight_number}/" if is_a_highlight '
+            'else f"{ORIGIN}/"',
+            '   referer = f"{ORIGIN}/"',
          )
       ],
    },
    {
-      "gate": NO_SEEN,
-      "defect": "a seen mutation is registered beside the reads",
+      "gate": SEEN_SHAPE,
+      "defect": "the seen mutation goes to the query path",
       "edits": [
          (
             DOCUMENTS,
-            '__all__ = ["STORY_REEL"]\n',
-            '__all__ = ["STORY_REEL", "STORY_SEEN"]\n\n'
-            "STORY_SEEN = PersistedQuery(\n"
+            '   finding_id="mark-a-story-seen",\n   url=API_GRAPHQL_URL,',
+            '   finding_id="mark-a-story-seen",\n   url=GRAPHQL_QUERY_URL,',
+         )
+      ],
+   },
+   {
+      "gate": SEEN_SHAPE,
+      "defect": "the time posted is read from the expiry",
+      "edits": [
+         (
+            WRITE,
+            "taken_at=int(item.taken_at.timestamp()),",
+            "taken_at=int(item.expiring_at.timestamp()),",
+         )
+      ],
+   },
+   {
+      "gate": SEEN_SHAPE,
+      "defect": "the time of viewing is sent in milliseconds",
+      "edits": [(WRITE, "viewed_at=int(clock()),", "viewed_at=int(clock() * 1000),")],
+   },
+   {
+      "gate": SEEN_MEMBERSHIP,
+      "defect": "an item from another reel is marked under this reel's id",
+      "edits": [(WRITE, "   is_in_the_reel = item in reel.items\n", "   is_in_the_reel = True\n")],
+   },
+   {
+      "gate": SEEN_ANSWER,
+      "defect": "a null seen root is taken as marked",
+      "edits": [
+         (
+            PARSE,
+            "   if root is None:\n      return False\n\n   root_path",
+            "   if root is None:\n      return True\n\n   root_path",
+         )
+      ],
+   },
+   {
+      "gate": SEEN_ANSWER,
+      "defect": "a seen root of another type is taken as marked",
+      "edits": [
+         (
+            PARSE,
+            "   is_the_seen_answer = typename == SEEN_ANSWER_TYPE\n",
+            "   is_the_seen_answer = True\n",
+         )
+      ],
+   },
+   {
+      "gate": SEEN_ANSWER,
+      "defect": "the write ignores its answer",
+      "edits": [(WRITE, "   if not story_was_marked_seen(payload):\n", "   if False:\n")],
+   },
+   {
+      "gate": SEEN_WRITE_SLOT,
+      "defect": "the seen mutation is sent as a read, outside the write slot",
+      "edits": [
+         (
+            WRITE,
+            "from dumpstagram._core.writing import send_write\n",
+            "from dumpstagram._core.writing import send_write\n"
+            "from dumpstagram._private.web.classify import classify\n",
+         ),
+         (
+            WRITE,
+            SEND_THE_SEEN_WRITE,
+            "   payload = classify(await sender.send(request))",
+         ),
+      ],
+   },
+   {
+      "gate": SEEN_BUDGET,
+      "defect": "the seen mutation escapes the write budget",
+      "edits": [
+         (
+            WRITE,
+            "from dumpstagram._core.writing import send_write\n",
+            "from dumpstagram._core.writing import send_write\n"
+            "from dumpstagram._private.web.classify import classify\n",
+         ),
+         (
+            WRITE,
+            SEND_THE_SEEN_WRITE,
+            "   payload = classify(await sender.send(request))",
+         ),
+      ],
+   },
+   {
+      "gate": SEEN_ONCE,
+      "defect": "the seen mutation is sent again after an error",
+      "edits": [
+         (
+            WRITE,
+            SEND_THE_SEEN_WRITE,
+            "   try:\n"
+            '      payload = await send_write(sender, session, WriteRequest(request, "seen"))\n'
+            "   except Exception:\n"
+            '      payload = await send_write(sender, session, WriteRequest(request, "seen"))',
+         )
+      ],
+   },
+   {
+      "gate": DEFAULT_MARK,
+      "defect": "the parity default no longer marks",
+      "edits": [
+         (BEHAVIOR, "   mark_stories_seen: bool = True\n", "   mark_stories_seen: bool = False\n")
+      ],
+   },
+   {
+      "gate": DEFAULT_MARK,
+      "defect": "the reel read ignores the behavior and marks nothing",
+      "edits": [
+         (
+            NAMESPACE,
+            "            user_id,\n            user_agent=client._user_agent,\n"
+            "            mark_first_item_seen=client._behavior.mark_stories_seen,",
+            "            user_id,\n            user_agent=client._user_agent,\n"
+            "            mark_first_item_seen=False,",
+         )
+      ],
+   },
+   {
+      "gate": DEFAULT_MARK,
+      "defect": "the highlight read ignores the behavior and marks nothing",
+      "edits": [
+         (
+            NAMESPACE,
+            "            highlight_id,\n            user_agent=client._user_agent,\n"
+            "            mark_first_item_seen=client._behavior.mark_stories_seen,",
+            "            highlight_id,\n            user_agent=client._user_agent,\n"
+            "            mark_first_item_seen=False,",
+         )
+      ],
+   },
+   {
+      "gate": DEFAULT_MARK,
+      "defect": "the read marks its last item rather than its first",
+      "edits": [
+         (
+            CORE,
+            MARK_THE_FIRST_ITEM,
+            MARK_THE_FIRST_ITEM.replace("reel.items[0]", "reel.items[-1]"),
+         )
+      ],
+   },
+   {
+      "gate": DEFAULT_MARK,
+      "defect": "the read marks every item",
+      "edits": [
+         (
+            CORE,
+            f"   {MARK_THE_FIRST_ITEM}",
+            "   for item in reel.items:\n"
+            "      await mark_story_item_seen(sender, session, reel, item, user_agent=user_agent)",
+         )
+      ],
+   },
+   {
+      "gate": MARKING_OFF,
+      "defect": "the reel read marks with marking off",
+      "edits": [
+         (
+            CORE,
+            "   if mark_first_item_seen:\n"
+            "      await _mark_the_first_item_seen(sender, session, reel,",
+            "   if True:\n      await _mark_the_first_item_seen(sender, session, reel,",
+         )
+      ],
+   },
+   {
+      "gate": MARKING_OFF,
+      "defect": "the highlight read marks with marking off",
+      "edits": [
+         (
+            CORE,
+            "   if mark_first_item_seen:\n"
+            "      await _mark_the_first_item_seen(sender, session, highlight,",
+            "   if True:\n      await _mark_the_first_item_seen(sender, session, highlight,",
+         )
+      ],
+   },
+   {
+      "gate": MARK_REFUSED,
+      "defect": "a refused mark is swallowed and the reel returned unmarked",
+      "edits": [
+         (
+            CORE,
+            f"   {MARK_THE_FIRST_ITEM}",
+            "   try:\n"
+            "      await mark_story_item_seen(\n"
+            "         sender, session, reel, reel.items[0], user_agent=user_agent\n"
+            "      )\n"
+            "   except Exception:\n"
+            "      pass",
+         )
+      ],
+   },
+   {
+      "gate": SEEN_REGISTERED,
+      "defect": "the seen mutation is registered as a companion",
+      "edits": [
+         (CATALOG, "   UNFOLLOW_USER,\n   STORY_SEEN,\n)", "   UNFOLLOW_USER,\n)"),
+         (
+            CATALOG,
+            '   VIEWER_SETTINGS,\n)\n"""The queries sent only',
+            '   VIEWER_SETTINGS,\n   STORY_SEEN,\n)\n"""The queries sent only',
+         ),
+      ],
+   },
+   {
+      "gate": SEEN_REGISTERED,
+      "defect": "an alternate compiled seen route is registered without a finding",
+      "edits": [
+         (
+            DOCUMENTS,
+            '__all__ = ["STORY_REEL", "STORY_SEEN"]\n',
+            '__all__ = ["REEL_SEEN", "STORY_REEL", "STORY_SEEN"]\n\n'
+            "REEL_SEEN = PersistedQuery(\n"
             '   doc_id="1",\n'
-            '   friendly_name="PolarisStoriesV3SeenMutation",\n'
+            '   friendly_name="PolarisAPIReelSeenMutation",\n'
             '   finding_id="mark-a-story-seen",\n'
             ")\n",
          ),
          (
             CATALOG,
-            "from dumpstagram._private.web.documents.stories import STORY_REEL\n",
             "from dumpstagram._private.web.documents.stories import STORY_REEL, STORY_SEEN\n",
+            "from dumpstagram._private.web.documents.stories import (\n"
+            "   REEL_SEEN,\n   STORY_REEL,\n   STORY_SEEN,\n)\n",
          ),
-         (CATALOG, "   UNFOLLOW_USER,\n)", "   UNFOLLOW_USER,\n   STORY_SEEN,\n)"),
+         (
+            CATALOG,
+            "   UNFOLLOW_USER,\n   STORY_SEEN,\n)",
+            "   UNFOLLOW_USER,\n   STORY_SEEN,\n   REEL_SEEN,\n)",
+         ),
+      ],
+   },
+   {
+      "gate": DUMPSTA_MARKS,
+      "defect": "--no-mark-seen is ignored",
+      "edits": [
+         (
+            COMMANDS,
+            "   reader = _without_marking(client) if arguments.no_mark_seen else client\n",
+            "   reader = client\n",
+         )
+      ],
+   },
+   {
+      "gate": DUMPSTA_MARKS,
+      "defect": "the client scoped without marking is left open",
+      "edits": [
+         (
+            COMMANDS,
+            "      if reader is not client:\n         reader.close()\n",
+            "      if reader is not client:\n         pass\n",
+         )
+      ],
+   },
+   {
+      "gate": DUMPSTA_MARKS,
+      "defect": "the highlight JSON claims a mark whatever the behavior",
+      "edits": [
+         (
+            COMMANDS,
+            '      "highlight_id": arguments.highlight_id,\n'
+            '      "marked_first_item_seen": marks_first_item and has_items,',
+            '      "highlight_id": arguments.highlight_id,\n'
+            '      "marked_first_item_seen": has_items,',
+         )
+      ],
+   },
+   {
+      "gate": DUMPSTA_STORY_SEEN,
+      "defect": "story-seen reads with marking on, marking the first item too",
+      "edits": [
+         (
+            COMMANDS,
+            "   reader = _without_marking(client)\n\n   try:\n      reel = _read_reel(reader",
+            "   reader = client.with_behavior(client.behavior)\n\n"
+            "   try:\n      reel = _read_reel(reader",
+         )
+      ],
+   },
+   {
+      "gate": DUMPSTA_STORY_SEEN,
+      "defect": "story-seen marks the reel's first item, whichever was named",
+      "edits": [
+         (
+            COMMANDS,
+            "   matching = [item for item in reel.items if item.pk == arguments.item_pk]\n",
+            "   matching = list(reel.items)\n",
+         )
+      ],
+   },
+   {
+      "gate": DUMPSTA_STORY_SEEN,
+      "defect": "story-seen takes an item that is not a pk",
+      "edits": [(COMMANDS, "type=media_pk,", "type=str,")],
+   },
+   {
+      "gate": parity(FORWARDS, "stories.mark_seen"),
+      "defect": "the blocking mark_seen forwards a copy of the reel",
+      "edits": [
+         (
+            NAMESPACE,
+            "         self._client._impl.stories.mark_seen(item, reel=reel),",
+            "         self._client._impl.stories.mark_seen(item, reel=type(reel)(**vars(reel))),",
+         )
+      ],
+   },
+   {
+      "gate": parity(REACHES_CORE, "stories.mark_seen"),
+      "defect": "mark_seen reaches the highlight read",
+      "edits": [
+         (
+            NAMESPACE,
+            "         mark_story_item_seen(\n            client._sender,",
+            "         read_highlight(\n            client._sender,",
+         )
       ],
    },
    {

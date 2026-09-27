@@ -190,8 +190,9 @@ post modal's `PolarisPostModalContextQuery` is not sent (W66). Findings `read-co
 `read-comment-replies-next-page`, `read-a-post-s-likers`, `read-a-post-by-media-id` and
 `read-more-posts-from-an-account`.
 
-**The stories reads are each sent alone, and no story is marked seen, two recorded departures.**
-Added 2026-09-27 with E2 batch 5, rulings W68 to W72. `STORIES_TRAY` (`27703822975903310`,
+**The stories reads are each sent alone, a recorded departure, and since E2 batch 12 a reel or
+highlight read marks its first item seen.** Added 2026-09-27 with E2 batch 5, rulings W68 to W72,
+and amended the same day with batch 12, W93 to W95. `STORIES_TRAY` (`27703822975903310`,
 `PolarisStoriesV3TrayContainerQuery`) is sent on `API_GRAPHQL_URL` with the variables every page
 load sends it with, `data.is_following_feed` false and the `suggestedUsersData` block asking to
 display none. `STORY_REEL` (`29184890191114309`, `PolarisStoriesV3ReelPageStandaloneQuery`) answers
@@ -202,11 +203,22 @@ community note provider true for `stories.reel`, and with `reel_ids_arr` of one
 variables. All three have the site root as their referer: a browser reads the tray inside a page
 load and a reel when the story viewer opens, and neither burst is modelled. A browser then sends
 `PolarisStoriesV3SeenMutation` for each item it shows, which puts the viewer in the story's seen
-list. The engine sends no seen mutation and registers none, a named departure from W6 that holds
-until the arranged run of E2 batch 12 verifies the mutation on the owner's own story, when
-`Behavior.mark_stories_seen` arrives with parity as its default (W68). Reading a story through
-the engine today does not mark it seen. The stories gallery query is not sent (W71). Findings
-`page-load-stories-tray` and `read-one-account-s-stories-or-a-highlight`.
+list. `STORY_SEEN` (`26234228992942885`, `PolarisStoriesV3SeenMutation`, a write in
+`WRITE_QUERIES`) is sent on `API_GRAPHQL_URL`, with no root field header as the browser sent none,
+carrying `reelId` (the reel's id, `highlight:<number>` for a highlight and the owner's account id
+for a live reel, the latter INFERENCE), `reelMediaId` and `reelMediaOwnerId` as strings, and
+`reelMediaTakenAt` and `viewSeenAt` as whole seconds, the browser's five variables and nothing
+else. Its referer is the highlight's page, `/stories/highlights/<number>/`, as the browser's and
+the engine replay's were, and the site root on a live reel, whose page was never recorded around
+the mutation. It goes through `send_write`: write spacing, write budget, sent once. Under the
+default behavior `stories.reel` and `stories.highlight` send it once after the read, for the first
+item, so **reading a story through the engine marks it seen and its owner sees the viewer**;
+`Behavior.mark_stories_seen=False` sends none; `stories.tray` never sends it; `stories.mark_seen`
+sends it for any one item (W93, W94). The departure W68 named is closed. Marking only the first
+item, where a browser resuming a partly seen live reel starts at the first unseen one, is a named
+difference (W94). The two alternate compiled seen routes are not sent. The stories gallery query
+is not sent (W71). Findings `page-load-stories-tray`, `read-one-account-s-stories-or-a-highlight`
+and `mark-a-story-seen`.
 
 **A place's two reads and the new posts check are each sent alone, a recorded departure.** Added
 2026-09-27 with E2 batch 7, rulings W78 to W80. `LOCATION_INFO` (`28572807415659320`,

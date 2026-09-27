@@ -6,9 +6,10 @@ read twice with 18 items, and the owner's own reel, which answered no reel becau
 live story. So no live story item has been read. A highlight's items are story items, and a
 live reel's items are ASSUMED to share their shape, which the first live read will test.
 
-Reading a story through the engine does not mark it seen. The read queries mark nothing
-(INFERENCE: a browser sends a separate seen mutation for each item it shows), and the engine
-sends no seen mutation until the arranged run of E2 batch 12 verifies it (W68).
+The read queries mark nothing (INFERENCE: a browser sends a separate seen mutation for each item
+it shows). Since E2 batch 12 the engine sends that mutation itself, for a reel's or a highlight's
+first item after the read under the default behavior, and for any item through
+``stories.mark_seen`` (W93, W94).
 
 Nothing here parses. Construction is done by the mappers in ``_private/web/parse/stories.py``,
 which read named keys and raise rather than filling a default, so an upstream rename is loud.

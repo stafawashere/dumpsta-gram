@@ -156,6 +156,54 @@ def test_another_accounts_null_flags_read_as_the_model_defaults() -> None:
    assert profile.has_story_archive is False
 
 
+def an_account_with_no_reels_read_by_another() -> dict[str, Any]:
+   """Account B's profile as the owner read it on 2026-09-27: no posts, no reels, and a
+   ``total_clips_count`` that failed as "is not an integer". The value itself was not kept, and
+   null is the INFERENCE from that text, since an absent key fails as "missing" instead."""
+
+   return {
+      **other_account_profile(NOT_FOLLOWING),
+      "data": {
+         **other_account_profile(NOT_FOLLOWING)["data"],
+         "user": {
+            **other_account_profile(NOT_FOLLOWING)["data"]["user"],
+            "media_count": 0,
+            "total_clips_count": None,
+         },
+      },
+   }
+
+
+def test_another_accounts_null_clips_count_reads_as_zero_and_is_reported_as_unknown() -> None:
+   """Catches the 2026-09-27 defect: ``profiles.by_id`` on any other account with no reels
+   raised ``SchemaChanged`` at ``data.user.total_clips_count`` instead of answering."""
+
+   profile = parse_profile(an_account_with_no_reels_read_by_another())
+
+   assert profile.id == TARGET_ID
+   assert profile.total_clips_count == 0
+   assert profile.reported_clips_count is None
+
+
+def test_a_clips_count_the_upstream_sends_is_reported_as_sent() -> None:
+   """Catches ``reported_clips_count`` hard-wired to None, or read from another count."""
+
+   profile = parse_profile(profile_payload(total_clips_count=7, media_count=3))
+
+   assert profile.total_clips_count == 7
+   assert profile.reported_clips_count == 7
+
+
+def test_a_clips_count_that_is_neither_integer_nor_null_still_raises() -> None:
+   """Catches the null allowance widened into accepting a string or a float as a count."""
+
+   for sent in ("7", 7.0, True):
+      with pytest.raises(SchemaChanged) as failure:
+         parse_profile(profile_payload(total_clips_count=sent))
+
+      assert failure.value.path == "data.user.total_clips_count"
+
+
 def test_a_flag_that_is_neither_boolean_nor_null_still_raises() -> None:
    """Catches the null allowance widened into accepting anything."""
 

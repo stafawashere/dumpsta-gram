@@ -16,7 +16,9 @@ Four when the stored tokens are accepted, and one more for each bootstrap, so th
 commands itself, 2.85 s after the previous one ended. It stops on any nonzero exit.
 
 No other account's reel is read, and no request marks anything seen: every story command sends
-only its read query, which the probe checks from the counter's log (W42, W68). Recorded: exit
+only its read query, which the probe checks from the counter's log (W42, W68). Since E2 batch 12
+``story`` and ``highlight`` mark the first item seen by default (W94), so both run with
+``--no-mark-seen`` here to keep this acceptance read only as it ran. Recorded: exit
 codes, error class names, the requests each command sent, counts, booleans and reel types. No
 username, name, title, sticker text or URL leaves the subprocess's output into the log.
 
@@ -208,7 +210,7 @@ def main() -> int:
 
       plan: list[tuple[str, list[str], Callable[..., Any]]] = [
          ("stories tray", ["stories-tray"], summarise_tray),
-         ("own reel", ["story", viewer_id], summarise_reel),
+         ("own reel", ["story", "--no-mark-seen", viewer_id], summarise_reel),
       ]
 
       for label, arguments, summarise in plan:
@@ -226,7 +228,11 @@ def main() -> int:
 
       if has_a_highlight:
          first_highlight = highlights["highlights"][0]["id"]
-         read = run("own first highlight", ["highlight", first_highlight], summarise_reel)
+         read = run(
+            "own first highlight",
+            ["highlight", "--no-mark-seen", first_highlight],
+            summarise_reel,
+         )
          outcome = "done" if read is not None else "stopped"
       elif outcome == "done":
          report["results"]["own first highlight"] = "skipped, the owner has no highlight"
