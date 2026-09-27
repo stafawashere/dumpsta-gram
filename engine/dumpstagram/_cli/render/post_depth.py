@@ -1,19 +1,27 @@
-"""The replies under a comment, a post's likers and the more posts from its author, in both
-output forms."""
+"""The replies under a comment, a post's likers, the more posts from its author and a whole post
+page, in both output forms."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from dumpstagram._cli.render.media import describe_comment
+from dumpstagram._cli.render.media import (
+   describe_comment,
+   describe_comment_page,
+   describe_post_detail,
+   render_comment_page,
+   render_post_detail,
+)
 from dumpstagram._cli.render.profiles import describe_profile_summary, render_profile_summaries
-from dumpstagram.models import Comment, Page, PostThumbnail, ProfileSummary
+from dumpstagram.models import Comment, Page, PostPage, PostThumbnail, ProfileSummary
 
 __all__ = [
    "describe_likers",
+   "describe_post_page",
    "describe_post_thumbnail",
    "describe_reply_pages",
    "render_likers",
+   "render_post_page",
    "render_post_thumbnails",
    "render_reply_pages",
 ]
@@ -105,3 +113,26 @@ def render_post_thumbnails(thumbnails: tuple[PostThumbnail, ...]) -> str:
    lines.append(f"posts: {len(thumbnails)}")
 
    return "\n".join(lines)
+
+
+def describe_post_page(page: PostPage) -> dict[str, Any]:
+   """The post, its first comments with their terminator, and the author's grid. Every key is
+   part of the CLI's contract."""
+
+   return {
+      "post": describe_post_detail(page.post),
+      "comments": describe_comment_page(page.comments),
+      "author_grid": [describe_post_thumbnail(thumbnail) for thumbnail in page.author_grid],
+   }
+
+
+def render_post_page(page: PostPage) -> str:
+   """The post, a blank line, its first comments, a blank line, then the author's grid."""
+
+   sections = [
+      render_post_detail(page.post),
+      render_comment_page(page.comments),
+      render_post_thumbnails(page.author_grid),
+   ]
+
+   return "\n\n".join(sections)

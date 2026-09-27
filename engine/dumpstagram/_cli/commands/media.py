@@ -178,11 +178,13 @@ def run_comment_command(
 def add_post_parser(commands: Subcommands) -> None:
    post = commands.add_parser(
       "post",
-      help="read one post by its shortcode, or by its pk with --by-id, one live request",
+      help="read one post by its shortcode, by loading its page, or by its pk with --by-id",
       description=(
          "Reads the post whose web address carries CODE and prints its pk, which like and "
-         "unlike take, and whether the viewer likes it. --by-id reads it by its pk instead, "
-         "whose answer carries no slides, no image description and no collaborators."
+         "unlike take, and whether the viewer likes it. It loads the post's page as a browser "
+         "does, six requests with the page's companions. --by-id reads it by its pk instead, "
+         "one live request, whose answer carries no slides, no image description and no "
+         "collaborators."
       ),
    )
    post.add_argument(

@@ -2012,11 +2012,12 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   nothing ships. `probes/e2_blocked_list_replay.py`, read only, three requests (the bootstrap, the
   screen app and the reloader action), sends the pair exactly as captured, reads the container ids
   out of the first answer with the engine's Bloks reader, which reproduces both captures' params
-  byte for byte offline, keeps both bodies and logs counts and key names only; it ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-blocked-list-replay-2026-09-27-174606.json` and
-  needs a second run to verify. The later batch's parser: read the screen answer's reloader call
+  byte for byte offline, keeps both bodies and logs counts and key names only; it ran twice on
+  2026-09-27, 3 requests each, every step exit 0, logs `logs/e2-blocked-list-replay-2026-09-27-174549.json`
+  and `-174606.json`, which verified the finding, and the list shipped in batch 11d (W110). The later batch's parser: read the screen answer's reloader call
   for the two ids, send the action, and map the one data entry's rows by those six keys into
   `ProfileSummary` plus the two flags, refusing any other row shape, and rule on whether
-  `secondary_text` is the full name.
+  `secondary_text` is the full name. W110 ruled it is not, on 41 of 52 rows.
 - **W109. Gates, the canary, the harness and the surface for batch 11c.** Ruled 2026-09-27.
   `SAVED_COLLECTIONS` joined `READ_QUERIES` and the canary replays it keyed on nothing, the
   viewer's own tab; the two REST and Bloks reads have no `doc_id` and are not replayed (W60). A
@@ -2037,6 +2038,133 @@ Rulings from W10 on were made by the orchestrator on the owner's delegation whil
   removed or changed. Live traffic for the batch: the saved and close friends stages' replays of
   `run-2026-09-27-151121`; `probes/e2_own_account_more_cli_acceptance.py`, three requests, five
   at most, ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`.
+- **W110. The blocked list is `account.blocked() -> tuple[BlockedAccount, ...]`, the settings
+  screen's two Bloks fetches in one action, and a row is a new `BlockedAccount`, not
+  `ProfileSummary`.** Ruled 2026-09-27 for E2 batch 11d on the owner's delegation, amending W108.
+  Finding `read-the-blocked-accounts-list` is now verified by two engine replays,
+  `probes/e2_blocked_list_replay.py` run twice on 2026-09-27, 3 requests each, every step 200,
+  logs `logs/e2-blocked-list-replay-2026-09-27-174549.json` and `-174606.json`, bodies under the
+  skill's `var/captures/e2-blocked-list-replay-*`. The read sends what the page sends on load and
+  nothing else: `POST /async/wbloks/fetch/` with `appid`
+  `com.instagram.portable_settings.privacy.blocked_accounts_v2`, `type` app, `params` `{}`, then in
+  the same paced action the same form with `appid`
+  `com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader`, `type` action and
+  `params` `{"container_id_of_list":<n>,"container_id_of_rows":<m>}`, both with `__crn`
+  `comet.igweb.PolarisBlockedAccountsSettingsRoute` and `/accounts/blocked_accounts/` as referer,
+  the close friends fetch's form and headers (W107), which one private builder now writes for all
+  three. FACT over four screen answers, the two replays and the two browser loads of
+  `run-2026-09-27-135628`: exactly one `bk.action.bloks.AsyncActionWithDataManifest` call names the
+  reloader with the key pair and two `bk.action.i32.Const` ids, consecutive on all four, and the
+  parser sends what the screen names, reproducing both browser loads' `params` byte for byte; any
+  other count raises `SchemaChanged` before the action is built. FACT over four list answers: one
+  data entry, an array of maps keyed `user_id` (a string of digits), `username`,
+  `secondary_text`, `is_verified`, `profile_pic_url` and `is_auto_blocked`, in that order, 52, 52,
+  53 and 52 rows; one embedded payload referencing that entry; and a tree whose one action's
+  `ReplaceEmbeddedChildV2` names the list container the request sent. The parser holds all of it
+  and raises on any other layout, a row of other keys or order, an id that is not digits or a flag
+  that is not a constant; the rows keep the screen's order, identical across both replays. The
+  model: `ProfileSummary` does not fit, and not only because it lacks `is_auto_blocked`. FACT over
+  both replays: on the 41 rows with `is_auto_blocked` true, `secondary_text` was one interface line
+  saying the block includes other accounts the person may have or create, the same on all 41; on
+  the 11 rows with it false it differed on every row, one of them empty, and on the one row whose
+  account's full name another read carried (account B, in the with-B load, against the four
+  follow request and activity answers of `run-2026-09-27-014102`) it equalled that name. So
+  `secondary_text` is not a full name and is kept as the screen's text:
+  `BlockedAccount(id, username, secondary_text, is_verified, profile_pic_url, is_auto_blocked)`.
+  That `is_auto_blocked` marks a block extended to the person's other accounts is INFERENCE from
+  that line. An empty list is UNRESOLVED, since the owner's never was; the screen answer carries
+  an empty state text, so it may arrive with no rows or another layout, which would raise. No
+  paging binding was seen on 53 rows. The rows' unblock button names
+  `confirm_unblock_action_handler`, which nothing here builds. `dumpsta blocked` prints one line
+  per account, `auto` after an automatic one, and leaves the secondary text to the JSON form.
+  Live traffic: the two replays, 6 requests; the acceptance's blocked step, 2 requests.
+- **W111. The post page is `media.page(code) -> PostPage`, read out of one document; `by_code`
+  reads its post from the same load under the default behavior, and `comments` stays a query
+  keyed on the pk, the named departure.** Ruled 2026-09-27 for E2 batch 11d on the owner's
+  delegation. Finding `read-a-post-page-document` is verified by two engine loads
+  (`probes/e2_capture_replays.py --stage post`, run `run-2026-09-27-151121`, log
+  `logs/e2-capture-replays-2026-09-27-151437.json`, 1121472 and 1121456 bytes) and two cold browser
+  loads (`run-2026-09-27-131354`, `var/captures/run-2026-09-27-131354-b10-post-page-cold*.jsonl`).
+  FACT on all four: the document carries five complete `RelayPrefetchedStreamCache` results under
+  `adp_<query>RelayPreloader_` ids, `PolarisPostRootQuery`, `PolarisPostCommentsContainerQuery`,
+  `PolarisDesktopPostPageRelatedMediaGridQuery` at `count` 7, `usePolarisNotificationsNavItemQuery`
+  and `PolarisGatingTransparencyPageIsCannesStatedQuery`, and the page sends none of the five as a
+  request. The first three are the page's content and map through the existing mappers:
+  `parse_post_detail` read both engine loads' post, `parse_comment_page` the empty container both
+  carried and the container query's own answer with 2 comments (`run-2026-09-27-014102`), and
+  `parse_more_from_author` the grid, 7 posts including the post itself on both loads, where the
+  strip query at `count` 6 left it out (W64). So `PostPage(post, comments, author_grid)`, the grid
+  named for what it holds. The badge and the gating answers are not read, as the home route leaves
+  its unread preloads. `media.page` loads the page under every behavior, since loading the page is
+  the read; `page_load_companions` and `cookie_sync` govern what goes around it. A document missing
+  any of the three raises `SchemaChanged`; `by_code` on the page reads only the post's preload, so
+  a page whose comments or grid stop preloading still answers the post. The comments' cursor is
+  the upstream's, and that `comments(after=...)` pages on with it is INFERENCE from the census,
+  since no preloaded page with a next page has been read. `comments(post_pk)` does not load the
+  page, against the brief's proposal, because the page's address needs the shortcode and a pk does
+  not give it: FACT over the 585 media nodes with both a code and a pk in the E2 captures, 379
+  codes are the pk written in the 64 character alphabet, and the other 206, private accounts' posts
+  and the owner's own among them, are that encoding followed by 28 more characters no read
+  derives. Loading `/p/<encoded pk>/` for a private post has never been observed, so it would be a
+  document no browser was seen to request, failing for every private account's post if the
+  upstream does not serve it. `comments` therefore sends the pagination query alone for every page,
+  the recorded departure narrowed to that reason, and `page` is the parity way to read a post's
+  first comments. The `1.0.0` departure for the post read is closed; the comments departure stays,
+  named, with the parity route beside it.
+- **W112. The post page load's companions, and `Behavior.post_route`.** Ruled 2026-09-27 for E2
+  batch 11d. `PostRoute.PAGE`, the default in every preset, loads
+  `https://www.instagram.com/p/<code>/` as a navigation in one paced action, writes its tokens onto
+  the session, then with `page_load_companions` sends the groups the recorded load sent, then reads
+  the post out of the document, and schedules the cookie sync tail for the post page after a read
+  that succeeded, as both browser loads ran it from 6978 and 5490 ms. `PostRoute.QUERY` keeps the
+  post query alone as the departure, in the style of `ProfileRoute`. The companions, FACT from the
+  first cold load: the badge count at 1998 ms, the stories tray at 2388, the chat tabs jewel and
+  the omni picker at 2429 and 2431, and the login interstitial quick promotion alone at 2643; the
+  second sent the same five with the jewel pair at 1189 before the stories tray at 1253, so the
+  order of those two groups is the first load's, the finding's recorded order. Each carries the
+  variables both loads sent, the badge and the jewel the document's `IGDMqttWebDeviceID`, and the
+  post page as referer. One quick promotion call, where a profile load sends two. Left out and
+  named: the feed timeline prefetch at 2386 and 1251, as the profile and inbox loads leave it out;
+  `fxcal`, the manifest and the `ajax` logging, which have no verified finding. All five
+  companions were already registered, so the doctor does not change; the document is a page load
+  and not a canary replay, as the home and inbox documents are not. Cost: 6 requests per
+  `by_code` where the departure costs 1 or 2, about 1.1 MB of document where the query answered
+  about 135 kB.
+- **W113. `like`, `unlike` and `comment` stay single writes and load no page, a named departure.**
+  Ruled 2026-09-27 for E2 batch 11d on the owner's delegation. A browser likes and comments from a
+  page it has loaded, the feed, a post page or a reel, but no capture pairs a page load with a
+  like or a comment: every observation of the three mutations is an engine send (Steps 15 and 16),
+  and the post page captures sent none. A write keyed on a pk does not say which page it was made
+  from, so loading one would be a guess that sends a document and five companions before every
+  write, a burst no capture holds, and the post page is not reachable from a pk (W111). So each
+  write is sent alone as before, and the departure is recorded as that: the page a write is made
+  from is the caller's to load. A caller that wants the browser's sequence reads the post with
+  `by_code` or `page` first, which under the default behavior now loads its page, then writes.
+  `delete_comment` is governed the same way. The like and comment departures of `1.0.0` stay open
+  with this reason; the post read's is closed (W111).
+- **W114. Gates, the harness, the surface and what else changed for batch 11d.** Ruled 2026-09-27.
+  The new `tests/test_post_page.py` holds 16 gates, 25 cases, on fixtures pseudonymised by
+  `scripts/build_post_page_fixtures.py` from the engine replays: the five post page preloads, the
+  container query's answer with 2 comments, and the blocked screen and list, 14 of 52 rows kept,
+  677 values checked absent. The post page documents are synthetic around the recorded preloads.
+  `scripts/verify_post_page_gates.py` holds 40 mutations, 40 of 40 fired. The shared Bloks
+  builder moved three anchors of `scripts/verify_own_account_more_gates.py` (the close friends
+  `params`, route and referer lines) to the builder's call site and body, and one anchor of each
+  of that harness and `scripts/verify_page_models_gates.py` became ambiguous and was made unique
+  by rewording the new code, not the harness; both were rerun, 46 of 46 and 29 of 29, with
+  `scripts/verify_discovery_search_gates.py`, 50 of 50, after the mypy fix below, and
+  `scripts/check_harness_exits.py` held all 46 harnesses. No existing gate changed. The parity
+  table gained `account.blocked` and `media.page`. The doctor does not change: the blocked list
+  has no `doc_id` (W60) and the post page is a page load of companions already registered (W112).
+  The mypy error at `_private/web/parse/discovery.py:324` was real as a type error and not as a
+  runtime one: `clips_metadata` was narrowed to a dict only through a second variable, which mypy
+  cannot follow, and the line now reads the absent metadata as an empty object, the same
+  behavior. The commands are `blocked` and `post-page`, `post`'s help names the page load, and
+  `probes/cli_request_counter/` names the `p` path segment so the acceptance can count post page
+  documents. The surface grew from 1091 lines to 1115, 24 added and none removed or changed.
+  Live traffic for the batch: the blocked list replays, 6 requests, and the post stage of
+  `run-2026-09-27-151121`; `probes/e2_post_page_cli_acceptance.py`, seventeen requests, twenty at
+  most, ran on 2026-09-27, 17 requests, every step exit 0, log `logs/e2-post-page-cli-2026-09-27-181927.json`.
 
 ## Standing rules for every phase
 

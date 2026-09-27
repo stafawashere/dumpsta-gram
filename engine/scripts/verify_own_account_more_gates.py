@@ -394,7 +394,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": FETCH,
       "defect": "the fetch sends params other than an empty object",
-      "edits": [(REQUESTS, '      "params": "{}",', '      "params": "[]",')],
+      "edits": [
+         (
+            REQUESTS,
+            '      params="{}",\n      route=_CLOSE_FRIENDS_ROUTE,',
+            '      params="[]",\n      route=_CLOSE_FRIENDS_ROUTE,',
+         )
+      ],
    },
    {
       "gate": FETCH,
@@ -402,8 +408,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             REQUESTS,
-            '      "referer": CLOSE_FRIENDS_PAGE,\n',
-            '      "referer": CLOSE_FRIENDS_PAGE,\n      "x-csrftoken": session.csrftoken,\n',
+            '      "referer": page,\n',
+            '      "referer": page,\n      "x-csrftoken": session.csrftoken,\n',
          )
       ],
    },
@@ -413,8 +419,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             REQUESTS,
-            '      "__crn": _CLOSE_FRIENDS_ROUTE,',
-            '      "__crn": "comet.igweb.PolarisSettingsRoute",',
+            "      route=_CLOSE_FRIENDS_ROUTE,",
+            '      route="comet.igweb.PolarisSettingsRoute",',
          )
       ],
    },

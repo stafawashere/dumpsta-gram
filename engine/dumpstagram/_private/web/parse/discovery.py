@@ -316,7 +316,7 @@ def _reel_feed_node(media: Any) -> Any:
    if isinstance(author, dict):
       node["user"] = {"hd_profile_pic_url_info": None, **author}
 
-   metadata = node.get("clips_metadata")
+   metadata = node.get("clips_metadata") or {}
    original = metadata.get("original_sound_info") if isinstance(metadata, dict) else None
    lacks_the_mute_flag = isinstance(original, dict) and "should_mute_audio" not in original
 

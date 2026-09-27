@@ -1,0 +1,70 @@
+{
+ "data": {
+  "xdt_api__v1__media__media_id__comments__connection": {
+   "edges": [
+    {
+     "node": {
+      "user": {
+       "is_verified": false,
+       "id": "90000000552",
+       "pk": "90000000552",
+       "is_unpublished": false,
+       "profile_pic_url": "https://example.invalid/553",
+       "username": "p554xxx",
+       "fbid_v2": "90000000000000555"
+      },
+      "pk": "90000000000000556",
+      "is_covered": false,
+      "child_comment_count": 0,
+      "restricted_status": null,
+      "has_translation": null,
+      "has_liked_comment": false,
+      "text": "p557xxxxxxx",
+      "giphy_media_info": null,
+      "created_at": 0,
+      "is_edited": false,
+      "parent_comment_id": null,
+      "fallback_user_info": null,
+      "comment_like_count": 0,
+      "__typename": "XDTCommentDict"
+     },
+     "cursor": ""
+    },
+    {
+     "node": {
+      "user": {
+       "is_verified": false,
+       "id": "90000000558",
+       "pk": "90000000558",
+       "is_unpublished": false,
+       "profile_pic_url": "https://example.invalid/559",
+       "username": "p560xxxxxxxxxxx",
+       "fbid_v2": "90000000000000561"
+      },
+      "pk": "90000000000000562",
+      "is_covered": false,
+      "child_comment_count": 0,
+      "restricted_status": null,
+      "has_translation": null,
+      "has_liked_comment": false,
+      "text": "p563xxxxxxxxxxxxxxxxxx",
+      "giphy_media_info": null,
+      "created_at": 0,
+      "is_edited": false,
+      "parent_comment_id": null,
+      "fallback_user_info": null,
+      "comment_like_count": 0,
+      "__typename": "XDTCommentDict"
+     },
+     "cursor": ""
+    }
+   ],
+   "page_info": {
+    "end_cursor": null,
+    "has_next_page": false,
+    "start_cursor": null,
+    "has_previous_page": false
+   }
+  }
+ }
+}

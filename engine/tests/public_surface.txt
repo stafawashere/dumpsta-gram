@@ -10,6 +10,7 @@ alias dumpstagram.AudioKind -> dumpstagram.models.feed.AudioKind
 alias dumpstagram.AuthenticationFailed -> dumpstagram.errors.AuthenticationFailed
 alias dumpstagram.Behavior -> dumpstagram.behavior.Behavior
 alias dumpstagram.BioLink -> dumpstagram.models.profiles.BioLink
+alias dumpstagram.BlockedAccount -> dumpstagram.models.account.BlockedAccount
 alias dumpstagram.CarouselChild -> dumpstagram.models.feed.CarouselChild
 alias dumpstagram.CheckpointRequired -> dumpstagram.errors.CheckpointRequired
 alias dumpstagram.CollectionCover -> dumpstagram.models.account.CollectionCover
@@ -56,6 +57,8 @@ alias dumpstagram.Place -> dumpstagram.models.discovery.Place
 alias dumpstagram.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.PostDetail -> dumpstagram.models.posts.PostDetail
+alias dumpstagram.PostPage -> dumpstagram.models.posts.PostPage
+alias dumpstagram.PostRoute -> dumpstagram.behavior.PostRoute
 alias dumpstagram.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.ProfileReels -> dumpstagram.models.posts.ProfileReels
@@ -149,6 +152,7 @@ field dumpstagram.behavior.Behavior.inbox_route: InboxRoute = <dumpstagram.behav
 field dumpstagram.behavior.Behavior.mark_stories_seen: bool = True
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
 field dumpstagram.behavior.Behavior.poll_interval_seconds: float = 60.0
+field dumpstagram.behavior.Behavior.post_route: PostRoute = <dumpstagram.behavior.PostRoute>
 field dumpstagram.behavior.Behavior.profile_route: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 field dumpstagram.behavior.Behavior.spacing: Spacing = <dumpstagram.behavior.Spacing>
 field dumpstagram.behavior.Behavior.stop_writes_after_unrecognised_rejection: bool = True
@@ -165,6 +169,9 @@ class dumpstagram.behavior.InboxRoute(enum.Enum)
 data dumpstagram.behavior.InboxRoute.PAGE: InboxRoute = <dumpstagram.behavior.InboxRoute>
 data dumpstagram.behavior.InboxRoute.QUERIES: InboxRoute = <dumpstagram.behavior.InboxRoute>
 data dumpstagram.behavior.PARITY: Behavior = <dumpstagram.behavior.Behavior>
+class dumpstagram.behavior.PostRoute(enum.Enum)
+data dumpstagram.behavior.PostRoute.PAGE: PostRoute = <dumpstagram.behavior.PostRoute>
+data dumpstagram.behavior.PostRoute.QUERY: PostRoute = <dumpstagram.behavior.PostRoute>
 class dumpstagram.behavior.ProfileRoute(enum.Enum)
 data dumpstagram.behavior.ProfileRoute.PAGE: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
 data dumpstagram.behavior.ProfileRoute.QUERIES: ProfileRoute = <dumpstagram.behavior.ProfileRoute>
@@ -250,6 +257,7 @@ alias dumpstagram.models.ActivityMedia -> dumpstagram.models.account.ActivityMed
 alias dumpstagram.models.ActivitySection -> dumpstagram.models.account.ActivitySection
 alias dumpstagram.models.AudioKind -> dumpstagram.models.feed.AudioKind
 alias dumpstagram.models.BioLink -> dumpstagram.models.profiles.BioLink
+alias dumpstagram.models.BlockedAccount -> dumpstagram.models.account.BlockedAccount
 alias dumpstagram.models.CarouselChild -> dumpstagram.models.feed.CarouselChild
 alias dumpstagram.models.CollectionCover -> dumpstagram.models.account.CollectionCover
 alias dumpstagram.models.Comment -> dumpstagram.models.comments.Comment
@@ -285,6 +293,7 @@ alias dumpstagram.models.Place -> dumpstagram.models.discovery.Place
 alias dumpstagram.models.Post -> dumpstagram.models.feed.Post
 alias dumpstagram.models.PostAuthor -> dumpstagram.models.feed.PostAuthor
 alias dumpstagram.models.PostDetail -> dumpstagram.models.posts.PostDetail
+alias dumpstagram.models.PostPage -> dumpstagram.models.posts.PostPage
 alias dumpstagram.models.PostThumbnail -> dumpstagram.models.posts.PostThumbnail
 alias dumpstagram.models.Profile -> dumpstagram.models.profiles.Profile
 alias dumpstagram.models.ProfileReels -> dumpstagram.models.posts.ProfileReels
@@ -372,6 +381,13 @@ field dumpstagram.models.account.ActivityMedia.shortcode: str
 class dumpstagram.models.account.ActivitySection()
 field dumpstagram.models.account.ActivitySection.first_index: int
 field dumpstagram.models.account.ActivitySection.title: str
+class dumpstagram.models.account.BlockedAccount()
+field dumpstagram.models.account.BlockedAccount.id: str
+field dumpstagram.models.account.BlockedAccount.is_auto_blocked: bool
+field dumpstagram.models.account.BlockedAccount.is_verified: bool
+field dumpstagram.models.account.BlockedAccount.profile_pic_url: str
+field dumpstagram.models.account.BlockedAccount.secondary_text: str
+field dumpstagram.models.account.BlockedAccount.username: str
 class dumpstagram.models.account.CollectionCover()
 field dumpstagram.models.account.CollectionCover.image_urls: tuple[str, ...]
 field dumpstagram.models.account.CollectionCover.media_id: str | None
@@ -646,6 +662,10 @@ field dumpstagram.models.posts.PostDetail.taken_at: datetime
 field dumpstagram.models.posts.PostDetail.user_tags: tuple[UserTag, ...] | None = None
 field dumpstagram.models.posts.PostDetail.video_duration: float | None = None
 field dumpstagram.models.posts.PostDetail.videos: tuple[VideoRendition, ...] = ()
+class dumpstagram.models.posts.PostPage()
+field dumpstagram.models.posts.PostPage.author_grid: tuple[PostThumbnail, ...]
+field dumpstagram.models.posts.PostPage.comments: Page[Comment]
+field dumpstagram.models.posts.PostPage.post: PostDetail
 class dumpstagram.models.posts.PostThumbnail()
 field dumpstagram.models.posts.PostThumbnail.author_id: str
 field dumpstagram.models.posts.PostThumbnail.author_username: str
@@ -894,6 +914,7 @@ module dumpstagram.namespaces.account
 class dumpstagram.namespaces.account.AsyncAccount()
 def dumpstagram.namespaces.account.AsyncAccount.__init__(self) -> None
 def dumpstagram.namespaces.account.AsyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.AsyncAccount.blocked(self) -> tuple[BlockedAccount, ...]
 def dumpstagram.namespaces.account.AsyncAccount.close_friends(self) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.account.AsyncAccount.collections(self) -> SavedCollections
 def dumpstagram.namespaces.account.AsyncAccount.follow_requests(self) -> FollowRequests
@@ -901,6 +922,7 @@ def dumpstagram.namespaces.account.AsyncAccount.saved(self) -> SavedPosts
 class dumpstagram.namespaces.account.SyncAccount()
 def dumpstagram.namespaces.account.SyncAccount.__init__(self) -> None
 def dumpstagram.namespaces.account.SyncAccount.activity(self) -> ActivityFeed
+def dumpstagram.namespaces.account.SyncAccount.blocked(self) -> tuple[BlockedAccount, ...]
 def dumpstagram.namespaces.account.SyncAccount.close_friends(self) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.account.SyncAccount.collections(self) -> SavedCollections
 def dumpstagram.namespaces.account.SyncAccount.follow_requests(self) -> FollowRequests
@@ -968,6 +990,7 @@ def dumpstagram.namespaces.media.AsyncMedia.iter_replies(self, post_pk: str, com
 def dumpstagram.namespaces.media.AsyncMedia.like(self, post_pk: str) -> None
 def dumpstagram.namespaces.media.AsyncMedia.likers(self, post_pk: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.media.AsyncMedia.more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]
+def dumpstagram.namespaces.media.AsyncMedia.page(self, code: str) -> PostPage
 def dumpstagram.namespaces.media.AsyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.AsyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.AsyncMedia.replies(self, post_pk: str, comment_id: str, *, after: str | None = None) -> Page[Comment]
@@ -986,6 +1009,7 @@ def dumpstagram.namespaces.media.SyncMedia.iter_replies(self, post_pk: str, comm
 def dumpstagram.namespaces.media.SyncMedia.like(self, post_pk: str) -> None
 def dumpstagram.namespaces.media.SyncMedia.likers(self, post_pk: str) -> tuple[ProfileSummary, ...]
 def dumpstagram.namespaces.media.SyncMedia.more_from_author(self, author_id: str) -> tuple[PostThumbnail, ...]
+def dumpstagram.namespaces.media.SyncMedia.page(self, code: str) -> PostPage
 def dumpstagram.namespaces.media.SyncMedia.publish_carousel(self, images: Sequence[bytes | str | os.PathLike[str]], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.SyncMedia.publish_photo(self, image: bytes | str | os.PathLike[str], *, caption: str = '') -> PublishedPost
 def dumpstagram.namespaces.media.SyncMedia.replies(self, post_pk: str, comment_id: str, *, after: str | None = None) -> Page[Comment]

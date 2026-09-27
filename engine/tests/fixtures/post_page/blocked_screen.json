@@ -1,0 +1,223 @@
+{
+ "__ar": 1,
+ "rid": "p564xxxxxxxxxxxxxxxxxxx",
+ "payload": {
+  "layout": {
+   "bloks_payload": {
+    "data": [
+     {
+      "id": "948492585_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, true)"
+      }
+     },
+     {
+      "id": "948492585_1",
+      "type": "gs",
+      "data": {
+       "key": "dtl:ig_privacy_settings:user_selection_list_showing_users",
+       "mode": "p",
+       "initial_lispy": "(bk.action.bool.Const, true)"
+      }
+     },
+     {
+      "id": "948492585_2",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.bool.Const, false)"
+      }
+     }
+    ],
+    "tree": {
+     "bk.components.Flexbox": {
+      "children": [
+       {
+        "bk.components.Collection": {
+         "direction": "column",
+         "children": [
+          {
+           "bk.components.Flexbox": {
+            "flex_direction": "column",
+            "children": [
+             {
+              "bk.components.Flexbox": {
+               "children": [
+                {
+                 "bk.components.Text": {
+                  "text": "You can block people anytime from their profiles.",
+                  "text_size": "16sp",
+                  "text_themed_color": {
+                   "bk.types.ThemedColor": {
+                    "light_color": "#6F7680",
+                    "dark_color": "#A2AAB4"
+                   }
+                  }
+                 }
+                }
+               ],
+               "_style": {
+                "flex": {
+                 "padding_bottom": "24dp"
+                }
+               }
+              }
+             }
+            ],
+            "_style": {
+             "flex": {
+              "padding_left": "16dp",
+              "padding_right": "16dp"
+             }
+            }
+           }
+          },
+          {
+           "bk.components.Flexbox": {
+            "flex_direction": "column",
+            "children": [
+             {
+              "bk.components.Flexbox": {
+               "flex_direction": "column",
+               "children": [
+                {
+                 "bk.components.Flexbox": {
+                  "flex_direction": "column",
+                  "children": [],
+                  "id": 948492584
+                 }
+                }
+               ],
+               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 948492583), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bloks.GetVariable2, \"948492585_1\"), (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"948492585_0\"))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+               "id": "948492583"
+              }
+             },
+             {
+              "bk.components.Flexbox": {
+               "justify_content": "center",
+               "children": [
+                {
+                 "bk.components.Text": {
+                  "text": "You haven't blocked anyone.",
+                  "text_size": "14sp",
+                  "text_align": "center",
+                  "text_themed_color": {
+                   "bk.types.ThemedColor": {
+                    "light_color": "#6F7680",
+                    "dark_color": "#A2AAB4"
+                   }
+                  },
+                  "_style": {
+                   "flex": {
+                    "margin_top": "15%"
+                   }
+                  }
+                 }
+                }
+               ],
+               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 948492587), \"visibility\", (bk.action.core.Match, (bk.action.bool.And, (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"948492585_1\")), (bk.action.bool.Not, (bk.action.bloks.GetVariable2, \"948492585_0\"))), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+               "id": "948492587",
+               "_style": {
+                "flex": {
+                 "width": "100%",
+                 "margin_left": "auto",
+                 "margin_right": "auto"
+                }
+               }
+              }
+             },
+             {
+              "bk.components.Flexbox": {
+               "justify_content": "center",
+               "children": [
+                {
+                 "bk.components.Flexbox": {
+                  "justify_content": "center",
+                  "align_items": "center",
+                  "children": [
+                   {
+                    "ig.components.Spinner": {
+                     "state": "loading",
+                     "_style": {
+                      "flex": {
+                       "width": "36dp",
+                       "height": "36dp"
+                      }
+                     }
+                    }
+                   }
+                  ],
+                  "extensions": [
+                   {
+                    "ig.components.ViewpointExtension": {
+                     "key": "948492589"
+                    }
+                   }
+                  ],
+                  "_style": {
+                   "collection": {
+                    "height": "60dp"
+                   }
+                  }
+                 }
+                }
+               ],
+               "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 948492588), \"visibility\", (bk.action.core.Match, (bk.action.bloks.GetVariable2, \"948492585_0\"), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+               "id": "948492588",
+               "_style": {
+                "flex": {
+                 "width": "100%",
+                 "grow": 1
+                }
+               }
+              }
+             }
+            ],
+            "extensions": [
+             {
+              "bk.components.VisibilityExtension": {
+               "key": "948492586",
+               "on_appear": "(bk.action.core.Match, (bk.action.i32.Const, 1), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.bloks.GetVariable2, \"948492585_2\"), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)))), (bk.action.core.Default, (bk.action.core.FuncConst, (bk.action.core.TakeLast, (bk.action.bloks.WriteLocalState, \"948492585_2\", (bk.action.bool.Const, true), (bk.action.i32.Const, 0)), (bk.action.bloks.WriteLocalState, \"948492585_0\", (bk.action.bool.Const, true), (bk.action.i32.Const, 0)), (bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader\", (bk.action.map.Make, (bk.action.array.Make, \"container_id_of_list\", \"container_id_of_rows\"), (bk.action.array.Make, (bk.action.i32.Const, 948492583), (bk.action.i32.Const, 948492584))), (bk.action.core.FuncConst, (bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.bloks.WriteLocalState, \"948492585_0\", (bk.action.bool.Const, false), (bk.action.i32.Const, 0))), (bk.action.core.GetArg, 0), (bk.action.core.GetArg, 1))), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), \"current-screen\")))))"
+              }
+             }
+            ]
+           }
+          }
+         ],
+         "ios_truncate_cell_content_discouraged": true,
+         "id": "948492582",
+         "_style": {
+          "flex": {
+           "padding_top": "16dp",
+           "padding_left": "32dp",
+           "padding_right": "32dp",
+           "padding_bottom": "32dp"
+          }
+         }
+        }
+       }
+      ],
+      "extensions": [
+       {
+        "bk.components.RenderLifecycleExtension": {
+         "on_component_rendered": "(bk.action.i32.Const, 1)"
+        }
+       }
+      ]
+     }
+    },
+    "embedded_payloads": [],
+    "error_attribution": {
+     "logging_id": "p565xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "source_map_id": "p55xxxxxxxxxxxxxxxxx"
+    }
+   }
+  },
+  "server_data": {
+   "falco_log_policy_map": null,
+   "versioning_id": "p56xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "bloks_app_id": "ig_web"
+  }
+ },
+ "lid": "p566xxxxxxxxxxxxxxx"
+}

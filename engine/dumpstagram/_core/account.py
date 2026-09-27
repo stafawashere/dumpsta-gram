@@ -11,6 +11,9 @@ The close friends list is read from the settings screen's Bloks app fetch, sent 
 page load sends the fetch twice, the settings side menu query before it and a
 ``close_friend_count_updater`` action after it, whose effect is UNRESOLVED; none of those three
 is sent (W107).
+
+The blocked list is the settings screen's two Bloks fetches in one action, the screen's app and
+then the reloader action its answer names, as the page sends both on load with no click (W110).
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.account import (
    parse_activity_feed,
+   parse_blocked_accounts,
+   parse_blocked_accounts_screen,
    parse_close_friends,
    parse_follow_requests,
    parse_saved_collections,
@@ -28,6 +33,8 @@ from dumpstagram._private.web.parse.account import (
 )
 from dumpstagram._private.web.requests.account import (
    build_activity_feed_request,
+   build_blocked_accounts_reloader_request,
+   build_blocked_accounts_screen_request,
    build_close_friends_request,
    build_follow_requests_request,
    build_saved_collections_request,
@@ -36,6 +43,7 @@ from dumpstagram._private.web.requests.account import (
 from dumpstagram._private.web.requests.profiles import new_web_session_id
 from dumpstagram.models import (
    ActivityFeed,
+   BlockedAccount,
    FollowRequests,
    ProfileSummary,
    SavedCollections,
@@ -45,6 +53,7 @@ from dumpstagram.session import Session
 
 __all__ = [
    "read_activity_feed",
+   "read_blocked_accounts",
    "read_close_friends",
    "read_follow_requests",
    "read_saved_collections",
@@ -163,5 +172,42 @@ async def read_close_friends(
       response = await sender.send(request)
 
       return parse_close_friends(classify(response))
+
+   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+
+async def read_blocked_accounts(
+   sender: PacedSender,
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+   deadline: float | None = None,
+) -> tuple[BlockedAccount, ...]:
+   """The accounts the viewer has blocked, two live requests in one action and a bootstrap when
+   the session holds no page token or no Bloks version id (W110).
+
+   The screen's answer names the two container ids the reloader action takes, so the action is
+   built from it and sent in the same slot, as the page sends it about 170 ms later.
+   """
+
+   async def attempt() -> tuple[BlockedAccount, ...]:
+      lacks_page_tokens = not session.fb_dtsg or not session.bloks_version_id
+
+      if lacks_page_tokens:
+         await bootstrap(sender, session, user_agent=user_agent)
+
+      async with sender.action() as action:
+         screen_request = build_blocked_accounts_screen_request(session, user_agent=user_agent)
+         screen = await action.send(screen_request)
+         containers = parse_blocked_accounts_screen(classify(screen))
+         reloader_request = build_blocked_accounts_reloader_request(
+            session,
+            list_id=containers.list_id,
+            rows_id=containers.rows_id,
+            user_agent=user_agent,
+         )
+         answer = await action.send(reloader_request)
+
+      return parse_blocked_accounts(classify(answer), containers)
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)

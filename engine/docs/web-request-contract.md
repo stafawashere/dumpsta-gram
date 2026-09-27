@@ -259,8 +259,11 @@ returns an answer whose every `errors` entry has a `path` of two elements or mor
 root that is present and not null, the errored fields null, and refuses any other `errors` array
 as before. `classify_preloaded` reads the envelope through the same function.
 
-**A post read, a like and an unlike are each sent alone, a recorded departure.** Added
-2026-09-23 with Step 15. `POST_BY_SHORTCODE` (`27830990013244856`, `PolarisPostRootQuery`),
+**A post read is the post page load by default since E2 batch 11d; a like and an unlike are each
+sent alone, a recorded departure.** Added 2026-09-23 with Step 15, amended 2026-09-27 with E2
+batch 11d, W111 to W113. The post query below is sent alone only under `PostRoute.QUERY`; under
+`PostRoute.PAGE`, the default, the post is read out of the post page's document, described in the
+post page load section below. `POST_BY_SHORTCODE` (`27830990013244856`, `PolarisPostRootQuery`),
 `LIKE_MEDIA` (`27182485238052618`, `usePolarisLikeMediaXIGLikeMutation`) and `UNLIKE_MEDIA`
 (`27345296031770102`, `usePolarisLikeMediaXIGUnlikeMutation`) all answer on `API_GRAPHQL_URL`.
 The post read's variables are the shortcode and the two provider values the profile timeline
@@ -275,12 +278,16 @@ and every observation is an engine send. So the parity gate for each holds the o
 shape, and three details are departures by omission until a browser capture says otherwise:
 the Relay network layer's `actor_id`, absent because the session does not hold it; the feed
 item's `organic_tracking_token`, null because the capability is handed an identifier and not the
-item; and the post page's own document and companions. All six sends succeeded with those
-omissions. The discovery sends carried the post page as referer and the acceptance sends the
+item; and the page the write is made from. All six sends succeeded with those omissions. W113
+keeps the writes single: no capture pairs a page load with a like, and a pk does not say which
+page a like is made from, so the page is the caller's to load, with `by_code` or `media.page`
+first. The discovery sends carried the post page as referer and the acceptance sends the
 home page, and both answered the same, which is weak evidence the referer is not checked here.
 
 **A comment page read, a comment and a comment delete are each sent alone, a recorded
-departure.** Added 2026-09-23 with Step 16. `COMMENT_PAGE` (`28169471862682868`,
+departure.** Added 2026-09-23 with Step 16, amended 2026-09-27 with E2 batch 11d. `media.page`
+now reads the first comments out of the post page's document, as a browser does (W111); the three
+here stay single requests for the reasons at the end of this paragraph. `COMMENT_PAGE` (`28169471862682868`,
 `PolarisPostCommentsPaginationQuery`), `CREATE_COMMENT` (`27261905640092552`,
 `PolarisPostCommentInputRevampedMutation`) and `DELETE_COMMENT` (`27034318419564986`,
 `usePolarisPostDeleteCommentMutation`) all answer on `API_GRAPHQL_URL`, every one keyed on the
@@ -300,7 +307,9 @@ the post page's own document and companions, the post page's first comment page 
 page, the browser's page size, which is unobserved and makes `first` 10 an ASSUMPTION, the
 Relay store handle in `connections`, the delete's `actor_id`, and the post page as referer, since
 each capability is handed a `pk` and not the shortcode the page address needs. The referer is the
-home page on every send. All fourteen engine sends carried those omissions, seven reads, three creates and four deletes, and every real write applied.
+home page on every send. All fourteen engine sends carried those omissions, seven reads, three creates and four deletes, and every real write applied. FACT over 585 media nodes of the E2
+captures: 206 codes, private accounts' posts among them, are longer than the pk's encoding, so the
+page address cannot be derived from a pk (W111), and the writes load no page (W113).
 
 **A follow and an unfollow are each sent alone, a recorded departure.** Added 2026-09-23 with
 Step 17. `FOLLOW_USER` (`27767812149509802`, `usePolarisFollowUserFollowMutation`) and
@@ -819,8 +828,67 @@ carries no page token and spends no bootstrap; the saved tab bootstraps when the
   engine has never produced, the subset the delete post form and the replays sent.
 - Neither saved read's next page is sent, since none has been observed (W105, W106).
 
-The blocked accounts list is not sent. Its two Bloks requests are written out in
-`probes/e2_blocked_list_replay.py`, which has not run (W108).
+The blocked accounts list is sent since E2 batch 11d, in the section below (W110).
+
+## The blocked accounts list, 2026-09-27
+
+E2 batch 11d added two Bloks fetches to `_private/web/requests/account.py`, sent by
+`read_blocked_accounts` in `_core/account.py` in one paced action, and answered through
+`parse_blocked_accounts_screen` and `parse_blocked_accounts`. Finding
+`read-the-blocked-accounts-list`, captured in the browser in `run-2026-09-27-135628` and replayed
+twice by `probes/e2_blocked_list_replay.py` on 2026-09-27. Ruling W110.
+
+| Request | Method and URL | Query or body | Headers |
+|---|---|---|---|
+| Screen | `POST https://www.instagram.com/async/wbloks/fetch/?appid=com.instagram.portable_settings.privacy.blocked_accounts_v2&type=app&__bkv=<Bloks version id>` | the close friends fetch's comet form with `__crn` `comet.igweb.PolarisBlockedAccountsSettingsRoute` and `params` `{}` | the close friends fetch's, `referer` `https://www.instagram.com/accounts/blocked_accounts/` |
+| List | the same URL with `appid=com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader&type=action` | the same form, `params` `{"container_id_of_list":<n>,"container_id_of_rows":<m>}` | the same |
+
+The two ids are the `bk.action.i32.Const` pair the screen's answer passes to
+`AsyncActionWithDataManifest` for the reloader, consecutive and different on every load, so the
+second fetch is built from the first answer and never from a constant; the builder reproduces both
+browser loads' `params` byte for byte. The list's answer is read only when its one action replaces
+the children of the container the request named. One private builder writes the form for the close
+friends fetch and both of these.
+
+**Recorded departures.**
+
+- The page also sends `PolarisSettingsDesktopContainerQuery` and route definitions, which are not
+  sent, as for the close friends list.
+- Each row's unblock button names `confirm_unblock_action_handler`, a write, which nothing builds.
+
+## The post page load, 2026-09-27
+
+E2 batch 11d made the post page load the parity route of `media.by_code` and the flat `post`, and
+the whole of `media.page`, through `read_post` and `read_post_page` in `_core/posts.py`, rulings
+W111 and W112. Finding `read-a-post-page-document`, verified by two engine loads in
+`run-2026-09-27-151121` and captured cold twice in `run-2026-09-27-131354`. One paced action:
+
+| Group | Requests | Recorded at, first cold load and second | Built by |
+|---|---|---|---|
+| Document | `GET https://www.instagram.com/p/<code>/` | 0 ms | `build_document_request` |
+| Badge count | `IGDBadgeCountOffMsysQuery` | 1998, 956 | `build_post_page_load_companions` |
+| Stories tray | `PolarisStoriesV3TrayContainerQuery` | 2388, 1253 | the same |
+| Jewel pair, together | `IGDChatTabsJewelOffMsysQuery`, `IGDOmniPickerNullStateListQuery` | 2429 and 2431, 1189 and 1190 | the same |
+| Quick promotion | `QuickPromotionSupportIGSchemaBatchFetchQuery`, the login interstitial surface only | 2643, 1330 | the same |
+
+The second load sent the jewel pair before the stories tray; the engine keeps the first load's
+order (W112). The badge count and the jewel carry the document's `IGDMqttWebDeviceID`, and a
+document without one leaves both out, as on the other page loads. Every companion names the post
+page as referer and its answer is screened for a checkpoint or a throttle and otherwise left
+alone. The document preloads five results under `adp_<query>RelayPreloader_` ids: the post
+(`PolarisPostRootQuery`), its first comments (`PolarisPostCommentsContainerQuery`), the author's
+grid (`PolarisDesktopPostPageRelatedMediaGridQuery`, `count` 7), the notifications badge and a
+gating query. The engine reads the first three, and none of the five goes out as a request. A
+successful read schedules the cookie sync tail for the post page, as both loads ran it from 6978
+and 5490 ms.
+
+**Recorded departures.**
+
+- The feed timeline prefetch the page sends within 3 ms of the stories tray is left out, as the
+  profile and inbox loads leave it out, and so are `fxcal/ig_sso_users`, the manifest and the
+  `ajax` logging, which have no verified finding.
+- `PostRoute.QUERY` sends the post query alone instead, the route the engine used before.
+- `comments(post_pk)` does not load the page, since a pk does not give its address (W111).
 
 ## The explore grid, 2026-09-27
 

@@ -1,5 +1,5 @@
-"""The viewer's pending follow requests, activity feed, saved posts and collections, and close
-friends list, in both output forms."""
+"""The viewer's pending follow requests, activity feed, saved posts and collections, close
+friends list and blocked accounts list, in both output forms."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from dumpstagram._cli.render.profiles import describe_profile_summary
 from dumpstagram.models import (
    ActivityFeed,
    ActivityItem,
+   BlockedAccount,
    FollowRequests,
    ProfileSummary,
    SavedCollections,
@@ -24,11 +25,13 @@ from dumpstagram.models import (
 
 __all__ = [
    "describe_activity_feed",
+   "describe_blocked_accounts",
    "describe_close_friends",
    "describe_follow_requests",
    "describe_saved_collections",
    "describe_saved_posts",
    "render_activity_feed",
+   "render_blocked_accounts",
    "render_close_friends",
    "render_follow_requests",
    "render_saved_collections",
@@ -249,5 +252,41 @@ def render_close_friends(accounts: tuple[ProfileSummary, ...]) -> str:
       f"{account.id}  {account.username}  {account.full_name}".rstrip() for account in accounts
    ]
    lines.append(f"close friends: {len(accounts)}")
+
+   return "\n".join(lines)
+
+
+def describe_blocked_accounts(blocked: tuple[BlockedAccount, ...]) -> dict[str, Any]:
+   """The blocked accounts in the settings screen's order and how many. Every key is part of the
+   CLI's contract."""
+
+   return {
+      "account_count": len(blocked),
+      "accounts": [
+         {
+            "id": entry.id,
+            "username": entry.username,
+            "secondary_text": entry.secondary_text,
+            "is_verified": entry.is_verified,
+            "profile_pic_url": entry.profile_pic_url,
+            "is_auto_blocked": entry.is_auto_blocked,
+         }
+         for entry in blocked
+      ],
+   }
+
+
+def render_blocked_accounts(blocked: tuple[BlockedAccount, ...]) -> str:
+   """One line per account in the settings screen's order, ``auto`` after one whose block was
+   extended automatically, then how many. The secondary text is left out of this form, since on
+   an automatic row it is the screen's own line and not the account's."""
+
+   lines = []
+
+   for entry in blocked:
+      marker = "  auto" if entry.is_auto_blocked else ""
+      lines.append(f"{entry.id}  {entry.username}{marker}")
+
+   lines.append(f"blocked: {len(blocked)}")
 
    return "\n".join(lines)

@@ -15,6 +15,9 @@ A preloaded result that is missing, or present but not ``complete``, raises
 ``complete`` true. A result streamed across several calls has not been observed, and guessing
 how the chunks join would be worse than refusing.
 
+A post page document preloads the post, its first comments and its author's grid the same way,
+five results in all on both engine loads of 2026-09-27, each ``complete``.
+
 Finding: ``skills/reverse-engineer/knowledge/endpoints/home-timeline-first-page-preloader.md``.
 """
 
@@ -29,6 +32,9 @@ from dumpstagram.errors import SchemaChanged
 __all__ = [
    "FEED_TIMELINE_PRELOADER",
    "HOME_DOCUMENT_URL",
+   "POST_AUTHOR_GRID_PRELOADER",
+   "POST_COMMENTS_PRELOADER",
+   "POST_ROOT_PRELOADER",
    "read_iris_device_id",
    "read_preloaded_result",
    "read_profile_id",
@@ -40,6 +46,27 @@ FEED_TIMELINE_PRELOADER = "adp_PolarisFeedTimelineRootV2QueryRelayPreloader_"
 """The prefix of the preloader id the first feed page arrives under.
 
 The suffix changes on every load, so only the prefix identifies the query.
+"""
+
+POST_ROOT_PRELOADER = "adp_PolarisPostRootQueryRelayPreloader_"
+"""The prefix the post itself arrives under in a post page document, the answer of the post
+query keyed on the shortcode.
+
+Findings: ``read-a-post-page-document`` and ``read-a-post-by-shortcode``.
+"""
+
+POST_COMMENTS_PRELOADER = "adp_PolarisPostCommentsContainerQueryRelayPreloader_"
+"""The prefix the post's first comments arrive under in a post page document, the answer of the
+comments container query keyed on the media pk.
+
+Findings: ``read-a-post-page-document`` and ``read-a-post-page-first-comments``.
+"""
+
+POST_AUTHOR_GRID_PRELOADER = "adp_PolarisDesktopPostPageRelatedMediaGridQueryRelayPreloader_"
+"""The prefix the author's grid under the post arrives under in a post page document, the answer
+of the related grid query at ``count`` 7.
+
+Findings: ``read-a-post-page-document`` and ``read-more-posts-from-an-account``.
 """
 
 STREAM_CACHE = "RelayPrefetchedStreamCache"

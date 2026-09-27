@@ -10,11 +10,13 @@ The saved posts are a REST GET of the same family and the saved collections a pe
 both with the site root as referer, since a browser's is the viewer's own saved page and the
 engine does not hold the viewer's username (W105, W106). The close friends list is a Bloks app
 fetch, the comet form the settings page posts (W107). The page's ``close_friend_count_updater``
-action, whose effect is UNRESOLVED, is never built here.
+action, whose effect is UNRESOLVED, is never built here. The blocked list is the same form twice,
+the settings screen's app and then the reloader action the screen names (W110).
 """
 
 from __future__ import annotations
 
+import json
 from urllib.parse import urlencode
 
 from dumpstagram._private.transport import Request
@@ -27,10 +29,15 @@ from dumpstagram.session import Session
 
 __all__ = [
    "ACCOUNT_READ_REFERER",
+   "BLOCKED_ACCOUNTS_APP_ID",
+   "BLOCKED_ACCOUNTS_PAGE",
+   "BLOCKED_ACCOUNTS_RELOADER_ID",
    "CLOSE_FRIENDS_APP_ID",
    "CLOSE_FRIENDS_PAGE",
    "SAVED_COLLECTION_TYPES",
    "build_activity_feed_request",
+   "build_blocked_accounts_reloader_request",
+   "build_blocked_accounts_screen_request",
    "build_close_friends_request",
    "build_follow_requests_request",
    "build_saved_collections_request",
@@ -55,6 +62,19 @@ CLOSE_FRIENDS_PAGE = f"{ORIGIN}/accounts/close_friends/"
 """The settings page a browser fetches the close friends app from, and the fetch's referer."""
 
 _CLOSE_FRIENDS_ROUTE = "comet.igweb.PolarisSettingsCloseFriendsRoute"
+
+BLOCKED_ACCOUNTS_APP_ID = "com.instagram.portable_settings.privacy.blocked_accounts_v2"
+"""The Bloks app the blocked accounts settings screen fetches first."""
+
+BLOCKED_ACCOUNTS_RELOADER_ID = (
+   "com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader"
+)
+"""The Bloks action the screen sends as it appears, whose answer carries the list."""
+
+BLOCKED_ACCOUNTS_PAGE = f"{ORIGIN}/accounts/blocked_accounts/"
+"""The settings page a browser fetches both from, and their referer."""
+
+_BLOCKED_ACCOUNTS_ROUTE = "comet.igweb.PolarisBlockedAccountsSettingsRoute"
 
 SAVED_COLLECTION_TYPES = ("ALL_MEDIA_AUTO_COLLECTION", "MEDIA", "AUDIO_AUTO_COLLECTION")
 """The ``collection_types`` a browser's saved tab sent, a constant in this order."""
@@ -173,20 +193,24 @@ def build_saved_collections_request(
    )
 
 
-def build_close_friends_request(
+def _bloks_fetch_request(
    session: Session,
    *,
-   user_agent: str = DEFAULT_USER_AGENT,
+   app_id: str,
+   kind: str,
+   params: str,
+   route: str,
+   page: str,
+   user_agent: str,
 ) -> Request:
-   """The close friends settings screen's Bloks app, ``type`` app and ``params`` an empty object.
+   """One Bloks fetch as a settings page posts it: the app or action named in the query, and the
+   comet form in the body.
 
-   The body is the comet form the settings page posts, without the fields the engine has never
-   produced (``__s``, ``__dyn``, ``__csr``, ``__hsdp``, ``__hblp`` and ``__sjsp``), the subset the
-   delete post form sends, and the headers are the ones the page's fetch carried, no ``x-``
-   header among them. ``__bkv`` is the Bloks version id the bootstrap reads, so a session without
-   one is refused rather than sent with an empty version.
-
-   Finding: ``read-the-close-friends-list``.
+   The body leaves out the fields the engine has never produced (``__s``, ``__dyn``, ``__csr``,
+   ``__hsdp``, ``__hblp`` and ``__sjsp``), the subset the delete post form sends, and the headers
+   are the ones the page's fetches carried, no ``x-`` header among them. ``__bkv`` is the Bloks
+   version id the bootstrap reads, so a session without one is refused rather than sent with an
+   empty version.
    """
 
    token = session.fb_dtsg
@@ -200,14 +224,14 @@ def build_close_friends_request(
 
    if not bloks_version:
       raise SchemaChanged(
-         "the bootstrap page carried no WebBloksVersioningID, so the Bloks fetch of the close "
-         "friends screen cannot name its version",
+         f"the bootstrap page carried no WebBloksVersioningID, so the Bloks fetch of {app_id} "
+         "cannot name its version",
          path="WebBloksVersioningID",
       )
 
    spin = session.spin
    revision = (spin.revision if spin is not None else None) or ""
-   query = urlencode({"appid": CLOSE_FRIENDS_APP_ID, "type": "app", "__bkv": bloks_version})
+   query = urlencode({"appid": app_id, "type": kind, "__bkv": bloks_version})
    fields = {
       "__d": "www",
       "__user": "0",
@@ -225,15 +249,15 @@ def build_close_friends_request(
       "__spin_r": revision,
       "__spin_b": (spin.branch if spin is not None else None) or "",
       "__spin_t": (spin.timestamp if spin is not None else None) or "",
-      "__crn": _CLOSE_FRIENDS_ROUTE,
-      "params": "{}",
+      "__crn": route,
+      "params": params,
    }
    headers = {
       "accept": "*/*",
       "accept-language": "en-US,en;q=0.9",
       "content-type": "application/x-www-form-urlencoded",
       "origin": ORIGIN,
-      "referer": CLOSE_FRIENDS_PAGE,
+      "referer": page,
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-origin",
@@ -246,4 +270,80 @@ def build_close_friends_request(
       headers=headers,
       content=urlencode(fields).encode("utf-8"),
       follow_redirects=False,
+   )
+
+
+def build_close_friends_request(
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The close friends settings screen's Bloks app, ``type`` app and ``params`` an empty object.
+
+   Finding: ``read-the-close-friends-list``.
+   """
+
+   return _bloks_fetch_request(
+      session,
+      app_id=CLOSE_FRIENDS_APP_ID,
+      kind="app",
+      params="{}",
+      route=_CLOSE_FRIENDS_ROUTE,
+      page=CLOSE_FRIENDS_PAGE,
+      user_agent=user_agent,
+   )
+
+
+def build_blocked_accounts_screen_request(
+   session: Session,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The blocked accounts settings screen's Bloks app, ``type`` app and ``params`` an empty
+   object, the first of the two fetches the page sends on load (W110).
+
+   Finding: ``read-the-blocked-accounts-list``.
+   """
+
+   return _bloks_fetch_request(
+      session,
+      app_id=BLOCKED_ACCOUNTS_APP_ID,
+      kind="app",
+      params="{}",
+      route=_BLOCKED_ACCOUNTS_ROUTE,
+      page=BLOCKED_ACCOUNTS_PAGE,
+      user_agent=user_agent,
+   )
+
+
+def build_blocked_accounts_reloader_request(
+   session: Session,
+   *,
+   list_id: int,
+   rows_id: int,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The Bloks action that answers the blocked list, ``type`` action, its ``params`` the two
+   container ids the screen's own answer passed to it, ``list_id`` and ``rows_id``, compact JSON
+   in the page's key order, the second fetch the page sends on load with no click (W110).
+
+   Finding: ``read-the-blocked-accounts-list``.
+   """
+
+   params = json.dumps(
+      {
+         "container_id_of_list": list_id,
+         "container_id_of_rows": rows_id,
+      },
+      separators=(",", ":"),
+   )
+
+   return _bloks_fetch_request(
+      session,
+      app_id=BLOCKED_ACCOUNTS_RELOADER_ID,
+      kind="action",
+      params=params,
+      route=_BLOCKED_ACCOUNTS_ROUTE,
+      page=BLOCKED_ACCOUNTS_PAGE,
+      user_agent=user_agent,
    )

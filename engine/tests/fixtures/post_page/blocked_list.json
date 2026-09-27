@@ -1,0 +1,628 @@
+{
+ "__ar": 1,
+ "rid": "p53xxxxxxxxxxxxxxxxxxxx",
+ "payload": {
+  "layout": {
+   "bloks_payload": {
+    "data": [
+     {
+      "id": "978322584_0",
+      "type": "ls",
+      "data": {
+       "initial_lispy": "(bk.action.array.Make, (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000001\", \"p2xxxxxxxxxxx\", \"p3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/4\", (bk.action.bool.Const, true))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000005\", \"p6xxxxxxxxxx\", \"p3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/7\", (bk.action.bool.Const, true))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000008\", \"p9xxxxxxxxxxxx\", \"p3xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/10\", (bk.action.bool.Const, true))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000011\", \"p12xxxxx\", \"p13xxx\", (bk.action.bool.Const, false), \"https://example.invalid/14\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000015\", \"p16xxxxx\", \"p17xxx\", (bk.action.bool.Const, false), \"https://example.invalid/18\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000019\", \"p20xxxxxxxxxxxxxx\", \"p21xxxx\", (bk.action.bool.Const, false), \"https://example.invalid/22\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000023\", \"p24xxxxxxx\", \"p25\", (bk.action.bool.Const, false), \"https://example.invalid/26\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000027\", \"p28xxxxxxxxx\", \"p29xxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/30\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000031\", \"p32xxxx\", \"p33xxxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/34\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000035\", \"p36xxxxxxxxxxx\", \"p37xxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/38\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000039\", \"p40xxxxxx\", \"\", (bk.action.bool.Const, false), \"https://example.invalid/41\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000042\", \"p43xxxxx\", \"p44xx\", (bk.action.bool.Const, false), \"https://example.invalid/18\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"90000000045\", \"p46xxxxxxx\", \"p\", (bk.action.bool.Const, false), \"https://example.invalid/48\", (bk.action.bool.Const, false))), (bk.action.map.Make, (bk.action.array.Make, \"user_id\", \"username\", \"secondary_text\", \"is_verified\", \"profile_pic_url\", \"is_auto_blocked\"), (bk.action.array.Make, \"900000049\", \"p50xxxxxxxxxxxxxxxxxxxxxxx\", \"p51xxxxxxxxxxxxx\", (bk.action.bool.Const, false), \"https://example.invalid/52\", (bk.action.bool.Const, false))))"
+      }
+     }
+    ],
+    "tree": {
+     "bk.components.internal.Action": {
+      "handler": "(bk.action.core.TakeLast, (bk.action.bloks.WriteGlobalConsistencyStore, \"dtl:ig_privacy_settings:user_selection_list_showing_users\", (bk.action.bool.Const, true)), (bk.action.bloks.ReplaceEmbeddedChildV2, (bk.action.i64.Const, 948492583), (bk.action.array.Make, (bk.action.bloks.ParseEmbeddedV2, (bk.action.bloks.GetDeserializedEmbeddedPayload, \"978322594\"))), (bk.action.i64.Const, 948492584), (bk.action.core.GetArg, 0)))"
+     }
+    },
+    "embedded_payloads": [
+     {
+      "id": "978322594",
+      "payload": {
+       "layout": {
+        "bloks_payload": {
+         "referenced": [
+          "978322584_0"
+         ],
+         "tree": {
+          "bk.components.Flexbox": {
+           "flex_direction": "column",
+           "children": [
+            {
+             "bk.components.Flexbox": {
+              "flex_direction": "column",
+              "children": [
+               {
+                "bk.components.Flexbox": {
+                 "flex_direction": "column",
+                 "justify_content": "space_evenly",
+                 "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322593), \"children\", (bk.action.array.Map, (bk.action.bloks.GetVariable2, \"978322584_0\"), (bk.action.core.FuncConst, (bk.action.template.Make, (bk.action.i32.Const, 0), (bk.action.map.Make, (bk.action.array.Make, \"__978322587__\"), (bk.action.array.Make, (bk.action.core.GetArg, 1))), (bk.action.string.ValueOfNumber, (bk.action.core.GetArg, 0)))))))",
+                 "child_templates": [
+                  {
+                   "bk.components.Flexbox": {
+                    "children": [
+                     {
+                      "bk.components.Flexbox": {
+                       "flex_direction": "row",
+                       "justify_content": "space_between",
+                       "align_items": "center",
+                       "children": [
+                        {
+                         "bk.components.Flexbox": {
+                          "flex_direction": "row",
+                          "justify_content": "flex_start",
+                          "align_items": "center",
+                          "children": [
+                           {
+                            "bk.components.Flexbox": {
+                             "flex_direction": "row",
+                             "align_items": "center",
+                             "children": [
+                              {
+                               "bk.components.Flexbox": {
+                                "flex_direction": "column",
+                                "children": [
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "align_items": "center",
+                                   "children": [
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "children": [],
+                                      "_style": {
+                                       "flex": {
+                                        "width": "44dp",
+                                        "height": "44dp"
+                                       }
+                                      }
+                                     }
+                                    },
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "justify_content": "center",
+                                      "align_items": "center",
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "justify_content": "center",
+                                         "align_items": "center",
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "children": [
+                                             {
+                                              "bk.components.Flexbox": {
+                                               "decoration": {
+                                                "bk.components.BoxDecoration": {
+                                                 "corner_radius": "22.25dp",
+                                                 "border_width": "0.5dp",
+                                                 "clipping": true,
+                                                 "background": {
+                                                  "bk.components.ThemedColorDrawable": {
+                                                   "color": {
+                                                    "bk.types.ThemedColor": {
+                                                     "light_color": "#FFFFFF",
+                                                     "dark_color": "#000000"
+                                                    }
+                                                   }
+                                                  }
+                                                 },
+                                                 "border_themed_color": {
+                                                  "bk.types.ThemedColor": {
+                                                   "light_color": "#26000000",
+                                                   "dark_color": "#26FFFFFF"
+                                                  }
+                                                 }
+                                                }
+                                               },
+                                               "justify_content": "center",
+                                               "align_items": "center",
+                                               "children": [
+                                                {
+                                                 "bk.components.Flexbox": {
+                                                  "decoration": {
+                                                   "bk.components.BoxDecoration": {
+                                                    "corner_radius": "22.0dp",
+                                                    "clipping": true,
+                                                    "background": {
+                                                     "bk.components.ThemedColorDrawable": {
+                                                      "color": {
+                                                       "bk.types.ThemedColor": {
+                                                        "light_color": "#F5F5F5",
+                                                        "dark_color": "#262626"
+                                                       }
+                                                      }
+                                                     }
+                                                    }
+                                                   }
+                                                  },
+                                                  "children": [
+                                                   {
+                                                    "bk.components.Image": {
+                                                     "url": "",
+                                                     "scale_type": "stretch",
+                                                     "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322588), \"url\", (bk.action.string.Concat, \"\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"profile_pic_url\"))))",
+                                                     "id": 978322588
+                                                    }
+                                                   }
+                                                  ],
+                                                  "extensions": [
+                                                   {
+                                                    "bk.components.AccessibilityExtension": {
+                                                     "enabled": true,
+                                                     "label": "Profile picture of "
+                                                    }
+                                                   }
+                                                  ],
+                                                  "_style": {
+                                                   "flex": {
+                                                    "width": "44dp",
+                                                    "height": "44dp"
+                                                   }
+                                                  }
+                                                 }
+                                                }
+                                               ],
+                                               "_style": {
+                                                "flex": {
+                                                 "width": "44.5dp",
+                                                 "height": "44.5dp"
+                                                }
+                                               }
+                                              }
+                                             }
+                                            ],
+                                            "visibility": "visible",
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Not, (bk.action.bool.Const, false)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))"
+                                           }
+                                          }
+                                         ],
+                                         "_style": {
+                                          "flex": {
+                                           "width": "100%",
+                                           "height": "100%",
+                                           "position_type": "absolute"
+                                          }
+                                         }
+                                        }
+                                       },
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "bk.components.Flexbox": {
+                                            "decoration": {
+                                             "bk.components.BoxDecoration": {
+                                              "background": {
+                                               "bk.components.ThemedColorDrawable": {
+                                                "color": {
+                                                 "bk.types.ThemedColor": {
+                                                  "light_color": "#B3FFFFFF",
+                                                  "dark_color": "#B3000000"
+                                                 }
+                                                }
+                                               }
+                                              }
+                                             }
+                                            },
+                                            "visibility": "gone",
+                                            "on_reflow": "(bk.action.component.SetAttr, (bk.action.core.GetArg, 0), \"visibility\", (bk.action.core.Match, (bk.action.bool.Const, false), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null))))",
+                                            "_style": {
+                                             "flex": {
+                                              "width": "100%",
+                                              "height": "100%"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "extensions": [],
+                                         "_style": {
+                                          "flex": {
+                                           "width": "100%",
+                                           "height": "100%",
+                                           "position_type": "absolute"
+                                          }
+                                         }
+                                        }
+                                       }
+                                      ],
+                                      "_style": {
+                                       "flex": {
+                                        "width": "100%",
+                                        "height": "100%",
+                                        "position_type": "absolute"
+                                       }
+                                      }
+                                     }
+                                    },
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "children": [],
+                                      "_style": {
+                                       "flex": {
+                                        "width": "100%",
+                                        "height": "100%",
+                                        "position_type": "absolute"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   ],
+                                   "extensions": [],
+                                   "_style": {
+                                    "flex": {
+                                     "width": "44dp",
+                                     "height": "44dp",
+                                     "shrink": 0
+                                    }
+                                   }
+                                  }
+                                 }
+                                ],
+                                "_style": {
+                                 "flex": {
+                                  "margin_top": "8dp",
+                                  "margin_left": "12dp",
+                                  "margin_right": "12dp",
+                                  "margin_bottom": "8dp",
+                                  "shrink": 0
+                                 }
+                                }
+                               }
+                              },
+                              {
+                               "bk.components.Flexbox": {
+                                "flex_direction": "column",
+                                "align_items": "flex_start",
+                                "children": [
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "flex_direction": "row",
+                                   "align_items": "center",
+                                   "children": [
+                                    {
+                                     "bk.components.Text": {
+                                      "text": "",
+                                      "text_size": "14sp",
+                                      "text_style": "semibold",
+                                      "font_family": "sans-serif-medium",
+                                      "max_number_of_lines": 1,
+                                      "text_themed_color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#000000",
+                                        "dark_color": "#fafafa"
+                                       }
+                                      },
+                                      "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322589), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"username\")))",
+                                      "id": 978322589
+                                     }
+                                    },
+                                    {
+                                     "bk.components.Flexbox": {
+                                      "align_items": "center",
+                                      "children": [
+                                       {
+                                        "bk.components.Flexbox": {
+                                         "children": [
+                                          {
+                                           "ig.components.Icon": {
+                                            "url": "https://i.instagram.com/static/images/bloks/icons/generated/verified__filled__24-4x.png",
+                                            "resource_name": "verified_filled_24",
+                                            "height": "12dp",
+                                            "width": "12dp",
+                                            "tint_themed_color": {
+                                             "bk.types.ThemedColor": {
+                                              "light_color": "#0095F6",
+                                              "dark_color": "#0095F6"
+                                             }
+                                            },
+                                            "_style": {
+                                             "flex": {
+                                              "width": "12dp",
+                                              "height": "12dp",
+                                              "margin_left": "4dp"
+                                             }
+                                            }
+                                           }
+                                          }
+                                         ],
+                                         "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322590), \"visibility\", (bk.action.core.Match, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"is_verified\"), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                         "id": 978322590
+                                        }
+                                       }
+                                      ]
+                                     }
+                                    }
+                                   ],
+                                   "_style": {
+                                    "flex": {
+                                     "margin_top": "-8dp",
+                                     "margin_bottom": "-1dp"
+                                    }
+                                   }
+                                  }
+                                 },
+                                 {
+                                  "bk.components.Flexbox": {
+                                   "children": [
+                                    {
+                                     "bk.components.Text": {
+                                      "text": "",
+                                      "text_size": "14sp",
+                                      "text_style": "normal",
+                                      "max_number_of_lines": 2,
+                                      "text_themed_color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#6F7680",
+                                        "dark_color": "#A2AAB4"
+                                       }
+                                      },
+                                      "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322592), \"text\", (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"secondary_text\")))",
+                                      "id": 978322592
+                                     }
+                                    }
+                                   ],
+                                   "on_bind": "(bk.action.array.Make, (bk.action.array.Make, (bk.action.i32.Const, 978322591), \"visibility\", (bk.action.core.Match, (bk.action.i32.Gt, (bk.action.string.Length, (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"secondary_text\")), (bk.action.i32.Const, 0)), (bk.action.array.Make, (bk.action.core.Pattern, (bk.action.i32.Const, 1), (bk.action.core.FuncConst, \"visible\")), (bk.action.core.Pattern, (bk.action.i32.Const, 0), (bk.action.core.FuncConst, \"gone\"))), (bk.action.core.Default, (bk.action.core.FuncConst, null)))))",
+                                   "id": 978322591
+                                  }
+                                 }
+                                ],
+                                "_style": {
+                                 "flex": {
+                                  "margin_top": "8dp",
+                                  "margin_right": "12dp",
+                                  "margin_bottom": "8dp"
+                                 }
+                                }
+                               }
+                              }
+                             ]
+                            }
+                           }
+                          ],
+                          "_style": {
+                           "flex": {
+                            "grow": 1
+                           }
+                          }
+                         }
+                        },
+                        {
+                         "bk.components.Flexbox": {
+                          "flex_direction": "row",
+                          "justify_content": "flex_end",
+                          "align_items": "center",
+                          "children": [
+                           {
+                            "bk.components.Flexbox": {
+                             "decoration": {
+                              "bk.components.BoxDecoration": {
+                               "corner_radius": "8dp",
+                               "background": {
+                                "bk.components.StateDrawable": {
+                                 "state_items": [
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "default",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#efefef",
+                                        "dark_color": "#262626"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  },
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "pressed",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#B3EFEFEF",
+                                        "dark_color": "#66262626"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  },
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "disabled",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#efefef",
+                                        "dark_color": "#262626"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  }
+                                 ]
+                                }
+                               },
+                               "foreground": {
+                                "bk.components.StateDrawable": {
+                                 "state_items": [
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "default",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#00000000",
+                                        "dark_color": "#00000000"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  },
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "pressed",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#00000000",
+                                        "dark_color": "#00000000"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  },
+                                  {
+                                   "bk.components.StateDrawableItem": {
+                                    "state": "disabled",
+                                    "drawable": {
+                                     "bk.components.ThemedColorDrawable": {
+                                      "color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#00000000",
+                                        "dark_color": "#00000000"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   }
+                                  }
+                                 ]
+                                }
+                               }
+                              }
+                             },
+                             "enabled": true,
+                             "justify_content": "center",
+                             "align_items": "center",
+                             "on_click": "(bk.action.core.Apply, (bk.action.core.FuncConst, (bk.action.bloks.AsyncActionWithDataManifest, \"com.instagram.portable_settings.blocked_accounts.confirm_unblock_action_handler\", (bk.action.map.Make, (bk.action.array.Make, \"container_id_of_list\", \"container_id_of_rows\", \"username\", \"user_id\", \"is_auto_blocked\"), (bk.action.array.Make, (bk.action.i32.Const, 948492583), (bk.action.i32.Const, 948492584), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"username\"), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"user_id\"), (bk.action.map.Get, (bk.action.core.GetTemplateArg, \"__978322587__\", (bk.action.i32.Const, 1)), \"is_auto_blocked\"))), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), (bk.action.core.FuncConst, (bk.action.i32.Const, 1)), \"current-screen\")))",
+                             "children": [
+                              {
+                               "bk.components.Flexbox": {
+                                "justify_content": "center",
+                                "align_items": "center",
+                                "children": [
+                                 {
+                                  "bk.components.RichText": {
+                                   "children": [
+                                    {
+                                     "bk.components.TextSpan": {
+                                      "text": "Unblock",
+                                      "text_size": "14sp",
+                                      "text_style": "bold",
+                                      "text_themed_color": {
+                                       "bk.types.ThemedColor": {
+                                        "light_color": "#000000",
+                                        "dark_color": "#fafafa"
+                                       }
+                                      }
+                                     }
+                                    }
+                                   ]
+                                  }
+                                 }
+                                ],
+                                "_style": {
+                                 "flex": {
+                                  "width": "auto",
+                                  "margin_top": "5dp",
+                                  "margin_left": "16dp",
+                                  "margin_right": "16dp",
+                                  "margin_bottom": "5dp"
+                                 }
+                                }
+                               }
+                              }
+                             ],
+                             "extensions": [
+                              {
+                               "bk.components.AccessibilityExtension": {
+                                "enabled": true,
+                                "label": "Unblock",
+                                "role": "Button",
+                                "disabled": false
+                               }
+                              }
+                             ],
+                             "_style": {
+                              "flex": {
+                               "width": "auto",
+                               "min_height": "32dp"
+                              }
+                             }
+                            }
+                           }
+                          ],
+                          "_style": {
+                           "flex": {
+                            "margin_right": "12dp",
+                            "shrink": 0
+                           }
+                          }
+                         }
+                        }
+                       ],
+                       "id": 978322586,
+                       "_style": {
+                        "flex": {
+                         "width": "100%",
+                         "margin_left": "4dp",
+                         "margin_right": "4dp"
+                        }
+                       }
+                      }
+                     }
+                    ],
+                    "_style": {
+                     "flex": {
+                      "width": "100%"
+                     }
+                    }
+                   }
+                  }
+                 ],
+                 "id": "978322593"
+                }
+               }
+              ],
+              "id": "978322583"
+             }
+            }
+           ],
+           "id": "948492584"
+          }
+         },
+         "referenced_embedded_payloads": []
+        }
+       }
+      }
+     }
+    ],
+    "error_attribution": {
+     "logging_id": "p54xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "source_map_id": "p55xxxxxxxxxxxxxxxxx"
+    }
+   }
+  },
+  "server_data": {
+   "falco_log_policy_map": null,
+   "versioning_id": "p56xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "bloks_app_id": "ig_web"
+  }
+ },
+ "lid": "p57xxxxxxxxxxxxxxxx"
+}

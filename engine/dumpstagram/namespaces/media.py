@@ -17,6 +17,7 @@ from dumpstagram._core.posts import (
    read_more_from_author,
    read_post,
    read_post_by_id,
+   read_post_page,
 )
 from dumpstagram._core.writes.comments import create_comment, delete_comment
 from dumpstagram._core.writes.likes import like_post, unlike_post
@@ -26,6 +27,7 @@ from dumpstagram.models import (
    MediaImage,
    Page,
    PostDetail,
+   PostPage,
    PostThumbnail,
    ProfileSummary,
    PublishedPost,
@@ -56,25 +58,63 @@ class AsyncMedia:
       return namespace
 
    async def by_code(self, code: str) -> PostDetail:
-      """Read one post by the shortcode in its web address. One live request.
+      """Read one post by the shortcode in its web address.
 
       The answer carries both of the post's identifiers, and :attr:`PostDetail.pk
       <dumpstagram.models.PostDetail.pk>` is the one :meth:`like` and :meth:`unlike` take. It
       carries ``has_liked`` and ``like_count`` for this viewer, which is how a like is
       confirmed, and how one whose outcome was unknown is reconciled.
 
-      A browser reads a post inside a post page load. This sends the post query alone under
-      every behavior, a departure recorded in ``docs/web-request-contract.md``.
+      Under the default behavior this loads the post page, as a browser does, and reads the post
+      out of its document: the document and the page's five companions, six requests in one
+      action. :attr:`~dumpstagram.behavior.Behavior.post_route` set to
+      :attr:`~dumpstagram.behavior.PostRoute.QUERY` sends the post query alone instead, one
+      request, a departure recorded in ``docs/web-request-contract.md``. :meth:`page` returns
+      the whole page, the first comments and the author's grid beside the post.
       """
 
       client = self._client
       client._refuse_when_closed()
+      behavior = client._behavior
 
       return await client._watch_for_checkpoint(
          read_post(
             client._sender,
             client._session,
             code,
+            route=behavior.post_route,
+            companions=behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
+            user_agent=client._user_agent,
+         )
+      )
+
+   async def page(self, code: str) -> PostPage:
+      """Read the post page of the shortcode ``code``, the way a browser loads it.
+
+      One document carries the post, the first page of its comments and the strip of its
+      author's posts, so all three come from one load: the document and, under the default
+      behavior, the page's five companions, six requests in one action. Every behavior loads the
+      page, since reading the page is what this is; ``page_load_companions`` and ``cookie_sync``
+      govern what goes out around it.
+
+      This is how to read a post's first comments as a browser does. :meth:`comments` is keyed
+      on the media ``pk``, which does not give the page's address, so it sends a query alone.
+      The comments' ``end_cursor`` is what :meth:`comments` takes as ``after`` for the next
+      page. A document that stops carrying any of the three raises
+      :class:`~dumpstagram.errors.SchemaChanged`.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_post_page(
+            client._sender,
+            client._session,
+            code,
+            companions=client._behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
             user_agent=client._user_agent,
          )
       )
@@ -91,8 +131,10 @@ class AsyncMedia:
       :class:`~dumpstagram.errors.OutcomeUnknown` if the connection fails while it is in flight.
       To reconcile that, read the post with :meth:`by_code` and look at ``has_liked``.
 
-      The request a browser sends around a like has not been recorded, so this sends the like
-      alone, a departure recorded in ``docs/web-request-contract.md``.
+      A browser likes from a page it has loaded. This sends the like alone and loads no page,
+      because a ``pk`` does not say which page the like is made from, a departure recorded in
+      ``docs/web-request-contract.md`` (W113). A caller that wants the browser's sequence reads
+      the post with :meth:`by_code` or :meth:`page` first, which loads its page.
       """
 
       client = self._client
@@ -138,9 +180,11 @@ class AsyncMedia:
       :attr:`PostDetail.pk <dumpstagram.models.PostDetail.pk>`, and the ``<pk>_<author id>``
       form raises :class:`ValueError` before anything is sent.
 
-      A browser reads comments inside a post page load, its first page with a query of its
-      own. This sends the pagination query alone for every page, a departure recorded in
-      ``docs/web-request-contract.md``.
+      A browser reads the first comments out of the post page's document and pages on with the
+      query this sends. The page's address needs the shortcode, which a ``pk`` does not give, so
+      this sends the query alone for every page, a departure recorded in
+      ``docs/web-request-contract.md`` (W111). :meth:`page` reads the first comments out of the
+      page as a browser does.
       """
 
       client = self._client
@@ -330,8 +374,9 @@ class AsyncMedia:
       attempt began, and only then decide.
 
       The write waits out the behavior's write spacing and counts against its write budget.
-      The request a browser sends around a comment has not been recorded, so this sends the
-      comment alone, a departure recorded in ``docs/web-request-contract.md``.
+      A browser comments from the post page it has loaded. This sends the comment alone and loads
+      no page, a departure recorded in ``docs/web-request-contract.md`` (W113); reading the post
+      with :meth:`page` first gives the browser's sequence.
       """
 
       client = self._client
@@ -530,13 +575,26 @@ class SyncMedia:
    def by_code(self, code: str) -> PostDetail:
       """Read one post by its shortcode. Blocks until it has it.
 
-      The same call as :meth:`AsyncMedia.by_code`, run on the shared loop thread. One live
-      request.
+      The same call as :meth:`AsyncMedia.by_code`, run on the shared loop thread. Six requests
+      in one action under the default behavior, one under
+      :attr:`~dumpstagram.behavior.PostRoute.QUERY`.
       """
 
       return self._client._loop.run(
          self._client._impl.media.by_code(code),
          operation="SyncClient.media.by_code",
+      )
+
+   def page(self, code: str) -> PostPage:
+      """Read the post page of the shortcode ``code``. Blocks until it has it.
+
+      The same call as :meth:`AsyncMedia.page`, run on the shared loop thread. Six requests in
+      one action under the default behavior.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.media.page(code),
+         operation="SyncClient.media.page",
       )
 
    def like(self, post_pk: str) -> None:

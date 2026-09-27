@@ -1,6 +1,6 @@
 """The viewer's own account commands: the pending follow requests, the activity feed, the saved
-posts and collections, and the close friends list. None marks anything seen or changes
-anything."""
+posts and collections, the close friends list and the blocked accounts list. None marks anything
+seen or changes anything."""
 
 from __future__ import annotations
 
@@ -19,11 +19,13 @@ from dumpstagram._cli.commands.common import (
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.account import (
    describe_activity_feed,
+   describe_blocked_accounts,
    describe_close_friends,
    describe_follow_requests,
    describe_saved_collections,
    describe_saved_posts,
    render_activity_feed,
+   render_blocked_accounts,
    render_close_friends,
    render_follow_requests,
    render_saved_collections,
@@ -36,7 +38,14 @@ __all__ = [
    "run_account_command",
 ]
 
-ACCOUNT_COMMANDS = ("follow-requests", "activity", "saved", "collections", "close-friends")
+ACCOUNT_COMMANDS = (
+   "follow-requests",
+   "activity",
+   "saved",
+   "collections",
+   "close-friends",
+   "blocked",
+)
 
 
 def _account_result(client: Client, arguments: argparse.Namespace) -> tuple[dict[str, Any], str]:
@@ -62,6 +71,12 @@ def _account_result(client: Client, arguments: argparse.Namespace) -> tuple[dict
       payload = {"command": "close-friends", **describe_close_friends(accounts)}
 
       return payload, render_close_friends(accounts)
+
+   if arguments.command == "blocked":
+      blocked = client.account.blocked()
+      payload = {"command": "blocked", **describe_blocked_accounts(blocked)}
+
+      return payload, render_blocked_accounts(blocked)
 
    feed = client.account.activity()
 
@@ -145,3 +160,14 @@ def add_account_parsers(commands: Subcommands) -> None:
       ),
    )
    add_request_options(close_friends)
+
+   blocked = commands.add_parser(
+      "blocked",
+      help="list the accounts you blocked, two live requests, nothing changed",
+      description=(
+         "Lists the accounts you have blocked, in the order the blocked accounts settings "
+         "screen shows them, and whether each was blocked automatically. Nobody is blocked or "
+         "unblocked."
+      ),
+   )
+   add_request_options(blocked)

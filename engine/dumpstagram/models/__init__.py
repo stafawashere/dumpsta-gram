@@ -12,6 +12,7 @@ from dumpstagram.models.account import (
    ActivityLink,
    ActivityMedia,
    ActivitySection,
+   BlockedAccount,
    CollectionCover,
    FollowRequests,
    SavedCollection,
@@ -48,6 +49,7 @@ from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import (
    PostDetail,
+   PostPage,
    PostThumbnail,
    ProfileReels,
    PublishedPost,
@@ -99,6 +101,7 @@ __all__ = [
    "AudioKind",
    "BioLink",
    "CarouselChild",
+   "BlockedAccount",
    "CollectionCover",
    "Comment",
    "CommentAuthor",
@@ -132,6 +135,7 @@ __all__ = [
    "Post",
    "PostAuthor",
    "PostDetail",
+   "PostPage",
    "PostThumbnail",
    "ProfileReels",
    "PublishedPost",

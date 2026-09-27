@@ -131,7 +131,7 @@ does not close the pool. Closing the owner stops both.
 described with `notes()` below, and since E2 batch 12 `mark_stories_seen`, described with the
 stories below, whose default makes a story read visible to the story's owner, and since E2 batch
 11b `typeahead_route`, described with the search below, whose default changed the accounts
-`search.accounts` returns. `poll_interval_seconds`, added with the
+`search.accounts` returns, and since E2 batch 11d `post_route`, described with `post` below. `poll_interval_seconds`, added with the
 Step 22 listener, is the wait between one listener poll and the next, 60 s in every preset,
 zero allowed and a negative a `ValueError`. The listener honours it, see the listener shape
 above.
@@ -143,6 +143,13 @@ and it refreshes the session's page tokens. `FeedFirstPage.QUERY` asks the pagin
 instead, the route the engine used before, which no browser was observed to take. Later pages
 use the pagination query under both. Every preset keeps `DOCUMENT`, because a preset departs
 only in what it names.
+
+`post_route` decides how `post(code)` and `media.by_code(code)` read, since E2 batch 11d (W111,
+W112). `PostRoute.PAGE`, the parity default, loads `https://www.instagram.com/p/<code>/` as a
+navigation and reads the post out of the document, which preloads it, and with
+`page_load_companions` sends the page's five companions after it, six requests in one paced action
+of about 1.1 MB. It refreshes the session's page tokens. `PostRoute.QUERY` is the route the engine
+used before, the post query alone. Every preset keeps `PAGE`.
 
 `profile_route` decides how `profile(username)` reads. `ProfileRoute.PAGE`, the parity default,
 loads the profile page as a navigation, reads the account id out of it, and sends the page's six
@@ -209,9 +216,10 @@ than append one, so after `OutcomeUnknown` the reconciling read is `notes()`. Th
 around each write is unrecorded under ruling 23, so each is sent alone, a departure recorded in
 [web-request-contract.md](web-request-contract.md).
 
-`post(code)`, `like(post_pk)` and `unlike(post_pk)` have no setting either. Added 2026-09-23 as
-Step 15. `post` reads one post by the shortcode in its web address, one `PolarisPostRootQuery`
-request, and returns `PostDetail`, a model of its own rather than `Post`: the single post item
+`post(code)`, `like(post_pk)` and `unlike(post_pk)` were added 2026-09-23 as Step 15, and since E2
+batch 11d `post` reads through `post_route`. `post` reads one post by the shortcode in its web
+address, under the default behavior out of the post page's document and under `PostRoute.QUERY`
+from one `PolarisPostRootQuery` request, and returns `PostDetail`, a model of its own rather than `Post`: the single post item
 carries every field `Post` reads except `is_seen`, and making that field optional would have
 changed a line of the contract. `PostDetail` has `Post`'s fields without `is_seen`, and its
 `has_liked` and `like_count` are what a like is confirmed by. `like` and `unlike` return `None`
@@ -223,10 +231,12 @@ state: a second like of a liked post and a second unlike of an unliked one each 
 the first and moved `like_count` no further, observed once each on 2026-09-23, so after
 `OutcomeUnknown` a caller reads the post with `post` and decides. An answer without an error
 that names the opposite state raises `UpstreamRejected` with code `has_liked_did_not_follow`,
-never observed. A browser sends a post read inside a post page load and a like beside whatever
-page it is on. Neither burst has been recorded, because ruling 23 allowed no browser load when
-these were verified, so each is sent alone, a departure recorded in
-[web-request-contract.md](web-request-contract.md).
+never observed. A browser reads a post inside a post page load, which `post` now sends under the
+default behavior and which closes the post departure of `1.0.0` (W111). A browser likes from
+whatever page it has loaded, and no capture pairs a page load with a like, so a like and an unlike
+are each sent alone and load no page, a departure recorded in
+[web-request-contract.md](web-request-contract.md) (W113). Reading the post with `post` first gives
+the browser's sequence.
 
 `comments(post_pk, *, after=None)`, `comment(post_pk, text)` and `delete_comment(post_pk,
 comment_id)` have no setting either. Added 2026-09-23 as Step 16. `comments` reads one page of a
@@ -246,9 +256,12 @@ who can see the post sees, so the docstring names `comments` as the read that re
 for the viewer's own comment made after the attempt began, and a gate holds that sentence in
 place. A delete sets a state. A delete answered with a null root field raises `UpstreamRejected`
 with code `comment_not_deleted`, because a delete naming no comment was answered that way, so a
-second delete of a comment already gone is expected to raise it too, INFERENCE. What a browser
-sends around each of the three is unrecorded under ruling 23, so each is sent alone, a departure
-recorded in [web-request-contract.md](web-request-contract.md).
+second delete of a comment already gone is expected to raise it too, INFERENCE. Each of the three
+is sent alone, departures recorded in [web-request-contract.md](web-request-contract.md). A
+browser reads the first comments out of the post page's document, but `comments` is keyed on the
+pk, which gives the page's address only for a public post, so it sends the pagination query for
+every page (W111); `media.page(code)` reads the first comments out of the page. A comment and a
+delete load no page, since no capture pairs a page load with either (W113).
 
 `follow(user_id)` and `unfollow(user_id)` have no setting either, and both return `None`. Added
 2026-09-23 as Step 17. Each sends one write through `send_write`, sent once and never retried,
@@ -802,8 +815,9 @@ with the site root as its referer, departures recorded in
 
 ### Post depth
 
-Landed 2026-09-27, E2 batch 4 of [web-parity-plan.md](web-parity-plan.md), rulings W61 to W67.
-Five methods on `media`, on both clients, with no flat twin:
+Landed 2026-09-27, E2 batch 4 of [web-parity-plan.md](web-parity-plan.md), rulings W61 to W67,
+and `media.page` with E2 batch 11d, W111 and W112. Six methods on `media`, on both clients, with
+no flat twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
@@ -812,6 +826,7 @@ Five methods on `media`, on both clients, with no flat twin:
 | `media.likers(post_pk)` | `tuple[ProfileSummary, ...]` | one |
 | `media.by_id(post_pk)` | `PostDetail` | one |
 | `media.more_from_author(author_id)` | `tuple[PostThumbnail, ...]` | one |
+| `media.page(code)` | `PostPage` | the post page load, six with its companions |
 
 ```python
 page = client.media.comments(post.pk)
@@ -845,6 +860,20 @@ returned `code` reads the rest (W63).
 takes the author's id and no post. Each item is a `PostThumbnail`: identifiers, kind, counts,
 caption, slide count and renditions, and the author's id and username, because the upstream
 sends nothing more, and `by_id` reads one in full. Six are asked for (W64).
+
+**A post page.** `page(code)` loads the post page as a browser does and returns `PostPage`, every
+part read out of the one document: `post`, the `PostDetail` `by_code` returns; `comments`, the
+first page of comments with the upstream's terminator and cursor, whose next page `comments(pk,
+after=...)` reads; and `author_grid`, the 7 posts of the author the page shows under it, which
+held the post itself on both loads read, so it is not `more_from_author`'s strip. It loads the
+page under every behavior, since loading the page is the read, and a document missing any part
+raises `SchemaChanged` (W111). It is the parity way to read a post's first comments, because
+`comments` is keyed on a pk and sends a query.
+
+```python
+page = client.media.page(code)
+print(page.post.like_count, len(page.comments.items), len(page.author_grid))
+```
 
 **Location, tags and collaborators.** Every post read now carries three fields more, on `Post`
 and `PostDetail`, and `user_tags` on each `CarouselChild` too:
@@ -931,8 +960,8 @@ The stories gallery query backs no method (W71).
 ### The viewer's own account
 
 Landed 2026-09-27, E2 batch 6 of [web-parity-plan.md](web-parity-plan.md), rulings W73 to W76,
-and E2 batch 11c, rulings W105 to W109. The `account` namespace, on both clients, with no flat
-twin:
+E2 batch 11c, rulings W105 to W109, and E2 batch 11d, ruling W110. The `account` namespace, on
+both clients, with no flat twin:
 
 | Method | Returns | Live requests |
 |---|---|---|
@@ -941,6 +970,7 @@ twin:
 | `account.saved()` | `SavedPosts` | one |
 | `account.collections()` | `SavedCollections` | one, plus a bootstrap when the session holds no token |
 | `account.close_friends()` | `tuple[ProfileSummary, ...]` | one, plus a bootstrap when the session holds no token or no Bloks version id |
+| `account.blocked()` | `tuple[BlockedAccount, ...]` | two in one action, plus a bootstrap when the session holds no token or no Bloks version id |
 
 ```python
 waiting = client.account.follow_requests()
@@ -974,8 +1004,8 @@ accounts it names as `links` (`ActivityLink`: `start`, `end`, `kind`, `id`, `use
 `shortcode`, `image_url`), and where the item carries them the main and second account, the
 account a follow button acts on with the viewer's relationship to it (`follow_account`), a
 `comment_id` and the upstream's app route as `destination`. Only earlier items have been read;
-new and priority items are ASSUMED to share their shape. The archive, the blocked list and the
-notifications badge are not read yet.
+new and priority items are ASSUMED to share their shape. The archive and the notifications badge
+are not read yet.
 
 **Saved posts.** `saved()` reads the first page of the saved "All posts" view, `SavedPosts` with
 `posts` in the upstream's order and `has_more`, the upstream's `more_available`. No next page has
@@ -1008,6 +1038,21 @@ unknown, is not sent (W107).
 ```python
 for account in client.account.close_friends():
    print(account.id, account.username)
+```
+
+**Blocked accounts.** `blocked()` returns the accounts the viewer has blocked, in the order the
+blocked accounts settings screen lists them. It sends what that page sends on load: the screen's
+Bloks fetch, then the action the screen's answer names for the list, with the two container ids
+that answer carries, in one action. A `BlockedAccount` carries `id`, `username`, `is_verified`,
+`profile_pic_url`, `is_auto_blocked` and `secondary_text`, the line the screen shows under the
+username. That line is the account's full name on a row blocked by hand, and on a row with
+`is_auto_blocked` it is the screen's own line saying the block includes the person's other
+accounts, so it is not read as a name (W110). A screen or list laid out otherwise raises
+`SchemaChanged`. Nothing is blocked or unblocked.
+
+```python
+for entry in client.account.blocked():
+   print(entry.id, entry.username, entry.is_auto_blocked)
 ```
 
 ### Discovery

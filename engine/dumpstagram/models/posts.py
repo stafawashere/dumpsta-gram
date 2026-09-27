@@ -1,5 +1,6 @@
 """A post read on its own, by its shortcode or its media pk, a post as the "more posts from"
-strip under a post shows it, and a profile's reels and tagged tabs.
+strip under a post shows it, a profile's reels and tagged tabs, and a post page as one document
+carries it.
 
 Every field below was present on the ``PolarisPostRootQuery`` item the engine read four times on
 2026-09-23, recorded in `skills/reverse-engineer/knowledge/endpoints/read-a-post-by-shortcode.md`
@@ -16,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from dumpstagram.models.comments import Comment
 from dumpstagram.models.feed import (
    CarouselChild,
    Location,
@@ -25,10 +27,12 @@ from dumpstagram.models.feed import (
    UserTag,
    VideoRendition,
 )
+from dumpstagram.models.pagination import Page
 from dumpstagram.models.profiles import ProfileSummary
 
 __all__ = [
    "PostDetail",
+   "PostPage",
    "PostThumbnail",
    "ProfileReels",
    "PublishedPost",
@@ -207,3 +211,25 @@ class TaggedPosts:
 
    posts: tuple[PostThumbnail, ...]
    has_more: bool
+
+
+@dataclass(frozen=True)
+class PostPage:
+   """One post page as a browser loads it, every part read out of the page's one document.
+
+   ``post`` is the post the page is of. ``comments`` is the first page of its comments as the
+   page shows them, with the upstream's ``has_next_page`` and ``end_cursor``; the page reads its
+   later comments with the query :meth:`~dumpstagram.namespaces.media.AsyncMedia.comments` sends
+   with ``after``. ``author_grid`` is the strip of the author's posts under it, which the page
+   asks for 7 of, in the upstream's order. It included the post itself on both loads read, so it
+   is the author's grid and not :meth:`~dumpstagram.namespaces.media.AsyncMedia.more_from_author`,
+   whose query left the post out.
+
+   Both loads read were of one video of the viewer's own with no comment, so the comments of a
+   preloaded page have only been observed empty, and are read by the comment page's mapper,
+   which the same query's answer went through with comments on 2026-09-27 (W111).
+   """
+
+   post: PostDetail
+   comments: Page[Comment]
+   author_grid: tuple[PostThumbnail, ...]

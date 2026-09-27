@@ -1,8 +1,9 @@
 """Map the viewer's own pending follow requests, activity feed, saved posts and collections,
-and close friends list into typed models.
+close friends list and blocked accounts list into typed models.
 
-Built from the answers ``probes/e2_own_account.py`` kept on 2026-09-27, and for the saved reads
-and the close friends list those ``probes/e2_capture_replays.py`` kept the same day. Dropped, and
+Built from the answers ``probes/e2_own_account.py`` kept on 2026-09-27, for the saved reads and
+the close friends list those ``probes/e2_capture_replays.py`` kept the same day, and for the
+blocked list those ``probes/e2_blocked_list_replay.py`` kept the same evening. Dropped, and
 why:
 
 - on the follow requests, ``big_list``, false on both, ``page_size``, the count of the page,
@@ -32,10 +33,14 @@ why:
   ``cover_media``, null on both rows read, and each edge's ``cursor``
 - on the close friends screen, every row the screen offers to add, the accounts that are not close
   friends, and the whole UI tree around the rows (W107)
+- on the blocked accounts screen, everything but the reloader's two container ids, and on the
+  reloader's answer the embedded payload that renders the rows and the tree around the one action
+  (W110)
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -78,6 +83,7 @@ from dumpstagram.models import (
    ActivityLink,
    ActivityMedia,
    ActivitySection,
+   BlockedAccount,
    CollectionCover,
    FollowRequests,
    ProfileSummary,
@@ -90,7 +96,10 @@ from dumpstagram.models import (
 
 __all__ = [
    "SAVED_COLLECTIONS_PATH",
+   "BlockedListContainers",
    "parse_activity_feed",
+   "parse_blocked_accounts",
+   "parse_blocked_accounts_screen",
    "parse_close_friends",
    "parse_follow_requests",
    "parse_saved_collections",
@@ -700,4 +709,218 @@ def parse_close_friends(payload: Any) -> tuple[ProfileSummary, ...]:
 
    return tuple(
       _close_friend(row, f"{list_path}[{index}]") for index, row in enumerate(rows.arguments)
+   )
+
+
+_BLOCKED_RELOADER_ID = "com.instagram.portable_settings.blocked_accounts.blocked_accounts_reloader"
+
+_BLOCKED_RELOADER_KEYS = ("container_id_of_list", "container_id_of_rows")
+
+_BLOCKED_ROW_KEYS = (
+   "user_id",
+   "username",
+   "secondary_text",
+   "is_verified",
+   "profile_pic_url",
+   "is_auto_blocked",
+)
+
+_INTEGER_CONSTANTS = ("bk.action.i32.Const", "bk.action.i64.Const")
+
+
+@dataclass(frozen=True)
+class BlockedListContainers:
+   """The two container ids the blocked accounts screen passes to its reloader action."""
+
+   list_id: int
+   rows_id: int
+
+
+def _scripts_in(value: Any) -> list[str]:
+   """Every string of the tree that is a Bloks script, depth first."""
+
+   found: list[str] = []
+
+   if isinstance(value, dict):
+      for inner in value.values():
+         found.extend(_scripts_in(inner))
+   elif isinstance(value, list):
+      for inner in value:
+         found.extend(_scripts_in(inner))
+   elif isinstance(value, str) and value.startswith("("):
+      found.append(value)
+
+   return found
+
+
+def _integer_constant(value: BloksValue | None) -> int | None:
+   digits = _constant_atom(value, _INTEGER_CONSTANTS)
+
+   return int(digits) if digits is not None and digits.isdigit() else None
+
+
+def _reloader_containers(call: BloksCall) -> BlockedListContainers | None:
+   """The container ids of one ``AsyncActionWithDataManifest`` call to the reloader, else
+   ``None``."""
+
+   names_the_reloader = (
+      call.name == "bk.action.bloks.AsyncActionWithDataManifest"
+      and len(call.arguments) >= 2
+      and call.arguments[0] == _BLOCKED_RELOADER_ID
+   )
+
+   if not names_the_reloader:
+      return None
+
+   mapping = _call_named(call.arguments[1], "bk.action.map.Make")
+   parts = mapping.arguments if mapping is not None else ()
+   keys = _call_named(parts[0], "bk.action.array.Make") if len(parts) == 2 else None
+   values = _call_named(parts[1], "bk.action.array.Make") if len(parts) == 2 else None
+   is_the_pair = (
+      keys is not None
+      and values is not None
+      and keys.arguments == _BLOCKED_RELOADER_KEYS
+      and len(values.arguments) == 2
+   )
+
+   if not is_the_pair or values is None:
+      return None
+
+   list_id, rows_id = (_integer_constant(value) for value in values.arguments)
+
+   if list_id is None or rows_id is None:
+      return None
+
+   return BlockedListContainers(list_id=list_id, rows_id=rows_id)
+
+
+def parse_blocked_accounts_screen(payload: Any) -> BlockedListContainers:
+   """The container ids the blocked accounts screen's own answer passes to the reloader action.
+
+   The screen answers an empty list and a script that, as the list appears, sends the reloader
+   with ``container_id_of_list`` and ``container_id_of_rows``, two constants that differed on
+   every load. Exactly one such call was on each of four answers, two replays and two browser
+   loads, and anything else raises :class:`~dumpstagram.errors.SchemaChanged` rather than sending
+   the action with ids the page did not name (W110).
+
+   Finding: ``read-the-blocked-accounts-list``.
+   """
+
+   bloks_payload = _object_at(payload, _BLOKS_PAYLOAD_PATH)
+   bloks_path = ".".join(_BLOKS_PAYLOAD_PATH)
+   found: list[BlockedListContainers] = []
+
+   for script in _scripts_in(_required(bloks_payload, "tree", bloks_path)):
+      if _BLOCKED_RELOADER_ID not in script:
+         continue
+
+      for call in _calls_in(read_bloks_script(script, f"{bloks_path}.tree")):
+         containers = _reloader_containers(call)
+
+         if containers is not None:
+            found.append(containers)
+
+   if len(found) != 1:
+      raise _bloks_schema_changed(
+         f"names the blocked list's reloader with its two container ids {len(found)} times, "
+         "where every screen read named it once",
+         f"{bloks_path}.tree",
+      )
+
+   return found[0]
+
+
+def _replaced_container(tree: Any, path: str) -> int | None:
+   """The container the answer's one action replaces the children of."""
+
+   action = _object_at(tree, ("bk.components.internal.Action",))
+   handler = _required_string(action, "handler", f"{path}.bk.components.internal.Action")
+   calls = _calls_in(read_bloks_script(handler, f"{path}.handler"))
+   replacements = [call for call in calls if call.name == "bk.action.bloks.ReplaceEmbeddedChildV2"]
+
+   if len(replacements) != 1 or not replacements[0].arguments:
+      return None
+
+   return _integer_constant(replacements[0].arguments[0])
+
+
+def _row_flag(fields: dict[str, BloksValue], key: str, path: str) -> bool:
+   flag = _constant_atom(fields.get(key), ("bk.action.bool.Const",))
+
+   if flag not in ("true", "false"):
+      raise _bloks_schema_changed(f"carries no {key} the engine can read", path)
+
+   return flag == "true"
+
+
+def _blocked_account(row: BloksValue, path: str) -> BlockedAccount:
+   """One row of the list, the six keys every row read carried, in their order."""
+
+   mapping = _call_named(row, "bk.action.map.Make")
+   keys = _call_named(mapping.arguments[0], "bk.action.array.Make") if mapping else None
+   is_the_row_read = keys is not None and keys.arguments == _BLOCKED_ROW_KEYS
+
+   if not is_the_row_read:
+      raise _bloks_schema_changed("is not a row of the six keys every blocked row carried", path)
+
+   fields = _row_fields(row, path)
+   user_id = _row_string(fields, "user_id", path)
+
+   if not user_id.isdigit():
+      raise _bloks_schema_changed("carries a user_id that is not a number", path)
+
+   return BlockedAccount(
+      id=user_id,
+      username=_row_string(fields, "username", path),
+      secondary_text=_row_string(fields, "secondary_text", path),
+      is_verified=_row_flag(fields, "is_verified", path),
+      profile_pic_url=_row_string(fields, "profile_pic_url", path),
+      is_auto_blocked=_row_flag(fields, "is_auto_blocked", path),
+   )
+
+
+def parse_blocked_accounts(
+   payload: Any, containers: BlockedListContainers
+) -> tuple[BlockedAccount, ...]:
+   """The accounts the viewer has blocked, in the order the settings screen lists them.
+
+   The reloader's answer is one data entry holding the list, one embedded payload that renders
+   it, and one action that replaces the children of the list container the request named. That
+   was the layout of all four answers read, 52 or 53 rows each (W110). Another layout, an action
+   that replaces another container, or a row that is not the six keys every row carried raises
+   :class:`~dumpstagram.errors.SchemaChanged` rather than returning a guess. An empty list has
+   not been observed.
+
+   Finding: ``read-the-blocked-accounts-list``.
+   """
+
+   bloks_payload = _object_at(payload, _BLOKS_PAYLOAD_PATH)
+   bloks_path = ".".join(_BLOKS_PAYLOAD_PATH)
+   variables = _bloks_variables(bloks_payload, bloks_path)
+   embedded = _list_of(bloks_payload, "embedded_payloads", bloks_path)
+   tree_path = f"{bloks_path}.tree"
+   replaced = _replaced_container(_required(bloks_payload, "tree", bloks_path), tree_path)
+   is_the_layout_read = len(variables) == 1 and len(embedded) == 1
+
+   if not is_the_layout_read:
+      raise _bloks_schema_changed(
+         f"carries {len(variables)} data entries and {len(embedded)} embedded payloads, where "
+         "every blocked list read carried one of each",
+         bloks_path,
+      )
+
+   if replaced != containers.list_id:
+      raise _bloks_schema_changed(
+         "does not replace the children of the list container the request named", tree_path
+      )
+
+   [(list_variable, script)] = variables.items()
+   list_path = f"{bloks_path}.data[{list_variable}]"
+   rows = _call_named(read_bloks_script(script, list_path), "bk.action.array.Make")
+
+   if rows is None:
+      raise _bloks_schema_changed("is not an array of blocked rows", list_path)
+
+   return tuple(
+      _blocked_account(row, f"{list_path}[{index}]") for index, row in enumerate(rows.arguments)
    )

@@ -8,10 +8,10 @@ nothing a caller could not set by hand, and ``dataclasses.replace`` derives a va
 Each setting is added here only once the engine can honour it. Spacing was the first, the
 feed's first page the second, the profile route the third, a thread's first page the fourth,
 the page load companions the fifth, the cookie sync the sixth, the follow list's
-relationship statuses the seventh, the inbox route the eighth, and the typeahead route the
-ninth. The three write settings came with the write path, before any write capability, because a
-write is only safe with all three in place from the first one. The listener's poll interval
-came with the ``events()`` surface. Other companion requests and
+relationship statuses the seventh, the inbox route the eighth, the typeahead route the
+ninth, and the post route the tenth. The three write settings came with the write path, before
+any write capability, because a write is only safe with all three in place from the first one.
+The listener's poll interval came with the ``events()`` surface. Other companion requests and
 side effects such as marking a thread read become settings when the requests behind them are
 implemented, as new fields with parity defaults.
 
@@ -31,6 +31,7 @@ __all__ = [
    "Behavior",
    "FeedFirstPage",
    "InboxRoute",
+   "PostRoute",
    "ProfileRoute",
    "Spacing",
    "ThreadFirstPage",
@@ -88,6 +89,23 @@ class ProfileRoute(Enum):
 
    PAGE = "page"
    QUERIES = "queries"
+
+
+class PostRoute(Enum):
+   """How a post is read from its shortcode.
+
+   ``PAGE`` is what a browser does: it loads the post page, whose document already carries the
+   post, its first comments and its author's grid, and then sends the page's companions. The
+   post is read out of the document, so no query for it goes out. That is one document of about
+   1.1 MB and, with the companions, six requests inside one action, and it refreshes the
+   session's page tokens on the way.
+
+   ``QUERY`` asks the post query alone, one request of about 135 kB for the post, which no
+   browser was observed to send.
+   """
+
+   PAGE = "page"
+   QUERY = "query"
 
 
 class InboxRoute(Enum):
@@ -192,6 +210,8 @@ class Behavior:
    :class:`TypeaheadRoute`. The personalised one is the default because it is what a signed-in
    browser's search box sends, and the other changes the accounts a search returns.
 
+   ``post_route`` is how ``media.by_code`` reads a post, see :class:`PostRoute`.
+
    ``write_spacing`` is the gap before a write, measured from the account's previous write. It
    does not delay the reads between two writes, and a write still waits out ``spacing`` from
    whatever request went before it. The default, a 30 s floor plus 5 s mean jitter, is a
@@ -229,6 +249,7 @@ class Behavior:
    follow_list_statuses: bool = True
    mark_stories_seen: bool = True
    typeahead_route: TypeaheadRoute = TypeaheadRoute.PERSONALISED
+   post_route: PostRoute = PostRoute.PAGE
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)
    write_budget_per_hour: int | None = 30
    stop_writes_after_unrecognised_rejection: bool = True

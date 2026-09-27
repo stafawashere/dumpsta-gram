@@ -286,7 +286,7 @@ class SyncClient:
       """Read one post by its shortcode. Blocks until it has it.
 
       The same call as :meth:`~dumpstagram.aio.AsyncClient.post`, run on the shared loop
-      thread. One live request.
+      thread. Six requests in one action under the default behavior, the post page load.
       """
 
       return self._loop.run(

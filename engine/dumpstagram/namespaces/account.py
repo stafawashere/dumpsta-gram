@@ -1,5 +1,5 @@
 """``client.account``, reading the viewer's own pending follow requests, activity feed, saved
-posts and collections, and close friends list.
+posts and collections, close friends list and blocked accounts list.
 
 Reading the activity feed through the engine does not mark it seen. A browser opening it follows
 the read with a separate request that clears the viewer's own notifications badge, and the
@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from dumpstagram._core.account import (
    read_activity_feed,
+   read_blocked_accounts,
    read_close_friends,
    read_follow_requests,
    read_saved_collections,
@@ -19,6 +20,7 @@ from dumpstagram._core.account import (
 )
 from dumpstagram.models import (
    ActivityFeed,
+   BlockedAccount,
    FollowRequests,
    ProfileSummary,
    SavedCollections,
@@ -166,6 +168,28 @@ class AsyncAccount:
          )
       )
 
+   async def blocked(self) -> tuple[BlockedAccount, ...]:
+      """Read the accounts the viewer has blocked, in the order its settings screen lists them.
+      Two live requests in one action, and a bootstrap when the session holds no page token.
+
+      A browser's blocked accounts page fetches its settings screen and then the action that
+      screen names for the list, and this sends both, nothing else. Each row carries whether the
+      account was blocked automatically. A screen or a list laid out differently from the ones
+      read raises :class:`~dumpstagram.errors.SchemaChanged` rather than returning a partial
+      list. Nothing is blocked or unblocked.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_blocked_accounts(
+            client._sender,
+            client._session,
+            user_agent=client._user_agent,
+         )
+      )
+
 
 class SyncAccount:
    """The viewer's own account, as ``client.account`` on :class:`~dumpstagram.client.SyncClient`.
@@ -242,4 +266,16 @@ class SyncAccount:
       return self._client._loop.run(
          self._client._impl.account.close_friends(),
          operation="SyncClient.account.close_friends",
+      )
+
+   def blocked(self) -> tuple[BlockedAccount, ...]:
+      """Read the accounts the viewer has blocked. Blocks until it has them.
+
+      The same call as :meth:`AsyncAccount.blocked`, run on the shared loop thread. Two live
+      requests, and nothing is changed.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.account.blocked(),
+         operation="SyncClient.account.blocked",
       )

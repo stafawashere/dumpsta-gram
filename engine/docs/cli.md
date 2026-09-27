@@ -57,7 +57,8 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `feed` | 1 per page, plus 1 if the session has no token yet | Reads pages of the home timeline |
 | `note list` | an inbox page load, up to 31 | Reads the notes tray and marks the viewer's own note |
 | `note set TEXT --audience AUDIENCE`, `note delete NOTE_ID` | 1 write, plus 1 read if the session has no token yet, or for `set` no Facebook-side id | Sets the viewer's note, replacing any note up, or deletes it. Writes to the account |
-| `post CODE`, `post --by-id PK` | 1, plus 1 if the session has no token yet | Reads one post by its shortcode, or by its `pk`, with its `pk` and the viewer's like state |
+| `post CODE`, `post --by-id PK` | a post page load, 6, for `CODE`; 1, plus 1 if the session has no token yet, with `--by-id` | Reads one post by its shortcode, loading its page as a browser does, or by its `pk`, with its `pk` and the viewer's like state |
+| `post-page CODE` | a post page load, 6 | Loads one post's page and prints the post, its first comments and its author's grid |
 | `like PK`, `unlike PK` | 1 write, plus 1 read if the session has no token yet | Likes or unlikes one post. Writes to the account |
 | `follow USER_ID`, `unfollow USER_ID` | 1 write, plus 1 read if the session has no token yet | Follows or unfollows one account. Writes to the account, and the account is notified of a follow |
 | `comments PK` | 1, plus 1 if the session has no token yet | Reads one page of a post's comments, with each comment's id |
@@ -73,6 +74,7 @@ its owner did not choose. Pass `--session PATH`, or set `DUMPSTAGRAM_SESSION`.
 | `saved` | 1 | Lists the first page of the viewer's saved posts and whether more exist |
 | `collections` | 1, plus 1 if the session has no token yet | Lists the viewer's saved collections with their kinds and post counts |
 | `close-friends` | 1, plus 1 if the session has no token yet | Lists the viewer's close friends. Changes nothing |
+| `blocked` | 2, plus 1 if the session has no token yet | Lists the accounts the viewer has blocked and whether each block was extended automatically. Changes nothing |
 | `explore` | 1 | Reads the explore grid's first page, section by section, and whether it goes on |
 | `place LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads a place's header: name, category, address, coordinates and post count |
 | `location LOCATION_ID` | 1, plus 1 if the session has no token yet | Reads the first page of the posts tagged at a place, and whether more exist |
@@ -442,7 +444,9 @@ DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta like PK
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta unlike PK
 ```
 
-`post CODE` reads the post whose web address carries `CODE`. The text form prints the code, the
+`post CODE` reads the post whose web address carries `CODE`. Under the default behavior it loads
+the post page as a browser does, the document and its five companions, and reads the post out of
+the document (W111, W112). The text form prints the code, the
 `pk`, the author and the time, then `has_liked` with the like and comment counts, then the first
 caption line. The JSON form is `{"command": "post", "by_id": false, "post": {...}}` with the keys
 `feed` uses for a post, less `is_seen`, which this read does not carry.
@@ -496,12 +500,13 @@ code `comment_not_deleted`.
 
 - `--user-agent STRING` and `--no-session-writeback` behave as they do on `thread`.
 
-### `replies`, `likers` and `more-from-author`
+### `replies`, `likers`, `more-from-author` and `post-page`
 
 ```bash
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta replies PK COMMENT_ID --pages 2
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json likers PK
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta more-from-author AUTHOR_ID
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json post-page CODE
 ```
 
 `replies PK COMMENT_ID` reads the replies under one comment, a comment `comments PK` lists with a
@@ -523,8 +528,16 @@ is `command`, `author_id`, `post_count` and `posts`, each with `id`, `pk`, `code
 `author_username`, `media_type`, `product_type`, `like_count`, `comment_count`,
 `like_and_view_counts_disabled`, `caption`, `carousel_media_count` and `images` (W64).
 
+`post-page CODE` loads the post page whose web address carries `CODE`, as a browser does, and
+prints the post in the `post` form, a blank line, its first comments in the `comments` form, a
+blank line, then the author's grid in the `more-from-author` form. Every part comes out of the
+page's one document, and the grid holds the post itself. The JSON form is `command`, `code`,
+`post`, `comments` (the `comments` keys less `command` and `pk`) and `author_grid` (W111). This is
+how to read a post's first comments as a browser does; `comments PK` sends a query, because a
+`pk` does not give the page's address.
+
 Every post and comment id is digits only, and anything else is refused by the parser with exit
-code 2 before a client is opened. All three take `--user-agent` and `--no-session-writeback`.
+code 2 before a client is opened. All four take `--user-agent` and `--no-session-writeback`.
 The live acceptance, `probes/e2_post_depth_cli_acceptance.py`, ran on 2026-09-27 with every step exit 0 and 11 requests, after a first run stopped at `post --by-id` on a reel and led to W63's original sound gap: 94 likers, 1 reply on one page, the reel by pk with 2 user tags, and 6 posts from its author, log `logs/e2-post-depth-cli-2026-09-27-033207.json`.
 
 ### `stories-tray`, `story`, `highlight` and `story-seen`
@@ -599,12 +612,13 @@ Both take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_own_account_cli_acceptance.py`, runs both on the owner's own account, two requests,
 and checks each sent exactly one API request; it ran on 2026-09-27 with both steps exit 0 and one API request each, so no `news/inbox_seen` went out: 1 follow request, 69 activity items and `is_last_page` true, log `logs/e2-own-account-cli-2026-09-27-042111.json`.
 
-### `saved`, `collections` and `close-friends`
+### `saved`, `collections`, `close-friends` and `blocked`
 
 ```bash
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta saved
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta --json collections
 DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta close-friends
+DUMPSTAGRAM_SESSION=state/session.json uv run dumpsta blocked
 ```
 
 `saved` prints one line per saved post of the "All posts" view's first page, its code, author,
@@ -623,9 +637,19 @@ name, then `close friends: N`. It changes nothing and sends none of the settings
 requests (W107). The JSON form is `command`, `account_count` and `accounts`, each in the
 `followers` row form with `is_private` and `friendship_status` null.
 
-All three take `--user-agent` and `--no-session-writeback`. The live acceptance,
+`blocked` prints one line per account you have blocked, in the settings screen's order, its id
+and username, then `auto` when the block was extended automatically, then `blocked: N`. It sends
+the settings page's two Bloks fetches and nothing that unblocks (W110). The JSON form is
+`command`, `account_count` and `accounts`, each with `id`, `username`, `secondary_text`,
+`is_verified`, `profile_pic_url` and `is_auto_blocked`. `secondary_text` is the line the screen
+shows under the username: the full name on a row blocked by hand, and the screen's own line about
+other accounts on an automatic one, so the text form leaves it out.
+
+All four take `--user-agent` and `--no-session-writeback`. The live acceptance,
 `probes/e2_own_account_more_cli_acceptance.py`, runs the three on the owner's own account, three
-requests, five at most, and checks each sent exactly one request of its own kind; it ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`.
+requests, five at most, and checks each sent exactly one request of its own kind; it ran on 2026-09-27, 3 requests, every step exit 0, log `logs/e2-own-account-more-cli-2026-09-27-174542.json`. The acceptance of
+`blocked`, `post` on the page route, `post-page` and `comments`,
+`probes/e2_post_page_cli_acceptance.py`, seventeen requests, twenty at most, ran on 2026-09-27, 17 requests, every step exit 0, log `logs/e2-post-page-cli-2026-09-27-181927.json`.
 
 ### `explore`, `place`, `location` and `new-posts`
 

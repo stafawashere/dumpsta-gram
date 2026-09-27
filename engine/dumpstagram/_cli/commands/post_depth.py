@@ -1,5 +1,5 @@
-"""The post depth commands: the replies under a comment, a post's likers, and the more posts from
-its author."""
+"""The post depth commands: the replies under a comment, a post's likers, the more posts from its
+author, and a whole post page."""
 
 from __future__ import annotations
 
@@ -21,9 +21,11 @@ from dumpstagram._cli.commands.social import account_id
 from dumpstagram._cli.exits import EXIT_OK
 from dumpstagram._cli.render.post_depth import (
    describe_likers,
+   describe_post_page,
    describe_post_thumbnail,
    describe_reply_pages,
    render_likers,
+   render_post_page,
    render_post_thumbnails,
    render_reply_pages,
 )
@@ -36,7 +38,7 @@ __all__ = [
    "run_post_depth_command",
 ]
 
-POST_DEPTH_COMMANDS = ("replies", "likers", "more-from-author")
+POST_DEPTH_COMMANDS = ("replies", "likers", "more-from-author", "post-page")
 
 
 def read_reply_pages(client: Client, arguments: argparse.Namespace) -> list[Page[Comment]]:
@@ -75,6 +77,12 @@ def _post_depth_result(client: Client, arguments: argparse.Namespace) -> tuple[d
       payload = {"command": "likers", "pk": arguments.pk, **describe_likers(likers)}
 
       return payload, render_likers(likers)
+
+   if arguments.command == "post-page":
+      page = client.media.page(arguments.code)
+      payload = {"command": "post-page", "code": arguments.code, **describe_post_page(page)}
+
+      return payload, render_post_page(page)
 
    thumbnails = client.media.more_from_author(arguments.author_id)
    payload = {
@@ -162,3 +170,15 @@ def add_post_depth_parsers(commands: Subcommands) -> None:
       "author_id", metavar="AUTHOR_ID", type=account_id, help="the author's numeric id"
    )
    add_request_options(more)
+
+   post_page = commands.add_parser(
+      "post-page",
+      help="load one post's page: the post, its first comments and its author's grid",
+      description=(
+         "Loads the post page whose web address carries CODE, as a browser does, and prints "
+         "the post, the first page of its comments and the strip of its author's posts, all "
+         "read out of the page's one document. Six requests with the page's companions."
+      ),
+   )
+   post_page.add_argument("code", metavar="CODE", help="the shortcode from the post's web address")
+   add_request_options(post_page)

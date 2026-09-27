@@ -1,4 +1,5 @@
-"""Read only. Ran 2026-09-27, 3 requests. Three requests, none conditional.
+"""Read only. Ran twice 2026-09-27, 3 requests each, which verified the finding (W110). Three
+requests, none conditional.
 
 E2 batch 11c, the first engine replay of the blocked accounts list, finding
 ``read-the-blocked-accounts-list``, a hypothesis the browser captured three times in run

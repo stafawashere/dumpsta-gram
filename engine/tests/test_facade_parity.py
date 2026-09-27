@@ -796,6 +796,7 @@ def test_a_flat_method_and_its_alias_send_the_same_requests_and_answer_alike_blo
 
 CORE_FUNCTION_FOR_ALIAS = {
    "account.activity": "dumpstagram._core.account.read_activity_feed",
+   "account.blocked": "dumpstagram._core.account.read_blocked_accounts",
    "account.close_friends": "dumpstagram._core.account.read_close_friends",
    "account.collections": "dumpstagram._core.account.read_saved_collections",
    "account.follow_requests": "dumpstagram._core.account.read_follow_requests",
@@ -825,6 +826,7 @@ CORE_FUNCTION_FOR_ALIAS = {
    "media.like": "dumpstagram._core.writes.likes.like_post",
    "media.likers": "dumpstagram._core.posts.read_likers",
    "media.more_from_author": "dumpstagram._core.posts.read_more_from_author",
+   "media.page": "dumpstagram._core.posts.read_post_page",
    "media.publish_carousel": "dumpstagram._core.writes.posts.publish_carousel",
    "media.publish_photo": "dumpstagram._core.writes.posts.publish_photo",
    "media.replies": "dumpstagram._core.comments.read_replies_page",

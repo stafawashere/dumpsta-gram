@@ -45,7 +45,7 @@ capture night that unblocks the rest.
 | 8 | Search, done 2026-09-27 | `probes/e2_search.py` | 7, spent 7 | 3, spent 0 |
 | 9 | Page models, the inbox load done 2026-09-27 | `probes/e2_page_models.py` | 10, spent 10 | 4, spent 0 |
 | 10 | Capture night | browser, no probe | about 15 page loads | |
-| 11 | Replays the capture unblocks, 11a profile, 11b reels and search, 11c saved and close friends done 2026-09-27 | `probes/e2_capture_replays.py` | 27, profile stage spent 10 | 7 |
+| 11 | Replays the capture unblocks, 11a profile, 11b reels and search, 11c saved and close friends, 11d the blocked list and the post page done 2026-09-27 | `probes/e2_capture_replays.py`, `probes/e2_blocked_list_replay.py` | 27, profile stage spent 10 | 7 |
 | 12 | Story seen, done 2026-09-27 on the owner's own highlight | `probes/story_seen_own_highlight.py` | 4, spent 4 | |
 
 Batches 1 to 9 spend 80 requests, 114 at most, 9 of them bootstraps, at the probe spacing of
@@ -558,8 +558,8 @@ the creator marketplace badge, the messaging eligibility, the profile view insig
 follow confirmation dialog are chrome for professional accounts or for a regional notice; the
 threadline chat query reads reel shares inside a thread and belongs with E4's message kinds.
 
-**Status: done on 2026-09-27 for the inbox load, rulings W86 to W90; the post page waits on
-batch 10.** `probes/e2_page_models.py` ran once with 10 requests in run `run-2026-09-27-014102`,
+**Status: done on 2026-09-27 for the inbox load, rulings W86 to W90, and for the post page in
+batch 11d, rulings W111 to W113.** `probes/e2_page_models.py` ran once with 10 requests in run `run-2026-09-27-014102`,
 replaying the post page's two companions and the two inbox queries twice each, log
 `logs/e2-page-models-2026-09-27-013957.json`. The post page ships nothing, because its document has
 never been captured, and its two verified companions are not registered until it does (W86). The
@@ -716,7 +716,7 @@ KeywordResults`, on both clients with no flat twin, with the new models `SearchR
 | `PolarisProfileSavedTabContentQuery` | the saved tab's collections | verified 2026-09-27, public as `account.collections` |
 | Bloks app `close_friends_screen_v2` | the close friends settings screen | verified 2026-09-27, public as `account.close_friends` |
 | `close_friend_count_updater` | a Bloks action the page sends after the list | never sent, effect UNRESOLVED (W107) |
-| Bloks app `blocked_accounts_v2`, action `blocked_accounts_reloader` | the blocked list | hypothesis, `probes/e2_blocked_list_replay.py` written, run 2026-09-27, not shipped (W108) |
+| Bloks app `blocked_accounts_v2`, action `blocked_accounts_reloader` | the blocked list | verified 2026-09-27 by two replays, public as `account.blocked` in batch 11d (W108, W110) |
 
 **Status: done on 2026-09-27 for the saved posts, the saved tab and the close friends list,
 rulings W105 to W109.** The browser captured each read in `run-2026-09-27-131354` and
@@ -738,8 +738,45 @@ saved`, `collections` and `close-friends`. The live acceptance,
   four answers whose component ids all differed, so the list is read by structure (W107).
 - The blocked list's "empty" capture hit the error route; the other two show a screen app fetch
   then a reloader action whose container ids come from the first answer, and a list of 53 and 52
-  accounts, so the owner's list is not empty. Nothing ships until the probe's replay (W108).
+  accounts, so the owner's list is not empty. Nothing shipped until the probe's replay (W108); the
+  probe then ran twice, and the list shipped in batch 11d (W110).
 - The doctor replays thirty-seven reads, the saved tab keyed on nothing (W109).
+
+## Batch 11d: the blocked list and the post page
+
+| Operation | Kind | Status |
+|---|---|---|
+| Bloks app `blocked_accounts_v2`, then action `blocked_accounts_reloader` | the blocked list, two fetches in one action | verified 2026-09-27 by two replays, public as `account.blocked` |
+| `GET /p/<code>/` | the post page document, preloading the post, its first comments and its author's grid | verified 2026-09-27, the parity route of `media.by_code` and the whole of `media.page` |
+| `PolarisPostCommentsPaginationQuery` | every comments page | unchanged, sent alone, the named departure for a read keyed on a pk (W111) |
+| like, unlike, comment | writes | unchanged, sent alone, a named departure (W113) |
+
+**Status: done on 2026-09-27, rulings W110 to W114.** `probes/e2_blocked_list_replay.py` ran twice
+on 2026-09-27, 3 requests each, logs `logs/e2-blocked-list-replay-2026-09-27-174549.json` and
+`-174606.json`, and the post page document was verified by the post stage of
+`probes/e2_capture_replays.py` in `run-2026-09-27-151121` and captured cold twice in
+`run-2026-09-27-131354`. It shipped `client.account.blocked() -> tuple[BlockedAccount, ...]`,
+`client.media.page(code) -> PostPage`, and `Behavior.post_route` with `PostRoute.PAGE`, the
+default, under which `media.by_code` and the flat `post` load the post page as a browser does,
+and `PostRoute.QUERY`, the departure, on both clients, with `dumpsta blocked` and `post-page`. The
+live acceptance, `probes/e2_post_page_cli_acceptance.py`, is written for the owner's own account
+and the first post of its grid, seventeen requests, twenty at most, ran on 2026-09-27, 17 requests, every step exit 0, log `logs/e2-post-page-cli-2026-09-27-181927.json`. What the
+batch found:
+
+- The blocked screen's answer names the reloader with two consecutive container ids, the same way
+  on four answers, and the reloader's answer replaces that list container's children with one list
+  of six keys a row (W110).
+- A blocked row's `secondary_text` is the account's full name only on a row blocked by hand; on
+  the 41 rows with `is_auto_blocked` it is one interface line, so a row is the new
+  `BlockedAccount` with that text kept as text, not `ProfileSummary` (W110).
+- The post page document preloads five results; the post, the first comments and a grid of 7 that
+  holds the post itself are read, as the new `PostPage` (W111).
+- A pk gives the post page's address only for a public post: 206 of 585 codes read are longer than
+  the pk's encoding, private accounts' posts among them. So `comments(post_pk)` stays a query, and
+  `media.page(code)` is the parity route of the first comments (W111).
+- The page's companions are the badge count, the stories tray, the jewel pair and one quick
+  promotion call, six requests with the document (W112).
+- Writes stay single, since no capture pairs a page load with a like or a comment (W113).
 
 ## Batch 12: story seen
 

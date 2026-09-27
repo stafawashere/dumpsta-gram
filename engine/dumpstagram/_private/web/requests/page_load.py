@@ -1,5 +1,5 @@
-"""What a home, profile or direct inbox page load sends after its document, as groups in the
-page's order, and the direct block an inbox load sends first."""
+"""What a home, profile, post or direct inbox page load sends after its document, as groups in
+the page's order, and the direct block an inbox load sends first."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from dumpstagram._private.web.requests.account import (
 )
 from dumpstagram._private.web.requests.common import build_graphql_request
 from dumpstagram._private.web.requests.direct import build_thread_detail_request
+from dumpstagram._private.web.requests.media import post_url
 from dumpstagram._private.web.requests.profiles import profile_page_url
 from dumpstagram.session import Session
 
@@ -35,6 +36,7 @@ __all__ = [
    "build_home_page_load_companions",
    "build_inbox_block",
    "build_inbox_page_load_companions",
+   "build_post_page_load_companions",
    "build_profile_page_load_companions",
 ]
 
@@ -193,6 +195,48 @@ def build_profile_page_load_companions(
          _companion(session, QUICK_PROMOTION, page_surfaces, referer, user_agent),
          _companion(session, QUICK_PROMOTION, login_surface, referer, user_agent),
       ],
+   ]
+
+   return [group for group in groups if group]
+
+
+def build_post_page_load_companions(
+   session: Session,
+   code: str,
+   *,
+   device_id: str | None,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> list[list[Request]]:
+   """What a post page load sends after its document, as groups in the page's order.
+
+   From the cold load ``run-2026-09-27-131354-b10-post-page-cold``: the badge count at 1998 ms,
+   the stories tray at 2388, the chat tabs jewel and the omni picker together at 2429 and 2431,
+   and the login interstitial quick promotion alone at 2643. The second cold load sent the same
+   five with the jewel pair at 1189 before the stories tray at 1253, so the order of those two
+   groups is the first load's (W112). The page sends one quick promotion call where a profile
+   load sends two, and its document preloads the post, its comments and its author's grid, so
+   none of those goes out as a request.
+
+   Left out, and why: the feed timeline prefetch the page sends within 3 ms of the stories tray,
+   as the profile and inbox loads leave it out, and ``fxcal`` and ``/data/manifest.json``, which
+   have no verified finding. ``device_id`` is the document's own, and ``None`` leaves out the two
+   queries keyed on it.
+
+   Findings: ``read-a-post-page-document``, ``page-load-direct-badge-count``,
+   ``page-load-stories-tray``, ``page-load-chat-tabs-jewel``, ``page-load-omni-picker-null-state``
+   and ``page-load-quick-promotion``.
+   """
+
+   referer = post_url(code)
+   login_surface = _quick_promotion_variables(LOGIN_INTERSTITIAL_SURFACES, None)
+   stories_tray = _companion(session, STORIES_TRAY, _stories_tray_variables(), referer, user_agent)
+   login_promotion = _companion(session, QUICK_PROMOTION, login_surface, referer, user_agent)
+
+   groups = [
+      _badge_group(session, device_id, referer, user_agent),
+      [stories_tray],
+      _jewel_group(session, device_id, referer, user_agent),
+      [login_promotion],
    ]
 
    return [group for group in groups if group]

@@ -1,5 +1,5 @@
 """Typed representations of the viewer's own account: the follow requests waiting on it, its
-activity feed, what it saved and its close friends list.
+activity feed, what it saved, its close friends list and the accounts it blocked.
 
 Every field below was observed on the answers ``probes/e2_own_account.py`` kept on 2026-09-27,
 run ``run-2026-09-27-014102``: the pending follow requests read twice with one account each,
@@ -11,7 +11,9 @@ Reading either through the engine marks nothing seen (W73, W74).
 
 The saved posts, the saved collections and the close friends list were read in E2 batch 11c from
 the answers ``probes/e2_capture_replays.py`` kept on 2026-09-27, run ``run-2026-09-27-151121``,
-two of each, and the browser capture of ``run-2026-09-27-131354`` (W105 to W108).
+two of each, and the browser capture of ``run-2026-09-27-131354`` (W105 to W108). The blocked list
+was read in E2 batch 11d from the two answers ``probes/e2_blocked_list_replay.py`` kept on
+2026-09-27 and the two browser loads of ``run-2026-09-27-135628`` (W110).
 
 Nothing here parses. Construction is done by the mappers in ``_private/web/parse/account.py``,
 which read named keys and raise rather than filling a default, so an upstream rename is loud.
@@ -41,6 +43,7 @@ __all__ = [
    "ActivityLink",
    "ActivityMedia",
    "ActivitySection",
+   "BlockedAccount",
    "CollectionCover",
    "FollowRequests",
    "SavedCollection",
@@ -303,3 +306,29 @@ class SavedCollections:
 
    collections: tuple[SavedCollection, ...]
    has_more: bool
+
+
+@dataclass(frozen=True)
+class BlockedAccount:
+   """One account the viewer has blocked, as the blocked accounts settings screen lists it.
+
+   ``id`` is the numeric account id, sent as a string, and ``username``, ``is_verified`` and
+   ``profile_pic_url`` are the row's own.
+
+   ``secondary_text`` is the grey line the screen shows under the username, and it is not
+   always a name. On the 11 rows of 52 read with ``is_auto_blocked`` false it differed on every
+   row, and on the one row whose account's full name another read carried, it was that full name;
+   one of the 11 was empty. On the 41 rows with ``is_auto_blocked`` true it was one interface line
+   saying the block includes other accounts the person may have or create, the same on every row.
+   So it is kept as the screen's text and not read as a full name.
+
+   ``is_auto_blocked`` is the row's own flag. That it marks a block extended to the person's
+   other accounts, present and future, is INFERENCE from the line the screen shows beside it.
+   """
+
+   id: str
+   username: str
+   secondary_text: str
+   is_verified: bool
+   profile_pic_url: str
+   is_auto_blocked: bool
