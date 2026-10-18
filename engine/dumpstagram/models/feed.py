@@ -335,6 +335,14 @@ class Post:
    audio_id: str | None = None
    tagged_place: TaggedPlace | None = None
 
+   @property
+   def permalink(self) -> str:
+      """The post's page, ``https://www.instagram.com/p/<code>/``, the address the post page
+      document is loaded from (finding ``read-a-post-page-document``). The website links a reel
+      at ``/reel/<code>/``, which is not built here because no reel page load was recorded."""
+
+      return f"https://www.instagram.com/p/{self.code}/"
+
 
 @dataclass(frozen=True)
 class FeedItem:
