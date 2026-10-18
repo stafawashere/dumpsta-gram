@@ -468,6 +468,9 @@ def test_json_carries_the_documented_message_fields(tmp_path: Path) -> None:
    assert message["sender_fbid"] == "100000000000000"
    assert message["sent_at"] == "2026-09-21T02:30:00+00:00"
    assert message["content_type"] == "TEXT"
+   assert message["kind"] == "other"
+   assert message["is_from_viewer"] is None
+   assert message["media"] == []
 
 
 def test_the_client_is_closed_even_when_the_read_fails(tmp_path: Path) -> None:

@@ -17,6 +17,8 @@ from dumpstagram._private.web.documents.direct import (
    DIRECT_TEXT_SEND,
    DIRECT_UNSEND,
    FOLDER_UNREAD_ROWS,
+   MARK_THREAD_READ,
+   MARK_THREAD_READ_VALIDATION,
    MESSAGE_REQUESTS,
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
@@ -156,6 +158,8 @@ and leaves its answer unread.
 WRITE_QUERIES: tuple[PersistedQuery, ...] = (
    DIRECT_TEXT_SEND,
    DIRECT_UNSEND,
+   MARK_THREAD_READ,
+   MARK_THREAD_READ_VALIDATION,
    LIKE_MEDIA,
    UNLIKE_MEDIA,
    CREATE_COMMENT,

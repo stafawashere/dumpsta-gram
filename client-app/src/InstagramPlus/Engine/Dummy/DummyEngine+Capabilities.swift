@@ -232,7 +232,7 @@ extension DummyEngine {
          let page = start < end ? Array(all[start..<end]) : []
          let hasOlder = start > 0
 
-         return Engine.Page(items: page, hasNextPage: hasOlder, endCursor: hasOlder ? String(start) : nil)
+         return Engine.Page(items: page.map(world.asRead), hasNextPage: hasOlder, endCursor: hasOlder ? String(start) : nil)
       }
    }
 

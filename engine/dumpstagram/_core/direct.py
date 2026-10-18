@@ -19,12 +19,15 @@ from collections.abc import Iterable
 
 from dumpstagram._core.requesting import PacedSender
 from dumpstagram._core.tokens import with_token_recovery
+from dumpstagram._core.writes.mark_read import mark_thread_read
 from dumpstagram._private.web.bootstrap import DEFAULT_USER_AGENT, bootstrap
 from dumpstagram._private.web.classify import classify
 from dumpstagram._private.web.parse.direct import (
+   ThreadReadState,
    parse_thread_detail,
    parse_thread_id,
    parse_thread_message_page,
+   parse_thread_read_state,
 )
 from dumpstagram._private.web.requests.direct import (
    build_thread_detail_request,
@@ -47,6 +50,7 @@ async def read_thread_messages(
    first_page: ThreadFirstPage = ThreadFirstPage.QUERY,
    user_agent: str = DEFAULT_USER_AGENT,
    deadline: float | None = None,
+   mark_read: bool = False,
 ) -> Page[Message]:
    """Read one page of one thread and return it typed.
 
@@ -57,10 +61,17 @@ async def read_thread_messages(
 
    ``QUERY`` stays the default at this level so callers below the client keep the route they
    had, and the client passes its behavior down.
+
+   With ``mark_read``, a thread open, the newest page read with ``DETAIL``, is followed by the
+   mark read a browser sends once the thread is open, when the open says the viewer has not
+   read the thread: one write and its validation, outside the read's token recovery, so the read
+   is never sent again because the write failed and the write is never sent twice. Any other
+   page marks nothing, as scrolling a thread marks nothing.
    """
 
    is_newest_page = after is None and newer_than_message_id is None
    opens_the_thread = is_newest_page and first_page is ThreadFirstPage.DETAIL
+   read_states: list[ThreadReadState] = []
 
    async def attempt() -> Page[Message]:
       if not session.fb_dtsg:
@@ -68,9 +79,13 @@ async def read_thread_messages(
 
       if opens_the_thread:
          request = build_thread_detail_request(session, thread_fbid, user_agent=user_agent)
-         response = await sender.send(request)
+         payload = classify(await sender.send(request))
+         page = parse_thread_detail(payload, viewer_igid=session.ds_user_id)
 
-         return parse_thread_detail(classify(response))
+         if mark_read:
+            read_states.append(parse_thread_read_state(payload))
+
+         return page
 
       request = build_thread_older_page_request(
          session,
@@ -81,9 +96,14 @@ async def read_thread_messages(
       )
       response = await sender.send(request)
 
-      return parse_thread_message_page(classify(response))
+      return parse_thread_message_page(classify(response), viewer_igid=session.ds_user_id)
 
-   return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+   page = await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
+
+   if read_states:
+      await mark_thread_read(sender, session, thread_fbid, read_states[-1], user_agent=user_agent)
+
+   return page
 
 
 async def read_thread_id(

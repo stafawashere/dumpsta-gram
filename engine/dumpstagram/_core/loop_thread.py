@@ -166,6 +166,22 @@ class _LoopThread:
 
          raise
 
+   def start[T](self, coroutine: Coroutine[Any, Any, T]) -> concurrent.futures.Future[T]:
+      """Hand ``coroutine`` to the loop thread and return at once with its future.
+
+      The future's exceptions are the coroutine's own, untranslated. ``dumpstagram.pending``
+      applies the same seam rules :meth:`run` applies when its caller asks for the result.
+      """
+
+      loop = self._loop
+
+      if loop is None:
+         coroutine.close()
+
+         raise RuntimeError("the loop thread is not running, so it cannot accept work")
+
+      return asyncio.run_coroutine_threadsafe(coroutine, loop)
+
    def _start(self) -> None:
       ready = threading.Event()
 

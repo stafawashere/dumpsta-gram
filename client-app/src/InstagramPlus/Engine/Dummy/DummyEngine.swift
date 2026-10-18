@@ -401,7 +401,7 @@ actor DummyEngine: AppEngine {
 
             case .value(let messages):
                for message in messages {
-                  eventBuffer.append(.newMessage(message))
+                  eventBuffer.append(.newMessage(world.asRead(message)))
                }
 
                return true

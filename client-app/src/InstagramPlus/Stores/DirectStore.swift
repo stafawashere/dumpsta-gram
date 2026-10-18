@@ -42,10 +42,6 @@ final class DirectStore {
       case stopped(reason: String)
    }
 
-   // The viewer's message sender id is not the account id. It is learned from the first message
-   // the viewer is seen to have sent, and is what reactions name.
-   private var viewerFBID: String?
-
    init(gateway: EngineGateway) {
       self.gateway = gateway
    }
@@ -284,8 +280,7 @@ final class DirectStore {
       let engine = engine
       switch await gateway.read("the conversation", { () async throws(EngineError) in try await engine.messages(threadFBID: threadID, after: nil) }) {
          case .success(let page):
-            learnViewerFBID(from: page.items)
-            messages[threadID] = page.items.map { DirectMessage($0, viewerFBID: viewerFBID) }
+            messages[threadID] = page.items.map { DirectMessage($0, viewerID: viewerID) }
             olderCursors[threadID] = page.hasNextPage ? page.endCursor : nil
             messageStates[threadID] = .loaded
             markRead(threadID)
@@ -311,23 +306,13 @@ final class DirectStore {
          return
       }
 
-      learnViewerFBID(from: page.items)
-
       let known = Set(messages[threadID]?.map(\.id) ?? [])
       let older = page.items
-         .map { DirectMessage($0, viewerFBID: viewerFBID) }
+         .map { DirectMessage($0, viewerID: viewerID) }
          .filter { !known.contains($0.id) }
 
       messages[threadID] = older + (messages[threadID] ?? [])
       olderCursors[threadID] = page.hasNextPage ? page.endCursor : nil
-   }
-
-   private func learnViewerFBID(from engineMessages: [Engine.Message]) {
-      guard viewerFBID == nil else {
-         return
-      }
-
-      viewerFBID = engineMessages.first { $0.sender.igid == viewerID }?.sender.fbid
    }
 
    private func markRead(_ threadID: DirectThread.ID) {
@@ -689,7 +674,7 @@ final class DirectStore {
          return
       }
 
-      let message = DirectMessage(engineMessage, viewerFBID: viewerFBID)
+      let message = DirectMessage(engineMessage, viewerID: viewerID)
       let isDuplicate = messages[threadID]?.contains { $0.id == message.id } ?? false
 
       if !isDuplicate, messageState(for: threadID).hasLoaded {
@@ -697,7 +682,7 @@ final class DirectStore {
       }
 
       // The listener delivers the viewer's own messages too, including ones sent elsewhere.
-      let isFromViewer = engineMessage.sender.igid == viewerID
+      let isFromViewer = engineMessage.isFromViewer == true
       touch(threadID, snippet: message.imageURL == nil ? message.text : "Sent a photo", byViewer: isFromViewer)
 
       let isOpen = threadID == selectedThreadID

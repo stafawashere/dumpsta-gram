@@ -1025,6 +1025,19 @@ which a thread page sends; and `useIGDShouldShowAdResponsesTabQuery` and
 `IGDThreadlineContainerQuerySuggestedQuery`, verified twice on 2026-09-27 but absent from all five
 captured inbox loads (W88).
 
+## The mark read after a thread open, 2026-10-18
+
+A thread open under `ThreadFirstPage.DETAIL` reads the open's own `viewer.interop_messaging_user_fbid`,
+`slide_read_receipts`, `last_activity_timestamp_ms` and `marked_as_unread`, and when the viewer has
+not read to the newest message it sends `useIGDMarkThreadAsReadMutation` through `send_write`
+(`metadata.ig_thread_igid` the 39-digit `thread_id` from the same open, `data.item_id` empty,
+`data.message_id` the newest message by `timestamp_ms`) and then
+`useIGDMarkThreadAsReadValidationMutation` as an ordinary paced request, both with the thread page
+as referer. Findings `mark-a-direct-thread-read` and `mark-a-direct-thread-read-validation`, each
+verified twice. Departures: a browser sends the pair about 6 s after the open and 2 ms apart; the
+engine sends the mark as soon as the write spacing allows and the validation after the read
+spacing. The mark read and validation a browser sends around its own text send are still not sent.
+
 ## What is not implemented here
 
 - Writes other than the ones above and those in the GraphQL registry. A video upload, a reel, a

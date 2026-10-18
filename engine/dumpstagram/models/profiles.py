@@ -139,6 +139,13 @@ class Profile:
    friendship_status: FriendshipStatus | None = None
    reported_clips_count: int | None = None
 
+   @property
+   def permalink(self) -> str:
+      """The account's page, ``https://www.instagram.com/<username>/``, the address the profile
+      page document is loaded from (finding ``profile-page-document``)."""
+
+      return f"https://www.instagram.com/{self.username}/"
+
 
 @dataclass(frozen=True)
 class ListFriendshipStatus:

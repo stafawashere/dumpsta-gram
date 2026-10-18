@@ -177,6 +177,9 @@ enum Engine {
    struct Reaction: Sendable, Hashable {
       let emoji: String
       let senderFBID: String
+      var senderIGID: String? = nil
+      // The engine's answer to "did the viewer react", nil when the read could not tell.
+      var isFromViewer: Bool? = nil
 
       static let heart = "\u{2764}\u{FE0F}"
    }
@@ -188,12 +191,32 @@ enum Engine {
       let text: String?
       let sentAt: Date
       let contentType: String
-      let reactions: [Reaction]
+      var reactions: [Reaction]
       let repliedToMessageID: String?
       let offlineThreadingID: String?
+      // The engine's answer to "did the viewer send this", nil when the read could not tell.
+      var isFromViewer: Bool? = nil
+      // The engine's MessageKind value, the upstream content type name, or "other".
+      var kind: String = "other"
+      var media: [MessageMedia] = []
+   }
 
-      // Not on the engine's Message, so nil from the real engine.
-      var mediaURL: String? = nil
+   struct MessageMedia: Sendable, Hashable {
+      enum Kind: String, Sendable {
+         case image
+         case video
+         case audio
+         case animatedImage = "animated_image"
+         case sticker
+         case sharePreview = "share_preview"
+      }
+
+      let kind: Kind
+      let url: String
+      var previewURL: String? = nil
+      var width: Int? = nil
+      var height: Int? = nil
+      var durationMS: Int? = nil
    }
 
    struct SentMessage: Sendable, Hashable {

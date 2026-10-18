@@ -158,8 +158,8 @@ class ThreadFirstPage(Enum):
    to do. It is one request either way and returns the same messages.
 
    Neither sends the rest of what a browser's thread load sends, the eleven inbox queries and
-   the detail query for fifteen other threads, and neither marks the thread seen, which a
-   browser does over a socket nothing here speaks yet.
+   the detail query for fifteen other threads. Only ``DETAIL`` opens the thread, so only
+   ``DETAIL`` is followed by the mark read :attr:`Behavior.mark_threads_read` governs.
    """
 
    DETAIL = "detail"
@@ -207,6 +207,16 @@ class Behavior:
    marks nothing either way, as a browser's tray does not. False reads stories without marking
    anything, and changes nothing else.
 
+   ``mark_threads_read`` follows every thread open, the newest page read under
+   :attr:`ThreadFirstPage.DETAIL`, with the mark read a browser sends once the thread is open,
+   when the open says the viewer has not read the thread to its newest message: one write and
+   the validation the browser sends after it. It is visible: the other participants see the
+   viewer's read receipt move, exactly as when the thread is opened on the website. It counts
+   against the write budget and waits out the write spacing like any write. A thread already
+   read sends nothing, and older pages and top-ups never mark. A browser sends it about 6 s after
+   the open in a visible tab only; the engine sends it as soon as the write spacing allows. False
+   reads threads without marking anything, and changes nothing else.
+
    ``typeahead_route`` is which typeahead query ``search.accounts`` and ``search.top`` send, see
    :class:`TypeaheadRoute`. The personalised one is the default because it is what a signed-in
    browser's search box sends, and the other changes the accounts a search returns.
@@ -249,6 +259,7 @@ class Behavior:
    cookie_sync: bool = True
    follow_list_statuses: bool = True
    mark_stories_seen: bool = True
+   mark_threads_read: bool = True
    typeahead_route: TypeaheadRoute = TypeaheadRoute.PERSONALISED
    post_route: PostRoute = PostRoute.PAGE
    write_spacing: Spacing = Spacing(floor_seconds=30.0, mean_jitter_seconds=5.0)

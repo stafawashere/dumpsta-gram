@@ -46,7 +46,15 @@ from dumpstagram.models.feed import (
    VideoRendition,
 )
 from dumpstagram.models.highlights import Highlight, HighlightTray
-from dumpstagram.models.messages import Message, MessageSender, Reaction, SentMessage
+from dumpstagram.models.messages import (
+   Message,
+   MessageKind,
+   MessageMedia,
+   MessageMediaKind,
+   MessageSender,
+   Reaction,
+   SentMessage,
+)
 from dumpstagram.models.notes import Note, NoteAudience
 from dumpstagram.models.pagination import Page
 from dumpstagram.models.posts import (
@@ -131,6 +139,9 @@ __all__ = [
    "MediaAudio",
    "MediaImage",
    "Message",
+   "MessageKind",
+   "MessageMedia",
+   "MessageMediaKind",
    "MessageRequests",
    "MessageSender",
    "NewMessage",

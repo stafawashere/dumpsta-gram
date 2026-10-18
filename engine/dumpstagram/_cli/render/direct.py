@@ -39,8 +39,26 @@ def describe_message(message: Message) -> dict[str, Any]:
       "sent_at": message.sent_at.isoformat(),
       "text": message.text,
       "content_type": message.content_type,
+      "kind": message.kind.name.lower(),
+      "is_from_viewer": message.is_from_viewer,
+      "media": [
+         {
+            "kind": item.kind.value,
+            "url": item.url,
+            "preview_url": item.preview_url,
+            "width": item.width,
+            "height": item.height,
+            "duration_ms": item.duration_ms,
+         }
+         for item in message.media
+      ],
       "reactions": [
-         {"emoji": reaction.emoji, "sender_fbid": reaction.sender_fbid}
+         {
+            "emoji": reaction.emoji,
+            "sender_fbid": reaction.sender_fbid,
+            "sender_igid": reaction.sender_igid,
+            "is_from_viewer": reaction.is_from_viewer,
+         }
          for reaction in message.reactions
       ],
       "replied_to_message_id": message.replied_to_message_id,

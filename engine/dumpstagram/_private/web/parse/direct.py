@@ -7,8 +7,12 @@ What the upstream sends and this module drops, from the twenty-node capture on 2
 - ``message_id``, equal to ``id`` on all twenty nodes, so it is a second name rather than a
   second identifier.
 - ``msg_reactions``, non-empty on exactly the message ``reactions`` was non-empty on, and
-  carrying ``sender_igid`` instead of the emoji. ``reactions`` is the one with the emoji.
-- ``content``, whose ``text_body`` duplicates the node's own ``text_body``.
+  carrying ``sender_igid`` instead of the emoji. ``reactions`` is the one with the emoji, and
+  ``msg_reactions`` is read only for the ``sender_igid`` of each reaction's sender.
+- most of ``content``: its ``__typename`` becomes :class:`~dumpstagram.models.MessageKind` and
+  its media addresses :class:`~dumpstagram.models.MessageMedia`, and the rest (a share's titles,
+  an audio waveform, a video's DASH manifest, attachment ids) is not modelled yet. Its
+  ``text_body`` duplicates the node's own.
 - ``bot_response_id``, ``expiration_timestamp_ms``, ``igd_wearables_attribution_text``,
   ``igd_wearables_attribution_type``, ``is_tombstone_revealable``, ``tombstone_reason`` and
   ``view_expiration_timestamp_ms``, all null on all twenty nodes, so there is nothing measured
@@ -33,12 +37,16 @@ from dumpstagram._private.web.parse.common import (
    _optional_string,
    _required,
    _required_flag,
+   _required_integer,
    _required_string,
 )
 from dumpstagram.errors import SchemaChanged
 from dumpstagram.models import (
    DirectThread,
    Message,
+   MessageKind,
+   MessageMedia,
+   MessageMediaKind,
    MessageRequests,
    MessageSender,
    Page,
@@ -62,6 +70,7 @@ __all__ = [
    "InboxMessage",
    "InboxPage",
    "InboxThread",
+   "ThreadReadState",
    "parse_direct_text_send_answer",
    "parse_direct_unsend_answer",
    "parse_folder_unread_rows",
@@ -71,6 +80,9 @@ __all__ = [
    "parse_inbox_page",
    "parse_message_requests",
    "parse_inbox_recent_messages",
+   "parse_mark_read_answer",
+   "parse_mark_read_validation",
+   "parse_thread_read_state",
    "parse_thread_detail",
    "parse_thread_id",
    "parse_thread_prefetch_keys",
@@ -150,7 +162,37 @@ def _sender(node: dict[str, Any], path: str) -> MessageSender:
    )
 
 
-def _reactions(node: dict[str, Any], path: str) -> tuple[Reaction, ...]:
+def _reaction_igids(node: dict[str, Any], path: str) -> dict[str, str]:
+   """``sender_fbid`` to ``sender_igid`` for every entry of ``msg_reactions``."""
+
+   raw = node.get("msg_reactions")
+
+   if raw is None:
+      return {}
+
+   if not isinstance(raw, list):
+      raise SchemaChanged(f"{path}.msg_reactions is not a list", path=f"{path}.msg_reactions")
+
+   igids: dict[str, str] = {}
+
+   for index, entry in enumerate(raw):
+      entry_path = f"{path}.msg_reactions[{index}]"
+      igid = _optional_string(entry, "sender_igid", entry_path) if isinstance(entry, dict) else None
+
+      if igid is not None:
+         igids[_required_string(entry, "sender_fbid", entry_path)] = igid
+
+   return igids
+
+
+def _is_viewer(igid: str | None, viewer_igid: str | None) -> bool | None:
+   if igid is None or viewer_igid is None:
+      return None
+
+   return igid == viewer_igid
+
+
+def _reactions(node: dict[str, Any], path: str, viewer_igid: str | None) -> tuple[Reaction, ...]:
    raw = _required(node, "reactions", path)
 
    if raw is None:
@@ -159,40 +201,181 @@ def _reactions(node: dict[str, Any], path: str) -> tuple[Reaction, ...]:
    if not isinstance(raw, list):
       raise SchemaChanged(f"{path}.reactions is not a list", path=f"{path}.reactions")
 
+   igids = _reaction_igids(node, path)
    built: list[Reaction] = []
 
    for index, entry in enumerate(raw):
       entry_path = f"{path}.reactions[{index}]"
+      sender_fbid = _required_string(entry, "sender_fbid", entry_path)
+      sender_igid = igids.get(sender_fbid)
 
       built.append(
          Reaction(
             emoji=_required_string(entry, "reaction", entry_path),
-            sender_fbid=_required_string(entry, "sender_fbid", entry_path),
+            sender_fbid=sender_fbid,
+            sender_igid=sender_igid,
+            is_from_viewer=_is_viewer(sender_igid, viewer_igid),
          )
       )
 
    return tuple(built)
 
 
-def parse_message(node: Any, path: str) -> Message:
-   """One message node, mapped field by field."""
+_MEDIA_LISTS = {
+   MessageKind.IMAGE: "attachments",
+   MessageKind.VIDEO: "videos",
+   MessageKind.MULTI_MEDIA: "ordered_photo_video_attachments",
+   MessageKind.AUDIO: "audio_attachments",
+   MessageKind.ANIMATED_IMAGE: "animated_media",
+}
+"""The content kinds whose media arrive as a list, and the key the list sits under."""
+
+_ATTACHMENT_KINDS = {
+   "XFBSlideAttachment": MessageMediaKind.IMAGE,
+   "XFBSlideVideoAttachment": MessageMediaKind.VIDEO,
+}
+"""A photo or video attachment's ``__typename``, the same under every list that carries one."""
+
+_KNOWN_KINDS = {kind.value: kind for kind in MessageKind if kind is not MessageKind.OTHER}
+
+
+def _message_kind(content: dict[str, Any], path: str) -> MessageKind:
+   typename = _required_string(content, "__typename", path)
+
+   return _KNOWN_KINDS.get(typename, MessageKind.OTHER)
+
+
+def _attachment(item: Any, path: str) -> MessageMedia:
+   typename = _required_string(item, "__typename", path)
+   kind = _ATTACHMENT_KINDS.get(typename)
+
+   if kind is None:
+      raise SchemaChanged(f"{path}.__typename {typename!r} is not a photo or a video", path=path)
+
+   return MessageMedia(
+      kind=kind,
+      url=_required_string(item, "attachment_cdn_url", path),
+      preview_url=_optional_string(item, "preview_cdn_url", path),
+      width=_required_integer(item, "preview_width", path),
+      height=_required_integer(item, "preview_height", path),
+   )
+
+
+def _list_item(kind: MessageKind, item: Any, path: str) -> MessageMedia:
+   if kind is MessageKind.AUDIO:
+      return MessageMedia(
+         kind=MessageMediaKind.AUDIO,
+         url=_required_string(item, "attachment_cdn_url", path),
+         duration_ms=_required_integer(item, "playable_duration_ms", path),
+      )
+
+   if kind is MessageKind.ANIMATED_IMAGE:
+      return MessageMedia(
+         kind=MessageMediaKind.ANIMATED_IMAGE,
+         url=_required_string(item, "attachment_webp_url", path),
+         preview_url=_optional_string(item, "preview_cdn_url", path),
+         width=_required_integer(item, "preview_width", path),
+         height=_required_integer(item, "preview_height", path),
+      )
+
+   return _attachment(item, path)
+
+
+def _share_preview(content: dict[str, Any], path: str) -> tuple[MessageMedia, ...]:
+   """A share's preview picture. The ``xma`` object varies by share, and only some carry a
+   ``preview_image``: 77 of the 100 shares in the oracle did, and an expired story did not."""
+
+   xma_path = f"{path}.xma"
+   xma = _required(content, "xma", path)
+
+   if xma is None:
+      return ()
+
+   if not isinstance(xma, dict):
+      raise SchemaChanged(f"{xma_path} is not an object", path=xma_path)
+
+   image = xma.get("preview_image")
+
+   if image is None:
+      return ()
+
+   image_path = f"{xma_path}.preview_image"
+
+   return (
+      MessageMedia(
+         kind=MessageMediaKind.SHARE_PREVIEW,
+         url=_required_string(image, "url", image_path),
+         width=_required_integer(image, "width", image_path),
+         height=_required_integer(image, "height", image_path),
+      ),
+   )
+
+
+def _media(kind: MessageKind, content: dict[str, Any], path: str) -> tuple[MessageMedia, ...]:
+   list_key = _MEDIA_LISTS.get(kind)
+
+   if list_key is not None:
+      items = _required(content, list_key, path)
+
+      if not isinstance(items, list):
+         raise SchemaChanged(f"{path}.{list_key} is not a list", path=f"{path}.{list_key}")
+
+      return tuple(
+         _list_item(kind, item, f"{path}.{list_key}[{index}]") for index, item in enumerate(items)
+      )
+
+   if kind is MessageKind.STICKER:
+      return (
+         MessageMedia(
+            kind=MessageMediaKind.STICKER,
+            url=_required_string(content, "preview_url", path),
+            width=_required_integer(content, "preview_width", path),
+            height=_required_integer(content, "preview_height", path),
+         ),
+      )
+
+   if kind is MessageKind.SHARE:
+      return _share_preview(content, path)
+
+   return ()
+
+
+def parse_message(node: Any, path: str, *, viewer_igid: str | None = None) -> Message:
+   """One message node, mapped field by field.
+
+   ``viewer_igid`` is the session's ``ds_user_id``. With it, ``is_from_viewer`` is set on the
+   message and its reactions. Without it, both stay ``None``, which is what a caller that does
+   not know the viewer, such as the doctor's replay, gets.
+   """
 
    if not isinstance(node, dict):
       raise SchemaChanged(f"{path} is not an object", path=path)
 
+   sender = _sender(node, path)
+   content_path = f"{path}.content"
+   content = _required(node, "content", path)
+
+   if not isinstance(content, dict):
+      raise SchemaChanged(f"{content_path} is not an object", path=content_path)
+
+   kind = _message_kind(content, content_path)
+
    return Message(
       id=_required_string(node, "id", path),
       thread_fbid=_required_string(node, "thread_fbid", path),
-      sender=_sender(node, path),
+      sender=sender,
       sent_at=_sent_at(node, path),
       text=_optional_string(node, "text_body", path),
       content_type=_required_string(node, "content_type", path),
-      reactions=_reactions(node, path),
+      reactions=_reactions(node, path, viewer_igid),
       replied_to_message_id=_optional_string(node, "replied_to_message_id", path),
       is_forwarded=_required_flag(node, "igd_is_forwarded", path),
       is_pinned=_required_flag(node, "is_pinned", path),
       is_ai_generated=_required_flag(node, "is_ai_generated", path),
       offline_threading_id=_offline_threading_id(node, path),
+      is_from_viewer=_is_viewer(sender.igid, viewer_igid),
+      kind=kind,
+      media=_media(kind, content, content_path),
    )
 
 
@@ -209,7 +392,7 @@ def _offline_threading_id(node: dict[str, Any], path: str) -> str | None:
    return _optional_string(node, "offline_threading_id", path)
 
 
-def parse_thread_message_page(payload: Any) -> Page[Message]:
+def parse_thread_message_page(payload: Any, *, viewer_igid: str | None = None) -> Page[Message]:
    """One page of the pagination query, mapped into typed messages.
 
    ``useIGDMessageListPaginationQuery`` and ``IGDMessageListOffMsysQuery`` answer with the same
@@ -234,10 +417,10 @@ def parse_thread_message_page(payload: Any) -> Page[Message]:
    the contradiction the upstream sent.
    """
 
-   return _message_page(payload, THREAD_PAGE_PATH)
+   return _message_page(payload, THREAD_PAGE_PATH, viewer_igid)
 
 
-def parse_thread_detail(payload: Any) -> Page[Message]:
+def parse_thread_detail(payload: Any, *, viewer_igid: str | None = None) -> Page[Message]:
    """One ``IGDThreadDetailQuery`` payload, mapped into the thread's newest page.
 
    The thread object around the connection also carries its title, members, read receipts and
@@ -248,10 +431,10 @@ def parse_thread_detail(payload: Any) -> Page[Message]:
    null answer has been observed, so nothing here claims to know what one means.
    """
 
-   return _message_page(payload, THREAD_DETAIL_PATH)
+   return _message_page(payload, THREAD_DETAIL_PATH, viewer_igid)
 
 
-def _message_page(payload: Any, path: tuple[str, ...]) -> Page[Message]:
+def _message_page(payload: Any, path: tuple[str, ...], viewer_igid: str | None) -> Page[Message]:
    connection = _object_at(payload, path)
    connection_path = ".".join(path)
 
@@ -264,6 +447,7 @@ def _message_page(payload: Any, path: tuple[str, ...]) -> Page[Message]:
       parse_message(
          _required(edge, "node", f"{connection_path}.edges[{index}]"),
          f"{connection_path}.edges[{index}].node",
+         viewer_igid=viewer_igid,
       )
       for index, edge in enumerate(edges)
    )
@@ -497,6 +681,91 @@ def parse_thread_id(payload: Any) -> str:
    thread = _object_at(payload, THREAD_DETAIL_THREAD_PATH)
 
    return _required_string(thread, "thread_id", ".".join(THREAD_DETAIL_THREAD_PATH))
+
+
+MARK_READ_ROOT = "xig_direct_item_seen_mutation_with_slide_messaging_response"
+"""The root field a mark read answers under, a read receipt."""
+
+MARK_READ_VALIDATION_ROOT = "xig_direct_mark_read_id_validation"
+"""The root field the validation answers under, a boolean."""
+
+
+@dataclass(frozen=True)
+class ThreadReadState:
+   """What a thread open says about whether the viewer has read the thread, and what a mark read
+   would name. Private: it feeds the mark read a thread open sends, and nothing public returns it.
+   """
+
+   thread_id: str
+   is_unread: bool
+   newest_message_id: str | None
+   newest_sent_ms: int | None
+
+
+def parse_thread_read_state(payload: Any) -> ThreadReadState:
+   """The read state of the thread an ``IGDThreadDetailQuery`` payload opened.
+
+   ``is_unread`` is the rule the inbox rows use, on the open thread's own ``viewer``, read
+   receipts, last activity and marked unread flag, which every captured thread open carried. The
+   newest message is the page's latest by ``timestamp_ms`` rather than by position, because the
+   page keeps the order the upstream sent.
+   """
+
+   thread = _object_at(payload, THREAD_DETAIL_THREAD_PATH)
+   thread_path = ".".join(THREAD_DETAIL_THREAD_PATH)
+   viewer_path = f"{thread_path}.viewer"
+   viewer_fbid = _required_string(
+      _required(thread, "viewer", thread_path), "interop_messaging_user_fbid", viewer_path
+   )
+   messages_path = f"{thread_path}.slide_messages"
+   edges = _required(_required(thread, "slide_messages", thread_path), "edges", messages_path)
+
+   if not isinstance(edges, list):
+      raise SchemaChanged(f"{messages_path}.edges is not a list", path=f"{messages_path}.edges")
+
+   newest_id: str | None = None
+   newest_ms: int | None = None
+
+   for index, edge in enumerate(edges):
+      node_path = f"{messages_path}.edges[{index}].node"
+      node = _required(edge, "node", f"{messages_path}.edges[{index}]")
+      sent_ms = _milliseconds(node, "timestamp_ms", node_path)
+
+      if newest_ms is None or sent_ms > newest_ms:
+         newest_id = _required_string(node, "id", node_path)
+         newest_ms = sent_ms
+
+   return ThreadReadState(
+      thread_id=_required_string(thread, "thread_id", thread_path),
+      is_unread=_is_unread(thread, viewer_fbid, thread_path),
+      newest_message_id=newest_id,
+      newest_sent_ms=newest_ms,
+   )
+
+
+def parse_mark_read_answer(payload: Any) -> bool:
+   """Whether a mark read was answered with a read receipt, the one shape both browser
+   observations and the engine's replay answered with."""
+
+   data = _required(payload, "data", "payload")
+   receipt = _required(data, MARK_READ_ROOT, "data")
+
+   return isinstance(receipt, dict) and receipt.get("__typename") == "XFBSlideReadReceipt"
+
+
+def parse_mark_read_validation(payload: Any) -> bool:
+   """The validation's boolean."""
+
+   data = _required(payload, "data", "payload")
+   answer = _required(data, MARK_READ_VALIDATION_ROOT, "data")
+
+   if not isinstance(answer, bool):
+      raise SchemaChanged(
+         f"data.{MARK_READ_VALIDATION_ROOT} is not a boolean",
+         path=f"data.{MARK_READ_VALIDATION_ROOT}",
+      )
+
+   return answer
 
 
 INBOX_MAILBOX_PATH = ("data", "get_slide_mailbox_for_iris_subscription")

@@ -1,5 +1,6 @@
 """The direct requests: a thread's pages, opening a thread, the inbox listing and its next pages,
-the message requests, a folder's unread rows, and a text send and its unsend.
+the message requests, a folder's unread rows, a text send and its unsend, and the mark read with
+its validation.
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ from dumpstagram._private.web.documents.direct import (
    DIRECT_TEXT_SEND,
    DIRECT_UNSEND,
    FOLDER_UNREAD_ROWS,
+   MARK_THREAD_READ,
+   MARK_THREAD_READ_VALIDATION,
    MESSAGE_REQUESTS,
    THREAD_DETAIL,
    THREAD_MESSAGE_PAGE,
@@ -35,6 +38,8 @@ __all__ = [
    "build_folder_unread_rows_request",
    "build_inbox_listing_request",
    "build_inbox_next_page_request",
+   "build_mark_thread_read_request",
+   "build_mark_thread_read_validation_request",
    "build_message_requests_request",
    "build_thread_detail_request",
    "build_thread_older_page_request",
@@ -444,6 +449,62 @@ def build_direct_unsend_request(
       session,
       DIRECT_UNSEND,
       {"message_id": message_id, "send_data": {"thread_id": thread_id}},
+      referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def build_mark_thread_read_request(
+   session: Session,
+   thread_fbid: str,
+   thread_id: str,
+   message_id: str,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """Mark the thread whose 39-digit id is ``thread_id`` read up to ``message_id``.
+
+   The variables are the ones both browser observations sent, in their order, ``item_id``
+   empty. ``thread_fbid`` only names the referer, the thread page, which is where a browser has
+   the thread open when it sends this.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/mark-a-direct-thread-read.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      MARK_THREAD_READ,
+      {
+         "metadata": {"ig_thread_igid": thread_id},
+         "data": {"item_id": "", "message_id": message_id},
+      },
+      referer=thread_url(thread_fbid),
+      user_agent=user_agent,
+   )
+
+
+def build_mark_thread_read_validation_request(
+   session: Session,
+   thread_fbid: str,
+   thread_id: str,
+   message_id: str,
+   message_timestamp_ms: int,
+   *,
+   user_agent: str = DEFAULT_USER_AGENT,
+) -> Request:
+   """The validation a browser sends right after :func:`build_mark_thread_read_request`, for
+   the same thread and message, with the message's time as a string of milliseconds.
+
+   Finding: ``skills/reverse-engineer/knowledge/endpoints/mark-a-direct-thread-read-validation.md``.
+   """
+
+   return build_graphql_request(
+      session,
+      MARK_THREAD_READ_VALIDATION,
+      {
+         "metadata": {"ig_thread_igid": thread_id},
+         "data": {"message_id": message_id, "message_timestamp_ms": str(message_timestamp_ms)},
+      },
       referer=thread_url(thread_fbid),
       user_agent=user_agent,
    )

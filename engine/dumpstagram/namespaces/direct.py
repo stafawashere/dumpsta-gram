@@ -70,6 +70,12 @@ class AsyncDirect:
       :attr:`~dumpstagram.behavior.Behavior.thread_first_page` set to
       :attr:`~dumpstagram.behavior.ThreadFirstPage.QUERY` reads the newest page with the
       scrolling query too. One live request either way.
+
+      Under the default behavior a thread open the viewer has not read to its newest message is
+      then marked read, as a browser marks it: one write and one more request, and the other
+      participants see the read receipt move. It waits out the write spacing and counts against
+      the write budget, and when that write raises, the page is not returned.
+      :attr:`~dumpstagram.behavior.Behavior.mark_threads_read` set to False marks nothing.
       """
 
       client = self._client
@@ -84,6 +90,7 @@ class AsyncDirect:
             newer_than_message_id=newer_than_message_id,
             first_page=client._behavior.thread_first_page,
             user_agent=client._user_agent,
+            mark_read=client._behavior.mark_threads_read,
          )
       )
 

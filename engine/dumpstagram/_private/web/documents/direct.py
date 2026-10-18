@@ -1,5 +1,6 @@
 """The direct queries: a thread's pages, opening a thread, the inbox listing and its next pages,
-the message requests, a folder's unread rows, and a text send and its unsend.
+the message requests, a folder's unread rows, a text send and its unsend, and the mark read with
+its validation.
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ __all__ = [
    "DIRECT_TEXT_SEND",
    "DIRECT_UNSEND",
    "FOLDER_UNREAD_ROWS",
+   "MARK_THREAD_READ",
+   "MARK_THREAD_READ_VALIDATION",
    "MESSAGE_REQUESTS",
    "THREAD_DETAIL",
    "THREAD_MESSAGE_PAGE",
@@ -133,4 +136,31 @@ It takes the message id and the thread's 39-digit ``thread_id`` under ``send_dat
 neither of the two ids the thread reads are keyed on, and answers ``direct_unsend_message``
 true. Observed once from the browser's message menu and once from an engine send on
 2026-09-23. The unsent message was absent from the next thread read, with no placeholder.
+"""
+
+MARK_THREAD_READ = PersistedQuery(
+   doc_id="27399783383056109",
+   friendly_name="useIGDMarkThreadAsReadMutation",
+   finding_id="mark-a-direct-thread-read",
+)
+"""Move the viewer's read receipt in a thread to one message, which the other participants see.
+
+It names the thread by its 39-digit ``thread_id`` as ``ig_thread_igid`` and the message by its
+``mid.``, with an empty ``item_id``, and answers ``xig_direct_item_seen_mutation_with_slide_
+messaging_response``, an ``XFBSlideReadReceipt`` carrying the viewer's messaging id as
+``participant_eimu_id`` and the new watermark. Seen from a browser twice on 2026-09-23, about
+6.3 s after a thread opened in a visible tab and right after a composer send, and replayed by the
+engine on 2026-10-18 on a thread already read.
+"""
+
+MARK_THREAD_READ_VALIDATION = PersistedQuery(
+   doc_id="35211594988486314",
+   friendly_name="useIGDMarkThreadAsReadValidationMutation",
+   finding_id="mark-a-direct-thread-read-validation",
+)
+"""What a browser sends 2 ms after every mark read: the same thread and message, with the
+message's time, answered by ``xig_direct_mark_read_id_validation``, a boolean.
+
+True for a server ``mid.`` on 2026-09-23 and in the engine's replay on 2026-10-18, false for the
+optimistic id a composer send marks. Its effect beyond the boolean is not known.
 """

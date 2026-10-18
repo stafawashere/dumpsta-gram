@@ -158,20 +158,22 @@ extension DirectThread {
 }
 
 extension DirectMessage {
-   init(_ message: Engine.Message, viewerFBID: String?) {
-      let senderID = message.sender.igid ?? message.sender.fbid
-      // The engine's Message carries no media address, so a message without text is named, not
-      // drawn as an empty bubble.
-      let imageURL = message.mediaURL.flatMap(URL.init(string:))
+   init(_ message: Engine.Message, viewerID: Account.ID) {
+      // Who sent it and who reacted is the engine's answer, never worked out here.
+      let senderID = message.isFromViewer == true ? viewerID : (message.sender.igid ?? message.sender.fbid)
+      let imageURL = message.media.lazy.compactMap(\.stillURL).first.flatMap(URL.init(string:))
+      let text = message.text ?? ""
+      // A message with neither text nor a picture, a voice clip or a kind the engine names as
+      // other, is named rather than drawn as an empty bubble.
       let fallbackText = imageURL == nil ? "A message Instagram+ cannot show yet" : ""
 
       self.init(
          id: message.id,
          senderID: senderID,
-         text: message.text ?? fallbackText,
+         text: text.isEmpty ? fallbackText : text,
          sentAt: message.sentAt,
          reactionCount: message.reactions.count,
-         viewerReacted: message.reactions.contains { $0.senderFBID == viewerFBID },
+         viewerReacted: message.reactions.contains { $0.isFromViewer == true },
          repliedToID: message.repliedToMessageID,
          imageURL: imageURL
       )
@@ -309,6 +311,23 @@ extension TopSearchRow {
          self.init(id: "keyword." + keyword, content: .keyword(keyword))
       } else {
          return nil
+      }
+   }
+}
+
+extension Engine.MessageMedia {
+   // The address a still picture can be drawn from: the picture itself, or a video's preview.
+   // A voice clip has none.
+   var stillURL: String? {
+      switch kind {
+         case .image, .sticker, .sharePreview, .animatedImage:
+            url
+
+         case .video:
+            previewURL
+
+         case .audio:
+            nil
       }
    }
 }
