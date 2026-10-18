@@ -48,6 +48,29 @@ final class AccountSession: Identifiable {
    }
 }
 
+// A session the engine accepted and whose own profile was read back, waiting for the person to
+// say it is their account. Nothing is installed until they do. The session file exists already,
+// because the engine reads its session from a file, and is removed again on a refusal.
+struct PendingAccount: Identifiable {
+   let engine: PythonEngine
+   let account: Account
+   let followerCount: Int
+   let followingCount: Int
+   let sessionFile: URL
+   // The file an earlier session of this account had, moved aside so a refusal can put it back.
+   fileprivate let displaced: URL?
+
+   var id: String { account.id }
+}
+
+// What the verify step produced. A checkpoint and a refused session land in the same states a
+// later call would produce, and neither is retried.
+enum SessionVerification {
+   case needsConfirmation(PendingAccount)
+   case routedToState
+   case rejected(String)
+}
+
 // Makes one engine client per account session (ADR-0004). The dummy serves two seeded
 // accounts. The real engine serves one account per saved browser session, opened at launch,
 // and one more for each session a person connects through the setup screen.
@@ -77,6 +100,9 @@ final class AccountsStore {
 
    // Set while the setup screen is open to connect one more account on the real engine.
    var isAddingAccount = false
+
+   // The account the verify step read back, shown on the setup screen until it is confirmed.
+   private(set) var pending: PendingAccount?
 
    convenience init(timing: DummyEngine.Timing) {
       self.init(source: .dummy(timing))
@@ -144,46 +170,118 @@ final class AccountsStore {
 
    // The setup screen's cookies, handed to the engine to build, save and open a Session in its
    // own file. The values live only in the material passed down and in the engine's owner-only
-   // session file. A checkpoint lands in the same state a later call would produce. When a
-   // second account is being added, a refusal is reported back to the setup screen and leaves
-   // the account already in use untouched.
-   func adoptBrowserSession(sessionID: String, userID: String, csrfToken: String) async -> String? {
+   // session file. The engine then reads the account's own profile, one request, and the result
+   // waits as `pending` for the person to confirm. A checkpoint lands in the same state a later
+   // call would produce. A refusal while another account is in use is reported back to the
+   // setup screen and leaves that account untouched.
+   func verifyBrowserSession(_ input: SessionCookieInput.Cleaned) async -> SessionVerification {
       guard case .real(let launch) = source else {
-         return nil
+         return .routedToState
       }
 
       let material = PythonBridge.CookieMaterial(
-         sessionID: sessionID.trimmingCharacters(in: .whitespacesAndNewlines),
-         userID: userID.trimmingCharacters(in: .whitespacesAndNewlines),
-         csrfToken: csrfToken.trimmingCharacters(in: .whitespacesAndNewlines),
+         sessionID: input.sessionID,
+         userID: input.userID,
+         csrfToken: input.csrfToken,
          extraCookies: [:]
       )
 
       let isAddingToSignedIn = isAddingAccount && hasSignedInAccount
+      let sessionFile = PythonEngineFactory.sessionFile(for: input.userID)
+      let displaced = displaceSessionFile(sessionFile)
+
+      func restore() {
+         restoreSessionFile(sessionFile, from: displaced)
+      }
 
       switch await PythonEngineFactory.adopt(material, enabled: launch.enabled) {
          case .adopted(let engine):
-            await install(engine, session: .active)
-            return nil
+            return await readBack(engine, sessionFile: sessionFile, displaced: displaced, isAddingToSignedIn: isAddingToSignedIn)
 
          case .checkpoint(let engine, let checkpoint):
+            discard(displaced)
             await install(engine, session: .checkpoint(checkpoint))
-            return nil
+            return .routedToState
 
          case .revoked where isAddingToSignedIn:
-            return "Instagram refused this session. Sign in again in the browser and copy fresh cookies."
+            restore()
+            return .rejected("Instagram refused this session. Sign in again in the browser and copy fresh cookies.")
 
          case .revoked:
+            restore()
             active.gateway.handle(.authenticationFailed, label: "the session", isWrite: false)
-            return nil
-
-         case .failed(let problem) where isAddingToSignedIn:
-            return problem.description
+            return .routedToState
 
          case .failed(let problem):
-            active.gateway.post(Notice(tone: .error, title: "Could not connect the session", message: problem.description))
-            return nil
+            restore()
+            return .rejected(problem.description)
       }
+   }
+
+   private func readBack(_ engine: PythonEngine, sessionFile: URL, displaced: URL?, isAddingToSignedIn: Bool) async -> SessionVerification {
+      do throws(EngineError) {
+         switch try await engine.profile(id: engine.viewerID) {
+            case .value(let profile):
+               let account = Account(id: profile.id, username: profile.username, displayName: profile.fullName.isEmpty ? profile.username : profile.fullName, location: nil, isVerified: profile.isVerified, profilePicURL: profile.profilePicURL.isEmpty ? nil : profile.profilePicURL)
+
+               guard profile.id == engine.viewerID else {
+                  await engine.close()
+                  restoreSessionFile(sessionFile, from: displaced)
+                  return .rejected("Instagram answered with a different account than ds_user_id names. Copy all three values from the same browser profile.")
+               }
+
+               pending = PendingAccount(engine: engine, account: account, followerCount: profile.followerCount, followingCount: profile.followingCount, sessionFile: sessionFile, displaced: displaced)
+               return .needsConfirmation(pending!)
+
+            case .checkpoint(let checkpoint):
+               discard(displaced)
+               await install(engine, session: .checkpoint(checkpoint))
+               return .routedToState
+         }
+      } catch {
+         await engine.close()
+         restoreSessionFile(sessionFile, from: displaced)
+
+         switch error {
+            case .authenticationFailed where isAddingToSignedIn:
+               return .rejected("Instagram refused this session. Sign in again in the browser and copy fresh cookies.")
+
+            case .authenticationFailed:
+               active.gateway.handle(.authenticationFailed, label: "the session", isWrite: false)
+               return .routedToState
+
+            case .rateLimited:
+               return .rejected("Instagram asked for a pause. Nothing was saved. Try again in a few minutes.")
+
+            case .transportFailure:
+               return .rejected("Could not reach Instagram. Check the connection. Nothing was saved.")
+
+            default:
+               return .rejected("Instagram did not answer the account check. Nothing was saved.")
+         }
+      }
+   }
+
+   // "Yes, that is me". The session stays saved, owner-only, and the account becomes active.
+   func confirmPending() async {
+      guard let confirmed = pending else {
+         return
+      }
+
+      pending = nil
+      discard(confirmed.displaced)
+      await install(confirmed.engine, session: .active)
+   }
+
+   // "Not me". The session file is removed and any earlier file of that account comes back.
+   func cancelPending() async {
+      guard let refused = pending else {
+         return
+      }
+
+      pending = nil
+      await refused.engine.close()
+      restoreSessionFile(refused.sessionFile, from: refused.displaced)
    }
 
    // The adopted account replaces the unopened placeholder and any earlier session of the same
@@ -276,6 +374,45 @@ extension AccountsStore {
       let sessionFile = isExerciseRun ? PythonEngineFactory.sessionFile(for: engine.viewerID) : nil
 
       return AccountSession(engine: engine, sessionFile: sessionFile)
+   }
+
+   // A verify that fails or is refused must not cost the person a session that worked, so an
+   // existing file of the same account is moved aside first and put back on any failure.
+   fileprivate func displaceSessionFile(_ file: URL) -> URL? {
+      let manager = FileManager.default
+
+      guard manager.fileExists(atPath: file.path) else {
+         return nil
+      }
+
+      let aside = file.deletingLastPathComponent().appendingPathComponent(".previous-\(file.lastPathComponent)")
+      try? manager.removeItem(at: aside)
+
+      do {
+         try manager.moveItem(at: file, to: aside)
+         return aside
+      } catch {
+         return nil
+      }
+   }
+
+   fileprivate func restoreSessionFile(_ file: URL, from displaced: URL?) {
+      let manager = FileManager.default
+      try? manager.removeItem(at: file)
+
+      // The ledger holds the write budget and stop. It stays when an earlier session of this
+      // account is coming back, and goes with a session that never existed before.
+      if let displaced {
+         try? manager.moveItem(at: displaced, to: file)
+      } else {
+         try? manager.removeItem(at: file.appendingPathExtension("ledger"))
+      }
+   }
+
+   fileprivate func discard(_ displaced: URL?) {
+      if let displaced {
+         try? FileManager.default.removeItem(at: displaced)
+      }
    }
 
    fileprivate func deleteSessionFile(of session: AccountSession) {

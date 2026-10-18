@@ -40,6 +40,14 @@ import AppKit
 //                                          accounts of INSTAGRAMPLUS_PROBE_USER_ID or the viewer,
 //                                          prints counts and captures the page
 //
+//    --real-signin-capture <png>           drives the setup screen's own path on a fresh sessions
+//                                          directory: reads the cookie file INSTAGRAMPLUS_PROBE_COOKIE_FILE
+//                                          names, validates it, verifies the account, confirms it
+//                                          as a person would, waits for the first feed page on Home
+//                                          and captures it. Prints states and counts, no value
+//    --real-resume-capture <png>           the next launch: opens the saved session with no cookie
+//                                          input and waits for the first feed page on Home
+//
 // Each flag takes exactly one value. AppKit reads a bare trailing argument as a file to open,
 // and then SwiftUI opens no window at all.
 @MainActor
@@ -54,6 +62,19 @@ enum RealEngineProbe {
 
          await captureHome(accounts: accounts, to: homeURL)
          await captureProfile(accounts: accounts, to: profileURL)
+         NSApp.terminate(nil)
+         return
+      }
+
+      if let flagIndex = arguments.firstIndex(of: "--real-signin-capture"), arguments.indices.contains(flagIndex + 1) {
+         await signIn(accounts: accounts, to: URL(fileURLWithPath: arguments[flagIndex + 1]))
+         NSApp.terminate(nil)
+         return
+      }
+
+      if let flagIndex = arguments.firstIndex(of: "--real-resume-capture"), arguments.indices.contains(flagIndex + 1) {
+         print("[probe] relaunch, saved accounts open: \(accounts.sessions.filter { !$0.id.isEmpty }.count)")
+         await captureHome(accounts: accounts, to: URL(fileURLWithPath: arguments[flagIndex + 1]))
          NSApp.terminate(nil)
          return
       }
@@ -122,6 +143,48 @@ enum RealEngineProbe {
          await captureProfile(accounts: accounts, to: URL(fileURLWithPath: arguments[flagIndex + 1]))
          NSApp.terminate(nil)
       }
+   }
+
+   // The setup screen's path without the clicking: the same validation, the same
+   // verifyBrowserSession and confirmPending the buttons call. The probe reads its cookies from a
+   // file and prints no value.
+   private static func signIn(accounts: AccountsStore, to outputURL: URL) async {
+      guard let path = ProcessInfo.processInfo.environment["INSTAGRAMPLUS_PROBE_COOKIE_FILE"] else {
+         print("[probe] sign-in needs INSTAGRAMPLUS_PROBE_COOKIE_FILE")
+         return
+      }
+
+      print("[probe] fresh launch, saved accounts open: \(accounts.sessions.filter { !$0.id.isEmpty }.count), session \(describe(accounts.active.gateway.session))")
+
+      guard case .success(let material) = PythonEngineFactory.readCookieFile(URL(fileURLWithPath: path)) else {
+         print("[probe] the cookie file could not be read")
+         return
+      }
+
+      let report = SessionCookieInput(sessionID: material.sessionID, userID: material.userID, csrfToken: material.csrfToken).check()
+      print("[probe] form validation accepted: \(report.cleaned != nil), problem fields: \(report.problems.keys.map(\.rawValue).sorted())")
+
+      guard let cleaned = report.cleaned else {
+         return
+      }
+
+      switch await accounts.verifyBrowserSession(cleaned) {
+         case .needsConfirmation(let pending):
+            print("[probe] verify read the account back, username present: \(!pending.account.username.isEmpty), avatar present: \(pending.account.profilePicURL != nil), followers \(pending.followerCount)")
+            await accounts.confirmPending()
+
+         case .routedToState:
+            print("[probe] verify routed to a state view: \(describe(accounts.active.gateway.session))")
+            return
+
+         case .rejected(let problem):
+            print("[probe] verify rejected: \(problem)")
+            return
+      }
+
+      let session = accounts.active
+      print("[probe] confirmed, account installed: \(!session.id.isEmpty), session \(describe(session.gateway.session))")
+      await captureHome(accounts: accounts, to: outputURL)
    }
 
    private static func captureHome(accounts: AccountsStore, to outputURL: URL) async {

@@ -197,7 +197,7 @@ enum SnapshotProbe {
 
 @MainActor
 private final class InteractionProbe {
-   static let expectedCheckCount = 28
+   static let expectedCheckCount = 36
 
    let accounts: AccountsStore
 
@@ -236,6 +236,7 @@ private final class InteractionProbe {
    func run() async {
       await runCore()
       await runAdditions()
+      await runSignIn()
 
       let summary = "exercise summary: PASS \(passed) FAIL \(failed) of \(Self.expectedCheckCount) expected\n"
       FileHandle.standardError.write(Data(summary.utf8))
@@ -325,6 +326,41 @@ private final class InteractionProbe {
       let parityElapsed = Date.now.timeIntervalSince(parityStart)
       check("parity spaces two reads at least 1.3 s apart", parityElapsed >= 1.3, String(format: "%.1fs", parityElapsed))
       await gateway.dummyEngine.configure(timing: .instant)
+   }
+
+   // The sign-in states: what the setup form accepts and refuses, that no cookie value reaches an
+   // error message, how the session row words the age, and where a revoked session and a
+   // checkpoint route. A throwaway gateway is used so the account under test is not disturbed.
+   private func runSignIn() async {
+      let goodSession = "1234567890%3AabcDEFghiJKL%3A28%3AAYexample0000"
+      let goodToken = "aBcDeFgHiJkLmNoPqRsTuVwXyZ012345"
+      let good = SessionCookieInput(sessionID: goodSession, userID: "1234567890", csrfToken: goodToken).check()
+      check("sign-in: a well formed paste is accepted", good.cleaned != nil && good.problems.isEmpty)
+
+      let quoted = SessionCookieInput(sessionID: "\"\(goodSession)\";", userID: " 1234567890 ", csrfToken: "\(goodToken)\n").check()
+      check("sign-in: quotes, a semicolon and spaces are stripped", quoted.cleaned == good.cleaned)
+
+      let named = SessionCookieInput(sessionID: "sessionid=\(goodSession)", userID: "ds_user_id=1234567890", csrfToken: goodToken).check()
+      check("sign-in: a pasted name=value pair is refused per field", named.cleaned == nil && named.problems[.sessionID] != nil && named.problems[.userID] != nil && named.problems[.csrfToken] == nil)
+
+      let malformed = SessionCookieInput(sessionID: "short", userID: "12ab", csrfToken: "bad token!").check()
+      check("sign-in: short, non numeric and spaced values are refused", malformed.cleaned == nil && malformed.problems.count == 3)
+
+      let leaky = SessionCookieInput(sessionID: "SECRETSESSIONVALUE with a space", userID: "SECRETUSER", csrfToken: "SECRETTOKEN!").check()
+      let messages = leaky.problems.values.joined(separator: " ")
+      check("sign-in: an error message never holds a pasted value", !leaky.problems.isEmpty && !messages.contains("SECRET"))
+
+      let untouched = SessionCookieInput(sessionID: "", userID: "", csrfToken: "").check()
+      check("sign-in: an empty form shows no errors and cannot continue", untouched.problems.isEmpty && untouched.cleaned == nil)
+
+      let refreshedAt = await gateway.engine.sessionRefreshedAt()
+      let now = Date()
+      let isAgeKnown = refreshedAt.map { SessionAge.describe(refreshedAt: $0, now: now) == "Refreshed 2 d ago" } ?? false
+      check("sign-in: the session row words an age and a missing one", isAgeKnown && SessionAge.describe(refreshedAt: nil) == "Not refreshed yet")
+
+      let throwaway = EngineGateway(engine: DummyEngine(timing: .instant, world: .seed()))
+      throwaway.handle(.authenticationFailed, label: "the session", isWrite: false)
+      check("sign-in: a refused session routes to the revoked state", throwaway.session == .revoked)
    }
 
    private func runAdditions() async {

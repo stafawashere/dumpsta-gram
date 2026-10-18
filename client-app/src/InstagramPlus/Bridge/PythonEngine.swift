@@ -99,6 +99,14 @@ actor PythonEngine: AppEngine, ReportsSessionStop {
 
    // MARK: Session lifecycle
 
+   func sessionRefreshedAt() async -> Date? {
+      guard let handle else {
+         return nil
+      }
+
+      return await bridge.sessionRefreshedAt(handle)
+   }
+
    // A person confirmed a checkpoint or asked to reconnect. The session file is opened again as
    // a fresh client. The call the stop interrupted is not replayed.
    func reconnect() async {

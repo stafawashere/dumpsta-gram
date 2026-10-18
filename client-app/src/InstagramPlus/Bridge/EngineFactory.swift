@@ -68,6 +68,12 @@ enum PythonEngineFactory {
    static var sessionsDirectory: URL {
       let process = ProcessInfo.processInfo
 
+      // INSTAGRAMPLUS_SESSIONS_DIR points a run at a fresh app data directory, for a first
+      // launch that must not see saved sessions.
+      if !process.arguments.contains("--exercise"), let override = process.environment["INSTAGRAMPLUS_SESSIONS_DIR"] {
+         return URL(fileURLWithPath: override, isDirectory: true)
+      }
+
       if process.arguments.contains("--exercise") {
          let exerciseDirectory = process.environment["INSTAGRAMPLUS_SESSIONS_DIR"]
          let fallback = FileManager.default.temporaryDirectory.appendingPathComponent("instagramplus-exercise-sessions")

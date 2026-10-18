@@ -62,12 +62,23 @@
 #       profile, collections, mutual-followers and similar-accounts may reach Instagram, about
 #       five reads. The cap defaults to 9. Prints counts only, never the id.
 #
+#    run-real-engine.command signin <capture.png>
+#       The first-run path on a fresh sessions directory, with no saved session: reads the
+#       cookies in the repository's .env as the setup screen's paste would, runs the form's
+#       validation, verifies the account (one profile read), confirms it, and waits for the
+#       first Home feed page. Only profile and feed may reach Instagram. The cap defaults to 16.
+#       The sessions directory is printed and kept for the next mode.
+#    run-real-engine.command resume <capture.png>
+#       The relaunch of signin: the same sessions directory, no cookie input. Opens the saved
+#       session and reads the first Home feed page. Only feed may reach Instagram. Deletes the
+#       sessions directory afterwards, it holds a session. The cap defaults to 10.
+#
 # engine/probes/cli_request_counter records every request that leaves the process, by host,
 # friendly name and status, into engine/logs/app-live-requests-<stamp>.jsonl, and refuses any
 # request past REQUEST_CAP. The app's own output goes to engine/logs/app-live-<stamp>.log.
 set -euo pipefail
 
-mode="${1:?usage: run-real-engine.command bootstrap | profile <capture.png> | comments <post pk> | inbox <capture.png> | events <capture.png> | profile-tabs <capture.png> | stories <capture.png> | search <capture.png> | reels <capture.png> | activity <capture.png> | post-detail <capture.png> | profile-extras <capture.png>}"
+mode="${1:?usage: run-real-engine.command bootstrap | signin <capture.png> | resume <capture.png> | profile <capture.png> | comments <post pk> | inbox <capture.png> | events <capture.png> | profile-tabs <capture.png> | stories <capture.png> | search <capture.png> | reels <capture.png> | activity <capture.png> | post-detail <capture.png> | profile-extras <capture.png>}"
 app_dir="$(cd "$(dirname "$0")/.." && pwd)"
 repo_dir="$(cd "$app_dir/.." && pwd)"
 binary="$HOME/Library/Developer/Xcode/DerivedData/InstagramPlus-scripts/Build/Products/Debug/Instagram+.app/Contents/MacOS/Instagram+"
@@ -81,6 +92,8 @@ case "$mode" in
    profile-tabs|post-detail|profile-extras) default_cap=9 ;;
    stories) default_cap=3 ;;
    search|reels|activity) default_cap=12 ;;
+   signin) default_cap=16 ;;
+   resume) default_cap=10 ;;
    *) default_cap=5 ;;
 esac
 
@@ -223,6 +236,32 @@ case "$mode" in
       timeout_seconds=150
       ;;
 
+   signin)
+      capture_path="${2:?signin mode needs a capture path outside the repository}"
+      refuse_capture_inside_repository "$capture_path"
+      sessions_dir="$repo_dir/engine/logs/probe-sessions"
+      rm -rf "$sessions_dir"
+      mkdir -p "$sessions_dir"
+      chmod 700 "$sessions_dir"
+      echo "sessions directory $sessions_dir"
+      export INSTAGRAMPLUS_SESSIONS_DIR="$sessions_dir"
+      export INSTAGRAMPLUS_ENGINE_CAPABILITIES="profile,feed"
+      export INSTAGRAMPLUS_PROBE_COOKIE_FILE="$repo_dir/.env"
+      app_arguments=(--real-signin-capture "$capture_path")
+      timeout_seconds=150
+      ;;
+
+   resume)
+      capture_path="${2:?resume mode needs a capture path outside the repository}"
+      refuse_capture_inside_repository "$capture_path"
+      sessions_dir="$repo_dir/engine/logs/probe-sessions"
+      [ -d "$sessions_dir" ] || { echo "no sessions directory, run signin first"; exit 1; }
+      export INSTAGRAMPLUS_SESSIONS_DIR="$sessions_dir"
+      export INSTAGRAMPLUS_ENGINE_CAPABILITIES="feed"
+      app_arguments=(--real-resume-capture "$capture_path")
+      timeout_seconds=150
+      ;;
+
    *)
       echo "unknown mode $mode"
       exit 1
@@ -249,6 +288,8 @@ wait "$app_pid" 2>/dev/null || true
 request_count=0
 [ -f "$request_log" ] && request_count="$(wc -l < "$request_log" | tr -d ' ')"
 echo "requests on the wire: $request_count" >> "$app_log"
+
+[ "$mode" = resume ] && rm -rf "$repo_dir/engine/logs/probe-sessions"
 
 cat "$app_log"
 echo "app log at $app_log"

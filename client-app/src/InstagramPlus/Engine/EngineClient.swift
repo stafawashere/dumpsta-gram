@@ -5,6 +5,10 @@ import Foundation
 protocol EngineClient: Sendable {
    var viewerID: String { get }
 
+   // When the engine last harvested its tokens for this session, nil until its first request.
+   // It sends nothing: the value is read off the open client.
+   func sessionRefreshedAt() async -> Date?
+
    func feed(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.FeedItem>>
    func profile(username: String) async throws(EngineError) -> EngineResult<Engine.Profile>
    func profile(id userID: String) async throws(EngineError) -> EngineResult<Engine.Profile>

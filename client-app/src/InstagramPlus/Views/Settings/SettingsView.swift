@@ -10,6 +10,8 @@ struct SettingsView: View {
    @AppStorage("playsSounds") private var playsSounds = true
    @AppStorage("autoplaysReels") private var autoplaysReels = true
 
+   @State private var sessionAge = SessionAge.describe(refreshedAt: nil)
+
    var body: some View {
       ScrollView {
          VStack(alignment: .leading, spacing: 24) {
@@ -35,12 +37,14 @@ struct SettingsView: View {
                   }
                }
 
+               SettingsRow(title: "Session", value: sessionAge)
+
                if accounts.isRealEngine {
-                  SettingsRow(title: "Session", value: "Adopted from a browser")
                   SettingsRow(title: "Account id", value: profiles.viewerID)
-               } else {
-                  SettingsRow(title: "Session", value: "Adopted, served by the dummy engine")
                }
+            }
+            .task(id: accounts.activeID) {
+               sessionAge = SessionAge.describe(refreshedAt: await accounts.active.gateway.engine.sessionRefreshedAt())
             }
 
             SettingsCard(title: "Accounts") {

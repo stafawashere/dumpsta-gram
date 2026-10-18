@@ -115,6 +115,23 @@ actor PythonBridge {
       return try resolve(opened)
    }
 
+   // Session.bootstrapped_at off the open client. Nothing is sent and no cookie is read.
+   func sessionRefreshedAt(_ handle: Handle) -> Date? {
+      let outcome: Outcome<Date?> = PythonRuntime.withGIL(on: self) {
+         guard let client = clients[handle] else {
+            return .value(nil)
+         }
+
+         return capture { _ in try client.field("session").optionalDate("bootstrapped_at") }
+      }
+
+      if case .value(let refreshedAt) = outcome {
+         return refreshedAt
+      }
+
+      return nil
+   }
+
    func close(_ handle: Handle) {
       stopEvents(handle)
 

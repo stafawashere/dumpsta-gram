@@ -247,6 +247,11 @@ extension DummyEngine {
       }
    }
 
+   // The dummy holds no session. Its seeded accounts read as refreshed two days before launch.
+   func sessionRefreshedAt() async -> Date? {
+      Date().addingTimeInterval(-2 * 24 * 3600)
+   }
+
    func unreadCounts() async throws(EngineError) -> EngineResult<Engine.UnreadCounts> {
       try await perform("unread_counts", kind: .read) { () throws(EngineError) -> Engine.UnreadCounts in
          let unread = world.threads.values.filter { $0.isUnread && !$0.isRequest }.count
