@@ -197,7 +197,7 @@ enum SnapshotProbe {
 
 @MainActor
 private final class InteractionProbe {
-   static let expectedCheckCount = 36
+   static let expectedCheckCount = 42
 
    let accounts: AccountsStore
 
@@ -236,6 +236,7 @@ private final class InteractionProbe {
    func run() async {
       await runCore()
       await runAdditions()
+      await runMessages()
       await runSignIn()
 
       let summary = "exercise summary: PASS \(passed) FAIL \(failed) of \(Self.expectedCheckCount) expected\n"
@@ -361,6 +362,73 @@ private final class InteractionProbe {
       let throwaway = EngineGateway(engine: DummyEngine(timing: .instant, world: .seed()))
       throwaway.handle(.authenticationFailed, label: "the session", isWrite: false)
       check("sign-in: a refused session routes to the revoked state", throwaway.session == .revoked)
+   }
+
+   // Messages reads and live updates: the inbox cursor, the engine's unread count, the mark read
+   // a reopened thread sends, the listener's since, and a checkpoint met by the listener.
+   private func runMessages() async {
+      let engine = gateway.dummyEngine
+
+      let lastRequestBeforeInbox = await engine.status().requests.map(\.id).max() ?? 0
+      await direct.loadInbox()
+      let inboxReads = await engine.status().requests.filter { $0.id > lastRequestBeforeInbox && $0.kind == .read }.map(\.name)
+      let hasAllThree = direct.inboxState == .loaded && direct.notesState == .loaded && direct.unreadThreadCount != nil
+      check("opening the inbox is one read for threads, notes and the unread count", inboxReads == ["inbox_load"] && hasAllThree, inboxReads.joined(separator: ","))
+
+      await engine.configure(inboxPageSize: 2)
+      await direct.loadInbox()
+      let firstPageCount = direct.threads.count
+      let firstPageHadMore = direct.hasMoreThreads
+
+      for _ in 0..<10 where direct.hasMoreThreads {
+         await direct.loadMoreThreads()
+      }
+
+      await engine.configure(inboxPageSize: nil)
+      let upstreamThreadCount = await engine.world.threads.values.filter { !$0.isRequest }.count
+      let listedIDs = direct.threads.map(\.id)
+      let isWholeInbox = listedIDs.count == upstreamThreadCount && Set(listedIDs).count == listedIDs.count
+      check("the inbox pages with the engine's cursor", firstPageCount == 2 && firstPageHadMore && isWholeInbox && !direct.hasMoreThreads, "\(firstPageCount) then \(listedIDs.count) of \(upstreamThreadCount)")
+
+      await direct.select("t.ilse")
+      await direct.select("t.ben")
+      await engine.setUnread("t.ilse", true)
+      await direct.loadUnreadCounts()
+      let upstreamUnread = await engine.world.threads.values.filter { $0.isUnread && !$0.isRequest }.count
+      let locallyUnread = direct.threads.filter(\.isUnread).count
+      check("the unread badge is the engine's count", direct.unreadThreadCount == upstreamUnread && locallyUnread != upstreamUnread, "engine \(upstreamUnread), listed \(locallyUnread)")
+
+      await direct.loadInbox()
+      let lastRequestBefore = await engine.status().requests.map(\.id).max() ?? 0
+      await direct.select("t.ilse")
+      let threadReads = await engine.status().requests.filter { $0.id > lastRequestBefore && $0.name == "thread_messages" }.count
+      let isReadUpstream = await engine.world.threads["t.ilse"]?.isUnread == false
+      let isReadHere = direct.threads.first { $0.id == "t.ilse" }?.isUnread == false
+      check("reopening an unread thread reads it, which marks it read", isReadUpstream && isReadHere && threadReads == 1 && direct.unreadThreadCount == upstreamUnread - 1)
+
+      let watermark = direct.eventsWatermark
+      await direct.stopListening()
+      await direct.startListening()
+      let since = await engine.listenerStartsSince.last ?? nil
+      check("a restarted listener starts after the last applied message", watermark != nil && since == watermark && direct.isListening, since ?? "no since")
+
+      var faults = DummyEngine.Faults()
+      faults.repliesFromOthers = false
+      faults.checkpointOnNextRequest = true
+      await engine.configure(faults: faults)
+
+      var isCheckpointed = false
+      for _ in 0..<40 where !isCheckpointed {
+         try? await Task.sleep(for: .milliseconds(250))
+         isCheckpointed = if case .checkpoint = gateway.session { true } else { false }
+      }
+
+      try? await Task.sleep(for: .seconds(2))
+      let listenerStopped = !(await engine.status().isListening)
+      check("a checkpoint met by the listener becomes the session's checkpoint", isCheckpointed && direct.listenerProblem != nil && listenerStopped)
+
+      await gateway.resumeAfterCheckpoint()
+      await engine.configure(faults: DummyEngine.Faults())
    }
 
    private func runAdditions() async {

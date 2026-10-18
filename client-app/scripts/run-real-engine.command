@@ -15,9 +15,11 @@
 #       post. Only the comments capability may reach Instagram. Prints counts only.
 #    run-real-engine.command inbox <capture.png>
 #       Adopts the session in the repository's .env, opens Messages and reads the inbox's first
-#       page, then writes a capture of the window to <capture.png>. Only the inbox capability
-#       may reach Instagram. Under the default Behavior the first page is the inbox page load,
-#       so the cap defaults to 32. Prints counts only. Keep the capture outside the repository.
+#       page, the unread count, notes and requests, a second inbox page when there is one, and
+#       one thread that is already read (so no mark read is sent), then writes a capture of the
+#       window to <capture.png>. Only those direct reads may reach Instagram. Under the default
+#       Behavior the first page is the inbox page load, so the cap defaults to 48. Prints counts
+#       only. Keep the capture outside the repository.
 #    run-real-engine.command events <capture.png>
 #       Adopts the session in the repository's .env, starts the listener through the gateway,
 #       drains it for EVENTS_SECONDS (default 20), stops it and writes a capture. Only the
@@ -87,7 +89,7 @@ app_log="$repo_dir/engine/logs/app-live-$stamp.log"
 request_log="$repo_dir/engine/logs/app-live-requests-$stamp.jsonl"
 
 case "$mode" in
-   inbox) default_cap=32 ;;
+   inbox) default_cap=48 ;;
    events) default_cap=6 ;;
    profile-tabs|post-detail|profile-extras) default_cap=9 ;;
    stories) default_cap=3 ;;
@@ -147,7 +149,7 @@ case "$mode" in
    inbox)
       capture_path="${2:?inbox mode needs a capture path outside the repository}"
       refuse_capture_inside_repository "$capture_path"
-      export INSTAGRAMPLUS_ENGINE_CAPABILITIES="inbox"
+      export INSTAGRAMPLUS_ENGINE_CAPABILITIES="inbox,unread-counts,message-requests,notes,messages"
       export INSTAGRAMPLUS_COOKIE_FILE="$repo_dir/.env"
       app_arguments=(--real-inbox-capture "$capture_path")
       timeout_seconds=150
