@@ -50,6 +50,15 @@ UNSEND_REFERER = (
 )
 
 
+# The unsend answer's own check. The mark read validation has the same isinstance line since
+# release phase 2, so the anchor carries the read before it.
+UNSEND_ANSWER_CHECK = (
+   '   answer = _required(data, DIRECT_UNSEND_ROOT, "data")\n'
+   "\n"
+   "   if not isinstance(answer, bool):\n"
+)
+
+
 def gate(name: str) -> str:
    return f"{GATES}::{name}"
 
@@ -296,7 +305,13 @@ MUTATIONS: list[dict[str, object]] = [
    {
       "gate": gate("test_an_unsend_answer_that_is_not_a_boolean_is_a_schema_change"),
       "defect": "a changed answer is read as truthy",
-      "edits": [(PARSE_DIRECT, "   if not isinstance(answer, bool):\n", "   if answer is None:\n")],
+      "edits": [
+         (
+            PARSE_DIRECT,
+            UNSEND_ANSWER_CHECK,
+            UNSEND_ANSWER_CHECK.replace("if not isinstance(answer, bool):", "if answer is None:"),
+         )
+      ],
    },
    {
       "gate": gate("test_the_unsend_departs_only_through_the_write_slot"),

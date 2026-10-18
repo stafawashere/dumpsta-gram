@@ -72,6 +72,7 @@ MESSAGES_IN_UPSTREAM_ORDER = """   messages = tuple(
       parse_message(
          _required(edge, "node", f"{connection_path}.edges[{index}]"),
          f"{connection_path}.edges[{index}].node",
+         viewer_igid=viewer_igid,
       )
       for index, edge in enumerate(edges)
    )"""
@@ -82,6 +83,7 @@ MESSAGES_SORTED = """   messages = tuple(
             parse_message(
                _required(edge, "node", f"{connection_path}.edges[{index}]"),
                f"{connection_path}.edges[{index}].node",
+               viewer_igid=viewer_igid,
             )
             for index, edge in enumerate(edges)
          ),
@@ -130,7 +132,9 @@ MESSAGE_STRICT_ON_UNKNOWN_KEYS = """   known = {
    return Message(
       id=_required_string(node, "id", path),"""
 
-CAPABILITY_PARSES = "      return parse_thread_message_page(classify(response))"
+CAPABILITY_PARSES = (
+   "      return parse_thread_message_page(classify(response), viewer_igid=session.ds_user_id)"
+)
 
 CAPABILITY_RETURNS_THE_PAYLOAD = "      return classify(response)  # type: ignore[no-any-return]"
 
