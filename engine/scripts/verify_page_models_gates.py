@@ -285,7 +285,7 @@ MUTATIONS: list[dict[str, object]] = [
       WALK,
       "the page load's first page hands out the upstream's bare cursor",
       INBOX,
-      "         lambda answers: _public_page(parse_inbox_page(classify(answers.listing))),\n",
+      "         lambda answers: public_inbox_page(parse_inbox_page(classify(answers.listing))),\n",
       "         lambda answers: parse_inbox_page(classify(answers.listing)).page,\n",
    ),
 ]
