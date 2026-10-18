@@ -249,6 +249,53 @@ enum Engine {
       let createdAt: Date
    }
 
+   // The two Behavior switches a person may change in Settings, each one sending something
+   // another person sees: the read receipt a thread open sends (mark_threads_read) and the seen
+   // mark a story read sends (mark_stories_seen). PARITY, the engine's default, sends both.
+   struct BehaviorChoice: Sendable, Hashable {
+      var markThreadsRead = true
+      var markStoriesSeen = true
+
+      static let parity = BehaviorChoice()
+   }
+
+   // Direct writes the interface has a control for and the engine has no method for. Each stays
+   // disabled with a tooltip, and a store refuses it with the "Not wired yet" notice before
+   // changing anything.
+   enum UnwiredWrite: String, Sendable, CaseIterable {
+      case reaction
+      case reply
+      case photo
+      case voice
+      case mute
+      case requestResolution
+      case newThread
+
+      var tooltip: String {
+         switch self {
+            case .reaction: "Not wired yet: the engine has no message reaction."
+            case .reply: "Not wired yet: the engine has no reply to a message."
+            case .photo: "Not wired yet: the engine cannot send a photo in a thread."
+            case .voice: "Not wired yet: the engine cannot send a voice message."
+            case .mute: "Not wired yet: the engine cannot mute a thread."
+            case .requestResolution: "Not wired yet: the engine cannot accept or delete a message request."
+            case .newThread: "Not wired yet: the engine cannot start a new conversation."
+         }
+      }
+
+      var label: String {
+         switch self {
+            case .reaction: "the reaction"
+            case .reply: "the reply"
+            case .photo: "the photo"
+            case .voice: "the voice message"
+            case .mute: "the mute"
+            case .requestResolution: "the message request"
+            case .newThread: "the new conversation"
+         }
+      }
+   }
+
    struct UnreadCounts: Sendable, Hashable {
       let inbox: Int
       let pending: Int

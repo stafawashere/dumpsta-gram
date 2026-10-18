@@ -42,6 +42,19 @@ final class AccountSession: Identifiable {
       await direct.resumeListening()
    }
 
+   // Reopening the client to lift the write stop closes its listener, so a listener that was
+   // running starts again after, from the last message it delivered.
+   func resumeWrites() async {
+      let wasListening = direct.isListening
+      await direct.stopListening()
+
+      _ = await gateway.resumeWrites()
+
+      if wasListening {
+         await direct.startListening()
+      }
+   }
+
    func close() async {
       await suspend()
       await gateway.engine.close()

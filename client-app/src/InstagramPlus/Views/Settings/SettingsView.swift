@@ -116,6 +116,8 @@ struct SettingsView: View {
                Toggle("Autoplay reels", isOn: $autoplaysReels)
             }
 
+            WritesCard()
+
             DummyEngineSection()
 
             SettingsCard(title: "About") {
@@ -146,6 +148,96 @@ struct SettingsView: View {
       let version = info?["CFBundleShortVersionString"] as? String ?? "0"
       let build = info?["CFBundleVersion"] as? String ?? "0"
       return "\(version) (\(build))"
+   }
+}
+
+// What the engine sends that other people see, and the write stop. Both switches change the
+// engine's Behavior for every open account and are kept for the next launch. Resuming writes is
+// only ever this button: the engine stops writes after a refusal nothing explains, and lifting
+// that is a person's call after checking the account.
+private struct WritesCard: View {
+   @Environment(AccountsStore.self) private var accounts
+
+   @State private var isResuming = false
+
+   var body: some View {
+      let behavior = accounts.active.gateway.behavior
+
+      SettingsCard(title: "Writes and receipts") {
+         SettingsSwitch(
+            title: "Send read receipts",
+            detail: "Opening an unread conversation tells the sender you read it, as instagram.com does. When off, it stays unread for them and here.",
+            isOn: binding(behavior.markThreadsRead) { $0.markThreadsRead = $1 }
+         )
+
+         SettingsSwitch(
+            title: "Mark stories seen",
+            detail: "Opening someone's story adds you to its viewers, as instagram.com does.",
+            isOn: binding(behavior.markStoriesSeen) { $0.markStoriesSeen = $1 }
+         )
+
+         Hairline()
+
+         HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+               Text("Resume writes")
+
+               Text("The engine stops every write after Instagram refuses one for a reason nothing explains, which can be an action block. Check the account in a browser first. The hourly write budget still applies.")
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.textSecondary)
+                  .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            PrimaryButton(title: isResuming ? "Resuming" : "Resume writes", isProminent: false) {
+               isResuming = true
+
+               Task {
+                  await accounts.active.resumeWrites()
+                  isResuming = false
+               }
+            }
+            .disabled(isResuming)
+         }
+      }
+   }
+
+   private func binding(_ value: Bool, _ change: @escaping (inout Engine.BehaviorChoice, Bool) -> Void) -> Binding<Bool> {
+      Binding(
+         get: { value },
+         set: { newValue in
+            var choice = accounts.active.gateway.behavior
+            change(&choice, newValue)
+
+            if accounts.isRealEngine {
+               choice.store()
+            }
+
+            Task {
+               for session in accounts.sessions {
+                  await session.gateway.setBehavior(choice)
+               }
+            }
+         }
+      )
+   }
+}
+
+private struct SettingsSwitch: View {
+   let title: String
+   let detail: String
+   @Binding var isOn: Bool
+
+   var body: some View {
+      VStack(alignment: .leading, spacing: 4) {
+         Toggle(title, isOn: $isOn)
+
+         Text(detail)
+            .font(.system(size: 12))
+            .foregroundStyle(Palette.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+      }
    }
 }
 

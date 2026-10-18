@@ -63,6 +63,20 @@
 #       PROFILE_EXTRAS_USER_ID when set in the environment and of the viewer otherwise. Only
 #       profile, collections, mutual-followers and similar-accounts may reach Instagram, about
 #       five reads. The cap defaults to 9. Prints counts only, never the id.
+#    run-real-engine.command writes <capture.png> [send|notes|both]
+#       The live acceptance of the Messages writes, each reversed in the same run. Adopts the
+#       session in the repository's .env. Messages opens with its one inbox load, which is the
+#       first notes read. Then, in the thread engine/probes/phase3_cli_acceptance.py names
+#       (THREAD_FBID, the owner-approved account): thread read, send, read, unsend, read. Then,
+#       only when the viewer has no note (a set would replace it): set a note, read the tray,
+#       delete it, read the tray. Every write goes through the same store method the button
+#       calls, and the probe prints restored true or false per write. Only inbox, notes,
+#       messages and direct-writes may reach Instagram. Each tray read is an inbox page load
+#       under the default Behavior, so the cap defaults to 150. Writes wait about 30 s apart.
+#       Prints states, ids' presence and counts, never text. Keep the capture outside the
+#       repository. The third argument runs one cycle alone: send allows only messages and
+#       direct-writes, so no inbox load is sent (REQUEST_CAP=30 is plenty); notes leaves out
+#       messages.
 #
 #    run-real-engine.command signin <capture.png>
 #       The first-run path on a fresh sessions directory, with no saved session: reads the
@@ -80,7 +94,7 @@
 # request past REQUEST_CAP. The app's own output goes to engine/logs/app-live-<stamp>.log.
 set -euo pipefail
 
-mode="${1:?usage: run-real-engine.command bootstrap | signin <capture.png> | resume <capture.png> | profile <capture.png> | comments <post pk> | inbox <capture.png> | events <capture.png> | profile-tabs <capture.png> | stories <capture.png> | search <capture.png> | reels <capture.png> | activity <capture.png> | post-detail <capture.png> | profile-extras <capture.png>}"
+mode="${1:?usage: run-real-engine.command bootstrap | signin <capture.png> | resume <capture.png> | profile <capture.png> | comments <post pk> | inbox <capture.png> | writes <capture.png> | events <capture.png> | profile-tabs <capture.png> | stories <capture.png> | search <capture.png> | reels <capture.png> | activity <capture.png> | post-detail <capture.png> | profile-extras <capture.png>}"
 app_dir="$(cd "$(dirname "$0")/.." && pwd)"
 repo_dir="$(cd "$app_dir/.." && pwd)"
 binary="$HOME/Library/Developer/Xcode/DerivedData/InstagramPlus-scripts/Build/Products/Debug/Instagram+.app/Contents/MacOS/Instagram+"
@@ -90,6 +104,7 @@ request_log="$repo_dir/engine/logs/app-live-requests-$stamp.jsonl"
 
 case "$mode" in
    inbox) default_cap=48 ;;
+   writes) default_cap=150 ;;
    events) default_cap=6 ;;
    profile-tabs|post-detail|profile-extras) default_cap=9 ;;
    stories) default_cap=3 ;;
@@ -236,6 +251,32 @@ case "$mode" in
       export INSTAGRAMPLUS_PROBE_USER_ID="${PROFILE_EXTRAS_USER_ID:-}"
       app_arguments=(--real-profile-extras-capture "$capture_path")
       timeout_seconds=150
+      ;;
+
+   writes)
+      capture_path="${2:?writes mode needs a capture path outside the repository}"
+      refuse_capture_inside_repository "$capture_path"
+      thread_fbid="$(sed -n 's/^THREAD_FBID = "\(.*\)"$/\1/p' "$repo_dir/engine/probes/phase3_cli_acceptance.py")"
+
+      if [ -z "$thread_fbid" ]; then
+         echo "no THREAD_FBID in engine/probes/phase3_cli_acceptance.py"
+         exit 1
+      fi
+
+      writes_part="${3:-both}"
+
+      case "$writes_part" in
+         send) export INSTAGRAMPLUS_ENGINE_CAPABILITIES="messages,direct-writes" ;;
+         notes) export INSTAGRAMPLUS_ENGINE_CAPABILITIES="inbox,notes,direct-writes" ;;
+         both) export INSTAGRAMPLUS_ENGINE_CAPABILITIES="inbox,notes,messages,direct-writes" ;;
+         *) echo "writes part must be send, notes or both"; exit 1 ;;
+      esac
+
+      export INSTAGRAMPLUS_PROBE_WRITES="$writes_part"
+      export INSTAGRAMPLUS_COOKIE_FILE="$repo_dir/.env"
+      export INSTAGRAMPLUS_PROBE_THREAD_FBID="$thread_fbid"
+      app_arguments=(--real-writes-capture "$capture_path")
+      timeout_seconds=600
       ;;
 
    signin)

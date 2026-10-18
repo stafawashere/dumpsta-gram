@@ -61,6 +61,10 @@ actor DummyEngine: AppEngine {
       var unrecognisedRejectionOnNextWrite = false
       var schemaChangeOnNextFeed = false
       var repliesFromOthers = true
+
+      // Holds every write this long before its departure, standing in for the engine's write
+      // spacing, so the exercise can look at a store while a write is still on its way.
+      var writeHoldSeconds = 0.0
    }
 
    enum RequestKind: String, Sendable {
@@ -91,6 +95,15 @@ actor DummyEngine: AppEngine {
    }
 
    nonisolated let viewerID: String
+   nonisolated let launchBehavior = Engine.BehaviorChoice.parity
+
+   // Empty by default: the dummy serves every write the interface offers. The exercise builds one
+   // with writes withheld to check the disabled path.
+   nonisolated let unwiredWrites: Set<Engine.UnwiredWrite>
+
+   // The person's Behavior choice. Reading a thread marks it read, and reading a reel marks its
+   // first item seen, only when the choice says so, as the engine's Behavior does.
+   private(set) var behavior = Engine.BehaviorChoice.parity
 
    static let writeBudgetPerHour = 30
    static let exerciseSeed: UInt64 = 20_260_930
@@ -125,10 +138,11 @@ actor DummyEngine: AppEngine {
    // so each run draws the same numbers in the same order.
    private var random: DummyRandom
 
-   init(timing: Timing, world: DummyWorld = .seed()) {
+   init(timing: Timing, world: DummyWorld = .seed(), unwiredWrites: Set<Engine.UnwiredWrite> = []) {
       self.world = world
       self.timing = timing
       self.viewerID = world.viewerID
+      self.unwiredWrites = unwiredWrites
 
       let isExerciseRun = ProcessInfo.processInfo.arguments.contains("--exercise")
       self.random = DummyRandom(seed: isExerciseRun ? Self.exerciseSeed : nil)
@@ -142,10 +156,21 @@ actor DummyEngine: AppEngine {
       faults = newFaults
    }
 
+   // Like the engine's, the write stop outlives a reconnect: only clearWriteStop lifts it.
    func reconnect() {
       faults.sessionRevoked = false
       faults.checkpointOnNextRequest = false
+   }
+
+   func setBehavior(_ choice: Engine.BehaviorChoice) async throws(EngineError) -> EngineResult<Void> {
+      behavior = choice
+      return .value(())
+   }
+
+   func clearWriteStop() async throws(EngineError) -> EngineResult<Bool> {
+      let wasStopped = writesStopped
       writesStopped = false
+      return .value(wasStopped)
    }
 
    func close() async {
@@ -184,6 +209,10 @@ actor DummyEngine: AppEngine {
             finishRecord(recordID, outcome: describe(error) + ", nothing sent")
             throw error
          }
+      }
+
+      if kind == .write {
+         await sleep(seconds: faults.writeHoldSeconds)
       }
 
       let departure = reserveDeparture(for: kind)

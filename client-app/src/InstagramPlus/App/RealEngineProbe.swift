@@ -13,6 +13,13 @@ import AppKit
 //                                          its count and whether a next page exists, no capture
 //    --real-inbox-capture <png>            opens Messages, waits for the inbox's first page,
 //                                          prints thread and unread counts and captures it
+//    --real-writes-capture <png>           the Messages writes, each reversed in the same run. In
+//                                          the thread INSTAGRAMPLUS_PROBE_THREAD_FBID names: read,
+//                                          send, read, unsend, read. Then, only when the viewer has
+//                                          no note: set a close friends note, read the tray,
+//                                          delete it, read the tray. Every write is the store
+//                                          method its button calls. Prints restored per write,
+//                                          states, presence and counts, never text
 //    --real-events-capture <png>           starts the listener through the gateway, drains it
 //                                          for INSTAGRAMPLUS_EVENTS_SECONDS (default 20), stops
 //                                          it, prints event counts and the listener state, and
@@ -81,6 +88,12 @@ enum RealEngineProbe {
 
       if let flagIndex = arguments.firstIndex(of: "--real-inbox-capture"), arguments.indices.contains(flagIndex + 1) {
          await captureInbox(accounts: accounts, to: URL(fileURLWithPath: arguments[flagIndex + 1]))
+         NSApp.terminate(nil)
+         return
+      }
+
+      if let flagIndex = arguments.firstIndex(of: "--real-writes-capture"), arguments.indices.contains(flagIndex + 1) {
+         await runWrites(accounts: accounts, captureTo: URL(fileURLWithPath: arguments[flagIndex + 1]))
          NSApp.terminate(nil)
          return
       }
@@ -243,6 +256,109 @@ enum RealEngineProbe {
       print("[probe] session \(describe(session.gateway.session)) at the end")
 
       try? await Task.sleep(for: .seconds(3))
+      capture(to: outputURL)
+   }
+
+   // The texts are fixed and neutral, and never printed. The note goes to close friends only, the
+   // smallest audience a note has.
+   private static let writeCheckMessage = "Instagram+ write check"
+   private static let writeCheckNote = "write check"
+
+   private static func runWrites(accounts: AccountsStore, captureTo outputURL: URL) async {
+      let session = accounts.active
+      let direct = session.direct
+
+      let environment = ProcessInfo.processInfo.environment
+
+      guard let threadID = environment["INSTAGRAMPLUS_PROBE_THREAD_FBID"], !threadID.isEmpty else {
+         print("[probe] writes needs INSTAGRAMPLUS_PROBE_THREAD_FBID")
+         return
+      }
+
+      // send, notes or both, so a cycle whose code changed can run again on its own.
+      let part = environment["INSTAGRAMPLUS_PROBE_WRITES"] ?? "both"
+      let runsSend = part == "send" || part == "both"
+      let runsNotes = part == "notes" || part == "both"
+      print("[probe] writes part \(part)")
+
+      print("[probe] opening Messages")
+      session.navigation.route = .messages
+
+      let inboxState = await settle(session) { direct.inboxState }
+      let notesState = await settle(session) { direct.notesState }
+      let hadNote = direct.viewerNote != nil
+      print("[probe] inbox state \(describe(inboxState)), notes state \(describe(notesState)), viewer note present \(hadNote), session \(describe(session.gateway.session))")
+
+      var started = Date()
+
+      // Send, then unsend. The thread's state after each read is part of restored, because a
+      // read that failed lists nothing and would compare equal to another that failed.
+      if runsSend {
+         let wasListedUnread = direct.threads.first { $0.id == threadID }?.isUnread
+         await direct.select(threadID)
+         let firstRead = direct.messages(in: threadID).map(\.id)
+         let firstReadLoaded = direct.messageState(for: threadID) == .loaded
+         print("[probe] send cycle read 1: state \(describe(direct.messageState(for: threadID))), messages \(firstRead.count), listed unread before \(wasListedUnread.map(String.init) ?? "not listed")")
+
+         started = Date()
+         await direct.send(writeCheckMessage, to: threadID)
+         let sent = direct.messages(in: threadID).last { $0.senderID == direct.viewerID && $0.text == writeCheckMessage }
+         let sentID = sent?.delivery == .sent ? sent?.id : nil
+         print("[probe] send: delivery \(sent.map { String(describing: $0.delivery) } ?? "none"), id present \(sentID != nil), \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+
+         if let sentID, session.gateway.isActive {
+            await direct.loadMessages(threadID)
+            let listedAfterSend = direct.messages(in: threadID).contains { $0.id == sentID }
+            print("[probe] send cycle read 2: listed after send \(listedAfterSend)")
+
+            started = Date()
+            await direct.unsend(sentID, in: threadID)
+            print("[probe] unsend: gone here \(!direct.messages(in: threadID).contains { $0.id == sentID }), \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+
+            let earlierNotices = Set(session.gateway.notices.map(\.id))
+            await direct.loadMessages(threadID)
+            let lastRead = direct.messages(in: threadID).map(\.id)
+            let hasNewNotice = session.gateway.notices.contains { !earlierNotices.contains($0.id) }
+            let lastReadLoaded = direct.messageState(for: threadID) == .loaded && !hasNewNotice
+            let restored = firstReadLoaded && lastReadLoaded && !lastRead.contains(sentID) && Set(lastRead) == Set(firstRead)
+            print("[probe] send cycle read 3: loaded without a notice \(lastReadLoaded), listed after unsend \(lastRead.contains(sentID)), messages \(lastRead.count), restored \(restored)")
+         } else {
+            print("[probe] send cycle stopped after the send, restored false, session \(describe(session.gateway.session))")
+         }
+      }
+
+      // Set a note, then delete it, only when that cannot replace the viewer's own note.
+      if !runsNotes {
+         print("[probe] note cycle not in this part")
+      } else if hadNote {
+         print("[probe] note cycle skipped: the viewer has a note, and setting one would replace it")
+      } else if session.gateway.isActive {
+         started = Date()
+         await direct.setNote(writeCheckNote, closeFriendsOnly: true)
+         let setNote = direct.viewerNote
+         let noteID = setNote?.isPending == false ? setNote?.id : nil
+         print("[probe] set note: shown \(setNote != nil), settled \(noteID != nil), engine id \(noteID.map { !$0.hasPrefix("local.") } ?? false), \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+
+         if let noteID {
+            await direct.loadNotes()
+            print("[probe] note cycle read 2: state \(describe(direct.notesState)), listed after set \(direct.viewerNote?.id == noteID)")
+
+            started = Date()
+            await direct.deleteViewerNote()
+            print("[probe] delete note: gone here \(direct.viewerNote == nil), \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+
+            await direct.loadNotes()
+            let restored = direct.notesState == .loaded && direct.viewerNote == nil
+            print("[probe] note cycle read 3: state \(describe(direct.notesState)), viewer note present \(direct.viewerNote != nil), restored \(restored)")
+         } else {
+            print("[probe] note cycle stopped after the set, restored false")
+         }
+      }
+
+      let noticeTitles = session.gateway.notices.map(\.title)
+      print("[probe] notices \(noticeTitles), session \(describe(session.gateway.session)) at the end")
+
+      try? await Task.sleep(for: .seconds(2))
       capture(to: outputURL)
    }
 

@@ -29,6 +29,19 @@ concurrency happens inside the engine's asyncio loop, below the bridge. One Swif
 can trigger thirty concurrent HTTP requests. See
 [ADR-0001](../decisions/ADR-0001-async-core-sync-facade.md).
 
+Two consequences found in the app, both now structural in `PythonBridge`:
+
+- After bootstrap the bridge releases the GIL, and every step takes it back with
+  `PyGILState_Ensure` and lets it go again. The engine's loop thread needs the GIL between
+  calls, and holding it across calls starves that thread (wiring log, 2026-09-30).
+- No engine call blocks the actor. Each one is started with `dumpstagram.pending.submit`,
+  polled with `PendingCall.done()` in short GIL holds, and collected with `result()`, so a
+  write waiting out the engine's write spacing (about 30 s under PARITY) leaves every other
+  call and account free. A `PendingCall` lives only in the actor's own table, never in a local
+  that crosses a suspension point, so it is released under the GIL. Until a client has
+  answered its first call, the next call on it waits, because concurrent calls on a session
+  with no page token each load the bootstrap document (release phase 4, 2026-10-18).
+
 ## Rule 2, decode at the boundary
 
 Convert `PythonObject` values into Swift types on the Python queue, then send only

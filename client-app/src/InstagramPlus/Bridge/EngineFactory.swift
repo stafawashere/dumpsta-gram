@@ -171,7 +171,7 @@ enum PythonEngineFactory {
          do throws(EngineError) {
             switch try await bridge.open(sessionFile: sessionFile) {
                case .value(let opened):
-                  engines.append(PythonEngine(bridge: bridge, opened: opened, sessionFile: sessionFile, enabled: enabled))
+                  engines.append(PythonEngine(bridge: bridge, opened: opened, sessionFile: sessionFile, enabled: enabled, behavior: .stored()))
 
                case .checkpoint:
                   print("[engine] \(sessionFile.lastPathComponent) is in a checkpoint, not opened")
@@ -222,12 +222,12 @@ enum PythonEngineFactory {
          switch try await bridge.adopt(material, savingTo: sessionFile) {
             case .value(let opened):
                print("[engine] adopted a browser session into \(sessionFile.lastPathComponent)")
-               return .adopted(PythonEngine(bridge: bridge, opened: opened, sessionFile: sessionFile, enabled: enabled))
+               return .adopted(PythonEngine(bridge: bridge, opened: opened, sessionFile: sessionFile, enabled: enabled, behavior: .stored()))
 
             case .checkpoint(let checkpoint):
                print("[engine] the adopted session is in a checkpoint")
                let savedFile = FileManager.default.fileExists(atPath: sessionFile.path) ? sessionFile : nil
-               let engine = PythonEngine(bridge: bridge, opened: nil, sessionFile: savedFile, enabled: enabled, viewerID: material.userID)
+               let engine = PythonEngine(bridge: bridge, opened: nil, sessionFile: savedFile, enabled: enabled, viewerID: material.userID, behavior: .stored())
                return .checkpoint(engine, checkpoint)
          }
       } catch {

@@ -30,7 +30,7 @@ from dumpstagram._private.web.requests.direct import (
 from dumpstagram.aio import AsyncClient
 from dumpstagram.behavior import Behavior, ThreadFirstPage
 from dumpstagram.client import SyncClient
-from dumpstagram.errors import RateLimited, UpstreamRejected
+from dumpstagram.errors import RateLimited, SchemaChanged, UpstreamRejected
 from dumpstagram.models import Message
 from tests.test_direct import ScriptedTransport, a_bootstrapped_session, json_response, make_paced
 from tests.test_parse import THREAD_FBID, node, payload
@@ -244,6 +244,48 @@ def test_the_read_state_takes_the_newest_message_by_time_not_position() -> None:
    assert state.is_unread is True
    assert state.newest_message_id == "mid.$newest"
    assert state.newest_sent_ms == NEWEST_MS
+
+
+def empty_open(**thread_fields: Any) -> dict[str, Any]:
+   """A thread open with no message listed, as the write thread answered on 2026-10-18 once its
+   last message was unsent (log ``engine/logs/empty-thread-shape-2026-10-18-063942.json``)."""
+
+   answer = detail_payload([])
+   thread = answer["data"]["get_slide_thread_nullable"]["as_ig_direct_thread"]
+   thread["last_activity_timestamp_ms"] = "-1"
+   thread["slide_messages"]["page_info"]["has_next_page"] = False
+   thread.update(thread_fields)
+
+   return answer
+
+
+@pytest.mark.asyncio
+async def test_an_empty_thread_opens_with_no_messages_and_marks_nothing() -> None:
+   """Catches the last activity of a thread with no message, -1, failing the whole open."""
+
+   transport, messages, _ = await read([empty_open()])
+
+   assert names(transport) == [DETAIL]
+   assert messages == []
+
+
+def test_an_empty_thread_reads_as_read_unless_marked_unread() -> None:
+   state = parse_thread_read_state(empty_open())
+   marked = parse_thread_read_state(empty_open(marked_as_unread=True))
+
+   assert (state.is_unread, state.newest_message_id, state.newest_sent_ms) == (False, None, None)
+   assert marked.is_unread is True
+
+
+def test_a_last_activity_other_than_digits_or_the_empty_mark_still_raises() -> None:
+   """Catches the empty thread's -1 widened into accepting any value."""
+
+   for value in ("-2", "", "1.5", None):
+      with pytest.raises(SchemaChanged) as raised:
+         parse_thread_read_state(empty_open(last_activity_timestamp_ms=value))
+
+      assert raised.value.path is not None
+      assert raised.value.path.endswith("last_activity_timestamp_ms")
 
 
 def test_both_requests_carry_the_variables_the_browser_sent_in_its_order() -> None:

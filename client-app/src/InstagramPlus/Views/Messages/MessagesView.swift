@@ -4,6 +4,7 @@ struct MessagesView: View {
    @Environment(DirectStore.self) private var direct
    @Environment(ProfileStore.self) private var profiles
    @Environment(NavigationStore.self) private var navigation
+   @Environment(EngineGateway.self) private var gateway
 
    @State private var filter = ""
    @State private var isComposingNote = false
@@ -73,9 +74,11 @@ struct MessagesView: View {
             } label: {
                Image(systemName: "square.and.pencil")
                   .font(.system(size: 17))
-                  .foregroundStyle(Palette.textPrimary)
+                  .foregroundStyle(gateway.isWired(.newThread) ? Palette.textPrimary : Palette.textTertiary)
             }
             .buttonStyle(.plain)
+            .disabled(!gateway.isWired(.newThread))
+            .help(gateway.isWired(.newThread) ? "New message" : Engine.UnwiredWrite.newThread.tooltip)
             .accessibilityLabel("New message")
          }
          .padding(.horizontal, 22)
@@ -255,7 +258,7 @@ private struct NotesTray: View {
       ScrollView(.horizontal) {
          HStack(alignment: .top, spacing: 14) {
             Button(action: compose) {
-               NoteBubble(author: viewer, text: viewerNote?.text ?? "Your note", isPlaceholder: viewerNote == nil, isCloseFriends: viewerNote?.isCloseFriends ?? false)
+               NoteBubble(author: viewer, text: viewerNote?.text ?? "Your note", isPlaceholder: viewerNote == nil, isCloseFriends: viewerNote?.isCloseFriends ?? false, isPending: viewerNote?.isPending ?? false)
             }
             .buttonStyle(.plain)
 
@@ -317,6 +320,7 @@ private struct NoteBubble: View {
    let text: String
    let isPlaceholder: Bool
    let isCloseFriends: Bool
+   var isPending = false
 
    var body: some View {
       VStack(spacing: 6) {
@@ -333,12 +337,14 @@ private struct NoteBubble: View {
 
          Avatar(account: author, diameter: 48)
 
-         Text(isPlaceholder ? "Your note" : author.username)
+         Text(isPending ? "Sharing, paced" : isPlaceholder ? "Your note" : author.username)
             .font(.system(size: 10))
             .foregroundStyle(Palette.textSecondary)
             .lineLimit(1)
             .frame(width: 70)
       }
+      .opacity(isPending ? 0.6 : 1)
+      .help(isPending ? "The note shows now and is shared when the engine's pacer lets the write go, about 30 seconds apart." : "")
    }
 }
 
@@ -380,14 +386,12 @@ private struct NoteComposer: View {
             .foregroundStyle(Palette.textSecondary)
 
          HStack {
-            if direct.viewerNote != nil {
+            // The store updates the tray at once and settles it when the paced write answers, so
+            // the sheet closes without waiting for the write.
+            if let viewerNote = direct.viewerNote, !viewerNote.isPending {
                Button("Delete current note", role: .destructive) {
-                  isSaving = true
-
-                  Task {
-                     await direct.deleteViewerNote()
-                     dismiss()
-                  }
+                  Task { await direct.deleteViewerNote() }
+                  dismiss()
                }
             }
 
@@ -396,13 +400,10 @@ private struct NoteComposer: View {
             Button("Cancel") { dismiss() }
                .keyboardShortcut(.cancelAction)
 
-            Button(isSaving ? "Sharing" : "Share") {
+            Button("Share") {
                isSaving = true
-
-               Task {
-                  await direct.setNote(trimmedText, closeFriendsOnly: closeFriendsOnly)
-                  dismiss()
-               }
+               Task { await direct.setNote(trimmedText, closeFriendsOnly: closeFriendsOnly) }
+               dismiss()
             }
             .keyboardShortcut(.defaultAction)
             .disabled(!canShare)

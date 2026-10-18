@@ -37,4 +37,8 @@ struct Note: Identifiable, Hashable, Sendable {
    let text: String
    let isCloseFriends: Bool
    let postedAt: Date
+
+   // The viewer's note shown before the engine has answered its set_note, while the write
+   // waits its turn in the pacer.
+   var isPending = false
 }

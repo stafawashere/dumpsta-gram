@@ -7,17 +7,12 @@ import os
 // every method returns Swift values only. Exceptions are mapped here, onto EngineResult and
 // EngineError, and never travel outward. Nothing here retries or paces: the engine does both.
 //
-// The actor runs on its own serial dispatch queue, because a SyncClient call blocks its thread
-// while the engine's loop thread does the work, and that must not park a thread of Swift's
-// cooperative pool.
+// The actor runs on its own serial dispatch queue, so the short Python steps it takes never park
+// a thread of Swift's cooperative pool.
 //
-// Known limitation, an engine gap: every call holds this actor until the engine answers,
-// including the time the engine's pacer waits before a write (about 30 s under PARITY), so a
-// story seen mark or a reel read delays every later call on every account. The public surface
-// offers no way to submit a call and poll for its result: SyncClient methods block, and
-// AsyncClient returns coroutines that need an event loop running on some thread, which the
-// app would have to own as a second Python thread. The engine's own loop thread is private.
-// The fix belongs in the engine, as a non-blocking submit entry point on the public surface.
+// Engine calls do not block it. Each one is started with dumpstagram.pending.submit and polled
+// (see Calling and mapping), so a write waiting in the engine's pacer, about 30 s under PARITY,
+// leaves every other call and every other account free to run.
 actor PythonBridge {
    static let shared = PythonBridge()
 
@@ -47,7 +42,23 @@ actor PythonBridge {
    private let logger = Logger(subsystem: "io.github.stafawashere.instagramplus", category: "bridge")
 
    private var dumpstagram: PythonObject?
+   private var pendingModule: PythonObject?
    private var clients: [Handle: PythonObject] = [:]
+
+   // The client each handle was opened as. clients holds a client scoped to the person's Behavior
+   // choice when they changed it, which shares this one's session and pacer, and closing this one
+   // stops both. Scoped clients a later choice replaced wait in retiredClients until the handle
+   // closes, because a call started on one may still be running.
+   private var openedClients: [Handle: PythonObject] = [:]
+   private var retiredClients: [Handle: [PythonObject]] = [:]
+   private var searchClients: [Handle: PythonObject] = [:]
+   private var scopedHandles: Set<Handle> = []
+
+   // Calls started with pending.submit and not collected yet, by call id.
+   private var inFlight: [Int: PythonObject] = [:]
+   private var nextCallID = 0
+   private var warmHandles: Set<Handle> = []
+   private var coldCalls: Set<Handle> = []
    private var listeners: [Handle: PythonObject] = [:]
 
    // stories.mark_seen takes the StoryItem and the StoryReel it was read in, so the reels read in
@@ -67,6 +78,7 @@ actor PythonBridge {
       if dumpstagram == nil {
          PythonRuntime.withGIL(on: self) {
             dumpstagram = Python.import("dumpstagram")
+            pendingModule = Python.import("dumpstagram.pending")
          }
       }
 
@@ -107,6 +119,7 @@ actor PythonBridge {
 
             nextHandle += 1
             clients[handle] = client
+            openedClients[handle] = client
 
             return OpenedSession(handle: handle, viewerID: viewerID)
          }
@@ -137,32 +150,102 @@ actor PythonBridge {
 
       PythonRuntime.withGIL(on: self) {
          storyReels[handle] = nil
+         warmHandles.remove(handle)
 
-         if let client = clients.removeValue(forKey: handle) {
+         let opened = openedClients.removeValue(forKey: handle)
+         let current = clients.removeValue(forKey: handle)
+         var scoped = retiredClients.removeValue(forKey: handle) ?? []
+
+         if let search = searchClients.removeValue(forKey: handle) {
+            scoped.append(search)
+         }
+
+         if scopedHandles.remove(handle) != nil, let current {
+            scoped.append(current)
+         }
+
+         // Scoped clients first, then the client they share a pool with.
+         for client in scoped {
             _ = try? client.close.throwing.dynamicallyCall(withArguments: [])
+         }
+
+         if let opened {
+            _ = try? opened.close.throwing.dynamicallyCall(withArguments: [])
          }
       }
    }
 
+   // MARK: Behavior and the write stop
+
+   // Replaces the handle's client with one scoped to the person's Behavior choice, through
+   // SyncClient.with_behavior, which keeps the session, the pool and the pacer. The choice
+   // covers the two switches that send something a person sees: the read receipt a thread open
+   // sends and the seen mark a story read sends. Nothing is sent here.
+   func setBehavior(_ handle: Handle, _ choice: Engine.BehaviorChoice) throws(EngineError) -> EngineResult<Void> {
+      let outcome: Outcome<Void> = PythonRuntime.withGIL(on: self) {
+         guard let opened = openedClients[handle] else {
+            return .failure(.authenticationFailed)
+         }
+
+         return capture { _ in
+            let behavior = try Python.import("dataclasses").replace.throwing.dynamicallyCall(withKeywordArguments: [
+               "": opened.field("behavior"),
+               "mark_threads_read": choice.markThreadsRead,
+               "mark_stories_seen": choice.markStoriesSeen,
+            ])
+            let scoped = try opened.with_behavior.throwing.dynamicallyCall(withArguments: [behavior])
+
+            if scopedHandles.contains(handle), let current = clients[handle] {
+               retiredClients[handle, default: []].append(current)
+            }
+
+            if let search = searchClients.removeValue(forKey: handle) {
+               retiredClients[handle, default: []].append(search)
+            }
+
+            clients[handle] = scoped
+            scopedHandles.insert(handle)
+         }
+      }
+
+      return try resolve(outcome)
+   }
+
+   // session.clear_write_stop lifts the stop kept in the ledger beside the session file and says
+   // whether one was set. An open client keeps its own stop for as long as it lives, so the
+   // caller reopens the session after this. It reads and writes a local file only.
+   func clearWriteStop(sessionFile: URL) throws(EngineError) -> EngineResult<Bool> {
+      let outcome: Outcome<Bool> = PythonRuntime.withGIL(on: self) {
+         capture { _ in
+            let wasStopped = try Python.import("dumpstagram.session").clear_write_stop.throwing.dynamicallyCall(withArguments: [sessionFile.path])
+
+            guard let wasStopped = Bool(wasStopped) else {
+               throw DecodeFailure(path: "clear_write_stop")
+            }
+
+            return wasStopped
+         }
+      }
+
+      return try resolve(outcome)
+   }
+
    // MARK: Reads
 
-   func profile(_ handle: Handle, username: String) throws(EngineError) -> EngineResult<Engine.Profile> {
-      try call(handle) { client in
-         let profile = try client.profile.throwing.dynamicallyCall(withArguments: [username])
+   func profile(_ handle: Handle, username: String) async throws(EngineError) -> EngineResult<Engine.Profile> {
+      try await submit(handle, "profile", [username]) { profile in
          return try decodeProfile(profile)
       }
    }
 
-   func profile(_ handle: Handle, id userID: String) throws(EngineError) -> EngineResult<Engine.Profile> {
-      try call(handle) { client in
-         let profile = try client.profile_by_id.throwing.dynamicallyCall(withArguments: [userID])
+   func profile(_ handle: Handle, id userID: String) async throws(EngineError) -> EngineResult<Engine.Profile> {
+      try await submit(handle, "profile_by_id", [userID]) { profile in
          return try decodeProfile(profile)
       }
    }
 
-   func feed(_ handle: Handle, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.FeedItem>> {
-      try call(handle) { client in
-         let page = try client.feed.throwing.dynamicallyCall(withKeywordArguments: ["after": cursor])
+   func feed(_ handle: Handle, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.FeedItem>> {
+      try await submit(handle, "feed", keywords: ["after": cursor]) { page in
          var skippedKinds: [String] = []
 
          let decoded = try decodePage(page) { item -> Engine.FeedItem? in
@@ -187,18 +270,16 @@ actor PythonBridge {
       }
    }
 
-   func comments(_ handle: Handle, postPK: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Comment>> {
-      try call(handle) { client in
-         let page = try client.media.comments.throwing.dynamicallyCall(withKeywordArguments: ["": postPK, "after": cursor])
+   func comments(_ handle: Handle, postPK: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Comment>> {
+      try await submit(handle, "media.comments", keywords: ["": postPK, "after": cursor]) { page in
          return try decodePage(page, decodeComment)
       }
    }
 
    // media.by_code answers a PostDetail, which has every Post field the app reads except
    // is_seen. Six requests under the default Behavior.
-   func post(_ handle: Handle, code: String) throws(EngineError) -> EngineResult<Engine.Post> {
-      try call(handle) { client in
-         let detail = try client.media.by_code.throwing.dynamicallyCall(withArguments: [code])
+   func post(_ handle: Handle, code: String) async throws(EngineError) -> EngineResult<Engine.Post> {
+      try await submit(handle, "media.by_code", [code]) { detail in
          return try decodePost(detail, carriesSeenFlag: false)
       }
    }
@@ -206,20 +287,16 @@ actor PythonBridge {
    // media.download takes the engine's own MediaImage. The rendition is rebuilt from the values
    // the engine gave when the post was read, and the engine fetches its URL from the CDN. The
    // person already chose to replace a file at the destination in the save panel.
-   func download(_ handle: Handle, image: Engine.MediaImage, to destination: URL) throws(EngineError) -> EngineResult<URL> {
-      try callWithModule(handle) { client, module in
+   func download(_ handle: Handle, image: Engine.MediaImage, to destination: URL) async throws(EngineError) -> EngineResult<URL> {
+      try await submitWithModule(handle, "media.download") { module in
          let rendition = try module.MediaImage.throwing.dynamicallyCall(withKeywordArguments: [
             "url": image.url,
             "width": image.width,
             "height": image.height,
          ])
 
-         let written = try client.media.download.throwing.dynamicallyCall(withKeywordArguments: [
-            "": rendition,
-            "": destination.path,
-            "overwrite": true,
-         ])
-
+         return [("", rendition), ("", destination.path), ("overwrite", true)]
+      } decode: { written, _ in
          guard let path = String(Python.str(written)) else {
             throw DecodeFailure(path: "download.path")
          }
@@ -228,24 +305,20 @@ actor PythonBridge {
       }
    }
 
-   func inbox(_ handle: Handle, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>> {
-      try call(handle) { client in
-         let page = try client.direct.inbox.throwing.dynamicallyCall(withKeywordArguments: ["after": cursor])
+   func inbox(_ handle: Handle, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>> {
+      try await submit(handle, "direct.inbox", keywords: ["after": cursor]) { page in
          return try decodePage(page, decodeThread)
       }
    }
 
-   func messages(_ handle: Handle, threadFBID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Message>> {
-      try call(handle) { client in
-         let page = try client.direct.messages.throwing.dynamicallyCall(withKeywordArguments: ["": threadFBID, "after": cursor])
+   func messages(_ handle: Handle, threadFBID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Message>> {
+      try await submit(handle, "direct.messages", keywords: ["": threadFBID, "after": cursor]) { page in
          return try decodePage(page, decodeMessage)
       }
    }
 
-   func messageRequests(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.MessageRequests> {
-      try call(handle) { client in
-         let requests = try client.direct.message_requests.throwing.dynamicallyCall(withArguments: [])
-
+   func messageRequests(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.MessageRequests> {
+      try await submit(handle, "direct.message_requests", []) { requests in
          return Engine.MessageRequests(
             pending: try Array(requests.field("pending")).map(decodeThread),
             spam: try Array(requests.field("spam")).map(decodeThread)
@@ -253,16 +326,14 @@ actor PythonBridge {
       }
    }
 
-   func unreadCounts(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.UnreadCounts> {
-      try call(handle) { client in
-         let counts = try client.direct.unread_counts.throwing.dynamicallyCall(withArguments: [])
+   func unreadCounts(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.UnreadCounts> {
+      try await submit(handle, "direct.unread_counts", []) { counts in
          return Engine.UnreadCounts(inbox: try counts.int("inbox"), pending: try counts.int("pending"))
       }
    }
 
-   func inboxLoad(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.InboxLoad> {
-      try call(handle) { client in
-         let load = try client.direct.inbox_load.throwing.dynamicallyCall(withArguments: [])
+   func inboxLoad(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.InboxLoad> {
+      try await submit(handle, "direct.inbox_load", []) { load in
          let counts = try load.field("unread_counts")
 
          return Engine.InboxLoad(
@@ -273,9 +344,9 @@ actor PythonBridge {
       }
    }
 
-   func notes(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.Note]> {
-      try call(handle) { client in
-         try decodeNotes(client.direct.notes.throwing.dynamicallyCall(withArguments: []))
+   func notes(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.Note]> {
+      try await submit(handle, "direct.notes") { notes in
+         try decodeNotes(notes)
       }
    }
 
@@ -302,10 +373,8 @@ actor PythonBridge {
       return decoded
    }
 
-   func storiesTray(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.StoryTrayEntry]> {
-      try call(handle) { client in
-         let tray = try client.stories.tray.throwing.dynamicallyCall(withArguments: [])
-
+   func storiesTray(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.StoryTrayEntry]> {
+      try await submit(handle, "stories.tray", []) { tray in
          return try Array(tray).map { row in
             Engine.StoryTrayEntry(
                user: try decodeStoryOwner(row.field("owner")),
@@ -319,10 +388,8 @@ actor PythonBridge {
    }
 
    // Under the default Behavior the engine marks the first item seen inside this read.
-   func storyReel(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Engine.StoryReel?> {
-      try call(handle) { client in
-         let reel = try client.stories.reel.throwing.dynamicallyCall(withArguments: [userID])
-
+   func storyReel(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel?> {
+      try await submit(handle, "stories.reel", [userID]) { reel in
          guard !reel.isNone else {
             return nil
          }
@@ -331,51 +398,43 @@ actor PythonBridge {
       }
    }
 
-   func highlightReel(_ handle: Handle, highlightID: String) throws(EngineError) -> EngineResult<Engine.StoryReel> {
-      try call(handle) { client in
-         let reel = try client.stories.highlight.throwing.dynamicallyCall(withArguments: [highlightID])
+   func highlightReel(_ handle: Handle, highlightID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel> {
+      try await submit(handle, "stories.highlight", [highlightID]) { reel in
          return try keepStoryReel(reel, for: handle)
       }
    }
 
-   func highlights(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<[Engine.Highlight]> {
-      try call(handle) { client in
-         let tray = try client.profiles.highlights.throwing.dynamicallyCall(withArguments: [userID])
-
+   func highlights(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<[Engine.Highlight]> {
+      try await submit(handle, "profiles.highlights", [userID]) { tray in
          return try Array(tray.field("highlights")).map { highlight in
             Engine.Highlight(id: try highlight.string("id"), title: try highlight.string("title"), itemCount: nil)
          }
       }
    }
 
-   func profilePosts(_ handle: Handle, username: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let page = try client.profiles.posts.throwing.dynamicallyCall(withKeywordArguments: ["": username, "after": cursor])
+   func profilePosts(_ handle: Handle, username: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "profiles.posts", keywords: ["": username, "after": cursor]) { page in
          return try decodePage(page, decodeTile)
       }
    }
 
    // The reels, tagged and saved reads answer one page with has_more and take no cursor, so a
    // page from them never has an end cursor.
-   func profileReelsPage(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let reels = try client.profiles.reels.throwing.dynamicallyCall(withArguments: [userID])
+   func profileReelsPage(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "profiles.reels", [userID]) { reels in
          return Engine.Page(items: try Array(reels.field("reels")).map(decodeTile), hasNextPage: try reels.bool("has_more"), endCursor: nil)
       }
    }
 
-   func taggedPostsPage(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let tagged = try client.profiles.tagged.throwing.dynamicallyCall(withArguments: [userID])
+   func taggedPostsPage(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "profiles.tagged", [userID]) { tagged in
          return Engine.Page(items: try Array(tagged.field("posts")).map(decodeTile), hasNextPage: try tagged.bool("has_more"), endCursor: nil)
       }
    }
 
    // SavedPost has no comment_count, so its tiles carry nil rather than a zero.
-   func savedPostsPage(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let saved = try client.account.saved.throwing.dynamicallyCall(withArguments: [])
-
+   func savedPostsPage(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "account.saved", []) { saved in
          let tiles = try Array(saved.field("posts")).map { post in
             Engine.GridTile(
                pk: try post.string("pk"),
@@ -391,16 +450,16 @@ actor PythonBridge {
       }
    }
 
-   func profileReels(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<[Engine.GridTile]> {
-      Self.items(of: try profileReelsPage(handle, userID: userID))
+   func profileReels(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<[Engine.GridTile]> {
+      Self.items(of: try await profileReelsPage(handle, userID: userID))
    }
 
-   func taggedPosts(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<[Engine.GridTile]> {
-      Self.items(of: try taggedPostsPage(handle, userID: userID))
+   func taggedPosts(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<[Engine.GridTile]> {
+      Self.items(of: try await taggedPostsPage(handle, userID: userID))
    }
 
-   func savedPosts(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.GridTile]> {
-      Self.items(of: try savedPostsPage(handle))
+   func savedPosts(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.GridTile]> {
+      Self.items(of: try await savedPostsPage(handle))
    }
 
    private static func items<Item: Sendable>(of result: EngineResult<Engine.Page<Item>>) -> EngineResult<[Item]> {
@@ -410,26 +469,33 @@ actor PythonBridge {
       }
    }
 
-   func followers(_ handle: Handle, userID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.UserSummary>> {
-      try call(handle) { client in
-         let page = try client.profiles.followers.throwing.dynamicallyCall(withKeywordArguments: ["": userID, "after": cursor])
+   func followers(_ handle: Handle, userID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.UserSummary>> {
+      try await submit(handle, "profiles.followers", keywords: ["": userID, "after": cursor]) { page in
          return try decodePage(page, decodeProfileSummary)
       }
    }
 
-   func following(_ handle: Handle, userID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.UserSummary>> {
-      try call(handle) { client in
-         let page = try client.profiles.following.throwing.dynamicallyCall(withKeywordArguments: ["": userID, "after": cursor])
+   func following(_ handle: Handle, userID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.UserSummary>> {
+      try await submit(handle, "profiles.following", keywords: ["": userID, "after": cursor]) { page in
          return try decodePage(page, decodeProfileSummary)
       }
    }
 
-   // Close friends and blocked accounts are two engine reads. The engine has no muted list.
-   func relationships(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.Relationships> {
-      try call(handle) { client in
-         let closeFriends = try Array(client.account.close_friends.throwing.dynamicallyCall(withArguments: [])).map(decodeProfileSummary)
+   // Close friends and blocked accounts are two engine reads, the second sent once the first
+   // answered. The engine has no muted list.
+   func relationships(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.Relationships> {
+      let closeFriendsRead = try await submit(handle, "account.close_friends") { accounts in
+         try Array(accounts).map(decodeProfileSummary)
+      }
 
-         let blocked = try Array(client.account.blocked.throwing.dynamicallyCall(withArguments: [])).map { account in
+      let closeFriends: [Engine.UserSummary]
+      switch closeFriendsRead {
+         case .value(let accounts): closeFriends = accounts
+         case .checkpoint(let checkpoint): return .checkpoint(checkpoint)
+      }
+
+      let blockedRead = try await submit(handle, "account.blocked") { accounts in
+         try Array(accounts).map { account in
             Engine.UserSummary(
                id: try account.string("id"),
                username: try account.string("username"),
@@ -439,41 +505,35 @@ actor PythonBridge {
                profilePicURL: try account.string("profile_pic_url")
             )
          }
-
-         return Engine.Relationships(
-            closeFriendIDs: closeFriends.map(\.id),
-            blockedIDs: blocked.map(\.id),
-            mutedIDs: [],
-            closeFriends: closeFriends,
-            blocked: blocked,
-            isMutedListKnown: false
-         )
       }
+
+      let blocked: [Engine.UserSummary]
+      switch blockedRead {
+         case .value(let accounts): blocked = accounts
+         case .checkpoint(let checkpoint): return .checkpoint(checkpoint)
+      }
+
+      return .value(Engine.Relationships(
+         closeFriendIDs: closeFriends.map(\.id),
+         blockedIDs: blocked.map(\.id),
+         mutedIDs: [],
+         closeFriends: closeFriends,
+         blocked: blocked,
+         isMutedListKnown: false
+      ))
    }
 
    // search.accounts sends the typeahead the client's Behavior names. With personalised false
    // the call goes through a client scoped to the non-personalised route, which shares this
-   // client's session and pacer and is closed again before the GIL is released.
-   func searchAccounts(_ handle: Handle, query: String, personalised: Bool) throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
-      try callWithModule(handle) { client, module in
-         guard !personalised else {
-            return try Array(client.search.accounts.throwing.dynamicallyCall(withArguments: [query])).map(decodeProfileSummary)
-         }
-
-         let behavior = try Python.import("dataclasses").replace.throwing.dynamicallyCall(withKeywordArguments: [
-            "": client.field("behavior"),
-            "typeahead_route": module.field("TypeaheadRoute").field("NON_PERSONALISED"),
-         ])
-         let scoped = try client.with_behavior.throwing.dynamicallyCall(withArguments: [behavior])
-         defer { _ = try? scoped.close.throwing.dynamicallyCall(withArguments: []) }
-
-         return try Array(scoped.search.accounts.throwing.dynamicallyCall(withArguments: [query])).map(decodeProfileSummary)
+   // client's session and pacer. It is kept for the handle and closed with it.
+   func searchAccounts(_ handle: Handle, query: String, personalised: Bool) async throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
+      try await submit(handle, "search.accounts", [query], through: personalised ? .primary : .nonPersonalisedSearch) { accounts in
+         try Array(accounts).map(decodeProfileSummary)
       }
    }
 
-   func recentSearches(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.RecentSearch]> {
-      try call(handle) { client in
-         let entries = try client.search.recent.throwing.dynamicallyCall(withArguments: [])
+   func recentSearches(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.RecentSearch]> {
+      try await submit(handle, "search.recent", []) { entries in
          var unknownKinds: [String] = []
 
          let decoded = try Array(entries).compactMap { entry -> Engine.RecentSearch? in
@@ -502,10 +562,8 @@ actor PythonBridge {
    }
 
    // ExploreGrid.posts joins its sections in the engine's order. The cursor is passed on as it came.
-   func explore(_ handle: Handle, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let grid = try client.feeds.explore.throwing.dynamicallyCall(withKeywordArguments: ["after": cursor])
-
+   func explore(_ handle: Handle, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "feeds.explore", keywords: ["after": cursor]) { grid in
          return Engine.Page(
             items: try Array(grid.field("posts")).map(decodeTile),
             hasNextPage: try grid.bool("more_available"),
@@ -516,10 +574,8 @@ actor PythonBridge {
 
    // feeds.location reads the first grid page of a place by its Location.id. It returns no
    // cursor, so the page says whether more exist and nothing reads them.
-   func placePosts(_ handle: Handle, placeID: String) throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
-      try call(handle) { client in
-         let posts = try client.feeds.location.throwing.dynamicallyCall(withArguments: [placeID])
-
+   func placePosts(_ handle: Handle, placeID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await submit(handle, "feeds.location", [placeID]) { posts in
          return Engine.Page(
             items: try Array(posts.field("posts")).map(decodeTile),
             hasNextPage: try posts.bool("has_more"),
@@ -530,10 +586,8 @@ actor PythonBridge {
 
    // The reels feed carries no play count, and its audio title is absent where a reel has no
    // audio model.
-   func reels(_ handle: Handle, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Reel>> {
-      try call(handle) { client in
-         let page = try client.feeds.reels.throwing.dynamicallyCall(withKeywordArguments: ["after": cursor])
-
+   func reels(_ handle: Handle, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Reel>> {
+      try await submit(handle, "feeds.reels", keywords: ["after": cursor]) { page in
          return try decodePage(page) { post in
             let decoded = try decodePost(post)
 
@@ -551,10 +605,8 @@ actor PythonBridge {
    // Every row stays untyped: ActivityItem.kind is the upstream's own string and the engine
    // offers no typed kind to map it to. hasUnseen comes from new_items, the rows the engine
    // says the viewer has not seen.
-   func activityFeed(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.ActivityFeed> {
-      try call(handle) { client in
-         let feed = try client.account.activity.throwing.dynamicallyCall(withArguments: [])
-
+   func activityFeed(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.ActivityFeed> {
+      try await submit(handle, "account.activity", []) { feed in
          let untyped = try Array(feed.field("items")).map { item in
             let firstMedia = try Array(item.field("media")).first
 
@@ -575,17 +627,15 @@ actor PythonBridge {
    }
 
    // The first page only. FollowRequests.has_more is not carried, because nothing reads a next page.
-   func followRequests(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
-      try call(handle) { client in
-         let requests = try client.account.follow_requests.throwing.dynamicallyCall(withArguments: [])
+   func followRequests(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
+      try await submit(handle, "account.follow_requests", []) { requests in
          return try Array(requests.field("accounts")).map(decodeProfileSummary)
       }
    }
 
    // SuggestedAccount.reason is dropped, since the rail has no place for it yet.
-   func suggestedUsers(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
-      try call(handle) { client in
-         let suggested = try client.profiles.suggested_for_you.throwing.dynamicallyCall(withArguments: [])
+   func suggestedUsers(_ handle: Handle) async throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
+      try await submit(handle, "profiles.suggested_for_you", []) { suggested in
          return try Array(suggested).map { try decodeProfileSummary($0.field("account")) }
       }
    }
@@ -593,10 +643,8 @@ actor PythonBridge {
    // MARK: Reads added after 1.1.0
 
    // media.page loads the post page as a browser does, six requests under the default Behavior.
-   func postPage(_ handle: Handle, code: String) throws(EngineError) -> EngineResult<Engine.PostPage> {
-      try call(handle) { client in
-         let page = try client.media.page.throwing.dynamicallyCall(withArguments: [code])
-
+   func postPage(_ handle: Handle, code: String) async throws(EngineError) -> EngineResult<Engine.PostPage> {
+      try await submit(handle, "media.page", [code]) { page in
          return Engine.PostPage(
             post: try decodePost(page.field("post"), carriesSeenFlag: false),
             comments: try decodePage(page.field("comments"), decodeComment),
@@ -606,37 +654,33 @@ actor PythonBridge {
    }
 
    // media.by_id answers a thinner PostDetail than by_code, one request.
-   func post(_ handle: Handle, pk: String) throws(EngineError) -> EngineResult<Engine.Post> {
-      try call(handle) { client in
-         let detail = try client.media.by_id.throwing.dynamicallyCall(withArguments: [pk])
+   func post(_ handle: Handle, pk: String) async throws(EngineError) -> EngineResult<Engine.Post> {
+      try await submit(handle, "media.by_id", [pk]) { detail in
          return try decodePost(detail, carriesSeenFlag: false)
       }
    }
 
    // A sample of the likers. The engine offers no cursor.
-   func likers(_ handle: Handle, postPK: String) throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
-      try call(handle) { client in
-         try Array(client.media.likers.throwing.dynamicallyCall(withArguments: [postPK])).map(decodeProfileSummary)
+   func likers(_ handle: Handle, postPK: String) async throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
+      try await submit(handle, "media.likers", [postPK]) { likers in
+         try Array(likers).map(decodeProfileSummary)
       }
    }
 
-   func moreFromAuthor(_ handle: Handle, authorID: String) throws(EngineError) -> EngineResult<[Engine.GridTile]> {
-      try call(handle) { client in
-         try Array(client.media.more_from_author.throwing.dynamicallyCall(withArguments: [authorID])).map(decodeTile)
+   func moreFromAuthor(_ handle: Handle, authorID: String) async throws(EngineError) -> EngineResult<[Engine.GridTile]> {
+      try await submit(handle, "media.more_from_author", [authorID]) { posts in
+         try Array(posts).map(decodeTile)
       }
    }
 
-   func replies(_ handle: Handle, postPK: String, commentID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Comment>> {
-      try call(handle) { client in
-         let page = try client.media.replies.throwing.dynamicallyCall(withKeywordArguments: ["": postPK, "": commentID, "after": cursor])
+   func replies(_ handle: Handle, postPK: String, commentID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Comment>> {
+      try await submit(handle, "media.replies", keywords: ["": postPK, "": commentID, "after": cursor]) { page in
          return try decodePage(page, decodeComment)
       }
    }
 
-   func mutualFollowers(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Engine.MutualFollowers> {
-      try call(handle) { client in
-         let mutual = try client.profiles.mutual_followers.throwing.dynamicallyCall(withArguments: [userID])
-
+   func mutualFollowers(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Engine.MutualFollowers> {
+      try await submit(handle, "profiles.mutual_followers", [userID]) { mutual in
          return Engine.MutualFollowers(
             accounts: try Array(mutual.field("accounts")).map(decodeProfileSummary),
             hasMore: try mutual.bool("has_more")
@@ -645,15 +689,14 @@ actor PythonBridge {
    }
 
    // profiles.suggested, the accounts shown beside one profile.
-   func similarAccounts(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
-      try call(handle) { client in
-         try Array(client.profiles.suggested.throwing.dynamicallyCall(withArguments: [userID])).map(decodeProfileSummary)
+   func similarAccounts(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<[Engine.UserSummary]> {
+      try await submit(handle, "profiles.suggested", [userID]) { accounts in
+         try Array(accounts).map(decodeProfileSummary)
       }
    }
 
-   func savedCollections(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.SavedCollections> {
-      try call(handle) { client in
-         let saved = try client.account.collections.throwing.dynamicallyCall(withArguments: [])
+   func savedCollections(_ handle: Handle) async throws(EngineError) -> EngineResult<Engine.SavedCollections> {
+      try await submit(handle, "account.collections", []) { saved in
          var unknownKinds: [String] = []
 
          let collections = try Array(saved.field("collections")).compactMap { collection -> Engine.SavedCollection? in
@@ -685,10 +728,8 @@ actor PythonBridge {
       }
    }
 
-   func hasNewPosts(_ handle: Handle) throws(EngineError) -> EngineResult<Bool> {
-      try call(handle) { client in
-         let answer = try client.feeds.has_new_posts.throwing.dynamicallyCall(withArguments: [])
-
+   func hasNewPosts(_ handle: Handle) async throws(EngineError) -> EngineResult<Bool> {
+      try await submit(handle, "feeds.has_new_posts", []) { answer in
          guard let hasNew = Bool(answer) else {
             throw DecodeFailure(path: "has_new_posts")
          }
@@ -697,9 +738,8 @@ actor PythonBridge {
       }
    }
 
-   func searchTop(_ handle: Handle, query: String) throws(EngineError) -> EngineResult<[Engine.SearchResult]> {
-      try call(handle) { client in
-         let top = try client.search.top.throwing.dynamicallyCall(withArguments: [query])
+   func searchTop(_ handle: Handle, query: String) async throws(EngineError) -> EngineResult<[Engine.SearchResult]> {
+      try await submit(handle, "search.top", [query]) { top in
          var unknownKinds: [String] = []
 
          let decoded = try Array(top.field("results")).compactMap { row -> Engine.SearchResult? in
@@ -727,30 +767,26 @@ actor PythonBridge {
    }
 
    // SearchPost carries the same five tile fields as Post, under the same names.
-   func searchKeyword(_ handle: Handle, query: String) throws(EngineError) -> EngineResult<Engine.KeywordResults> {
-      try call(handle) { client in
-         let results = try client.search.keyword.throwing.dynamicallyCall(withArguments: [query])
+   func searchKeyword(_ handle: Handle, query: String) async throws(EngineError) -> EngineResult<Engine.KeywordResults> {
+      try await submit(handle, "search.keyword", [query]) { results in
          return Engine.KeywordResults(posts: try Array(results.field("posts")).map(decodeTile), hasMore: try results.bool("has_more"))
       }
    }
 
-   func hashtag(_ handle: Handle, name: String) throws(EngineError) -> EngineResult<Engine.HashtagHeader> {
-      try call(handle) { client in
-         let header = try client.search.hashtag.throwing.dynamicallyCall(withArguments: [name])
+   func hashtag(_ handle: Handle, name: String) async throws(EngineError) -> EngineResult<Engine.HashtagHeader> {
+      try await submit(handle, "search.hashtag", [name]) { header in
          return Engine.HashtagHeader(id: try header.string("id"), name: try header.string("name"))
       }
    }
 
-   func explorePosts(_ handle: Handle, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>> {
-      try call(handle) { client in
-         let page = try client.feeds.explore_posts.throwing.dynamicallyCall(withKeywordArguments: ["after": cursor])
+   func explorePosts(_ handle: Handle, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>> {
+      try await submit(handle, "feeds.explore_posts", keywords: ["after": cursor]) { page in
          return try decodePage(page) { try decodePost($0) }
       }
    }
 
-   func audio(_ handle: Handle, audioID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.AudioPage> {
-      try call(handle) { client in
-         let page = try client.feeds.audio.throwing.dynamicallyCall(withKeywordArguments: ["": audioID, "after": cursor])
+   func audio(_ handle: Handle, audioID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.AudioPage> {
+      try await submit(handle, "feeds.audio", keywords: ["": audioID, "after": cursor]) { page in
          let audio = try page.optionalField("audio")
 
          return Engine.AudioPage(
@@ -771,9 +807,8 @@ actor PythonBridge {
       }
    }
 
-   func audioClips(_ handle: Handle, audioID: String, after cursor: String?) throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>> {
-      try call(handle) { client in
-         let page = try client.feeds.audio_clips.throwing.dynamicallyCall(withKeywordArguments: ["": audioID, "after": cursor])
+   func audioClips(_ handle: Handle, audioID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>> {
+      try await submit(handle, "feeds.audio_clips", keywords: ["": audioID, "after": cursor]) { page in
          return try decodePage(page) { try decodePost($0) }
       }
    }
@@ -782,67 +817,50 @@ actor PythonBridge {
    // A write that returns was accepted by the engine. Every refusal, the write stop, a
    // checkpoint and a revoked session arrive as the engine's exceptions and are mapped below.
 
-   func like(_ handle: Handle, postPK: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.media.like.throwing.dynamicallyCall(withArguments: [postPK])
-      }
+   func like(_ handle: Handle, postPK: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "media.like", [postPK]) { _ in }
    }
 
-   func unlike(_ handle: Handle, postPK: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.media.unlike.throwing.dynamicallyCall(withArguments: [postPK])
-      }
+   func unlike(_ handle: Handle, postPK: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "media.unlike", [postPK]) { _ in }
    }
 
-   func comment(_ handle: Handle, postPK: String, text: String) throws(EngineError) -> EngineResult<Engine.Comment> {
-      try call(handle) { client in
-         let created = try client.media.comment.throwing.dynamicallyCall(withArguments: [postPK, text])
+   func comment(_ handle: Handle, postPK: String, text: String) async throws(EngineError) -> EngineResult<Engine.Comment> {
+      try await submit(handle, "media.comment", [postPK, text]) { created in
          return try decodeComment(created)
       }
    }
 
-   func deleteComment(_ handle: Handle, postPK: String, commentID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.media.delete_comment.throwing.dynamicallyCall(withArguments: [postPK, commentID])
-      }
+   func deleteComment(_ handle: Handle, postPK: String, commentID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "media.delete_comment", [postPK, commentID]) { _ in }
    }
 
-   func deletePost(_ handle: Handle, postPK: String, code: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.media.delete_post.throwing.dynamicallyCall(withArguments: [postPK, code])
-      }
+   func deletePost(_ handle: Handle, postPK: String, code: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "media.delete_post", [postPK, code]) { _ in }
    }
 
-   func publishPhoto(_ handle: Handle, imagePath: String, caption: String) throws(EngineError) -> EngineResult<Engine.PublishedPost> {
-      try call(handle) { client in
-         let published = try client.media.publish_photo.throwing.dynamicallyCall(withKeywordArguments: ["": imagePath, "caption": caption])
+   func publishPhoto(_ handle: Handle, imagePath: String, caption: String) async throws(EngineError) -> EngineResult<Engine.PublishedPost> {
+      try await submit(handle, "media.publish_photo", keywords: ["": imagePath, "caption": caption]) { published in
          return try decodePublishedPost(published)
       }
    }
 
-   func publishCarousel(_ handle: Handle, imagePaths: [String], caption: String) throws(EngineError) -> EngineResult<Engine.PublishedPost> {
-      try call(handle) { client in
-         let published = try client.media.publish_carousel.throwing.dynamicallyCall(withKeywordArguments: ["": imagePaths, "caption": caption])
+   func publishCarousel(_ handle: Handle, imagePaths: [String], caption: String) async throws(EngineError) -> EngineResult<Engine.PublishedPost> {
+      try await submit(handle, "media.publish_carousel", keywords: ["": imagePaths, "caption": caption]) { published in
          return try decodePublishedPost(published)
       }
    }
 
-   func follow(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.social.follow.throwing.dynamicallyCall(withArguments: [userID])
-      }
+   func follow(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "social.follow", [userID]) { _ in }
    }
 
-   func unfollow(_ handle: Handle, userID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.social.unfollow.throwing.dynamicallyCall(withArguments: [userID])
-      }
+   func unfollow(_ handle: Handle, userID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "social.unfollow", [userID]) { _ in }
    }
 
-   func send(_ handle: Handle, threadFBID: String, text: String) throws(EngineError) -> EngineResult<Engine.SentMessage> {
-      try call(handle) { client in
-         let sent = try client.direct.send.throwing.dynamicallyCall(withArguments: [threadFBID, text])
-
+   func send(_ handle: Handle, threadFBID: String, text: String) async throws(EngineError) -> EngineResult<Engine.SentMessage> {
+      try await submit(handle, "direct.send", [threadFBID, text]) { sent in
          return Engine.SentMessage(
             id: try sent.string("id"),
             offlineThreadingID: try sent.string("offline_threading_id"),
@@ -852,16 +870,15 @@ actor PythonBridge {
       }
    }
 
-   func unsend(_ handle: Handle, threadFBID: String, messageID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.direct.unsend.throwing.dynamicallyCall(withArguments: [threadFBID, messageID])
-      }
+   func unsend(_ handle: Handle, threadFBID: String, messageID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "direct.unsend", [threadFBID, messageID]) { _ in }
    }
 
-   func setNote(_ handle: Handle, text: String, audience: Engine.NoteAudience) throws(EngineError) -> EngineResult<Engine.Note> {
-      try callWithModule(handle) { client, module in
+   func setNote(_ handle: Handle, text: String, audience: Engine.NoteAudience) async throws(EngineError) -> EngineResult<Engine.Note> {
+      try await submitWithModule(handle, "direct.set_note") { module in
          let engineAudience = try module.NoteAudience.throwing.dynamicallyCall(withArguments: [audience.rawValue])
-         let note = try client.direct.set_note.throwing.dynamicallyCall(withKeywordArguments: ["": text, "audience": engineAudience])
+         return [("", text), ("audience", engineAudience)]
+      } decode: { note, _ in
          let noteAudience = try note.int("audience")
 
          guard let decodedAudience = Engine.NoteAudience(rawValue: noteAudience) else {
@@ -872,16 +889,14 @@ actor PythonBridge {
       }
    }
 
-   func deleteNote(_ handle: Handle, noteID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
-         _ = try client.direct.delete_note.throwing.dynamicallyCall(withArguments: [noteID])
-      }
+   func deleteNote(_ handle: Handle, noteID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submit(handle, "direct.delete_note", [noteID]) { _ in }
    }
 
    // Marks one item of a reel read earlier in this session. The engine refuses an item that is
    // not in the reel before sending anything.
-   func markStorySeen(_ handle: Handle, reelID: String, itemID: String) throws(EngineError) -> EngineResult<Void> {
-      try call(handle) { client in
+   func markStorySeen(_ handle: Handle, reelID: String, itemID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await submitWithModule(handle, "stories.mark_seen") { _ in
          guard let reel = storyReels[handle]?[reelID] else {
             throw StoryReelNotRead()
          }
@@ -892,8 +907,8 @@ actor PythonBridge {
             throw StoryReelNotRead()
          }
 
-         _ = try client.stories.mark_seen.throwing.dynamicallyCall(withKeywordArguments: ["": item, "reel": reel])
-      }
+         return [("", item), ("reel", reel)]
+      } decode: { _, _ in }
    }
 
    // MARK: Events
@@ -954,20 +969,169 @@ actor PythonBridge {
 
    // MARK: Calling and mapping
 
-   private func call<Value: Sendable>(_ handle: Handle, _ body: (PythonObject) throws -> Value) throws(EngineError) -> EngineResult<Value> {
-      try callWithModule(handle) { client, _ in try body(client) }
+   // Every SyncClient call goes through dumpstagram.pending.submit, which starts it on the
+   // engine's loop thread and returns at once. The call is then polled with done() and
+   // collected with result(), each step a short hold of the GIL, and between polls this actor is
+   // free. So a write waiting out the engine's write spacing, about 30 s under PARITY, no longer
+   // holds every other account's calls behind it. Calls on one account still depart one at a
+   // time in the order the engine's pacer admits them. Nothing here cancels a call, so a write
+   // is never abandoned half known, and nothing retries one.
+   private typealias Arguments = [(key: String, value: PythonConvertible)]
+
+   enum ClientRoute: Sendable {
+      case primary
+      case nonPersonalisedSearch
    }
 
-   private func callWithModule<Value: Sendable>(_ handle: Handle, _ body: (PythonObject, PythonObject) throws -> Value) throws(EngineError) -> EngineResult<Value> {
-      let outcome: Outcome<Value> = PythonRuntime.withGIL(on: self) {
+   private func submit<Value: Sendable>(
+      _ handle: Handle,
+      _ operation: String,
+      _ arguments: [PythonConvertible] = [],
+      through route: ClientRoute = .primary,
+      _ decode: (PythonObject) throws -> Value
+   ) async throws(EngineError) -> EngineResult<Value> {
+      try await submitted(handle, operation, route: route) { _ in
+         arguments.map { (key: "", value: $0) }
+      } decode: { answer, _ in
+         try decode(answer)
+      }
+   }
+
+   private func submit<Value: Sendable>(
+      _ handle: Handle,
+      _ operation: String,
+      keywords: KeyValuePairs<String, PythonConvertible>,
+      _ decode: (PythonObject) throws -> Value
+   ) async throws(EngineError) -> EngineResult<Value> {
+      try await submitted(handle, operation, route: .primary) { _ in
+         keywords.map { (key: $0.key, value: $0.value) }
+      } decode: { answer, _ in
+         try decode(answer)
+      }
+   }
+
+   // For a call whose arguments are engine values built from the module, such as a NoteAudience.
+   private func submitWithModule<Value: Sendable>(
+      _ handle: Handle,
+      _ operation: String,
+      arguments: (PythonObject) throws -> Arguments,
+      decode: (PythonObject, PythonObject) throws -> Value
+   ) async throws(EngineError) -> EngineResult<Value> {
+      try await submitted(handle, operation, route: .primary, arguments: arguments, decode: decode)
+   }
+
+   private func submitted<Value: Sendable>(
+      _ handle: Handle,
+      _ operation: String,
+      route: ClientRoute,
+      arguments: (PythonObject) throws -> Arguments,
+      decode: (PythonObject, PythonObject) throws -> Value
+   ) async throws(EngineError) -> EngineResult<Value> {
+      // Calls that start together on a session with no page token each load the bootstrap
+      // document (dumpstagram.pending). Until one call on this client has answered, the next
+      // waits for it instead of starting beside it.
+      while coldCalls.contains(handle) {
+         await Self.pause(milliseconds: 20)
+      }
+
+      let isCold = !warmHandles.contains(handle)
+      if isCold {
+         coldCalls.insert(handle)
+      }
+
+      defer {
+         if isCold {
+            coldCalls.remove(handle)
+         }
+      }
+
+      let callID = nextCallID
+      nextCallID += 1
+
+      let started: Outcome<Bool> = PythonRuntime.withGIL(on: self) {
          guard let client = clients[handle] else {
             return .failure(.authenticationFailed)
          }
 
-         return capture { module in try body(client, module) }
+         return capture { module in
+            guard let pending = pendingModule else {
+               throw DecodeFailure(path: "dumpstagram.pending")
+            }
+
+            let target = try target(of: client, for: handle, route: route, module: module)
+            let callArguments: Arguments = [(key: "", value: target), (key: "", value: operation)] + (try arguments(module))
+            inFlight[callID] = try pending.submit.throwing.dynamicallyCall(withKeywordArguments: callArguments)
+            return true
+         }
+      }
+
+      if case .checkpoint(let checkpoint) = try resolve(started) {
+         return .checkpoint(checkpoint)
+      }
+
+      var interval = 5
+      while !isFinished(callID) {
+         await Self.pause(milliseconds: interval)
+         interval = min(interval * 2, 100)
+      }
+
+      let outcome: Outcome<Value> = PythonRuntime.withGIL(on: self) {
+         guard let call = inFlight.removeValue(forKey: callID) else {
+            return .failure(.upstreamRejected(code: EngineError.bridgeFailureCode))
+         }
+
+         return capture { module in
+            try decode(try call.result.throwing.dynamicallyCall(withArguments: []), module)
+         }
+      }
+
+      if isCold, case .value = outcome {
+         warmHandles.insert(handle)
       }
 
       return try resolve(outcome)
+   }
+
+   // done() never blocks. A call that can no longer be asked counts as finished, so result()
+   // reports what happened to it.
+   private func isFinished(_ callID: Int) -> Bool {
+      PythonRuntime.withGIL(on: self) {
+         guard let call = inFlight[callID], let isDone = try? call.done.throwing.dynamicallyCall(withArguments: []) else {
+            return true
+         }
+
+         return Bool(isDone) ?? true
+      }
+   }
+
+   private func target(of client: PythonObject, for handle: Handle, route: ClientRoute, module: PythonObject) throws -> PythonObject {
+      switch route {
+         case .primary:
+            return client
+
+         case .nonPersonalisedSearch:
+            if let scoped = searchClients[handle] {
+               return scoped
+            }
+
+            let behavior = try Python.import("dataclasses").replace.throwing.dynamicallyCall(withKeywordArguments: [
+               "": client.field("behavior"),
+               "typeahead_route": module.field("TypeaheadRoute").field("NON_PERSONALISED"),
+            ])
+            let scoped = try client.with_behavior.throwing.dynamicallyCall(withArguments: [behavior])
+
+            searchClients[handle] = scoped
+            return scoped
+      }
+   }
+
+   // A wait that ignores task cancellation, because a call already started is always collected.
+   private nonisolated static func pause(milliseconds: Int) async {
+      await withCheckedContinuation { continuation in
+         DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(milliseconds)) {
+            continuation.resume()
+         }
+      }
    }
 
    private func resolve<Value: Sendable>(_ outcome: Outcome<Value>) throws(EngineError) -> EngineResult<Value> {

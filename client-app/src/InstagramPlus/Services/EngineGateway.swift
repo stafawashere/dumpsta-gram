@@ -46,9 +46,13 @@ final class EngineGateway {
    private(set) var notices: [Notice] = []
    private(set) var pendingWrites = 0
 
+   // The person's Behavior choice for this client, starting from the one it was opened with.
+   private(set) var behavior: Engine.BehaviorChoice
+
    init(engine: any AppEngine, session: SessionState = .active) {
       self.engine = engine
       self.session = session
+      self.behavior = engine.launchBehavior
    }
 
    var client: any AppEngine { engine }
@@ -117,6 +121,71 @@ final class EngineGateway {
          handle(error, label: label, isWrite: isWrite)
          return .failure(error)
       }
+   }
+
+   // MARK: Writes with no engine method
+
+   func isWired(_ write: Engine.UnwiredWrite) -> Bool {
+      !engine.unwiredWrites.contains(write)
+   }
+
+   // A write the engine has no method for gets the "Not wired yet" notice here and true back,
+   // so the store changes nothing on screen and sends nothing.
+   func refuseUnwired(_ write: Engine.UnwiredWrite) -> Bool {
+      guard !isWired(write) else {
+         return false
+      }
+
+      post(Notice(tone: .info, title: "Not wired yet", message: "Instagram+ does not reach the engine for \(write.label) yet. Nothing was sent."))
+      return true
+   }
+
+   // MARK: Behavior and the write stop
+
+   // A person changed the read receipt or seen mark switch. Nothing is sent; the engine applies
+   // the choice to the calls that follow.
+   func setBehavior(_ choice: Engine.BehaviorChoice) async {
+      let previous = behavior
+      behavior = choice
+
+      do throws(EngineError) {
+         _ = try await engine.setBehavior(choice)
+      } catch {
+         behavior = previous
+         handle(error, label: "the read receipt setting", isWrite: false)
+      }
+   }
+
+   // Lifting the write stop is a person's decision after looking at the account, never a
+   // reaction to a failure, so only the Settings button calls this. The open client keeps its own
+   // stop until it is reopened, so a lifted stop is followed by a reopen, which replays nothing.
+   // Answers whether a stop was lifted, nil when the engine could not say.
+   func resumeWrites() async -> Bool? {
+      let lifted: Bool
+
+      do throws(EngineError) {
+         guard case .value(let wasStopped) = try await engine.clearWriteStop() else {
+            return nil
+         }
+
+         lifted = wasStopped
+      } catch {
+         handle(error, label: "resuming writes", isWrite: false)
+         return nil
+      }
+
+      guard lifted else {
+         post(Notice(tone: .info, title: "Writes were not stopped", message: "Nothing needed lifting. The hour's write budget still counts every write sent."))
+         return false
+      }
+
+      await reconnectEngine(reloadsPages: false)
+
+      if isActive {
+         post(Notice(tone: .info, title: "Writes resumed", message: "The write stop is lifted. The hour's write budget still counts the writes sent before it."))
+      }
+
+      return true
    }
 
    // MARK: Events
@@ -222,15 +291,16 @@ final class EngineGateway {
    // A person confirming a checkpoint in their browser resumes future calls. The call the
    // checkpoint interrupted is not replayed.
    func resumeAfterCheckpoint() async {
-      await reconnectEngine()
+      await reconnectEngine(reloadsPages: true)
    }
 
    func connect() async {
-      await reconnectEngine()
+      await reconnectEngine(reloadsPages: true)
    }
 
-   // A reconnect that meets the checkpoint or the revoked session again keeps that state.
-   private func reconnectEngine() async {
+   // A reconnect that meets the checkpoint or the revoked session again keeps that state. Only a
+   // reconnect that follows a stopped session bumps the generation, which reloads the pages.
+   private func reconnectEngine(reloadsPages: Bool) async {
       await engine.reconnect()
 
       let stoppable = engine as? any ReportsSessionStop
@@ -251,7 +321,10 @@ final class EngineGateway {
       }
 
       session = .active
-      sessionGeneration += 1
+
+      if reloadsPages {
+         sessionGeneration += 1
+      }
    }
 
    func signOut() async {

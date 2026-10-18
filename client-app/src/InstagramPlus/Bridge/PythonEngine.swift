@@ -71,6 +71,10 @@ actor PythonEngine: AppEngine, ReportsSessionStop {
    }
 
    nonisolated let viewerID: String
+   nonisolated let launchBehavior: Engine.BehaviorChoice
+
+   // The engine has a method for none of these, so their controls stay disabled.
+   nonisolated let unwiredWrites = Set(Engine.UnwiredWrite.allCases)
 
    private let bridge: PythonBridge
    nonisolated let sessionFile: URL?
@@ -78,15 +82,23 @@ actor PythonEngine: AppEngine, ReportsSessionStop {
    private var handle: PythonBridge.Handle?
    private var stop: Stop?
 
+   // The person's Behavior choice, and the handle it was last applied to. A client opened from
+   // the session file runs PARITY, so a choice other than PARITY is applied before the first
+   // call on every handle, the ones a reconnect opens included.
+   private var behavior: Engine.BehaviorChoice
+   private var behaviorHandle: PythonBridge.Handle?
+
    private var eventBuffer: [Engine.Event] = []
    private var drainTask: Task<Void, Never>?
 
-   init(bridge: PythonBridge, opened: PythonBridge.OpenedSession?, sessionFile: URL?, enabled: Set<Capability>, viewerID: String? = nil) {
+   init(bridge: PythonBridge, opened: PythonBridge.OpenedSession?, sessionFile: URL?, enabled: Set<Capability>, viewerID: String? = nil, behavior: Engine.BehaviorChoice = .parity) {
       self.bridge = bridge
       self.viewerID = opened?.viewerID ?? viewerID ?? ""
       self.handle = opened?.handle
       self.sessionFile = sessionFile
       self.enabled = enabled
+      self.behavior = behavior
+      self.launchBehavior = behavior
    }
 
    private var notWired: EngineError {
@@ -186,6 +198,11 @@ actor PythonEngine: AppEngine, ReportsSessionStop {
          throw .authenticationFailed
       }
 
+      if behavior != .parity, behaviorHandle != handle {
+         _ = try await bridge.setBehavior(handle, behavior)
+         behaviorHandle = handle
+      }
+
       do throws(EngineError) {
          let result = try await body(bridge, handle)
 
@@ -201,6 +218,28 @@ actor PythonEngine: AppEngine, ReportsSessionStop {
 
          throw error
       }
+   }
+
+   // MARK: Behavior and the write stop
+
+   func setBehavior(_ choice: Engine.BehaviorChoice) async throws(EngineError) -> EngineResult<Void> {
+      behavior = choice
+
+      guard let handle else {
+         return .value(())
+      }
+
+      let result = try await bridge.setBehavior(handle, choice)
+      behaviorHandle = handle
+      return result
+   }
+
+   func clearWriteStop() async throws(EngineError) -> EngineResult<Bool> {
+      guard let sessionFile else {
+         throw .upstreamRejected(code: EngineError.sessionUnavailableCode)
+      }
+
+      return try await bridge.clearWriteStop(sessionFile: sessionFile)
    }
 
    // MARK: Events

@@ -4,6 +4,7 @@ import SwiftUI
 struct ConversationView: View {
    @Environment(DirectStore.self) private var direct
    @Environment(NavigationStore.self) private var navigation
+   @Environment(EngineGateway.self) private var gateway
 
    let thread: DirectThread
 
@@ -145,13 +146,16 @@ struct ConversationView: View {
                   }
                   .contextMenu {
                      if message.delivery == .sent {
-                        Button("Reply") {
+                        // A menu item shows no tooltip, so an unwired one says so in its title.
+                        Button(gateway.isWired(.reply) ? "Reply" : "Reply (not wired yet)") {
                            replyTarget = message
                         }
+                        .disabled(!gateway.isWired(.reply))
 
-                        Button(message.viewerReacted ? "Remove like" : "Like") {
+                        Button(gateway.isWired(.reaction) ? (message.viewerReacted ? "Remove like" : "Like") : "Like (not wired yet)") {
                            Task { await direct.toggleReaction(message.id, in: thread.id) }
                         }
+                        .disabled(!gateway.isWired(.reaction))
                      }
 
                      if isOutgoing, message.delivery == .sent {
@@ -224,7 +228,8 @@ struct ConversationView: View {
                Task { await direct.resolveRequest(thread.id, accept: true) }
             }
          }
-         .disabled(isPending)
+         .disabled(isPending || !gateway.isWired(.requestResolution))
+         .help(gateway.isWired(.requestResolution) ? "" : Engine.UnwiredWrite.requestResolution.tooltip)
       }
       .padding(16)
       .frame(maxWidth: .infinity)
@@ -289,14 +294,17 @@ struct ConversationView: View {
             } else {
                Image(systemName: "mic")
                   .foregroundStyle(Palette.textTertiary)
-                  .help("Voice messages are not supported")
+                  .help(Engine.UnwiredWrite.voice.tooltip)
 
                Button {
                   isPickingPhoto = true
                } label: {
                   Image(systemName: "photo")
+                     .foregroundStyle(gateway.isWired(.photo) ? Palette.textPrimary : Palette.textTertiary)
                }
                .buttonStyle(.plain)
+               .disabled(!gateway.isWired(.photo))
+               .help(gateway.isWired(.photo) ? "Send a photo" : Engine.UnwiredWrite.photo.tooltip)
                .accessibilityLabel("Send a photo")
 
                Button {
@@ -334,6 +342,8 @@ struct ConversationView: View {
          ))
          .toggleStyle(.switch)
          .font(.system(size: 13))
+         .disabled(!gateway.isWired(.mute))
+         .help(gateway.isWired(.mute) ? "" : Engine.UnwiredWrite.mute.tooltip)
          .padding(20)
 
          Hairline()
@@ -486,10 +496,12 @@ private struct MessageBubble: View {
          case .sent:
             EmptyView()
 
+         // The engine spaces writes about 30 s apart under PARITY, so a send can wait its turn.
          case .sending:
-            Text("Sending")
+            Text("Sending, paced")
                .font(.system(size: 11))
                .foregroundStyle(Palette.textSecondary)
+               .help("Writes wait their turn in the engine's pacer, about 30 seconds apart. Everything else keeps working meanwhile.")
 
          case .failed:
             HStack(spacing: 6) {
