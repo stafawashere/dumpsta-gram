@@ -16,6 +16,7 @@ final class DirectStore {
    private(set) var requestsState = LoadState.idle
    private(set) var pendingRequestIDs: Set<DirectThread.ID> = []
    private(set) var notes: [Note] = []
+   private(set) var notesState = LoadState.idle
    private(set) var unreadCounts: Engine.UnreadCounts?
    private(set) var isLoadingMoreThreads = false
 
@@ -35,6 +36,7 @@ final class DirectStore {
 
    private var drainTask: Task<Void, Never>?
    private var messageLoads: [DirectThread.ID: Task<Void, Never>] = [:]
+   private var inboxLoad: Task<Void, Never>?
 
    enum ListenerState: Equatable {
       case idle
@@ -105,17 +107,38 @@ final class DirectStore {
 
    // MARK: Inbox and requests
 
+   // One inbox load answers the first page, the notes tray and the unread count, which a
+   // browser reads from one page load too, so opening Messages costs one load rather than one
+   // per part. Callers that ask while a load is in flight wait for it instead of sending another.
    func loadInbox() async {
+      if let inFlight = inboxLoad {
+         await inFlight.value
+         return
+      }
+
+      let load = Task { await readInbox() }
+      inboxLoad = load
+      await load.value
+      inboxLoad = nil
+   }
+
+   private func readInbox() async {
       inboxState = .loading
 
+      if !notesState.hasLoaded {
+         notesState = .loading
+      }
+
       let engine = engine
-      switch await gateway.read("the inbox", { () async throws(EngineError) in try await engine.inbox(after: nil) }) {
-         case .success(let page):
-            threads = page.items.map { DirectThread($0, viewerID: viewerID) }
-            inboxCursor = page.hasNextPage ? page.endCursor : nil
+      switch await gateway.read("the inbox", { () async throws(EngineError) in try await engine.inboxLoad() }) {
+         case .success(let load):
+            threads = load.threads.items.map { DirectThread($0, viewerID: viewerID) }
+            inboxCursor = load.threads.hasNextPage ? load.threads.endCursor : nil
             isInboxStale = false
             inboxState = .loaded
-            await loadUnreadCounts()
+            notes = load.notes.map(note(from:))
+            notesState = .loaded
+            unreadCounts = load.unreadCounts
 
             // Only a listener that never ran starts here. One that stopped waits for a person.
             if listener == .idle {
@@ -124,9 +147,11 @@ final class DirectStore {
 
          case .failure(let error):
             inboxState = .failed(HomeStore.describe(error))
+            notesState = notesState.hasLoaded ? notesState : .failed(HomeStore.describe(error))
 
          case .halted:
             inboxState = .idle
+            notesState = notesState.hasLoaded ? notesState : .idle
       }
    }
 
@@ -211,33 +236,56 @@ final class DirectStore {
       }
    }
 
+   // The tray read on its own, after the viewer's note changed. Opening the inbox reads it
+   // with the inbox instead.
    func loadNotes() async {
+      // Notes already shown stay on screen while they are read again.
+      if !notesState.hasLoaded {
+         notesState = .loading
+      }
+
       let engine = engine
+      switch await gateway.read("notes", { () async throws(EngineError) in try await engine.notes() }) {
+         case .success(let engineNotes):
+            notes = engineNotes.map(note(from:))
+            notesState = .loaded
 
-      guard case .success(let engineNotes) = await gateway.read("notes", { () async throws(EngineError) in try await engine.notes() }) else {
-         return
-      }
+         case .failure(let error):
+            notesState = .failed(HomeStore.describe(error))
 
-      notes = engineNotes.map { note in
-         let knownAuthor = threads.flatMap(\.participants).first { $0.id == note.authorID }
-         let username = note.authorUsername ?? note.authorID
-         let author = knownAuthor ?? Account(id: note.authorID, username: username, displayName: username, location: nil)
-         return Note(note, author: author)
+         case .halted:
+            notesState = notesState.hasLoaded ? notesState : .idle
       }
+   }
+
+   private func note(from engineNote: Engine.Note) -> Note {
+      let knownAuthor = threads.flatMap(\.participants).first { $0.id == engineNote.authorID }
+      let username = engineNote.authorUsername ?? engineNote.authorID
+      let author = knownAuthor ?? Account(id: engineNote.authorID, username: username, displayName: username, location: nil)
+      return Note(engineNote, author: author)
    }
 
    // MARK: Threads
 
+   // Opening a thread reads its newest page, which is what has the engine mark it read
+   // (Behavior.mark_threads_read). A loaded thread that is read already is shown as it is; one
+   // that became unread since, through the listener, is read again so the mark is sent, rather
+   // than only cleared here.
    func select(_ threadID: DirectThread.ID) async {
       selectedThreadID = threadID
 
       let hasMessages = messageState(for: threadID).hasLoaded
-      guard !hasMessages else {
-         markRead(threadID)
+      let isUnread = threads.first { $0.id == threadID }?.isUnread ?? false
+
+      if hasMessages, !isUnread {
          return
       }
 
-      await loadMessages(threadID)
+      if hasMessages {
+         await rereadMessages(threadID)
+      } else {
+         await loadMessages(threadID)
+      }
    }
 
    // A thread is read once at a time. A caller that asks while a read of the same thread is in
@@ -275,21 +323,61 @@ final class DirectStore {
    }
 
    private func readFirstPage(_ threadID: DirectThread.ID) async {
-      messageStates[threadID] = .loading
+      // A thread read again keeps its messages on screen until the answer lands.
+      let previousState = messageState(for: threadID)
+      if !previousState.hasLoaded {
+         messageStates[threadID] = .loading
+      }
+
+      let wasUnread = threads.first { $0.id == threadID }?.isUnread ?? false
 
       let engine = engine
       switch await gateway.read("the conversation", { () async throws(EngineError) in try await engine.messages(threadFBID: threadID, after: nil) }) {
          case .success(let page):
-            messages[threadID] = page.items.map { DirectMessage($0, viewerID: viewerID) }
-            olderCursors[threadID] = page.hasNextPage ? page.endCursor : nil
+            let newest = page.items.map { DirectMessage($0, viewerID: viewerID) }
+            let kept = olderLoadedMessages(threadID, before: newest)
+
+            // A message still sending, or one that certainly failed and waits for a person, is
+            // not in the answer and stays below it. An uncertain one is settled by the answer.
+            let unsettled = messages[threadID]?.filter { $0.delivery == .sending || $0.delivery == .failed } ?? []
+
+            messages[threadID] = kept + newest + unsettled
+
+            // Older pages already scrolled in stay, with the cursor that continues below them.
+            if kept.isEmpty {
+               olderCursors[threadID] = page.hasNextPage ? page.endCursor : nil
+            }
+
             messageStates[threadID] = .loaded
             markRead(threadID)
 
+            if wasUnread {
+               adjustUnreadCount(by: -1)
+            }
+
          case .failure(let error):
-            messageStates[threadID] = .failed(HomeStore.describe(error))
+            if !previousState.hasLoaded {
+               messageStates[threadID] = .failed(HomeStore.describe(error))
+            }
 
          case .halted:
-            messageStates[threadID] = .idle
+            if !previousState.hasLoaded {
+               messageStates[threadID] = .idle
+            }
+      }
+   }
+
+   // The loaded messages older than a newest page read again, so a reread does not drop the
+   // pages a person scrolled back through. Local messages are handled by the caller.
+   private func olderLoadedMessages(_ threadID: DirectThread.ID, before newest: [DirectMessage]) -> [DirectMessage] {
+      guard let oldestNew = newest.map(\.sentAt).min(), let loaded = messages[threadID] else {
+         return []
+      }
+
+      let newIDs = Set(newest.map(\.id))
+      return loaded.filter { message in
+         let isServerMessage = !message.id.hasPrefix("local.")
+         return isServerMessage && message.sentAt < oldestNew && !newIDs.contains(message.id)
       }
    }
 
@@ -429,6 +517,13 @@ final class DirectStore {
    private func settle(_ outcome: CallOutcome<Engine.SentMessage>, localID: String, threadID: DirectThread.ID) {
       switch outcome {
          case .success(let sent):
+            // A read that landed while this was sending may already list it.
+            let isAlreadyListed = messages[threadID]?.contains { $0.id == sent.id } ?? false
+            if isAlreadyListed {
+               messages[threadID]?.removeAll { $0.id == localID }
+               return
+            }
+
             updateMessage(localID, in: threadID) { message in
                message.id = sent.id
                message.delivery = .sent
@@ -687,14 +782,27 @@ final class DirectStore {
 
       let isOpen = threadID == selectedThreadID
       let becomesUnread = !isOpen && !isFromViewer
-      if becomesUnread, let index = threads.firstIndex(where: { $0.id == threadID }) {
+      if becomesUnread, let index = threads.firstIndex(where: { $0.id == threadID }), !threads[index].isUnread {
          threads[index].isUnread = true
+         adjustUnreadCount(by: 1)
       }
    }
 
+   // The inbox is not read again here: under the default behavior that is a whole inbox page
+   // load, about thirty requests, for each message in a thread not listed. A person refreshes.
    private func markInboxStale() async {
       isInboxStale = true
-      await loadUnreadCounts()
+   }
+
+   // The engine's count moved by a thread this store saw change: one it opened, which the read
+   // marked read, or one a listener message made unread. The count stays the engine's, read
+   // again whole with the next inbox load; between loads only these changes are applied to it.
+   private func adjustUnreadCount(by change: Int) {
+      guard let counts = unreadCounts else {
+         return
+      }
+
+      unreadCounts = Engine.UnreadCounts(inbox: max(0, counts.inbox + change), pending: counts.pending)
    }
 
    private static func describe(_ reason: Engine.ListenerStopReason) -> String {
