@@ -11,6 +11,12 @@ extension PythonEngine {
       }
    }
 
+   func inboxLoad() async throws(EngineError) -> EngineResult<Engine.InboxLoad> {
+      try await guarded(.inbox) { bridge, handle throws(EngineError) in
+         try await bridge.inboxLoad(handle)
+      }
+   }
+
    func messages(threadFBID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Message>> {
       try await guarded(.messages) { bridge, handle throws(EngineError) in
          try await bridge.messages(handle, threadFBID: threadFBID, after: cursor)

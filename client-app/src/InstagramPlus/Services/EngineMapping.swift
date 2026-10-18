@@ -26,22 +26,12 @@ extension Account {
    }
 }
 
-// The one place the upstream's media_type numbers are read. The engine passes them through as
-// sent (1, 2 and 8 measured) and has no typed media kind on its public surface, so reading them
-// here is Instagram knowledge in Swift until the engine exposes one on every model that carries
-// media_type.
+// The engine names the kind. One it does not know (other) is drawn as a still, the one form
+// every media item can show from its images.
 extension Post.Kind {
-   init(mediaType: Int) {
-      switch mediaType {
-         case 2: self = .video
-         case 8: self = .carousel
-         default: self = .photo
-      }
-   }
-
-   init(_ kind: Engine.GridTile.Kind) {
+   init(_ kind: Engine.MediaKind) {
       switch kind {
-         case .photo: self = .photo
+         case .photo, .other: self = .photo
          case .carousel: self = .carousel
          case .video: self = .video
       }
@@ -66,7 +56,7 @@ extension Post {
       let pages = post.carouselChildren.map { child in
          Post.CarouselPage(
             id: child.id,
-            kind: Post.Kind(mediaType: child.mediaType),
+            kind: Post.Kind(child.mediaKind),
             images: child.images.map(Post.Rendition.init),
             videos: child.videos.map(Post.Rendition.init)
          )
@@ -80,7 +70,7 @@ extension Post {
          caption: post.caption ?? "",
          mediaDescription: post.accessibilityCaption ?? "",
          postedAt: post.takenAt,
-         kind: Post.Kind(mediaType: post.mediaType),
+         kind: Post.Kind(post.mediaKind),
          likeCount: post.likeCount,
          commentCount: post.commentCount,
          shareCount: nil,
@@ -245,23 +235,13 @@ extension ActivityItem {
    }
 }
 
-extension Engine.GridTile.Kind {
-   init(mediaType: Int) {
-      switch Post.Kind(mediaType: mediaType) {
-         case .photo: self = .photo
-         case .carousel: self = .carousel
-         case .video: self = .video
-      }
-   }
-}
-
 extension StoryFrames {
    init(_ reel: Engine.StoryReel) {
       let frames = reel.items.map { item in
          // MediaView loads a file or an https address and shows its placeholder for anything else.
          let imageURL = item.images.first.flatMap { URL(string: $0.url) }
 
-         return StoryFrames.Frame(id: item.id, postedAt: item.takenAt, isVideo: Post.Kind(mediaType: item.mediaType) == .video, mediaURL: imageURL)
+         return StoryFrames.Frame(id: item.id, postedAt: item.takenAt, isVideo: item.mediaKind == .video, mediaURL: imageURL)
       }
 
       self.init(reelID: reel.id, title: reel.title, frames: frames)
@@ -287,7 +267,7 @@ extension SavedCollection {
 
 extension ProfileTile {
    init(_ post: Engine.Post) {
-      self.init(id: post.pk, code: post.code, kind: Post.Kind(mediaType: post.mediaType), likeCount: post.likeCount, commentCount: post.commentCount, images: post.images.map(Post.Rendition.init))
+      self.init(id: post.pk, code: post.code, kind: Post.Kind(post.mediaKind), likeCount: post.likeCount, commentCount: post.commentCount, images: post.images.map(Post.Rendition.init))
    }
 }
 

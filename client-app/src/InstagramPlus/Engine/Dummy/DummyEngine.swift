@@ -112,6 +112,12 @@ actor DummyEngine: AppEngine {
    private(set) var closeCount = 0
 
    private var eventBuffer: [Engine.Event] = []
+
+   // Nil reads the whole inbox as one page. The exercise sets a size to walk the cursor.
+   private(set) var inboxPageSize: Int?
+
+   // The since value each listener start was given, oldest first. The exercise reads it.
+   private(set) var listenerStartsSince: [String?] = []
    private var listenerTask: Task<Void, Never>?
    private var listenerWatermark: Date = .now
 
@@ -348,6 +354,8 @@ actor DummyEngine: AppEngine {
          return
       }
 
+      listenerStartsSince.append(messageID)
+
       // Like the engine, a listener given the last handled message picks up after it, and one
       // given nothing starts from what it first sees.
       let handled = messageID.flatMap { id in world.messages.values.flatMap { $0 }.first { $0.id == id } }
@@ -371,6 +379,16 @@ actor DummyEngine: AppEngine {
             }
          }
       }
+   }
+
+   func configure(inboxPageSize: Int?) {
+      self.inboxPageSize = inboxPageSize
+   }
+
+   // A thread read elsewhere or not, as another device leaves it. The exercise uses it to make
+   // the engine's unread count differ from what the store last saw.
+   func setUnread(_ threadFBID: String, _ isUnread: Bool) {
+      world.threads[threadFBID]?.isUnread = isUnread
    }
 
    func stopEvents() async {

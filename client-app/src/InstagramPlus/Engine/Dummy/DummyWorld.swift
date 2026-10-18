@@ -130,7 +130,7 @@ struct DummyWorld: Sendable {
       }
 
       let isCarousel = record.kind == .carousel
-      let mediaType = record.kind == .video ? 2 : (isCarousel ? 8 : 1)
+      let mediaKind: Engine.MediaKind = record.kind == .video ? .video : (isCarousel ? .carousel : .photo)
 
       return Engine.Post(
          id: record.pk + "_" + record.authorID,
@@ -143,7 +143,7 @@ struct DummyWorld: Sendable {
          commentCount: comments[pk]?.count ?? 0,
          hasLiked: record.hasLiked,
          isSeen: false,
-         mediaType: mediaType,
+         mediaKind: mediaKind,
          images: [Engine.MediaImage(url: record.imageURL, width: 1080, height: 1080)],
          carouselMediaCount: isCarousel ? 3 : nil,
          accessibilityCaption: record.accessibilityCaption,
