@@ -70,11 +70,13 @@ __all__ = [
    "INBOX_CURSOR_SEPARATOR",
    "InboxPageAnswers",
    "inbox_cursor",
+   "public_inbox_page",
    "read_from_inbox_page",
    "read_inbox_page",
    "read_message_requests",
    "read_unread_counts",
    "split_inbox_cursor",
+   "unread_counts_from_rows",
 ]
 
 INBOX_CURSOR_SEPARATOR = ":"
@@ -110,7 +112,7 @@ def split_inbox_cursor(after: str) -> tuple[str, str]:
    return mailbox_id, upstream_cursor
 
 
-def _public_page(inbox_page: InboxPage) -> Page[DirectThread]:
+def public_inbox_page(inbox_page: InboxPage) -> Page[DirectThread]:
    page = inbox_page.page
    upstream_cursor = page.end_cursor
    end_cursor = None
@@ -269,7 +271,7 @@ async def read_inbox_page(
       return await read_from_inbox_page(
          sender,
          session,
-         lambda answers: _public_page(parse_inbox_page(classify(answers.listing))),
+         lambda answers: public_inbox_page(parse_inbox_page(classify(answers.listing))),
          companions=companions,
          cookie_sync=cookie_sync,
          user_agent=user_agent,
@@ -286,7 +288,7 @@ async def read_inbox_page(
          )
          response = await sender.send(request)
 
-         return _public_page(parse_inbox_page(classify(response)))
+         return public_inbox_page(parse_inbox_page(classify(response)))
 
       mailbox_id, upstream_cursor = next_page_key
       request = build_inbox_next_page_request(
@@ -294,7 +296,7 @@ async def read_inbox_page(
       )
       response = await sender.send(request)
 
-      return _public_page(parse_inbox_next_page(classify(response)))
+      return public_inbox_page(parse_inbox_next_page(classify(response)))
 
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
 
@@ -322,7 +324,7 @@ async def read_message_requests(
    return await with_token_recovery(attempt, sender=sender, session=session, deadline=deadline)
 
 
-def _unread_counts(inbox_rows: Response, pending_rows: Response) -> UnreadCounts:
+def unread_counts_from_rows(inbox_rows: Response, pending_rows: Response) -> UnreadCounts:
    inbox = parse_folder_unread_rows(classify(inbox_rows))
    pending = parse_folder_unread_rows(classify(pending_rows))
 
@@ -356,7 +358,9 @@ async def read_unread_counts(
       return await read_from_inbox_page(
          sender,
          session,
-         lambda answers: _unread_counts(answers.inbox_unread_rows, answers.pending_unread_rows),
+         lambda answers: unread_counts_from_rows(
+            answers.inbox_unread_rows, answers.pending_unread_rows
+         ),
          companions=companions,
          cookie_sync=cookie_sync,
          user_agent=user_agent,

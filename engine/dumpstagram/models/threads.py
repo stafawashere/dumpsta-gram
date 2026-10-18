@@ -16,7 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-__all__ = ["DirectThread", "MessageRequests", "ThreadParticipant", "UnreadCounts"]
+from dumpstagram.models.notes import Note
+from dumpstagram.models.pagination import Page
+
+__all__ = ["DirectThread", "InboxLoad", "MessageRequests", "ThreadParticipant", "UnreadCounts"]
 
 
 @dataclass(frozen=True)
@@ -103,3 +106,19 @@ class UnreadCounts:
    pending: int
    inbox_has_more: bool
    pending_has_more: bool
+
+
+@dataclass(frozen=True)
+class InboxLoad:
+   """What one load of the direct inbox answers: its first page, the notes tray and the counts.
+
+   A browser opening the inbox reads the three from one page load. ``threads`` is the page
+   :meth:`~dumpstagram.namespaces.direct.AsyncDirect.inbox` returns, its ``end_cursor`` the one
+   that method takes as ``after``. ``notes`` is what
+   :meth:`~dumpstagram.namespaces.direct.AsyncDirect.notes` returns and ``unread_counts`` what
+   :meth:`~dumpstagram.namespaces.direct.AsyncDirect.unread_counts` returns.
+   """
+
+   threads: Page[DirectThread]
+   notes: tuple[Note, ...]
+   unread_counts: UnreadCounts

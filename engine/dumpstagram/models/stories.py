@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from dumpstagram.models.feed import MediaImage
+from dumpstagram.models.feed import MediaImage, MediaKind
 
 __all__ = [
    "StoryItem",
@@ -151,6 +151,12 @@ class StoryItem:
    mentions: tuple[StoryMention, ...] = ()
    music: tuple[StoryMusic, ...] = ()
    shared_media: tuple[StorySharedMedia, ...] = ()
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)

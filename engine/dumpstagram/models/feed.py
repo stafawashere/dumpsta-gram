@@ -42,6 +42,7 @@ __all__ = [
    "Location",
    "MediaAudio",
    "MediaImage",
+   "MediaKind",
    "Post",
    "PostAuthor",
    "TaggedPlace",
@@ -102,6 +103,30 @@ class VideoRendition:
    width: int
    height: int
    version_type: int
+
+
+class MediaKind(StrEnum):
+   """What a post, slide, story item or thumbnail is, read from the upstream's ``media_type``.
+
+   The upstream numbers its media ``1`` for a photo, ``2`` for a video and ``8`` for a carousel,
+   the three values every post, grid, search, saved and story read measured has carried. A number
+   outside the three is :attr:`OTHER` rather than a :class:`~dumpstagram.errors.SchemaChanged`,
+   so one unexpected item cannot fail a page, and ``media_type`` keeps the number itself.
+   """
+
+   PHOTO = "photo"
+   VIDEO = "video"
+   CAROUSEL = "carousel"
+   OTHER = "other"
+
+   @classmethod
+   def from_media_type(cls, media_type: int) -> MediaKind:
+      """The kind the upstream's ``media_type`` number names, :attr:`OTHER` for any other."""
+
+      return _MEDIA_TYPE_KINDS.get(media_type, cls.OTHER)
+
+
+_MEDIA_TYPE_KINDS = {1: MediaKind.PHOTO, 2: MediaKind.VIDEO, 8: MediaKind.CAROUSEL}
 
 
 class AudioKind(StrEnum):
@@ -214,6 +239,12 @@ class CarouselChild:
    videos: tuple[VideoRendition, ...] = ()
    video_duration: float | None = None
    user_tags: tuple[UserTag, ...] | None = None
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)
@@ -342,6 +373,12 @@ class Post:
       at ``/reel/<code>/``, which is not built here because no reel page load was recorded."""
 
       return f"https://www.instagram.com/p/{self.code}/"
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)

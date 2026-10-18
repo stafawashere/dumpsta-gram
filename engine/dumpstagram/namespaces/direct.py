@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING
 
 from dumpstagram._core.direct import read_thread_messages
 from dumpstagram._core.inbox import read_inbox_page, read_message_requests, read_unread_counts
+from dumpstagram._core.inbox_load import read_inbox_load
 from dumpstagram._core.notes import read_notes
 from dumpstagram._core.paging import check_limit, iterate_pages, iterate_pages_blocking
 from dumpstagram._core.writes.direct import send_message, unsend_message
 from dumpstagram._core.writes.notes import delete_note, set_note
 from dumpstagram.models import (
    DirectThread,
+   InboxLoad,
    Message,
    MessageRequests,
    Note,
@@ -349,6 +351,39 @@ class AsyncDirect:
          )
       )
 
+   async def inbox_load(self) -> InboxLoad:
+      """Read the inbox's first page, the notes tray and the unread counts, as one inbox opens.
+
+      A caller that shows all three, as an inbox screen does, reads them here once rather than
+      through :meth:`inbox`, :meth:`notes` and :meth:`unread_counts`, each of which loads the
+      whole inbox page under the default behavior and reads one part of it. The answer's
+      ``threads`` is the page :meth:`inbox` returns, and its ``end_cursor`` is what :meth:`inbox`
+      takes as ``after`` for the next page.
+
+      Under the default behavior this is one inbox page load, as :meth:`notes` describes: the
+      document, the ten queries of its direct block at once and the page's companions, in one
+      action. :attr:`~dumpstagram.behavior.Behavior.inbox_route` set to
+      :attr:`~dumpstagram.behavior.InboxRoute.QUERIES` sends the listing, the tray and the two
+      folders' rows, four requests.
+
+      All three are read, and a failure in any of them raises, rather than a partial answer
+      standing in for a whole one. Listing marks nothing read.
+      """
+
+      client = self._client
+      client._refuse_when_closed()
+
+      return await client._watch_for_checkpoint(
+         read_inbox_load(
+            client._sender,
+            client._session,
+            route=client._behavior.inbox_route,
+            companions=client._behavior.page_load_companions,
+            cookie_sync=client._cookie_sync_if_on(),
+            user_agent=client._user_agent,
+         )
+      )
+
    def iter_messages(
       self,
       thread_fbid: str,
@@ -574,6 +609,19 @@ class SyncDirect:
       return self._client._loop.run(
          self._client._impl.direct.unread_counts(),
          operation="SyncClient.direct.unread_counts",
+      )
+
+   def inbox_load(self) -> InboxLoad:
+      """Read the inbox's first page, the notes tray and the unread counts together. Blocks
+      until it has all three.
+
+      The same call as :meth:`AsyncDirect.inbox_load`, run on the shared loop thread, with the
+      same requests under the same behavior.
+      """
+
+      return self._client._loop.run(
+         self._client._impl.direct.inbox_load(),
+         operation="SyncClient.direct.inbox_load",
       )
 
    def iter_inbox(self, *, limit: int | None, after: str | None = None) -> Iterator[DirectThread]:

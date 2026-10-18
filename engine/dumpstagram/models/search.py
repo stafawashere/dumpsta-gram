@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from dumpstagram.models.feed import MediaImage, PostAuthor, VideoRendition
+from dumpstagram.models.feed import MediaImage, MediaKind, PostAuthor, VideoRendition
 from dumpstagram.models.profiles import ProfileSummary
 
 __all__ = [
@@ -166,6 +166,12 @@ class SearchPost:
    video_duration: float | None = None
    has_audio: bool | None = None
    view_count: int | None = None
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)

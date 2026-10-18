@@ -59,7 +59,7 @@ from dumpstagram._private.web.parse.direct import (
 from dumpstagram._private.web.parse.notes import parse_inbox_tray
 from dumpstagram.behavior import PARITY, Behavior, InboxRoute
 from dumpstagram.client import SyncClient
-from dumpstagram.errors import CheckpointRequired, SchemaChanged
+from dumpstagram.errors import CheckpointRequired, SchemaChanged, UpstreamRejected
 from dumpstagram.session import Session
 from tests.test_direct import BOOTSTRAP_PAGE, FakeClock, a_bootstrapped_session, json_response
 from tests.test_direct_read import recorded
@@ -518,3 +518,91 @@ def test_the_blocking_walk_reads_the_first_page_from_the_load_then_the_next_page
    assert transport.groups[: len(INBOX_RECORDED_BURST)] == INBOX_RECORDED_BURST
    assert transport.groups[len(INBOX_RECORDED_BURST) :] == [[DIRECT_INBOX_NEXT_PAGE.friendly_name]]
    assert variables_of(next_page)["id"] == listing.mailbox_id
+
+
+@pytest.mark.asyncio
+async def test_one_inbox_load_answers_all_three_from_one_page_load() -> None:
+   """Catches ``direct.inbox_load`` loading the page once per part, sending anything a browser's
+   inbox load did not, or answering a part from another query of the block."""
+
+   transport = InboxBurstTransport()
+
+   load = await (await client_over(transport, SCRIPTED)).direct.inbox_load()
+
+   listing = parse_inbox_page(recorded("inbox_first_page.json"))
+   inbox_rows = parse_folder_unread_rows(recorded("inbox_unread_rows.json"))
+   pending_rows = parse_folder_unread_rows(recorded("pending_unread_rows.json"))
+
+   assert transport.groups == INBOX_RECORDED_BURST
+   assert len(transport.named(DOCUMENT)) == 1
+   assert load.notes == parse_inbox_tray(own_and_other_tray())
+   assert load.threads.items == listing.page.items
+   assert load.threads.end_cursor == f"{listing.mailbox_id}:{listing.page.end_cursor}"
+   assert (load.unread_counts.inbox, load.unread_counts.pending) == (
+      inbox_rows.unread,
+      pending_rows.unread,
+   )
+
+
+@pytest.mark.asyncio
+async def test_the_inbox_load_cursor_reads_the_next_page() -> None:
+   """Catches a load whose cursor the next page read refuses or keys on the wrong mailbox."""
+
+   transport = InboxBurstTransport()
+   client = await client_over(transport, SCRIPTED)
+
+   load = await client.direct.inbox_load()
+   assert load.threads.end_cursor is not None
+   await client.direct.inbox(after=load.threads.end_cursor)
+
+   [next_page] = transport.named(DIRECT_INBOX_NEXT_PAGE.friendly_name)
+   mailbox_id = parse_inbox_page(recorded("inbox_first_page.json")).mailbox_id
+
+   assert mailbox_id in json.dumps(variables_of(next_page))
+
+
+@pytest.mark.asyncio
+async def test_the_inbox_load_departure_sends_each_reads_own_queries() -> None:
+   """Catches the departure the configuration names not honoured by the combined read."""
+
+   transport = InboxBurstTransport()
+   queries = replace(SCRIPTED, inbox_route=InboxRoute.QUERIES)
+
+   await (await client_over(transport, queries)).direct.inbox_load()
+
+   assert transport.groups == [
+      [DIRECT_INBOX.friendly_name],
+      [INBOX_TRAY.friendly_name],
+      [INBOX_ROWS],
+      [PENDING_ROWS],
+   ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+   ("broken", "raised"),
+   [
+      (INBOX_TRAY.friendly_name, SchemaChanged),
+      (DIRECT_INBOX.friendly_name, UpstreamRejected),
+      (PENDING_ROWS, UpstreamRejected),
+   ],
+)
+async def test_a_part_that_failed_fails_the_whole_load(
+   broken: str, raised: type[Exception]
+) -> None:
+   """Catches a load that answers with an empty tray, no threads or zero unread in place of a
+   part that failed, a degraded answer no caller could tell from a correct one."""
+
+   answers = {
+      INBOX_TRAY.friendly_name: json_response(
+         {"data": {"response": None}, "extensions": {"is_final": True}}
+      ),
+      DIRECT_INBOX.friendly_name: json_response(
+         {"errors": [{"code": 1675004, "message": "rejected"}]}
+      ),
+      PENDING_ROWS: json_response({"errors": [{"code": 1675004, "message": "rejected"}]}),
+   }
+   transport = InboxBurstTransport(**{broken: answers[broken]})
+
+   with pytest.raises(raised):
+      await (await client_over(transport, SCRIPTED)).direct.inbox_load()

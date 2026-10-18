@@ -30,6 +30,7 @@ from dumpstagram.models.feed import (
    Location,
    MediaAudio,
    MediaImage,
+   MediaKind,
    PostAuthor,
    UserTag,
    VideoRendition,
@@ -239,6 +240,12 @@ class SavedPost:
    location: Location | None = None
    user_tags: tuple[UserTag, ...] | None = None
    collaborators: tuple[ProfileSummary, ...] | None = None
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)

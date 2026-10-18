@@ -23,6 +23,7 @@ from dumpstagram.models.feed import (
    Location,
    MediaAudio,
    MediaImage,
+   MediaKind,
    PostAuthor,
    UserTag,
    VideoRendition,
@@ -104,6 +105,12 @@ class PostDetail:
 
       return f"https://www.instagram.com/p/{self.code}/"
 
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
+
 
 @dataclass(frozen=True)
 class PostThumbnail:
@@ -136,6 +143,12 @@ class PostThumbnail:
    carousel_media_count: int | None = None
    images: tuple[MediaImage, ...] = ()
 
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
+
 
 @dataclass(frozen=True)
 class PublishedPost:
@@ -159,6 +172,12 @@ class PublishedPost:
    taken_at: datetime
    media_type: int
    upload_ids: tuple[str, ...]
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)
@@ -193,6 +212,12 @@ class ReelThumbnail:
    original_height: int
    play_count: int | None = None
    images: tuple[MediaImage, ...] = ()
+
+   @property
+   def media_kind(self) -> MediaKind:
+      """``media_type`` as a :class:`~dumpstagram.models.MediaKind`."""
+
+      return MediaKind.from_media_type(self.media_type)
 
 
 @dataclass(frozen=True)
