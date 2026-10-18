@@ -32,6 +32,10 @@ enum Engine {
       case suggestedUsers = "suggested_users"
       case ad = "ad"
       case endOfFeed = "end_of_feed_demarcator"
+      case exploreStory = "explore_story"
+      case bloksUnit = "bloks_netego"
+      case icebreakers = "abra_icebreakers_in_feed_unit"
+      case adForAd = "ad4ad_in_webfeed"
    }
 
    struct FeedItem: Sendable {
@@ -39,6 +43,32 @@ enum Engine {
       let post: Post?
    }
 
+   struct VideoRendition: Sendable, Hashable {
+      let url: String
+      let width: Int
+      let height: Int
+      let versionType: Int
+   }
+
+   // Location.id is what feeds.location takes. The engine's lat and lng are not carried, since no
+   // page shows them.
+   struct Location: Sendable, Hashable {
+      let id: String
+      let name: String
+   }
+
+   // mediaType is the upstream's number as the engine passes it through. See Post.Kind.
+   struct CarouselChild: Sendable, Hashable {
+      let id: String
+      let pk: String
+      let mediaType: Int
+      let images: [MediaImage]
+      let videos: [VideoRendition]
+      let videoDuration: Double?
+   }
+
+   // One Post or one PostDetail. PostDetail carries no is_seen, so isSeen is nil when the post
+   // was read by its code.
    struct Post: Sendable, Hashable {
       let id: String
       let pk: String
@@ -49,17 +79,26 @@ enum Engine {
       let likeCount: Int
       let commentCount: Int
       let hasLiked: Bool
-      let isSeen: Bool
+      let isSeen: Bool?
       let mediaType: Int
       let images: [MediaImage]
       let carouselMediaCount: Int?
       let accessibilityCaption: String?
       let likeAndViewCountsDisabled: Bool
+      let location: Location?
 
-      // Proposed. Not in the 1.1.0 surface.
-      let location: String?
+      // Not on the engine's Post or PostDetail. Nil from the real engine, and never guessed.
       let hasSaved: Bool?
       let commentsDisabled: Bool?
+
+      var videos: [VideoRendition] = []
+      var videoDuration: Double? = nil
+      var carouselChildren: [CarouselChild] = []
+
+      // MediaAudio.audio_id and its title, which feeds.audio and feeds.audio_clips take. Nil
+      // where the post carries no audio model.
+      var audioID: String? = nil
+      var audioTitle: String? = nil
    }
 
    struct CommentAuthor: Sendable, Hashable {
@@ -153,7 +192,7 @@ enum Engine {
       let repliedToMessageID: String?
       let offlineThreadingID: String?
 
-      // Proposed. Not in the 1.1.0 surface.
+      // Not on the engine's Message, so nil from the real engine.
       var mediaURL: String? = nil
    }
 
@@ -167,6 +206,7 @@ enum Engine {
    enum NoteAudience: Int, Sendable, CaseIterable {
       case mutualFollows = 0
       case closeFriends = 1
+      case internalOnly = 2
    }
 
    struct Note: Sendable, Hashable {
@@ -214,19 +254,46 @@ enum Engine {
       let fullName: String
       let isVerified: Bool
       let isPrivate: Bool
+      var profilePicURL: String? = nil
    }
 
+   // The engine's TrayReel carries neither an item count nor an unseen flag, so both are nil on
+   // the real engine rather than guessed from its dates. seenAt is TrayReel.seen_at as it came.
    struct StoryTrayEntry: Sendable, Hashable {
       let user: UserSummary
-      let itemCount: Int
+      let itemCount: Int?
       let latestAt: Date
-      let hasUnseen: Bool
+      let hasUnseen: Bool?
+      var seenAt: Date? = nil
    }
 
    struct Highlight: Sendable, Hashable {
       let id: String
       let title: String
-      let itemCount: Int
+      let itemCount: Int?
+   }
+
+   struct StoryItem: Sendable, Hashable {
+      let id: String
+      let pk: String
+      let ownerID: String
+      let mediaType: Int
+      let takenAt: Date
+      let expiringAt: Date
+      let images: [MediaImage]
+      let videoDuration: Double?
+      let canReply: Bool
+   }
+
+   // One live reel or one highlight, every item in it, as stories.reel and stories.highlight
+   // return it.
+   struct StoryReel: Sendable, Hashable {
+      let id: String
+      let ownerID: String
+      let ownerUsername: String
+      let title: String?
+      let latestItemAt: Date
+      let items: [StoryItem]
    }
 
    struct GridTile: Sendable, Hashable {
@@ -240,13 +307,22 @@ enum Engine {
       let code: String
       let kind: Kind
       let likeCount: Int
-      let commentCount: Int
+
+      // Nil where the engine model has no comment count, as on SavedPost.
+      let commentCount: Int?
+
+      // The renditions the engine gave for the tile, as they came. Empty where it gave none.
+      var images: [MediaImage] = []
    }
 
    struct Reel: Sendable, Hashable {
       let post: Post
       let audioTitle: String
       let playCount: Int
+
+      // False on the real engine, whose reels feed carries no play count.
+      var isPlayCountKnown = true
+      var audioID: String? = nil
    }
 
    struct ActivityEntry: Sendable, Hashable {
@@ -281,9 +357,129 @@ enum Engine {
       let postCount: Int
    }
 
+   // What search.recent answers. The engine carries a payload only for account and keyword
+   // entries. A hashtag or a place entry arrives as its kind alone.
+   struct RecentSearch: Sendable, Hashable {
+      enum Kind: String, Sendable {
+         case account = "user"
+         case keyword = "keyword"
+         case hashtag = "hashtag"
+         case place = "place"
+      }
+
+      let kind: Kind
+      let account: UserSummary?
+      let keyword: String?
+   }
+
+   // One activity row whose kind the engine gives only as the upstream's own string. The app
+   // shows the engine's line and kind as they came, because mapping them onto
+   // ActivityEntry.Kind would put Instagram knowledge in Swift.
+   struct UntypedActivityEntry: Sendable, Hashable {
+      let id: String
+      let rawKind: String
+      let text: String
+      let accountID: String?
+      let accountUsername: String?
+      let occurredAt: Date
+      let mediaCode: String?
+   }
+
+   // The activity feed as one read of it answers. hasUnseen is nil where nothing says whether
+   // the viewer has seen it.
+   struct ActivityFeed: Sendable, Hashable {
+      let entries: [ActivityEntry]
+      let untyped: [UntypedActivityEntry]
+      let hasUnseen: Bool?
+   }
+
    struct Relationships: Sendable, Hashable {
       let closeFriendIDs: [String]
       let blockedIDs: [String]
       let mutedIDs: [String]
+      var closeFriends: [UserSummary] = []
+      var blocked: [UserSummary] = []
+
+      // The engine has no muted accounts read, so mutedIDs is empty on it for want of a source.
+      var isMutedListKnown = true
+   }
+
+   // Added after 1.1.0, the engine capabilities no page used before.
+
+   // media.page, the post, its first comments page and the author's grid in one read.
+   struct PostPage: Sendable {
+      let post: Post
+      let comments: Page<Comment>
+      let authorGrid: [GridTile]
+   }
+
+   // profiles.mutual_followers answers its first page only, with whether more exist.
+   struct MutualFollowers: Sendable, Hashable {
+      let accounts: [UserSummary]
+      let hasMore: Bool
+   }
+
+   struct SavedCollection: Sendable, Hashable {
+      enum Kind: String, Sendable {
+         case allPosts = "IGAllMediaAutoCollection"
+         case audio = "XDTAudioAutoCollection"
+         case other = "other"
+      }
+
+      let id: String
+      let name: String
+      let kind: Kind
+      let mediaCount: Int?
+      let coverURLs: [String]
+   }
+
+   struct SavedCollections: Sendable, Hashable {
+      let collections: [SavedCollection]
+      let hasMore: Bool
+   }
+
+   struct MediaAudio: Sendable, Hashable {
+      let audioID: String
+      let title: String
+      let artist: String
+      let isExplicit: Bool
+   }
+
+   // feeds.audio. The audio is nil where the engine read none, and the cursor goes back to
+   // feeds.audio_clips exactly as it came.
+   struct AudioPage: Sendable {
+      let audio: MediaAudio?
+      let clips: [Post]
+      let clipsCount: Int
+      let isRestricted: Bool
+      let hasNextPage: Bool
+      let endCursor: String?
+   }
+
+   // One row of search.top. Hashtag and place rows carry no payload in the engine.
+   struct SearchResult: Sendable, Hashable {
+      enum Kind: String, Sendable {
+         case account = "user"
+         case keyword = "keyword"
+         case hashtag = "hashtag"
+         case place = "place"
+      }
+
+      let kind: Kind
+      let account: UserSummary?
+      let keyword: String?
+      let position: Int?
+   }
+
+   // search.keyword answers its first page only, with whether more exist.
+   struct KeywordResults: Sendable, Hashable {
+      let posts: [GridTile]
+      let hasMore: Bool
+   }
+
+   // search.hashtag, the header of an exact tag. The engine gives no post count.
+   struct HashtagHeader: Sendable, Hashable {
+      let id: String
+      let name: String
    }
 }

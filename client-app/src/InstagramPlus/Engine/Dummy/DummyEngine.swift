@@ -93,6 +93,7 @@ actor DummyEngine: AppEngine {
    nonisolated let viewerID: String
 
    static let writeBudgetPerHour = 30
+   static let exerciseSeed: UInt64 = 20_260_930
    static let feedPageSize = 4
    static let messagePageSize = 20
 
@@ -107,14 +108,24 @@ actor DummyEngine: AppEngine {
    private var requestLog: [RequestRecord] = []
    private var nextRequestID = 0
 
+   // How many times an account session closed this client. The exercise reads it.
+   private(set) var closeCount = 0
+
    private var eventBuffer: [Engine.Event] = []
    private var listenerTask: Task<Void, Never>?
    private var listenerWatermark: Date = .now
+
+   // Every roll the dummy makes, the transport failure roll included. Under --exercise it is seeded,
+   // so each run draws the same numbers in the same order.
+   private var random: DummyRandom
 
    init(timing: Timing, world: DummyWorld = .seed()) {
       self.world = world
       self.timing = timing
       self.viewerID = world.viewerID
+
+      let isExerciseRun = ProcessInfo.processInfo.arguments.contains("--exercise")
+      self.random = DummyRandom(seed: isExerciseRun ? Self.exerciseSeed : nil)
    }
 
    func configure(timing newTiming: Timing) {
@@ -129,6 +140,11 @@ actor DummyEngine: AppEngine {
       faults.sessionRevoked = false
       faults.checkpointOnNextRequest = false
       writesStopped = false
+   }
+
+   func close() async {
+      closeCount += 1
+      await stopEvents()
    }
 
    func status() -> Status {
@@ -172,7 +188,7 @@ actor DummyEngine: AppEngine {
          writeDepartures.append(.now)
       }
 
-      await sleep(seconds: Double.random(in: timing.latency))
+      await sleep(seconds: Double.random(in: timing.latency, using: &random))
 
       if faults.sessionRevoked {
          finishRecord(recordID, outcome: "AuthenticationFailed")
@@ -185,7 +201,7 @@ actor DummyEngine: AppEngine {
          return .checkpoint(Checkpoint(requiredAction: "confirm_it_was_you"))
       }
 
-      let transportRoll = Double.random(in: 0..<1)
+      let transportRoll = Double.random(in: 0..<1, using: &random)
       let transportFails = transportRoll < faults.transportFailureRate
 
       if transportFails {
@@ -234,7 +250,7 @@ actor DummyEngine: AppEngine {
    }
 
    private func gap(_ spacing: (floor: Double, meanJitter: Double)) -> Double {
-      spacing.floor + Double.random(in: 0...1) * 2 * spacing.meanJitter
+      spacing.floor + Double.random(in: 0...1, using: &random) * 2 * spacing.meanJitter
    }
 
    private func refuseWriteIfBlocked() throws(EngineError) {
@@ -332,7 +348,10 @@ actor DummyEngine: AppEngine {
          return
       }
 
-      listenerWatermark = .now
+      // Like the engine, a listener given the last handled message picks up after it, and one
+      // given nothing starts from what it first sees.
+      let handled = messageID.flatMap { id in world.messages.values.flatMap { $0 }.first { $0.id == id } }
+      listenerWatermark = handled?.sentAt ?? .now
       listenerTask = Task { [weak self] in
          while !Task.isCancelled {
             guard let self else {
@@ -421,12 +440,12 @@ actor DummyEngine: AppEngine {
    }
 
    func scheduleReply(in threadFBID: String) {
-      guard faults.repliesFromOthers, let thread = world.threads[threadFBID], let senderID = thread.participantIDs.randomElement() else {
+      guard faults.repliesFromOthers, let thread = world.threads[threadFBID], let senderID = thread.participantIDs.randomElement(using: &random) else {
          return
       }
 
-      let delay = Double.random(in: 4...18)
-      let text = DummyWorld.cannedReplies.randomElement() ?? "Ok"
+      let delay = Double.random(in: 4...18, using: &random)
+      let text = DummyWorld.cannedReplies.randomElement(using: &random) ?? "Ok"
       world.pendingReplies.append(DummyWorld.PendingReply(dueAt: .now.addingTimeInterval(delay), threadFBID: threadFBID, senderID: senderID, text: text))
    }
 
@@ -434,5 +453,29 @@ actor DummyEngine: AppEngine {
       let shouldFail = faults.schemaChangeOnNextFeed
       faults.schemaChangeOnNextFeed = false
       return shouldFail
+   }
+}
+
+// SplitMix64 when seeded, the system generator otherwise.
+struct DummyRandom: RandomNumberGenerator, Sendable {
+   private var seededState: UInt64?
+   private var system = SystemRandomNumberGenerator()
+
+   init(seed: UInt64?) {
+      seededState = seed
+   }
+
+   mutating func next() -> UInt64 {
+      guard var state = seededState else {
+         return system.next()
+      }
+
+      state &+= 0x9E37_79B9_7F4A_7C15
+      seededState = state
+
+      var mixed = state
+      mixed = (mixed ^ (mixed >> 30)) &* 0xBF58_476D_1CE4_E5B9
+      mixed = (mixed ^ (mixed >> 27)) &* 0x94D0_49BB_1331_11EB
+      return mixed ^ (mixed >> 31)
    }
 }

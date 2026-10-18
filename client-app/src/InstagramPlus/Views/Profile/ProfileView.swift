@@ -10,6 +10,7 @@ struct ProfileView: View {
 
    @State private var tab = ProfileTab.posts
    @State private var presentedList: FollowListKind?
+   @State private var isShowingSimilar = false
 
    var body: some View {
       Group {
@@ -17,6 +18,11 @@ struct ProfileView: View {
             ScrollView {
                VStack(spacing: 0) {
                   header(details)
+
+                  if isShowingSimilar, !profiles.isViewer(accountID) {
+                     similarAccountsRow
+                        .padding(.top, 32)
+                  }
 
                   if showsHighlights(details) {
                      highlights(profiles.highlights[accountID] ?? [])
@@ -114,7 +120,7 @@ struct ProfileView: View {
                      .foregroundStyle(Palette.link)
                }
 
-               if details.followsViewer, !isViewer {
+               if details.followsViewer == true, !isViewer {
                   Text("Follows you")
                      .font(.system(size: 12, weight: .medium))
                      .foregroundStyle(Palette.textSecondary)
@@ -125,6 +131,10 @@ struct ProfileView: View {
                }
             }
             .foregroundStyle(Palette.textPrimary)
+
+            if !isViewer, !isLocked(details) {
+               mutualFollowersLine(for: account.id)
+            }
          }
 
          Spacer(minLength: 0)
@@ -152,20 +162,23 @@ struct ProfileView: View {
          .buttonStyle(.plain)
          .accessibilityLabel("Settings")
       } else {
-         let isFollowing = details.isFollowing
-         let isRequested = details.hasRequestedFollow
+         let isFollowing = details.isFollowing == true
+         let isRequested = details.hasRequestedFollow == true
          let isPending = profiles.isPending(details.account.id)
+         let isRelationshipKnown = profiles.isRelationshipKnown(details.account.id)
+         let isBlocking = details.isBlocking == true
          let title = isFollowing ? "Following" : (isRequested ? "Requested" : "Follow")
 
-         if !details.isBlocking {
+         if !isBlocking {
             PrimaryButton(title: title, isProminent: !isFollowing && !isRequested) {
                Task { await profiles.toggleFollow(details.account.id) }
             }
-            .disabled(isPending)
-            .opacity(isPending ? 0.6 : 1)
+            .disabled(isPending || !isRelationshipKnown)
+            .opacity(isPending || !isRelationshipKnown ? 0.6 : 1)
+            .help(isRelationshipKnown ? "" : "Instagram+ could not read whether you follow this account")
          }
 
-         if !details.isBlocking {
+         if !isBlocking {
             PrimaryButton(title: "Message", isProminent: false) {
                Task {
                   let didOpen = await direct.openThread(with: details.account)
@@ -177,24 +190,40 @@ struct ProfileView: View {
             }
          }
 
+         Button {
+            isShowingSimilar.toggle()
+
+            if isShowingSimilar {
+               Task { await profiles.loadSimilarAccounts(details.account.id) }
+            }
+         } label: {
+            Image(systemName: isShowingSimilar ? "person.2.fill" : "person.2")
+               .font(.system(size: 14))
+               .foregroundStyle(Palette.textPrimary)
+         }
+         .buttonStyle(.plain)
+         .help("Similar accounts")
+         .accessibilityLabel("Similar accounts")
+
          Menu {
-            if details.isBlocking {
+            if isBlocking {
                Button("Unblock") {
                   Task { await profiles.setBlocked(details.account.id, blocked: false) }
                }
             } else {
-               Button(details.isCloseFriend ? "Remove from close friends" : "Add to close friends") {
-                  Task { await profiles.setCloseFriend(details.account.id, included: !details.isCloseFriend) }
+               Button(details.isCloseFriend == true ? "Remove from close friends" : "Add to close friends") {
+                  Task { await profiles.setCloseFriend(details.account.id, included: details.isCloseFriend != true) }
                }
+               .disabled(details.isCloseFriend == nil)
 
-               Button(details.isMuting ? "Unmute" : "Mute") {
-                  Task { await profiles.setMuted(details.account.id, muted: !details.isMuting) }
+               Button(details.isMuting == true ? "Unmute" : "Mute") {
+                  Task { await profiles.setMuted(details.account.id, muted: details.isMuting != true) }
                }
+               .disabled(details.isMuting == nil)
 
-               Button("Copy profile link") {
-                  NSPasteboard.general.clearContents()
-                  NSPasteboard.general.setString("https://www.instagram.com/\(details.account.username)/", forType: .string)
-               }
+               // The engine gives no profile address, so none is built here.
+               Button("Copy profile link (unavailable)") {}
+                  .disabled(true)
 
                Divider()
 
@@ -214,6 +243,199 @@ struct ProfileView: View {
       }
    }
 
+   // Mutual followers are read when a person asks, never with the profile.
+   @ViewBuilder
+   private func mutualFollowersLine(for accountID: Account.ID) -> some View {
+      let state = profiles.mutualFollowerState(for: accountID)
+      let mutual = profiles.mutualFollowers[accountID] ?? []
+
+      switch state {
+         case .idle:
+            Button("See followers you know") {
+               Task { await profiles.loadMutualFollowers(accountID) }
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Palette.textSecondary)
+
+         case .loading:
+            Text("Loading followers you know")
+               .font(.system(size: 12))
+               .foregroundStyle(Palette.textSecondary)
+
+         case .failed(let message):
+            Button("Could not load followers you know. \(message) Try again") {
+               Task { await profiles.loadMutualFollowers(accountID) }
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12))
+            .foregroundStyle(Palette.textSecondary)
+
+         case .loaded, .notFound:
+            HStack(spacing: 8) {
+               HStack(spacing: -6) {
+                  ForEach(mutual.prefix(3)) { account in
+                     Avatar(account: account, diameter: 20)
+                        .overlay(Circle().strokeBorder(Palette.card, lineWidth: 1.5))
+                  }
+               }
+
+               Text(mutualFollowersText(mutual, hasMore: profiles.mutualFollowersHaveMore.contains(accountID)))
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.textSecondary)
+            }
+      }
+   }
+
+   private func mutualFollowersText(_ mutual: [Account], hasMore: Bool) -> String {
+      let names = mutual.prefix(2).map(\.username)
+
+      guard !names.isEmpty else {
+         return "No followers you know"
+      }
+
+      let shown = names.joined(separator: ", ")
+      let remaining = mutual.count - names.count
+
+      if remaining > 0 {
+         return "Followed by \(shown) and \(remaining) \(remaining == 1 ? "other" : "others")\(hasMore ? " and more" : "")"
+      }
+
+      return "Followed by \(shown)\(hasMore ? " and more" : "")"
+   }
+
+   private var similarAccountsRow: some View {
+      let state = profiles.similarAccountState(for: accountID)
+      let accounts = profiles.similarAccounts[accountID] ?? []
+
+      return VStack(alignment: .leading, spacing: 14) {
+         Text("Similar accounts")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Palette.textPrimary)
+
+         switch state {
+            case .idle, .loading:
+               LoadingStateView(label: "Loading similar accounts")
+                  .frame(height: 120)
+
+            case .failed(let message):
+               ErrorStateView(message: message) {
+                  Task { await profiles.loadSimilarAccounts(accountID) }
+               }
+
+            case .loaded, .notFound:
+               if accounts.isEmpty {
+                  Text("Instagram suggested no similar accounts.")
+                     .font(.system(size: 13))
+                     .foregroundStyle(Palette.textSecondary)
+               } else {
+                  ScrollView(.horizontal, showsIndicators: false) {
+                     HStack(spacing: 12) {
+                        ForEach(accounts) { account in
+                           similarAccountCard(account)
+                        }
+                     }
+                  }
+               }
+         }
+      }
+      .padding(.horizontal, 40)
+   }
+
+   private func similarAccountCard(_ account: Account) -> some View {
+      Button {
+         navigation.openProfile(account.id)
+      } label: {
+         VStack(spacing: 8) {
+            Avatar(account: account, diameter: 56)
+
+            VStack(spacing: 2) {
+               HStack(spacing: 3) {
+                  Text(account.username)
+                     .font(.system(size: 12, weight: .semibold))
+                     .lineLimit(1)
+
+                  if account.isVerified {
+                     VerifiedBadge(size: 10)
+                  }
+               }
+
+               Text(account.displayName)
+                  .font(.system(size: 11))
+                  .foregroundStyle(Palette.textSecondary)
+                  .lineLimit(1)
+            }
+         }
+         .foregroundStyle(Palette.textPrimary)
+         .frame(width: 128, height: 128)
+         .background(Palette.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.hairline))
+      }
+      .buttonStyle(.plain)
+   }
+
+   // The viewer's saved collections, read when the saved tab asks for them. The engine gives
+   // the first page and says whether more exist.
+   @ViewBuilder
+   private var collectionsSection: some View {
+      switch profiles.collectionsState {
+         case .idle:
+            Button("Show collections") {
+               Task { await profiles.loadCollections() }
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Palette.link)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 16)
+
+         case .loading:
+            LoadingStateView(label: "Loading collections")
+               .frame(height: 120)
+
+         case .failed(let message):
+            ErrorStateView(message: message) {
+               Task { await profiles.loadCollections() }
+            }
+
+         case .loaded, .notFound:
+            VStack(alignment: .leading, spacing: 10) {
+               ScrollView(.horizontal, showsIndicators: false) {
+                  HStack(spacing: 12) {
+                     ForEach(profiles.collections) { collection in
+                        collectionCard(collection)
+                     }
+                  }
+               }
+
+               if profiles.hasMoreCollections {
+                  Text("There are more collections, but Instagram+ can read only the first page yet.")
+                     .font(.system(size: 12))
+                     .foregroundStyle(Palette.textSecondary)
+               }
+            }
+            .padding(.top, 16)
+      }
+   }
+
+   private func collectionCard(_ collection: SavedCollection) -> some View {
+      VStack(alignment: .leading, spacing: 6) {
+         MediaView(seed: collection.id, url: collection.coverURL, cornerRadius: 10)
+            .frame(width: 140, height: 140)
+
+         Text(collection.name)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Palette.textPrimary)
+            .lineLimit(1)
+
+         Text(collection.mediaCount.map { "\(CompactCount.format($0)) posts" } ?? "Count not given")
+            .font(.system(size: 11))
+            .foregroundStyle(Palette.textSecondary)
+      }
+      .frame(width: 140)
+      .help(collection.isAllPosts ? "Every post you saved" : "")
+   }
+
    private func stat(_ value: Int, _ label: String) -> some View {
       Text("\(Text(CompactCount.format(value)).fontWeight(.semibold)) \(label)")
          .font(.system(size: 15))
@@ -228,7 +450,8 @@ struct ProfileView: View {
                   return
                }
 
-               navigation.presentedHighlight = PresentedHighlight(owner: owner, highlight: highlight, itemCount: 4)
+               // The engine gives no item count for a highlight. The viewer counts the items of its reel.
+               navigation.presentedHighlight = PresentedHighlight(owner: owner, highlight: highlight, itemCount: 0)
             } label: {
             VStack(spacing: 10) {
                MediaView(seed: highlight.id, cornerRadius: 40)
@@ -251,8 +474,8 @@ struct ProfileView: View {
 
    private func isLocked(_ details: ProfileDetails) -> Bool {
       let isViewer = profiles.isViewer(details.account.id)
-      let isPrivateToViewer = details.isPrivate && !isViewer && !details.isFollowing
-      return isPrivateToViewer || details.isBlocking
+      let isPrivateToViewer = details.isPrivate && !isViewer && details.isFollowing != true
+      return isPrivateToViewer || details.isBlocking == true
    }
 
    private func showsHighlights(_ details: ProfileDetails) -> Bool {
@@ -264,7 +487,7 @@ struct ProfileView: View {
    private func content(_ details: ProfileDetails) -> some View {
       let isViewer = profiles.isViewer(details.account.id)
 
-      if details.isBlocking {
+      if details.isBlocking == true {
          VStack(spacing: 0) {
             Hairline()
 
@@ -303,6 +526,11 @@ struct ProfileView: View {
             .frame(maxWidth: .infinity)
             .overlay(alignment: .top) { Hairline() }
 
+            if tab == .saved {
+               collectionsSection
+                  .padding(.bottom, 16)
+            }
+
             let tiles = profiles.tiles(for: accountID, tab: tab)
 
             LoadStateContainer(state: profiles.tileState(for: accountID, tab: tab), retry: loadTab) {
@@ -310,7 +538,23 @@ struct ProfileView: View {
                   EmptyStateView(symbolName: tab.symbolName, title: "No \(tab.title.lowercased()) yet", message: emptyMessage(for: tab, isViewer: isViewer))
                      .frame(height: 320)
                } else {
-                  TileGrid(tiles: tiles, isTall: tab == .reels)
+                  ProfileTileGrid(tiles: tiles, isTall: tab == .reels)
+
+                  if profiles.hasMoreTiles(for: accountID, tab: tab) {
+                     if profiles.canLoadMoreTiles(tab: tab) {
+                        LoadingStateView(label: "Loading more")
+                           .padding(.vertical, -30)
+                           .onAppear {
+                              Task { await profiles.loadMoreTiles(accountID, tab: tab) }
+                           }
+                     } else {
+                        Text("There are more, but Instagram+ can read only the first page of this tab yet.")
+                           .font(.system(size: 12))
+                           .foregroundStyle(Palette.textSecondary)
+                           .frame(maxWidth: .infinity)
+                           .padding(.vertical, 16)
+                     }
+                  }
                }
             }
          }
@@ -378,6 +622,9 @@ private struct FollowListSheet: View {
 
    @State private var state = LoadState.idle
    @State private var accounts: [Account] = []
+   @State private var hasNextPage = false
+   @State private var nextCursor: String?
+   @State private var isLoadingMore = false
 
    var body: some View {
       VStack(spacing: 0) {
@@ -439,6 +686,14 @@ private struct FollowListSheet: View {
                         navigation.openProfile(account.id)
                      }
                   }
+
+                  if hasNextPage {
+                     LoadingStateView(label: "Loading more")
+                        .padding(.vertical, -30)
+                        .onAppear {
+                           Task { await loadMore() }
+                        }
+                  }
                }
                .padding(.vertical, 8)
             }
@@ -452,8 +707,10 @@ private struct FollowListSheet: View {
       state = .loading
 
       switch await profiles.followList(kind, of: accountID) {
-         case .success(let loaded):
-            accounts = loaded
+         case .success(let page):
+            accounts = page.accounts
+            hasNextPage = page.hasNextPage
+            nextCursor = page.endCursor
             state = .loaded
 
          case .failure(.notFound):
@@ -465,5 +722,26 @@ private struct FollowListSheet: View {
          case .halted:
             state = .idle
       }
+   }
+
+   // The cursor goes back to the engine exactly as the last page returned it.
+   private func loadMore() async {
+      let canLoadMore = hasNextPage && !isLoadingMore
+
+      guard canLoadMore else {
+         return
+      }
+
+      isLoadingMore = true
+      defer { isLoadingMore = false }
+
+      guard case .success(let page) = await profiles.followList(kind, of: accountID, after: nextCursor) else {
+         return
+      }
+
+      let knownIDs = Set(accounts.map(\.id))
+      accounts.append(contentsOf: page.accounts.filter { !knownIDs.contains($0.id) })
+      hasNextPage = page.hasNextPage
+      nextCursor = page.endCursor
    }
 }

@@ -32,7 +32,7 @@ struct PostCard: View {
                .padding(.horizontal, 2)
          }
 
-         if post.commentsDisabled {
+         if post.commentsDisabled == true {
             Text("Commenting has been turned off.")
                .font(.system(size: 13))
                .foregroundStyle(Palette.textSecondary)
@@ -42,6 +42,7 @@ struct PostCard: View {
                Task { await home.addComment(text, to: post.id, viewer: profiles.viewerAccount) }
             }
             .padding(.top, 18)
+            .help(post.commentsDisabled == nil ? "Instagram+ cannot read yet whether commenting is turned off on this post" : "")
          }
       }
       .padding(22)
@@ -70,9 +71,9 @@ struct PostHeader: View {
 
             HStack(spacing: 6) {
                if let location = post.location {
-                  Button(location) {
+                  Button(location.name) {
                      navigation.dismissOverlays()
-                     navigation.route = .place(id: location, name: location)
+                     navigation.route = .place(id: location.id, name: location.name)
                   }
                   .buttonStyle(.plain)
                }
@@ -95,10 +96,10 @@ struct PostHeader: View {
                navigation.share(postPK: post.id)
             }
 
-            Button("Copy link") {
-               NSPasteboard.general.clearContents()
-               NSPasteboard.general.setString("https://www.instagram.com/p/\(post.code)/", forType: .string)
-            }
+            // The engine gives no post address, and building one from the code would put
+            // Instagram's URL scheme in Swift.
+            Button("Copy link (unavailable)") {}
+               .disabled(true)
 
             Button("Download") {
                download()
@@ -172,14 +173,16 @@ struct PostActionBar: View {
 
       HStack {
          PostAction(
-            symbolName: post.isLiked ? "heart.fill" : "heart",
+            symbolName: post.isLiked == true ? "heart.fill" : "heart",
             count: post.hidesLikeCount ? nil : post.likeCount,
             title: "Like",
-            isActive: post.isLiked,
+            isActive: post.isLiked == true,
             isCompact: isCompact
          ) {
             Task { await home.toggleLike(postPK: post.id) }
          }
+         .opacity(post.isLiked == nil ? 0.55 : 1)
+         .help(post.isLiked == nil ? "Instagram+ could not confirm whether you like this post" : "")
 
          Spacer()
 
@@ -196,14 +199,16 @@ struct PostActionBar: View {
          Spacer()
 
          PostAction(
-            symbolName: post.isSaved ? "bookmark.fill" : "bookmark",
+            symbolName: post.isSaved == true ? "bookmark.fill" : "bookmark",
             count: post.saveCount,
-            title: post.isSaved ? "Saved" : "Save",
-            isActive: post.isSaved,
+            title: post.isSaved == true ? "Saved" : "Save",
+            isActive: post.isSaved == true,
             isCompact: isCompact
          ) {
             Task { await home.toggleSave(postPK: post.id) }
          }
+         .opacity(post.isSaved == nil ? 0.55 : 1)
+         .help(home.isSaveStateKnown(post.id) ? "" : "Instagram+ cannot read yet whether this post is saved")
       }
       .padding(.horizontal, 2)
       .opacity(isPending ? 0.6 : 1)

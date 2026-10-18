@@ -115,7 +115,7 @@ Used in protocol discussion, and defined here so they are not confused with this
 concepts. Full context in [prior-art-dumpsta-js.md](prior-art-dumpsta-js.md).
 
 **Prior art**
-The JavaScript project at `/Users/mahfujm/Documents/dumpsta-js`. Conceptual reference only. No
+The JavaScript project dumpsta-js, no longer on this machine. Conceptual reference only. No
 code transfers.
 
 **Oracle**

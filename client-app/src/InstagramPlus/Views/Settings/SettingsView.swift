@@ -10,6 +10,8 @@ struct SettingsView: View {
    @AppStorage("playsSounds") private var playsSounds = true
    @AppStorage("autoplaysReels") private var autoplaysReels = true
 
+   @State private var sessionAge = SessionAge.describe(refreshedAt: nil)
+
    var body: some View {
       ScrollView {
          VStack(alignment: .leading, spacing: 24) {
@@ -35,7 +37,14 @@ struct SettingsView: View {
                   }
                }
 
-               SettingsRow(title: "Session", value: "Adopted, served by the dummy engine")
+               SettingsRow(title: "Session", value: sessionAge)
+
+               if accounts.isRealEngine {
+                  SettingsRow(title: "Account id", value: profiles.viewerID)
+               }
+            }
+            .task(id: accounts.activeID) {
+               sessionAge = SessionAge.describe(refreshedAt: await accounts.active.gateway.engine.sessionRefreshedAt())
             }
 
             SettingsCard(title: "Accounts") {
@@ -111,7 +120,7 @@ struct SettingsView: View {
 
             SettingsCard(title: "About") {
                SettingsRow(title: "Version", value: Self.versionString)
-               SettingsRow(title: "Engine", value: "Dummy engine, mirroring Dumpsta-Engine 1.1.0")
+               SettingsRow(title: "Engine", value: accounts.isRealEngine ? "Dumpsta-Engine in embedded Python" : "Dummy engine, mirroring Dumpsta-Engine 1.1.0")
 
                Button("Log out") {
                   navigation.isConfirmingLogOut = true

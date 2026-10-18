@@ -43,7 +43,9 @@ struct GridTileView: View {
 
                      HStack(spacing: 24) {
                         Label(CompactCount.format(tile.likeCount), systemImage: "heart.fill")
-                        Label(CompactCount.format(tile.commentCount), systemImage: "bubble.right.fill")
+                        if let commentCount = tile.commentCount {
+                           Label(CompactCount.format(commentCount), systemImage: "bubble.right.fill")
+                        }
                      }
                      .font(.system(size: 15, weight: .bold))
                      .foregroundStyle(.white)

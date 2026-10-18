@@ -11,19 +11,42 @@ struct Avatar: View {
    var style: Style = .solid
 
    var body: some View {
+      Group {
+         if let pictureURL, MediaLoader.isRemote(pictureURL) {
+            RemoteImage(url: pictureURL) { image in
+               Image(nsImage: image)
+                  .resizable()
+                  .scaledToFill()
+            } placeholder: { phase in
+               initialsCircle
+                  .opacity(phase == .loading ? 0.6 : 1)
+                  .help(phase == .failed ? "The profile picture could not load" : "")
+            }
+         } else {
+            initialsCircle
+         }
+      }
+      .frame(width: diameter, height: diameter)
+      .clipShape(Circle())
+      .accessibilityLabel(account.displayName)
+   }
+
+   private var pictureURL: URL? {
+      account.profilePicURL.flatMap(URL.init(string:))
+   }
+
+   private var initialsCircle: some View {
       let isSoft = style == .soft
       let fill = isSoft ? Palette.softAvatarFill : SeededPalettes.avatarTint(for: account.id)
       let initialsColor = isSoft ? Palette.softAvatarText : Color.white
 
-      Circle()
+      return Circle()
          .fill(fill)
          .overlay {
             Text(account.initials)
                .font(.system(size: diameter * 0.34, weight: .semibold))
                .foregroundStyle(initialsColor)
          }
-         .frame(width: diameter, height: diameter)
-         .accessibilityLabel(account.displayName)
    }
 }
 

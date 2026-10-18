@@ -12,6 +12,11 @@ struct ReelsView: View {
                   ForEach(reels.reels) { reel in
                      ReelPlayer(reel: reel)
                         .containerRelativeFrame(.vertical)
+                        .onAppear {
+                           if reel.id == reels.reels.last?.id {
+                              Task { await reels.loadMore() }
+                           }
+                        }
                   }
                }
                .scrollTargetLayout()
@@ -45,6 +50,7 @@ private struct ReelPlayer: View {
 
    @State private var isPlaying = true
    @State private var isMuted = true
+   @State private var presentedAudio: PresentedAudio?
 
    var body: some View {
       HStack(alignment: .bottom, spacing: 20) {
@@ -122,20 +128,24 @@ private struct ReelPlayer: View {
             .font(.system(size: 13))
             .lineLimit(2)
 
-         HStack(spacing: 6) {
-            Image(systemName: "music.note")
-            Text(reel.audioTitle)
+         if !reel.audioTitle.isEmpty {
+            HStack(spacing: 6) {
+               Image(systemName: "music.note")
+               Text(reel.audioTitle)
+            }
+            .font(.system(size: 12))
          }
-         .font(.system(size: 12))
       }
       .foregroundStyle(.white)
    }
 
    private var actions: some View {
       VStack(spacing: 22) {
-         ReelAction(symbolName: reel.isLiked ? "heart.fill" : "heart", label: CompactCount.format(reel.likeCount), isActive: reel.isLiked) {
+         ReelAction(symbolName: reel.isLiked == true ? "heart.fill" : "heart", label: CompactCount.format(reel.likeCount), isActive: reel.isLiked == true) {
             Task { await reels.toggleLike(reelID: reel.id) }
          }
+         .opacity(reel.isLiked == nil ? 0.55 : 1)
+         .help(reels.isLikeStateKnown(reel.id) ? "" : "Instagram+ could not confirm whether this reel is liked")
 
          ReelAction(symbolName: "bubble.right", label: CompactCount.format(reel.commentCount), isActive: false) {
             navigation.showPost(code: reel.code)
@@ -145,19 +155,20 @@ private struct ReelPlayer: View {
             navigation.share(postPK: reel.id)
          }
 
-         ReelAction(symbolName: reel.isSaved ? "bookmark.fill" : "bookmark", label: nil, isActive: reel.isSaved) {
+         ReelAction(symbolName: reel.isSaved == true ? "bookmark.fill" : "bookmark", label: nil, isActive: reel.isSaved == true) {
             Task { await reels.toggleSave(reelID: reel.id) }
          }
+         .opacity(reel.isSaved == nil ? 0.55 : 1)
+         .help(reels.isSaveStateKnown(reel.id) ? "" : "Instagram+ cannot read yet whether this reel is saved")
 
          Menu {
             Button("Go to post") {
                navigation.showPost(code: reel.code)
             }
 
-            Button("Copy link") {
-               NSPasteboard.general.clearContents()
-               NSPasteboard.general.setString("https://www.instagram.com/reel/\(reel.code)/", forType: .string)
-            }
+            // The engine gives no reel address, so none is built here.
+            Button("Copy link (unavailable)") {}
+               .disabled(true)
 
             Button("About this account") {
                navigation.openProfile(reel.author.id)
@@ -172,11 +183,23 @@ private struct ReelPlayer: View {
          .fixedSize()
          .frame(width: 44)
 
-         MediaView(seed: reel.code + ".audio", cornerRadius: 6)
-            .frame(width: 26, height: 26)
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Palette.textPrimary, lineWidth: 1.5))
+         Button {
+            presentedAudio = reel.audioID.map { PresentedAudio(id: $0, title: reel.audioTitle.isEmpty ? "Audio" : reel.audioTitle) }
+         } label: {
+            MediaView(seed: reel.code + ".audio", cornerRadius: 6)
+               .frame(width: 26, height: 26)
+               .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Palette.textPrimary, lineWidth: 1.5))
+         }
+         .buttonStyle(.plain)
+         .disabled(reel.audioID == nil)
+         .opacity(reel.audioID == nil ? 0.55 : 1)
+         .help(reel.audioID == nil ? "This reel carries no audio page" : "Opens the reels that use this audio")
+         .accessibilityLabel("Audio")
       }
       .opacity(reels.pendingIDs.contains(reel.id) ? 0.6 : 1)
+      .sheet(item: $presentedAudio) { audio in
+         AudioPageSheet(audio: audio)
+      }
    }
 }
 

@@ -11,10 +11,8 @@ struct ShareSheet: View {
    @State private var selectedThreadIDs: Set<DirectThread.ID> = []
    @State private var filter = ""
    @State private var isSending = false
-   @State private var didCopy = false
 
    var body: some View {
-      let post = home.post(pk: postPK)
       let canSend = !selectedThreadIDs.isEmpty && !isSending
 
       VStack(spacing: 0) {
@@ -62,15 +60,9 @@ struct ShareSheet: View {
          Hairline()
 
          HStack {
-            Button(didCopy ? "Link copied" : "Copy link") {
-               guard let post else {
-                  return
-               }
-
-               NSPasteboard.general.clearContents()
-               NSPasteboard.general.setString("https://www.instagram.com/p/\(post.code)/", forType: .string)
-               didCopy = true
-            }
+            // The engine gives no post address, so none is built here.
+            Button("Copy link (unavailable)") {}
+               .disabled(true)
 
             Spacer()
 

@@ -1,13 +1,26 @@
 import SwiftUI
 
+// The number of items comes from the highlight's reel, which the engine returns whole. The
+// highlight row on a profile carries no count.
 struct HighlightViewer: View {
    @Environment(NavigationStore.self) private var navigation
+   @Environment(ProfileStore.self) private var profiles
+   @Environment(HomeStore.self) private var home
 
    let presented: PresentedHighlight
 
    @State private var itemIndex = 0
    @State private var progress: Double = 0
    @State private var isPaused = false
+
+   private struct PlaybackKey: Hashable {
+      let itemIndex: Int
+      let isReady: Bool
+   }
+
+   private var highlightID: Highlight.ID { presented.highlight.id }
+
+   private var reel: StoryFrames? { profiles.highlightReel(highlightID) }
 
    var body: some View {
       ZStack(alignment: .topTrailing) {
@@ -26,7 +39,10 @@ struct HighlightViewer: View {
          }
          .padding(.vertical, 36)
          .frame(maxWidth: .infinity, maxHeight: .infinity)
-         .task(id: itemIndex) {
+         .task(id: highlightID) {
+            await profiles.loadHighlightReel(highlightID)
+         }
+         .task(id: PlaybackKey(itemIndex: itemIndex, isReady: reel != nil)) {
             await play()
          }
 
@@ -36,11 +52,20 @@ struct HighlightViewer: View {
    }
 
    private var card: some View {
-      MediaView(seed: "\(presented.highlight.id).\(itemIndex)", cornerRadius: 12)
+      let frame = reel.flatMap { $0.frames.indices.contains(itemIndex) ? $0.frames[itemIndex] : nil }
+
+      return MediaView(seed: "\(highlightID).\(itemIndex)", url: frame?.mediaURL, cornerRadius: 12)
+         .overlay {
+            if reel == nil {
+               ReelStatusView(state: profiles.highlightReelState(highlightID), loadingLabel: "Opening highlight", notFoundMessage: "This highlight is no longer available.") {
+                  Task { await profiles.loadHighlightReel(highlightID) }
+               }
+            }
+         }
          .overlay(alignment: .top) {
             VStack(spacing: 12) {
                HStack(spacing: 4) {
-                  ForEach(0..<presented.itemCount, id: \.self) { segment in
+                  ForEach(0..<(reel?.frames.count ?? 0), id: \.self) { segment in
                      ProgressSegment(fill: segment < itemIndex ? 1 : (segment == itemIndex ? progress : 0))
                   }
                }
@@ -75,6 +100,12 @@ struct HighlightViewer: View {
    private func play() async {
       progress = 0
 
+      guard let reel else {
+         return
+      }
+
+      home.markStoryFrameSeen(in: reel, at: itemIndex)
+
       while progress < 1 {
          try? await Task.sleep(for: .milliseconds(50))
 
@@ -91,7 +122,8 @@ struct HighlightViewer: View {
    }
 
    private func advance() {
-      let hasNext = itemIndex + 1 < presented.itemCount
+      let itemCount = reel?.frames.count ?? 0
+      let hasNext = itemIndex + 1 < itemCount
 
       if hasNext {
          itemIndex += 1

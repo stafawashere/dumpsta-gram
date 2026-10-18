@@ -16,12 +16,31 @@ final class DirectStore {
    private(set) var requestsState = LoadState.idle
    private(set) var pendingRequestIDs: Set<DirectThread.ID> = []
    private(set) var notes: [Note] = []
-   private(set) var isListening = false
-   private(set) var listenerProblem: String?
+   private(set) var unreadCounts: Engine.UnreadCounts?
+   private(set) var isLoadingMoreThreads = false
+
+   // Set when the listener reports a message in a thread this store has not loaded, or dropped
+   // events. The inbox is not read again on its own, since one read costs about 30 requests
+   // under PARITY. A person refreshes it.
+   private(set) var isInboxStale = false
+   private var inboxCursor: String?
+   private(set) var listener = ListenerState.idle
+
+   // The id of the last message the listener delivered and this store handled. A restarted
+   // listener is given it untouched, so it picks up after that message.
+   private(set) var eventsWatermark: String?
+   private(set) var eventsHandled = 0
 
    var selectedThreadID: DirectThread.ID?
 
    private var drainTask: Task<Void, Never>?
+   private var messageLoads: [DirectThread.ID: Task<Void, Never>] = [:]
+
+   enum ListenerState: Equatable {
+      case idle
+      case listening
+      case stopped(reason: String)
+   }
 
    // The viewer's message sender id is not the account id. It is learned from the first message
    // the viewer is seen to have sent, and is what reactions name.
@@ -35,8 +54,21 @@ final class DirectStore {
 
    var viewerID: String { gateway.viewerID }
 
-   var unreadCount: Int {
-      threads.filter(\.isUnread).count
+   var isListening: Bool {
+      listener == .listening
+   }
+
+   var listenerProblem: String? {
+      guard case .stopped(let reason) = listener else {
+         return nil
+      }
+
+      return reason
+   }
+
+   // The engine's count of unread inbox threads, nil until it has been read.
+   var unreadThreadCount: Int? {
+      unreadCounts?.inbox
    }
 
    var orderedThreads: [DirectThread] {
@@ -71,6 +103,10 @@ final class DirectStore {
       olderCursors[threadID] != nil
    }
 
+   var hasMoreThreads: Bool {
+      inboxCursor != nil
+   }
+
    // MARK: Inbox and requests
 
    func loadInbox() async {
@@ -80,8 +116,15 @@ final class DirectStore {
       switch await gateway.read("the inbox", { () async throws(EngineError) in try await engine.inbox(after: nil) }) {
          case .success(let page):
             threads = page.items.map { DirectThread($0, viewerID: viewerID) }
+            inboxCursor = page.hasNextPage ? page.endCursor : nil
+            isInboxStale = false
             inboxState = .loaded
-            await startListening()
+            await loadUnreadCounts()
+
+            // Only a listener that never ran starts here. One that stopped waits for a person.
+            if listener == .idle {
+               await startListening()
+            }
 
          case .failure(let error):
             inboxState = .failed(HomeStore.describe(error))
@@ -89,6 +132,38 @@ final class DirectStore {
          case .halted:
             inboxState = .idle
       }
+   }
+
+   // The next inbox page, its cursor passed back exactly as it came. A thread already listed is
+   // not listed twice.
+   func loadMoreThreads() async {
+      guard let cursor = inboxCursor, !isLoadingMoreThreads else {
+         return
+      }
+
+      isLoadingMoreThreads = true
+      defer { isLoadingMoreThreads = false }
+
+      let engine = engine
+      guard case .success(let page) = await gateway.read("more conversations", { () async throws(EngineError) in try await engine.inbox(after: cursor) }) else {
+         return
+      }
+
+      let known = Set(threads.map(\.id))
+      let older = page.items.map { DirectThread($0, viewerID: viewerID) }.filter { !known.contains($0.id) }
+
+      threads += older
+      inboxCursor = page.hasNextPage ? page.endCursor : nil
+   }
+
+   func loadUnreadCounts() async {
+      let engine = engine
+
+      guard case .success(let counts) = await gateway.read("the unread count", { () async throws(EngineError) in try await engine.unreadCounts() }) else {
+         return
+      }
+
+      unreadCounts = counts
    }
 
    func loadRequests() async {
@@ -129,8 +204,11 @@ final class DirectStore {
             }
 
          case .failure(.outcomeUnknown):
-            await loadRequests()
-            await loadInbox()
+            await markInboxStale()
+
+            if accept {
+               await rereadMessages(threadID)
+            }
 
          case .failure, .halted:
             break
@@ -166,7 +244,41 @@ final class DirectStore {
       await loadMessages(threadID)
    }
 
+   // A thread is read once at a time. A caller that asks while a read of the same thread is in
+   // flight waits for that read instead of sending a second one, whose answer could land after
+   // an optimistic change and undo it.
    func loadMessages(_ threadID: DirectThread.ID) async {
+      if let inFlight = messageLoads[threadID] {
+         await inFlight.value
+         return
+      }
+
+      await runFirstPageRead(threadID)
+   }
+
+   // A read that must see something newer than any load in flight, such as a write whose outcome
+   // is unknown. A load that started earlier could answer from before it, so this waits that load
+   // out and then reads the thread again.
+   private func rereadMessages(_ threadID: DirectThread.ID) async {
+      if let staleLoad = messageLoads[threadID] {
+         await staleLoad.value
+      }
+
+      await runFirstPageRead(threadID)
+   }
+
+   private func runFirstPageRead(_ threadID: DirectThread.ID) async {
+      let load = Task { await readFirstPage(threadID) }
+      messageLoads[threadID] = load
+      await load.value
+
+      let isStillCurrent = messageLoads[threadID] == load
+      if isStillCurrent {
+         messageLoads[threadID] = nil
+      }
+   }
+
+   private func readFirstPage(_ threadID: DirectThread.ID) async {
       messageStates[threadID] = .loading
 
       let engine = engine
@@ -278,7 +390,10 @@ final class DirectStore {
             break
 
          case .failure(.outcomeUnknown):
-            await loadInbox()
+            // The thread list may be out of date, so it is marked stale for the person to refresh,
+            // and only the affected conversation is read again.
+            await markInboxStale()
+            await rereadMessages(threadID)
 
          case .failure, .halted:
             if let revertIndex = threads.firstIndex(where: { $0.id == threadID }) {
@@ -374,7 +489,7 @@ final class DirectStore {
             break
 
          case .failure(.outcomeUnknown):
-            await loadMessages(threadID)
+            await rereadMessages(threadID)
 
          case .failure, .halted:
             messages[threadID]?.insert(removed, at: min(index, messages[threadID]?.count ?? 0))
@@ -403,7 +518,7 @@ final class DirectStore {
             break
 
          case .failure(.outcomeUnknown):
-            await loadMessages(threadID)
+            await rereadMessages(threadID)
 
          case .failure, .halted:
             updateMessage(messageID, in: threadID) { message in
@@ -471,16 +586,19 @@ final class DirectStore {
 
    // MARK: Events
 
-   // Events come out of a buffer the app drains on a timer. The engine never calls back into
-   // Swift, which is the rule the bridge has to keep.
+   // Events come out of a buffer the app drains on a timer, through the gateway. The engine
+   // never calls back into Swift, which is the rule the bridge has to keep. A listener that
+   // stopped stays stopped with the engine's reason until a person resumes it.
    func startListening() async {
       guard !isListening else {
          return
       }
 
-      isListening = true
-      listenerProblem = nil
-      await engine.startEvents(since: nil)
+      guard await gateway.startEvents(since: eventsWatermark) else {
+         return
+      }
+
+      listener = .listening
 
       drainTask = Task { [weak self] in
          while !Task.isCancelled {
@@ -490,41 +608,74 @@ final class DirectStore {
                return
             }
 
-            let events = await self.engine.drainEvents()
-            await self.apply(events)
+            await self.drainOnce()
          }
       }
+   }
+
+   // This account became the active one again. Only a listener that ran for a loaded inbox
+   // starts again, and one the engine stopped keeps waiting for a person.
+   func resumeListening() async {
+      let hasLoadedInbox = inboxState == .loaded
+      let isIdle = listener == .idle
+
+      guard hasLoadedInbox, isIdle else {
+         return
+      }
+
+      await startListening()
    }
 
    func stopListening() async {
       drainTask?.cancel()
       drainTask = nil
-      isListening = false
-      await engine.stopEvents()
+
+      if isListening {
+         listener = .idle
+      }
+
+      await gateway.stopEvents()
+   }
+
+   private func drainOnce() async {
+      guard gateway.isActive else {
+         await stopAfterSessionHalt()
+         return
+      }
+
+      let events = await gateway.drainEvents()
+      await apply(events)
+   }
+
+   private func stopAfterSessionHalt() async {
+      drainTask?.cancel()
+      drainTask = nil
+      listener = .stopped(reason: "The session stopped, so the listener stopped with it.")
+      await gateway.stopEvents()
    }
 
    private func apply(_ events: [Engine.Event]) async {
       for event in events {
+         eventsHandled += 1
+
          switch event {
             case .newMessage(let engineMessage):
                await receive(engineMessage)
+               eventsWatermark = engineMessage.id
 
-            case .eventsDropped:
-               await loadInbox()
+            case .eventsDropped(_, let droppedThreadID):
+               await markInboxStale()
 
-               if let selectedThreadID {
-                  await loadMessages(selectedThreadID)
+               let concernsOpenThread = droppedThreadID == nil || droppedThreadID == selectedThreadID
+               if concernsOpenThread, let selectedThreadID {
+                  await rereadMessages(selectedThreadID)
                }
 
-            case .listenerStopped(.checkpoint(let checkpoint)):
+            case .listenerStopped(let reason):
                drainTask?.cancel()
-               isListening = false
-               gateway.enterCheckpoint(checkpoint)
-
-            case .listenerStopped(.error(let error)):
-               drainTask?.cancel()
-               isListening = false
-               listenerProblem = HomeStore.describe(error)
+               drainTask = nil
+               listener = .stopped(reason: Self.describe(reason))
+               await gateway.stopEvents()
          }
       }
    }
@@ -534,8 +685,7 @@ final class DirectStore {
       let isKnownThread = threads.contains { $0.id == threadID }
 
       guard isKnownThread else {
-         await loadInbox()
-         await loadRequests()
+         await markInboxStale()
          return
       }
 
@@ -546,11 +696,32 @@ final class DirectStore {
          messages[threadID, default: []].append(message)
       }
 
-      touch(threadID, snippet: message.imageURL == nil ? message.text : "Sent a photo", byViewer: false)
+      // The listener delivers the viewer's own messages too, including ones sent elsewhere.
+      let isFromViewer = engineMessage.sender.igid == viewerID
+      touch(threadID, snippet: message.imageURL == nil ? message.text : "Sent a photo", byViewer: isFromViewer)
 
       let isOpen = threadID == selectedThreadID
-      if !isOpen, let index = threads.firstIndex(where: { $0.id == threadID }) {
+      let becomesUnread = !isOpen && !isFromViewer
+      if becomesUnread, let index = threads.firstIndex(where: { $0.id == threadID }) {
          threads[index].isUnread = true
+      }
+   }
+
+   private func markInboxStale() async {
+      isInboxStale = true
+      await loadUnreadCounts()
+   }
+
+   private static func describe(_ reason: Engine.ListenerStopReason) -> String {
+      switch reason {
+         case .checkpoint:
+            return "Instagram asked for a security check, so the listener stopped."
+
+         case .error(.upstreamRejected(let code?)):
+            return "The listener stopped because Instagram refused a poll (\(code))."
+
+         case .error(let error):
+            return "The listener stopped. \(HomeStore.describe(error))"
       }
    }
 }

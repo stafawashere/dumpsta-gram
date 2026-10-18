@@ -64,7 +64,26 @@ final class ProfileStore {
    private var knownAccounts: [Account.ID: Account] = [:]
    private var tiles: [TileKey: [ProfileTile]] = [:]
    private var tileStates: [TileKey: LoadState] = [:]
+   private var tileCursors: [TileKey: String] = [:]
+   private var tilesWithMorePages: Set<TileKey> = []
+   private var tileReads: [TileKey: Task<Void, Never>] = [:]
+   private var loadingMoreTiles: Set<TileKey> = []
+   private var highlightStates: [Account.ID: LoadState] = [:]
+   private var highlightReels: [Highlight.ID: StoryFrames] = [:]
+   private var highlightReelStates: [Highlight.ID: LoadState] = [:]
+   private var highlightReelReads: [Highlight.ID: Task<Void, Never>] = [:]
+   private(set) var isMutedListKnown = true
    private var knownFollowing: [Account.ID: Bool] = [:]
+   private var profileReads: [Account.ID: Task<Void, Never>] = [:]
+
+   private(set) var mutualFollowers: [Account.ID: [Account]] = [:]
+   private(set) var mutualFollowersHaveMore: Set<Account.ID> = []
+   private(set) var mutualFollowerStates: [Account.ID: LoadState] = [:]
+   private(set) var similarAccounts: [Account.ID: [Account]] = [:]
+   private(set) var similarAccountStates: [Account.ID: LoadState] = [:]
+   private(set) var collections: [SavedCollection] = []
+   private(set) var collectionsState = LoadState.idle
+   private(set) var hasMoreCollections = false
 
    init(gateway: EngineGateway) {
       self.gateway = gateway
@@ -98,6 +117,16 @@ final class ProfileStore {
       profiles[accountID]?.hasRequestedFollow ?? false
    }
 
+   // False when a loaded profile came without a friendship status and nothing since said whether
+   // the viewer follows the account.
+   func isRelationshipKnown(_ accountID: Account.ID) -> Bool {
+      guard let details = profiles[accountID] else {
+         return true
+      }
+
+      return details.isFollowing != nil || knownFollowing[accountID] != nil
+   }
+
    func isPending(_ accountID: Account.ID) -> Bool {
       pendingFollowIDs.contains(accountID)
    }
@@ -114,9 +143,84 @@ final class ProfileStore {
       tileStates[TileKey(accountID: accountID, tab: tab)] ?? .idle
    }
 
+   func highlightState(for accountID: Account.ID) -> LoadState {
+      highlightStates[accountID] ?? .idle
+   }
+
+   func hasMoreTiles(for accountID: Account.ID, tab: ProfileTab) -> Bool {
+      tilesWithMorePages.contains(TileKey(accountID: accountID, tab: tab))
+   }
+
+   // Only the posts grid has a cursor. The reels, tagged and saved reads say whether more exist
+   // and offer no way to read them.
+   func canLoadMoreTiles(tab: ProfileTab) -> Bool {
+      tab == .posts
+   }
+
+   // SavedPost carries no comment count on the real engine, so a saved tile's hover shows likes
+   // only instead of a zero.
+   func isCommentCountKnown(_ tileID: ProfileTile.ID) -> Bool {
+      let tile = tiles.values.lazy.flatMap { $0 }.first { $0.id == tileID }
+      return tile?.commentCount != nil
+   }
+
    // MARK: Loading
 
+   // The shell and the Profile page both ask for the viewer at launch. A profile that is
+   // already loaded is not read again, and a second caller waits on the read in flight. The
+   // posts grid and the highlights are read once each, and again only on a retry.
    func load(_ accountID: Account.ID, includingContent: Bool = true) async {
+      let isLoaded = profileStates[accountID] == .loaded
+
+      if !isLoaded {
+         await readProfile(accountID)
+      }
+
+      let hasProfile = profileStates[accountID] == .loaded
+
+      guard includingContent, hasProfile else {
+         return
+      }
+
+      if !tileState(for: accountID, tab: .posts).hasLoaded {
+         await loadTiles(accountID, tab: .posts)
+      }
+
+      if highlightStates[accountID] != .loaded {
+         await loadHighlights(accountID)
+      }
+   }
+
+   private func loadHighlights(_ accountID: Account.ID) async {
+      highlightStates[accountID] = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("highlights", { () async throws(EngineError) in try await engine.highlights(userID: accountID) }) {
+         case .success(let engineHighlights):
+            highlights[accountID] = engineHighlights.map { Highlight(id: $0.id, title: $0.title) }
+            highlightStates[accountID] = .loaded
+
+         case .failure(let error):
+            highlightStates[accountID] = .failed(HomeStore.describe(error))
+
+         case .halted:
+            highlightStates[accountID] = .idle
+      }
+   }
+
+   private func readProfile(_ accountID: Account.ID) async {
+      if let inFlight = profileReads[accountID] {
+         await inFlight.value
+         return
+      }
+
+      let read = Task { await performProfileRead(accountID) }
+      profileReads[accountID] = read
+      await read.value
+      profileReads[accountID] = nil
+   }
+
+   private func performProfileRead(_ accountID: Account.ID) async {
       profileStates[accountID] = .loading
 
       let engine = gateway.client
@@ -129,47 +233,61 @@ final class ProfileStore {
 
          case .failure(.notFound):
             profileStates[accountID] = .notFound
-            return
 
          case .failure(let error):
             profileStates[accountID] = .failed(HomeStore.describe(error))
-            return
 
          case .halted:
             profileStates[accountID] = .idle
-            return
-      }
-
-      guard includingContent else {
-         return
-      }
-
-      await loadTiles(accountID, tab: .posts)
-
-      if case .success(let engineHighlights) = await gateway.read("highlights", { () async throws(EngineError) in try await engine.highlights(userID: accountID) }) {
-         highlights[accountID] = engineHighlights.map { Highlight(id: $0.id, title: $0.title) }
       }
    }
 
+   // The Profile page's own task and load() can both ask for the first page of a tab; the
+   // second waits on the read in flight.
    func loadTiles(_ accountID: Account.ID, tab: ProfileTab) async {
       let key = TileKey(accountID: accountID, tab: tab)
+
+      if let inFlight = tileReads[key] {
+         await inFlight.value
+         return
+      }
+
+      let read = Task { await performTileRead(key) }
+      tileReads[key] = read
+      await read.value
+      tileReads[key] = nil
+   }
+
+   private func performTileRead(_ key: TileKey) async {
       tileStates[key] = .loading
 
+      let accountID = key.accountID
       let engine = gateway.client
-      let outcome: CallOutcome<[Engine.GridTile]> = switch tab {
+      let outcome: CallOutcome<Engine.Page<Engine.GridTile>>
+
+      switch key.tab {
          case .posts:
-            await pageItems(gateway.read("posts", { () async throws(EngineError) in try await engine.profilePosts(userID: accountID, after: nil) }))
+            guard let username = profiles[accountID]?.account.username else {
+               tileStates[key] = .idle
+               return
+            }
+
+            outcome = await gateway.read("posts", { () async throws(EngineError) in try await engine.profilePosts(username: username, after: nil) })
+
          case .reels:
-            await gateway.read("reels", { () async throws(EngineError) in try await engine.profileReels(userID: accountID) })
+            outcome = await gateway.read("reels", { () async throws(EngineError) in try await engine.profileReelsPage(userID: accountID) })
+
          case .saved:
-            await gateway.read("saved posts", { () async throws(EngineError) in try await engine.savedPosts() })
+            outcome = await gateway.read("saved posts", { () async throws(EngineError) in try await engine.savedPostsPage() })
+
          case .tagged:
-            await gateway.read("tagged posts", { () async throws(EngineError) in try await engine.taggedPosts(userID: accountID) })
+            outcome = await gateway.read("tagged posts", { () async throws(EngineError) in try await engine.taggedPostsPage(userID: accountID) })
       }
 
       switch outcome {
-         case .success(let engineTiles):
-            tiles[key] = engineTiles.map(ProfileTile.init)
+         case .success(let page):
+            tiles[key] = []
+            apply(page, to: key)
             tileStates[key] = .loaded
 
          case .failure(let error):
@@ -180,32 +298,206 @@ final class ProfileStore {
       }
    }
 
-   private func pageItems<Item>(_ outcome: CallOutcome<Engine.Page<Item>>) -> CallOutcome<[Item]> {
-      switch outcome {
-         case .success(let page): .success(page.items)
-         case .failure(let error): .failure(error)
-         case .halted: .halted
+   // Only the posts grid pages. The cursor goes back to the engine exactly as it came.
+   func loadMoreTiles(_ accountID: Account.ID, tab: ProfileTab) async {
+      let key = TileKey(accountID: accountID, tab: tab)
+      let canLoadMore = canLoadMoreTiles(tab: tab) && tilesWithMorePages.contains(key) && !loadingMoreTiles.contains(key)
+
+      guard canLoadMore, let cursor = tileCursors[key], let username = profiles[accountID]?.account.username else {
+         return
+      }
+
+      loadingMoreTiles.insert(key)
+      defer { loadingMoreTiles.remove(key) }
+
+      let engine = gateway.client
+      if case .success(let page) = await gateway.read("more posts", { () async throws(EngineError) in try await engine.profilePosts(username: username, after: cursor) }) {
+         apply(page, to: key)
       }
    }
 
-   func followList(_ kind: FollowListKind, of accountID: Account.ID) async -> CallOutcome<[Account]> {
+   private func apply(_ page: Engine.Page<Engine.GridTile>, to key: TileKey) {
+      let known = Set((tiles[key] ?? []).map(\.id))
+      let fresh = page.items.filter { !known.contains($0.pk) }
+
+      tiles[key, default: []].append(contentsOf: fresh.map(ProfileTile.init))
+      tileCursors[key] = page.endCursor
+
+      if page.hasNextPage {
+         tilesWithMorePages.insert(key)
+      } else {
+         tilesWithMorePages.remove(key)
+      }
+   }
+
+   struct FollowListPage {
+      let accounts: [Account]
+      let hasNextPage: Bool
+      let endCursor: String?
+   }
+
+   func followList(_ kind: FollowListKind, of accountID: Account.ID, after cursor: String? = nil) async -> CallOutcome<FollowListPage> {
       let engine = gateway.client
       let outcome = switch kind {
-         case .followers: await gateway.read("followers", { () async throws(EngineError) in try await engine.followers(userID: accountID, after: nil) })
-         case .following: await gateway.read("following", { () async throws(EngineError) in try await engine.following(userID: accountID, after: nil) })
+         case .followers: await gateway.read("followers", { () async throws(EngineError) in try await engine.followers(userID: accountID, after: cursor) })
+         case .following: await gateway.read("following", { () async throws(EngineError) in try await engine.following(userID: accountID, after: cursor) })
       }
 
       switch outcome {
-         case .success(let page): return .success(page.items.map(Account.init))
-         case .failure(let error): return .failure(error)
-         case .halted: return .halted
+         case .success(let page):
+            let accounts = page.items.map(Account.init)
+            remember(accounts)
+            return .success(FollowListPage(accounts: accounts, hasNextPage: page.hasNextPage, endCursor: page.endCursor))
+
+         case .failure(let error):
+            return .failure(error)
+
+         case .halted:
+            return .halted
+      }
+   }
+
+   // MARK: Profile extras
+   // Read when a person opens them, never with the profile. Mutual followers and collections
+   // are first pages only, and the result says whether more exist.
+
+   func mutualFollowerState(for accountID: Account.ID) -> LoadState {
+      mutualFollowerStates[accountID] ?? .idle
+   }
+
+   func loadMutualFollowers(_ accountID: Account.ID) async {
+      guard !mutualFollowerState(for: accountID).isLoading else {
+         return
+      }
+
+      mutualFollowerStates[accountID] = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("mutual followers", { () async throws(EngineError) in try await engine.mutualFollowers(userID: accountID) }) {
+         case .success(let mutual):
+            let accounts = mutual.accounts.map(Account.init)
+            remember(accounts)
+            mutualFollowers[accountID] = accounts
+
+            if mutual.hasMore {
+               mutualFollowersHaveMore.insert(accountID)
+            } else {
+               mutualFollowersHaveMore.remove(accountID)
+            }
+
+            mutualFollowerStates[accountID] = .loaded
+
+         case .failure(let error):
+            mutualFollowerStates[accountID] = .failed(HomeStore.describe(error))
+
+         case .halted:
+            mutualFollowerStates[accountID] = .idle
+      }
+   }
+
+   func similarAccountState(for accountID: Account.ID) -> LoadState {
+      similarAccountStates[accountID] ?? .idle
+   }
+
+   func loadSimilarAccounts(_ accountID: Account.ID) async {
+      guard !similarAccountState(for: accountID).isLoading else {
+         return
+      }
+
+      similarAccountStates[accountID] = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("similar accounts", { () async throws(EngineError) in try await engine.similarAccounts(userID: accountID) }) {
+         case .success(let summaries):
+            let accounts = summaries.map(Account.init)
+            remember(accounts)
+            similarAccounts[accountID] = accounts
+            similarAccountStates[accountID] = .loaded
+
+         case .failure(let error):
+            similarAccountStates[accountID] = .failed(HomeStore.describe(error))
+
+         case .halted:
+            similarAccountStates[accountID] = .idle
+      }
+   }
+
+   func loadCollections() async {
+      guard !collectionsState.isLoading else {
+         return
+      }
+
+      collectionsState = .loading
+
+      let engine = gateway.client
+      switch await gateway.read("collections", { () async throws(EngineError) in try await engine.savedCollections() }) {
+         case .success(let saved):
+            collections = saved.collections.map(SavedCollection.init)
+            hasMoreCollections = saved.hasMore
+            collectionsState = .loaded
+
+         case .failure(let error):
+            collectionsState = .failed(HomeStore.describe(error))
+
+         case .halted:
+            collectionsState = .idle
+      }
+   }
+
+   // MARK: Highlight reels
+   // Reading a highlight marks its first item seen under the engine's default Behavior, so the
+   // read goes through the write path, once per highlight.
+
+   func highlightReel(_ highlightID: Highlight.ID) -> StoryFrames? {
+      highlightReels[highlightID]
+   }
+
+   func highlightReelState(_ highlightID: Highlight.ID) -> LoadState {
+      highlightReelStates[highlightID] ?? .idle
+   }
+
+   func loadHighlightReel(_ highlightID: Highlight.ID) async {
+      guard highlightReelState(highlightID) != .loaded else {
+         return
+      }
+
+      if let inFlight = highlightReelReads[highlightID] {
+         await inFlight.value
+         return
+      }
+
+      let read = Task { await performHighlightReelRead(highlightID) }
+      highlightReelReads[highlightID] = read
+      await read.value
+      highlightReelReads[highlightID] = nil
+   }
+
+   private func performHighlightReelRead(_ highlightID: Highlight.ID) async {
+      highlightReelStates[highlightID] = .loading
+
+      let engine = gateway.client
+      switch await gateway.write("opening the highlight", { () async throws(EngineError) in try await engine.highlightReel(highlightID: highlightID) }) {
+         case .success(let reel):
+            highlightReels[highlightID] = StoryFrames(reel)
+            highlightReelStates[highlightID] = .loaded
+
+         case .failure(.notFound):
+            highlightReelStates[highlightID] = .notFound
+
+         case .failure(let error):
+            highlightReelStates[highlightID] = .failed(HomeStore.describe(error))
+
+         case .halted:
+            highlightReelStates[highlightID] = .idle
       }
    }
 
    // MARK: Following
 
    func toggleFollow(_ accountID: Account.ID) async {
-      guard !pendingFollowIDs.contains(accountID) else {
+      let isUnknown = !isViewer(accountID) && !isRelationshipKnown(accountID)
+
+      guard !pendingFollowIDs.contains(accountID), !isUnknown else {
          return
       }
 
@@ -232,7 +524,7 @@ final class ProfileStore {
             await refreshProfileIfLoaded(accountID)
 
          case .failure(.outcomeUnknown):
-            await load(accountID)
+            await readProfile(accountID)
 
          case .failure, .halted:
             applyFollow(accountID, following: wasFollowing, requested: wasRequested)
@@ -359,9 +651,10 @@ final class ProfileStore {
             closeFriendIDs = Set(relationships.closeFriendIDs)
             blockedIDs = Set(relationships.blockedIDs)
             mutedIDs = Set(relationships.mutedIDs)
+            isMutedListKnown = relationships.isMutedListKnown
 
-            for accountID in relationships.closeFriendIDs + relationships.blockedIDs + relationships.mutedIDs where knownAccounts[accountID] == nil {
-               await load(accountID, includingContent: false)
+            for summary in relationships.closeFriends + relationships.blocked where knownAccounts[summary.id] == nil {
+               knownAccounts[summary.id] = Account(summary)
             }
 
             relationshipsState = .loaded

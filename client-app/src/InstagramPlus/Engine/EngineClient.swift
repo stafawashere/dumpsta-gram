@@ -5,6 +5,10 @@ import Foundation
 protocol EngineClient: Sendable {
    var viewerID: String { get }
 
+   // When the engine last harvested its tokens for this session, nil until its first request.
+   // It sends nothing: the value is read off the open client.
+   func sessionRefreshedAt() async -> Date?
+
    func feed(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.FeedItem>>
    func profile(username: String) async throws(EngineError) -> EngineResult<Engine.Profile>
    func profile(id userID: String) async throws(EngineError) -> EngineResult<Engine.Profile>
@@ -32,9 +36,33 @@ protocol EngineClient: Sendable {
    func setNote(text: String, audience: Engine.NoteAudience) async throws(EngineError) -> EngineResult<Engine.Note>
    func deleteNote(noteID: String) async throws(EngineError) -> EngineResult<Void>
 
+   // Added to the engine after 1.1.0 and read only when a person opens the part of a page that
+   // shows them. A cursor goes back to the engine exactly as it came.
+   func postPage(code: String) async throws(EngineError) -> EngineResult<Engine.PostPage>
+   func post(pk: String) async throws(EngineError) -> EngineResult<Engine.Post>
+   func likers(postPK: String) async throws(EngineError) -> EngineResult<[Engine.UserSummary]>
+   func moreFromAuthor(authorID: String) async throws(EngineError) -> EngineResult<[Engine.GridTile]>
+   func replies(postPK: String, commentID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Comment>>
+   func mutualFollowers(userID: String) async throws(EngineError) -> EngineResult<Engine.MutualFollowers>
+   func similarAccounts(userID: String) async throws(EngineError) -> EngineResult<[Engine.UserSummary]>
+   func savedCollections() async throws(EngineError) -> EngineResult<Engine.SavedCollections>
+   func hasNewPosts() async throws(EngineError) -> EngineResult<Bool>
+   func searchTop(query: String) async throws(EngineError) -> EngineResult<[Engine.SearchResult]>
+   func searchKeyword(query: String) async throws(EngineError) -> EngineResult<Engine.KeywordResults>
+   func hashtag(name: String) async throws(EngineError) -> EngineResult<Engine.HashtagHeader>
+   func explorePosts(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>>
+   func audio(audioID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.AudioPage>
+   func audioClips(audioID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Post>>
+
    func startEvents(since messageID: String?) async
    func drainEvents() async -> [Engine.Event]
    func stopEvents() async
+
+   // Session lifecycle. reconnect() runs only when a person resolved a checkpoint or asked to
+   // reconnect, and it never replays the interrupted call. close() releases the client on sign
+   // out and when an account is removed.
+   func reconnect() async
+   func close() async
 }
 
 // Capabilities the interface needs that the engine does not have at 1.1.0. Each one is an
@@ -86,6 +114,29 @@ protocol ProposedEngineSurface: Sendable {
    func searchPlaces(query: String) async throws(EngineError) -> EngineResult<[Engine.Place]>
    func hashtagPosts(name: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
    func placePosts(placeID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+
+   // Reading a live reel or a highlight marks its first item seen under the engine's default
+   // Behavior, a write its owner sees, so stores send both through the gateway's write path.
+   // markStorySeen(reelID:itemID:) marks one later item of a reel read in this session.
+   func storyReel(userID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel?>
+   func highlightReel(highlightID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel>
+   func markStorySeen(reelID: String, itemID: String) async throws(EngineError) -> EngineResult<Void>
+
+   // The engine keys the posts grid on the username, not the id.
+   func profilePosts(username: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+
+   // The explore grid one page at a time, the cursor passed back exactly as it came.
+   func explore(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+   func recentSearches() async throws(EngineError) -> EngineResult<[Engine.RecentSearch]>
+
+   // The engine types no activity kind, so its rows arrive untyped with their own line.
+   func activityFeed() async throws(EngineError) -> EngineResult<Engine.ActivityFeed>
+
+   // The first page of the reels, tagged and saved grids, with whether more exist. The engine
+   // reads each as one page with has_more and takes no cursor for any of them.
+   func profileReelsPage(userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+   func taggedPostsPage(userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
+   func savedPostsPage() async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>>
 }
 
 typealias AppEngine = EngineClient & ProposedEngineSurface

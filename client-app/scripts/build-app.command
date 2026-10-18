@@ -8,6 +8,17 @@ repo_dir="$(cd "$app_dir/.." && pwd)"
 build_dir="$HOME/Library/Developer/Xcode/DerivedData/InstagramPlus-scripts"
 log_path="$repo_dir/engine/logs/app-build-$(date +%Y-%m-%d-%H%M%S).log"
 
+runtime_interpreter="$repo_dir/Runtime/aarch64/python/bin/python3"
+runtime_requirements="$repo_dir/Runtime/requirements.txt"
+runtime_is_missing=false
+lock_is_newer=false
+[ -x "$runtime_interpreter" ] || runtime_is_missing=true
+[ "$repo_dir/engine/uv.lock" -nt "$runtime_requirements" ] && lock_is_newer=true
+
+if $runtime_is_missing || $lock_is_newer; then
+   "$app_dir/scripts/build-runtime.command"
+fi
+
 rm -rf "$build_dir"
 cd "$app_dir"
 

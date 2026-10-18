@@ -1,7 +1,9 @@
 import SwiftUI
 
 enum SearchTab: String, CaseIterable, Identifiable {
+   case top
    case accounts
+   case posts
    case tags
    case places
 
@@ -9,7 +11,9 @@ enum SearchTab: String, CaseIterable, Identifiable {
 
    var title: String {
       switch self {
+         case .top: "Top"
          case .accounts: "Accounts"
+         case .posts: "Posts"
          case .tags: "Tags"
          case .places: "Places"
       }
@@ -21,6 +25,7 @@ struct SearchView: View {
    @Environment(SearchStore.self) private var search
 
    @State private var tab = SearchTab.accounts
+   @State private var exploreMode = ExploreMode.grid
 
    var body: some View {
       let query = navigation.searchQuery
@@ -45,6 +50,12 @@ struct SearchView: View {
          await search.search(query)
       }
       .onChange(of: search.resultsQuery) {
+         let keepsChosenTab = tab == .top || tab == .posts
+
+         guard !keepsChosenTab else {
+            return
+         }
+
          let hasNoAccounts = search.results.isEmpty
          let hasTags = !search.tagResults.isEmpty
          let hasPlaces = !search.placeResults.isEmpty
@@ -58,6 +69,7 @@ struct SearchView: View {
          }
       }
       .task {
+         await search.loadRecent()
          await search.loadExplore()
       }
    }
@@ -74,6 +86,9 @@ struct SearchView: View {
 
          LoadStateContainer(state: search.resultsState, loadingLabel: "Searching", retry: { Task { await search.search(query) } }) {
             switch tab {
+               case .top:
+                  topResults(for: query)
+
                case .accounts:
                   if search.results.isEmpty {
                      noResults
@@ -88,13 +103,20 @@ struct SearchView: View {
                      }
                   }
 
+               case .posts:
+                  keywordResults(for: query)
+
                case .tags:
-                  if search.tagResults.isEmpty {
+                  if search.isTagSearchUnavailable() {
+                     exactTagResult(for: query)
+                  } else if case .failed(let problem) = search.tagSearchState {
+                     unavailable(problem)
+                  } else if search.tagResults.isEmpty {
                      noResults
                   } else {
                      VStack(spacing: 4) {
                         ForEach(search.tagResults) { hashtag in
-                           CollectionRow(symbolName: "number", title: "#" + hashtag.name, subtitle: "\(CompactCount.format(hashtag.postCount)) posts") {
+                           CollectionRow(symbolName: "number", title: "#" + hashtag.name, subtitle: postCountLabel(hashtag.postCount)) {
                               navigation.route = .hashtag(hashtag.name)
                            }
                         }
@@ -102,7 +124,9 @@ struct SearchView: View {
                   }
 
                case .places:
-                  if search.placeResults.isEmpty {
+                  if case .failed(let problem) = search.placeSearchState {
+                     unavailable(problem)
+                  } else if search.placeResults.isEmpty {
                      noResults
                   } else {
                      VStack(spacing: 4) {
@@ -115,6 +139,123 @@ struct SearchView: View {
                   }
             }
          }
+         .task(id: "\(tab.rawValue)|\(query)") {
+            await loadOnDemand(tab, query: query)
+         }
+      }
+   }
+
+   // Top results, the posts grid for a keyword and the exact tag are read only when their tab
+   // is open, after typing pauses, once per query.
+   private func loadOnDemand(_ tab: SearchTab, query: String) async {
+      try? await Task.sleep(for: .milliseconds(350))
+
+      if Task.isCancelled {
+         return
+      }
+
+      switch tab {
+         case .top:
+            await search.loadTop(query)
+
+         case .posts:
+            await search.loadKeyword(query)
+
+         case .tags where search.isTagSearchUnavailable():
+            await search.loadExactTag(query)
+
+         case .accounts, .tags, .places:
+            break
+      }
+   }
+
+   private func postCountLabel(_ postCount: Int?) -> String {
+      postCount.map { "\(CompactCount.format($0)) posts" } ?? "Post count not given"
+   }
+
+   @ViewBuilder
+   private func topResults(for query: String) -> some View {
+      LoadStateContainer(state: search.topState, loadingLabel: "Loading top results", retry: { Task { await search.loadTop(query) } }) {
+         if search.topRows.isEmpty, search.topWithoutDetailsCount == 0 {
+            noResults
+         } else {
+            VStack(alignment: .leading, spacing: 4) {
+               ForEach(search.topRows) { row in
+                  switch row.content {
+                     case .account(let account):
+                        AccountRow(account: account) {
+                           search.remember(account)
+                           navigation.openProfile(account.id)
+                        }
+
+                     case .keyword(let keyword):
+                        CollectionRow(symbolName: "magnifyingglass", title: keyword, subtitle: "Posts") {
+                           navigation.searchQuery = keyword
+                           tab = .posts
+                        }
+                  }
+               }
+
+               if search.topWithoutDetailsCount > 0 {
+                  let noun = search.topWithoutDetailsCount == 1 ? "result" : "results"
+
+                  Text("\(search.topWithoutDetailsCount) hashtag or place \(noun) Instagram+ cannot show yet.")
+                     .font(.system(size: 12))
+                     .foregroundStyle(Palette.textSecondary)
+                     .padding(.horizontal, 12)
+                     .padding(.top, 8)
+               }
+            }
+         }
+      }
+   }
+
+   @ViewBuilder
+   private func keywordResults(for query: String) -> some View {
+      LoadStateContainer(state: search.keywordState, loadingLabel: "Loading posts", retry: { Task { await search.loadKeyword(query) } }) {
+         if search.keywordTiles.isEmpty {
+            noResults
+         } else {
+            VStack(spacing: 14) {
+               TileGrid(tiles: search.keywordTiles)
+
+               if search.keywordHasMore {
+                  Text("There are more posts, but Instagram+ can read only the first page yet.")
+                     .font(.system(size: 12))
+                     .foregroundStyle(Palette.textSecondary)
+               }
+            }
+         }
+      }
+   }
+
+   // The engine has no tag search, but it reads the header of the exact tag typed.
+   @ViewBuilder
+   private func exactTagResult(for query: String) -> some View {
+      switch search.exactTagState {
+         case .idle, .loading:
+            LoadingStateView(label: "Looking up the tag")
+
+         case .notFound:
+            EmptyStateView(symbolName: "number", title: "No tag by that name", message: "Instagram+ can look up an exact tag only, not tags that start with it.")
+               .frame(height: 320)
+
+         case .failed(let problem):
+            unavailable(problem)
+
+         case .loaded:
+            if let tag = search.exactTag {
+               VStack(alignment: .leading, spacing: 8) {
+                  CollectionRow(symbolName: "number", title: "#" + tag.name, subtitle: postCountLabel(tag.postCount)) {
+                     navigation.route = .hashtag(tag.name)
+                  }
+
+                  Text("Instagram+ can look up an exact tag only, not tags that start with it.")
+                     .font(.system(size: 12))
+                     .foregroundStyle(Palette.textSecondary)
+                     .padding(.horizontal, 12)
+               }
+            }
       }
    }
 
@@ -123,24 +264,36 @@ struct SearchView: View {
          .frame(height: 320)
    }
 
+   private func unavailable(_ problem: String) -> some View {
+      EmptyStateView(symbolName: "magnifyingglass", title: "Not available yet", message: problem)
+         .frame(height: 320)
+   }
+
    private var recent: some View {
-      VStack(alignment: .leading, spacing: 18) {
+      let hasRecent = !search.recent.isEmpty || !search.recentKeywords.isEmpty || search.recentWithoutDetailsCount > 0
+
+      return VStack(alignment: .leading, spacing: 18) {
          HStack {
             SectionTitle(text: "Recent")
 
             Spacer()
 
-            if !search.recent.isEmpty {
+            if hasRecent {
                Button("Clear all") {
                   search.clearRecent()
                }
                .buttonStyle(.plain)
                .font(.system(size: 13, weight: .semibold))
                .foregroundStyle(Palette.link)
+               .help("Clears this list on this Mac. Instagram+ cannot clear your recent searches on Instagram yet.")
             }
          }
 
-         if search.recent.isEmpty {
+         if case .failed(let problem) = search.recentState, !hasRecent {
+            Text(problem)
+               .font(.system(size: 14))
+               .foregroundStyle(Palette.textSecondary)
+         } else if !hasRecent {
             Text("No recent searches.")
                .font(.system(size: 14))
                .foregroundStyle(Palette.textSecondary)
@@ -151,6 +304,20 @@ struct SearchView: View {
                      navigation.openProfile(account.id)
                   }
                }
+
+               ForEach(search.recentKeywords, id: \.self) { keyword in
+                  CollectionRow(symbolName: "magnifyingglass", title: keyword, subtitle: "Search") {
+                     navigation.searchQuery = keyword
+                  }
+               }
+            }
+
+            if search.recentWithoutDetailsCount > 0 {
+               let noun = search.recentWithoutDetailsCount == 1 ? "search" : "searches"
+
+               Text("\(search.recentWithoutDetailsCount) recent hashtag or place \(noun) Instagram+ cannot show yet.")
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.textSecondary)
             }
          }
       }
@@ -158,12 +325,53 @@ struct SearchView: View {
 
    private var explore: some View {
       VStack(alignment: .leading, spacing: 18) {
-         SectionTitle(text: "Explore")
+         HStack {
+            SectionTitle(text: "Explore")
 
-         LoadStateContainer(state: search.exploreState, loadingLabel: "Loading explore", retry: { Task { await search.loadExplore() } }) {
-            TileGrid(tiles: search.exploreTiles)
+            Spacer()
+
+            SegmentedPills(options: ExploreMode.allCases, selection: $exploreMode) { $0.title }
+         }
+
+         switch exploreMode {
+            case .grid:
+               LoadStateContainer(state: search.exploreState, loadingLabel: "Loading explore", retry: { Task { await search.loadExplore() } }) {
+                  VStack(spacing: 18) {
+                     TileGrid(tiles: search.exploreTiles)
+
+                     if search.hasMoreExplore {
+                        showMoreButton(isLoading: search.isLoadingMoreExplore) {
+                           await search.loadMoreExplore()
+                        }
+                     }
+                  }
+               }
+
+            case .posts:
+               LoadStateContainer(state: search.explorePostsState, loadingLabel: "Loading posts", retry: { Task { await search.loadExplorePosts() } }) {
+                  VStack(spacing: 18) {
+                     TileGrid(tiles: search.explorePosts)
+
+                     if search.hasMoreExplorePosts {
+                        showMoreButton(isLoading: search.isLoadingMoreExplorePosts) {
+                           await search.loadMoreExplorePosts()
+                        }
+                     }
+                  }
+               }
+               .task { await search.loadExplorePosts() }
          }
       }
+   }
+
+   private func showMoreButton(isLoading: Bool, load: @escaping @MainActor () async -> Void) -> some View {
+      Button(isLoading ? "Loading" : "Show more") {
+         Task { await load() }
+      }
+      .buttonStyle(.plain)
+      .font(.system(size: 13, weight: .semibold))
+      .foregroundStyle(Palette.link)
+      .disabled(isLoading)
    }
 }
 
@@ -257,5 +465,20 @@ private struct CollectionRow: View {
       }
       .buttonStyle(.plain)
       .onHover { isHovered = $0 }
+   }
+}
+// Explore as the engine's sections joined in order, or as its flat page of posts. The flat
+// form is read only when it is chosen.
+enum ExploreMode: String, CaseIterable, Identifiable {
+   case grid
+   case posts
+
+   var id: String { rawValue }
+
+   var title: String {
+      switch self {
+         case .grid: "Sections"
+         case .posts: "All posts"
+      }
    }
 }

@@ -91,7 +91,8 @@ struct HeaderActions: View {
 
    var body: some View {
       let isDark = colorScheme == .dark
-      let unreadMessagesColor: Color? = direct.unreadCount > 0 ? Palette.accent : nil
+      let hasUnreadMessages = (direct.unreadThreadCount ?? 0) > 0
+      let unreadMessagesColor: Color? = hasUnreadMessages ? Palette.accent : nil
       let unreadActivityColor: Color? = activity.hasUnread ? Palette.online : nil
 
       HStack(spacing: 14) {

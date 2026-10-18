@@ -2,7 +2,7 @@ import SwiftUI
 
 struct StoryViewer: View {
    @Environment(HomeStore.self) private var home
-   @Environment(DirectStore.self) private var direct
+   @Environment(EngineGateway.self) private var gateway
    @Environment(NavigationStore.self) private var navigation
 
    let initialAuthorID: Account.ID
@@ -14,9 +14,10 @@ struct StoryViewer: View {
    @State private var reply = ""
    @State private var likedAuthorIDs: Set<Account.ID> = []
 
-   private struct Frame: Hashable {
+   private struct PlaybackKey: Hashable {
       let authorID: Account.ID
       let itemIndex: Int
+      let isReady: Bool
    }
 
    private static let itemDuration: Double = 5
@@ -39,7 +40,10 @@ struct StoryViewer: View {
             }
             .padding(.vertical, 36)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .task(id: Frame(authorID: story.id, itemIndex: itemIndex)) {
+            .task(id: story.id) {
+               await home.loadStoryReel(story.id)
+            }
+            .task(id: PlaybackKey(authorID: story.id, itemIndex: itemIndex, isReady: home.storyReel(for: story.id) != nil)) {
                await play(story)
             }
          }
@@ -50,7 +54,17 @@ struct StoryViewer: View {
    }
 
    private func card(for story: Story) -> some View {
-      MediaView(seed: "\(story.id).story.\(itemIndex)", cornerRadius: 12)
+      let reel = home.storyReel(for: story.id)
+      let frame = reel.flatMap { $0.frames.indices.contains(itemIndex) ? $0.frames[itemIndex] : nil }
+
+      return MediaView(seed: "\(story.id).story.\(itemIndex)", url: frame?.mediaURL, cornerRadius: 12)
+         .overlay {
+            if reel == nil {
+               ReelStatusView(state: home.storyReelState(for: story.id), loadingLabel: "Opening story", notFoundMessage: "\(story.author.username) has no story up now.") {
+                  Task { await home.loadStoryReel(story.id) }
+               }
+            }
+         }
          .overlay(alignment: .top) {
             LinearGradient(colors: [.black.opacity(0.45), .clear], startPoint: .top, endPoint: .bottom)
                .frame(height: 120)
@@ -58,7 +72,7 @@ struct StoryViewer: View {
          .overlay(alignment: .top) {
             VStack(spacing: 12) {
                HStack(spacing: 4) {
-                  ForEach(0..<story.itemCount, id: \.self) { segment in
+                  ForEach(0..<(reel?.frames.count ?? 0), id: \.self) { segment in
                      ProgressSegment(fill: segmentFill(segment))
                   }
                }
@@ -69,7 +83,7 @@ struct StoryViewer: View {
                   Text(story.author.username)
                      .font(.system(size: 14, weight: .semibold))
 
-                  Text(RelativeTime.short(since: story.postedAt))
+                  Text(RelativeTime.short(since: frame?.postedAt ?? story.postedAt))
                      .font(.system(size: 13))
                      .opacity(0.7)
 
@@ -129,7 +143,8 @@ struct StoryViewer: View {
          .frame(maxHeight: 760)
    }
 
-   // A story reply is a direct message to the author, so it goes through the same thread.
+   // The engine has no story reply write. A direct message in its place is not what a browser
+   // sends, so the typed text is dropped and nothing reaches either engine.
    private func sendReply(to story: Story) {
       let text = reply.trimmingCharacters(in: .whitespacesAndNewlines)
       reply = ""
@@ -138,13 +153,7 @@ struct StoryViewer: View {
          return
       }
 
-      Task {
-         guard await direct.openThread(with: story.author), let threadID = direct.selectedThreadID else {
-            return
-         }
-
-         await direct.send("Replied to your story: \(text)", to: threadID)
-      }
+      gateway.handle(.upstreamRejected(code: EngineError.notWiredCode), label: "the story reply", isWrite: true)
    }
 
    private func segmentFill(_ segment: Int) -> Double {
@@ -160,8 +169,13 @@ struct StoryViewer: View {
    }
 
    private func play(_ story: Story) async {
-      await home.markStorySeen(authorID: story.id)
       progress = 0
+
+      guard let reel = home.storyReel(for: story.id) else {
+         return
+      }
+
+      home.markStoryFrameSeen(in: reel, at: itemIndex)
 
       while progress < 1 {
          try? await Task.sleep(for: .seconds(Self.tick))
@@ -185,7 +199,8 @@ struct StoryViewer: View {
    }
 
    private func advance(_ story: Story) {
-      let hasNextItem = itemIndex + 1 < story.itemCount
+      let itemCount = home.storyReel(for: story.id)?.frames.count ?? 0
+      let hasNextItem = itemIndex + 1 < itemCount
 
       if hasNextItem {
          itemIndex += 1
@@ -257,5 +272,52 @@ struct StepButton: View {
       .buttonStyle(.plain)
       .opacity(isHidden ? 0 : 1)
       .disabled(isHidden)
+   }
+}
+
+// What a viewer shows before a reel's items arrive, or when none can.
+struct ReelStatusView: View {
+   let state: LoadState
+   let loadingLabel: String
+   let notFoundMessage: String
+   let retry: () -> Void
+
+   var body: some View {
+      VStack(spacing: 12) {
+         switch state {
+            case .idle, .loading, .loaded:
+               ProgressView()
+                  .controlSize(.small)
+                  .tint(.white)
+
+               Text(loadingLabel)
+                  .font(.system(size: 13))
+
+            case .notFound:
+               Image(systemName: "clock.arrow.circlepath")
+                  .font(.system(size: 26, weight: .light))
+
+               Text(notFoundMessage)
+                  .font(.system(size: 14))
+                  .multilineTextAlignment(.center)
+
+            case .failed(let message):
+               Image(systemName: "exclamationmark.triangle")
+                  .font(.system(size: 26, weight: .light))
+
+               Text(message)
+                  .font(.system(size: 14))
+                  .multilineTextAlignment(.center)
+
+               Button("Try again", action: retry)
+                  .buttonStyle(.plain)
+                  .font(.system(size: 13, weight: .semibold))
+                  .padding(.horizontal, 14)
+                  .padding(.vertical, 6)
+                  .overlay(Capsule().strokeBorder(.white.opacity(0.6)))
+         }
+      }
+      .foregroundStyle(.white)
+      .padding(24)
    }
 }
