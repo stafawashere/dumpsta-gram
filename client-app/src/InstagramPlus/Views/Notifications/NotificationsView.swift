@@ -7,9 +7,28 @@ struct NotificationsView: View {
    @State private var filter = ActivityFilter.all
    @State private var isShowingRequests = false
 
+   private enum Row: Identifiable {
+      case typed(ActivityItem)
+      case untyped(UntypedActivity)
+
+      var id: String {
+         switch self {
+            case .typed(let item): "typed:" + item.id
+            case .untyped(let item): "untyped:" + item.id
+         }
+      }
+
+      var occurredAt: Date {
+         switch self {
+            case .typed(let item): item.occurredAt
+            case .untyped(let item): item.occurredAt
+         }
+      }
+   }
+
    private struct Section: Identifiable {
       let title: String
-      let items: [ActivityItem]
+      let rows: [Row]
 
       var id: String { title }
    }
@@ -43,18 +62,31 @@ struct NotificationsView: View {
                      .foregroundStyle(Palette.textPrimary)
                      .padding(.bottom, 8)
 
-                  ForEach(section.items) { item in
-                     ActivityRow(item: item, isFollowing: followState(for: item)) {
-                        if let actor = item.actors.first {
-                           Task { await profiles.toggleFollow(actor.id) }
-                        }
+                  ForEach(section.rows) { row in
+                     switch row {
+                        case .typed(let item):
+                           ActivityRow(item: item, isFollowing: followState(for: item)) {
+                              if let actor = item.actors.first {
+                                 Task { await profiles.toggleFollow(actor.id) }
+                              }
+                           }
+
+                        case .untyped(let item):
+                           UntypedActivityRow(item: item)
                      }
                   }
                }
                .padding(.top, 30)
             }
 
-            if sections.isEmpty, activity.state.hasLoaded {
+            if hiddenUntypedCount > 0 {
+               Text("\(hiddenUntypedCount) more under All. Instagram+ cannot sort them by kind yet.")
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.textSecondary)
+                  .padding(.top, 24)
+            }
+
+            if sections.isEmpty, activity.state.hasLoaded, hiddenUntypedCount == 0 {
                EmptyStateView(symbolName: "heart", title: "Nothing here yet", message: "Activity on your posts will show up here.")
                   .frame(height: 360)
             }
@@ -64,17 +96,20 @@ struct NotificationsView: View {
          .padding(.vertical, 36)
          .frame(maxWidth: .infinity)
       }
-      .onAppear { activity.markSeen() }
       .task {
          if !activity.state.hasLoaded {
             await activity.load()
          }
+
+         activity.markSeen()
       }
    }
 
    private var sections: [Section] {
       let now = Date.now
-      let visibleItems = activity.items.filter { filter.includes($0.kind) }
+      let typedRows = activity.items.filter { filter.includes($0.kind) }.map(Row.typed)
+      let untypedRows = filter == .all ? activity.untypedItems.map(Row.untyped) : []
+      let visibleRows = (typedRows + untypedRows).sorted { $0.occurredAt > $1.occurredAt }
       let buckets: [(String, TimeInterval)] = [
          ("Today", 60 * 60 * 24),
          ("This week", 60 * 60 * 24 * 7),
@@ -82,7 +117,7 @@ struct NotificationsView: View {
          ("Earlier", .infinity),
       ]
 
-      var remaining = visibleItems
+      var remaining = visibleRows
       var sections: [Section] = []
 
       for (title, maximumAge) in buckets {
@@ -90,11 +125,15 @@ struct NotificationsView: View {
          remaining.removeAll { now.timeIntervalSince($0.occurredAt) < maximumAge }
 
          if !matching.isEmpty {
-            sections.append(Section(title: title, items: matching))
+            sections.append(Section(title: title, rows: matching))
          }
       }
 
       return sections
+   }
+
+   private var hiddenUntypedCount: Int {
+      filter == .all ? 0 : activity.untypedItems.count
    }
 
    private func followState(for item: ActivityItem) -> Bool? {
@@ -245,5 +284,39 @@ private struct ActivityRow: View {
       }
 
       return first
+   }
+}
+
+// The engine's own line for a row it gives no typed kind, shown as it came.
+private struct UntypedActivityRow: View {
+   @Environment(NavigationStore.self) private var navigation
+
+   let item: UntypedActivity
+
+   var body: some View {
+      HStack(spacing: 12) {
+         if let actor = item.actor {
+            AvatarLink(account: actor, diameter: 44)
+         }
+
+         Text("\(item.text)\(Text(" " + RelativeTime.short(since: item.occurredAt)).foregroundStyle(Palette.textSecondary))")
+            .font(.system(size: 14))
+            .foregroundStyle(Palette.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+            .help("Instagram+ cannot read this notification's kind yet. The engine calls it \(item.rawKind).")
+
+         Spacer(minLength: 12)
+
+         if let mediaCode = item.mediaCode {
+            Button {
+               navigation.showPost(code: mediaCode)
+            } label: {
+               MediaView(seed: mediaCode, cornerRadius: 6)
+                  .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+         }
+      }
+      .padding(.vertical, 8)
    }
 }

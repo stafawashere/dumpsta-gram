@@ -63,7 +63,7 @@ struct SidebarView: View {
    }
 
    private func badgeCount(for destination: SidebarDestination) -> Int {
-      destination == .messages ? direct.unreadCount : 0
+      destination == .messages ? direct.unreadThreadCount ?? 0 : 0
    }
 
    private var profileSummary: some View {

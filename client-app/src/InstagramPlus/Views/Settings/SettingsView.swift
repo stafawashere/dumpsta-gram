@@ -35,7 +35,12 @@ struct SettingsView: View {
                   }
                }
 
-               SettingsRow(title: "Session", value: "Adopted, served by the dummy engine")
+               if accounts.isRealEngine {
+                  SettingsRow(title: "Session", value: "Adopted from a browser")
+                  SettingsRow(title: "Account id", value: profiles.viewerID)
+               } else {
+                  SettingsRow(title: "Session", value: "Adopted, served by the dummy engine")
+               }
             }
 
             SettingsCard(title: "Accounts") {
@@ -111,7 +116,7 @@ struct SettingsView: View {
 
             SettingsCard(title: "About") {
                SettingsRow(title: "Version", value: Self.versionString)
-               SettingsRow(title: "Engine", value: "Dummy engine, mirroring Dumpsta-Engine 1.1.0")
+               SettingsRow(title: "Engine", value: accounts.isRealEngine ? "Dumpsta-Engine in embedded Python" : "Dummy engine, mirroring Dumpsta-Engine 1.1.0")
 
                Button("Log out") {
                   navigation.isConfirmingLogOut = true

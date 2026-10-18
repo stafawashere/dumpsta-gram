@@ -1,8 +1,9 @@
 import SwiftUI
 
-// A post's media: one image, a carousel with its own page state, or a video that plays and
-// pauses in place. The dummy engine has no video bytes, so playback is a timeline over the
-// placeholder rather than an AVPlayer.
+// A post's media: one image, a carousel with its own page state, or a video that plays in
+// place. Images and videos come from the renditions the engine read. Without a rendition the
+// app can load, as with the dummy engine, the placeholder stands in and a video runs a timeline
+// over it rather than an AVPlayer.
 struct PostMedia: View {
    let post: Post
    var cornerRadius: CGFloat = 14
@@ -11,21 +12,34 @@ struct PostMedia: View {
    @State private var page = 0
    @State private var isPlaying = false
    @State private var playhead: Double = 0
+   @State private var inlineVideo: InlineVideo?
 
    var body: some View {
-      let pageCount = post.kind == .carousel ? max(2, post.carouselCount ?? 3) : 1
+      let hasCarouselPages = !post.carouselPages.isEmpty
+      let fallbackPageCount = post.kind == .carousel ? max(2, post.carouselCount ?? 3) : 1
+      let pageCount = hasCarouselPages ? post.carouselPages.count : fallbackPageCount
       let seed = page == 0 ? post.mediaSeed : "\(post.mediaSeed).\(page)"
-      let usesLocalImage = page == 0
       let label = post.mediaDescription.isEmpty ? nil : post.mediaDescription
+      let shownPage = currentPage
+      let videoURL = shownPage.kind == .video ? Self.remoteURL(widestOf: shownPage.videos) : nil
 
-      MediaView(seed: seed, url: usesLocalImage ? post.mediaURL : nil, label: page == 0 ? label : nil, cornerRadius: cornerRadius)
+      MediaView(seed: seed, url: imageURL(for: shownPage), label: page == 0 ? label : nil, cornerRadius: cornerRadius)
+         .overlay {
+            if let inlineVideo, inlineVideo.url == videoURL, let player = inlineVideo.player {
+               VideoSurface(player: player)
+                  .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                  .allowsHitTesting(false)
+            }
+         }
          .contentShape(Rectangle())
          .onTapGesture(count: 2) {
             onOpen?()
          }
          .overlay {
-            if post.kind == .video {
-               videoControls
+            if let videoURL {
+               remoteVideoControls(for: videoURL)
+            } else if shownPage.kind == .video {
+               placeholderVideoControls
             }
          }
          .overlay(alignment: .topTrailing) {
@@ -44,6 +58,47 @@ struct PostMedia: View {
                carouselControls(pageCount: pageCount)
             }
          }
+         .onChange(of: page) {
+            inlineVideo?.pause()
+            inlineVideo = nil
+         }
+         .onDisappear {
+            inlineVideo?.pause()
+         }
+   }
+
+   private struct ShownPage {
+      let kind: Post.Kind
+      let images: [Post.Rendition]
+      let videos: [Post.Rendition]
+   }
+
+   private var currentPage: ShownPage {
+      let hasCarouselPage = post.carouselPages.indices.contains(page)
+
+      if hasCarouselPage {
+         let carouselPage = post.carouselPages[page]
+         return ShownPage(kind: carouselPage.kind, images: carouselPage.images, videos: carouselPage.videos)
+      }
+
+      let isFirstPage = page == 0
+      return ShownPage(kind: isFirstPage ? post.kind : .photo, images: isFirstPage ? post.images : [], videos: isFirstPage ? post.videos : [])
+   }
+
+   private func imageURL(for shownPage: ShownPage) -> URL? {
+      let isFirstPage = page == 0
+
+      if isFirstPage, let localURL = post.mediaURL {
+         return localURL
+      }
+
+      return Self.remoteURL(widestOf: shownPage.images)
+   }
+
+   private static func remoteURL(widestOf renditions: [Post.Rendition]) -> URL? {
+      let loadable = renditions.filter { MediaLoader.isRemote(URL(string: $0.url)) }
+      let widest = loadable.max { $0.width < $1.width }
+      return widest.flatMap { URL(string: $0.url) }
    }
 
    private func carouselControls(pageCount: Int) -> some View {
@@ -79,42 +134,47 @@ struct PostMedia: View {
       }
    }
 
-   private var videoControls: some View {
-      ZStack {
-         if !isPlaying {
-            Image(systemName: "play.fill")
-               .font(.system(size: 40))
-               .foregroundStyle(.white.opacity(0.92))
-               .shadow(radius: 8)
-         }
+   private func remoteVideoControls(for videoURL: URL) -> some View {
+      let video = inlineVideo?.url == videoURL ? inlineVideo : nil
+      let isVideoPlaying = video?.isPlaying ?? false
 
-         VStack {
-            Spacer()
-
-            GeometryReader { proxy in
-               Capsule()
-                  .fill(.white.opacity(0.3))
-                  .overlay(alignment: .leading) {
-                     Capsule()
-                        .fill(.white)
-                        .frame(width: proxy.size.width * playhead)
-                  }
-            }
-            .frame(height: 3)
-            .padding(14)
+      return VideoOverlay(
+         isPlaying: isVideoPlaying,
+         progress: video?.progress ?? 0,
+         hasFailed: video?.hasFailed ?? false,
+         isMuted: video?.isMuted ?? true,
+         onToggleMute: {
+            video?.isMuted.toggle()
          }
-      }
+      )
       .contentShape(Rectangle())
       .onTapGesture {
-         isPlaying.toggle()
+         let activeVideo = video ?? InlineVideo(url: videoURL)
+         inlineVideo = activeVideo
+         activeVideo.togglePlayback()
       }
-      .task(id: isPlaying) {
-         while isPlaying, !Task.isCancelled {
+      .task(id: isVideoPlaying) {
+         while isVideoPlaying, !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(100))
-            playhead = playhead >= 1 ? 0 : playhead + 0.01
+            video?.refreshProgress()
          }
       }
-      .accessibilityLabel(isPlaying ? "Pause" : "Play")
+      .accessibilityLabel(isVideoPlaying ? "Pause" : "Play")
+   }
+
+   private var placeholderVideoControls: some View {
+      VideoOverlay(isPlaying: isPlaying, progress: playhead, hasFailed: false)
+         .contentShape(Rectangle())
+         .onTapGesture {
+            isPlaying.toggle()
+         }
+         .task(id: isPlaying) {
+            while isPlaying, !Task.isCancelled {
+               try? await Task.sleep(for: .milliseconds(100))
+               playhead = playhead >= 1 ? 0 : playhead + 0.01
+            }
+         }
+         .accessibilityLabel(isPlaying ? "Pause" : "Play")
    }
 }
 

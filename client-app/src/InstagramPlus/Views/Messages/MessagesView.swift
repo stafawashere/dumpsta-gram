@@ -141,6 +141,23 @@ struct MessagesView: View {
                         .padding(24)
                   }
 
+                  if !isShowingRequests, direct.isInboxStale {
+                     HStack {
+                        Text("New activity in a conversation not listed here.")
+                           .font(.system(size: 12))
+                           .foregroundStyle(Palette.textSecondary)
+
+                        Spacer()
+
+                        Button("Refresh", action: reload)
+                           .buttonStyle(.plain)
+                           .font(.system(size: 12, weight: .semibold))
+                           .foregroundStyle(Palette.link)
+                     }
+                     .padding(.horizontal, 22)
+                     .padding(.vertical, 10)
+                  }
+
                   ForEach(visibleThreads) { thread in
                      ThreadRow(
                         thread: thread,
@@ -148,6 +165,17 @@ struct MessagesView: View {
                      ) {
                         Task { await direct.select(thread.id) }
                      }
+                  }
+
+                  if !isShowingRequests, direct.hasMoreThreads {
+                     Button(direct.isLoadingMoreThreads ? "Loading conversations" : "Load more conversations") {
+                        Task { await direct.loadMoreThreads() }
+                     }
+                     .buttonStyle(.plain)
+                     .font(.system(size: 13, weight: .semibold))
+                     .foregroundStyle(Palette.textSecondary)
+                     .disabled(direct.isLoadingMoreThreads)
+                     .padding(16)
                   }
                }
             }
@@ -177,12 +205,20 @@ private struct ListenerBadge: View {
                .foregroundStyle(Palette.textSecondary)
          }
          .help("New messages arrive through the engine's polling listener")
-      } else if problem != nil {
-         Button("Resume live", action: restart)
-            .buttonStyle(.plain)
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(Palette.badge)
-            .help(problem ?? "")
+      } else if let problem {
+         HStack(spacing: 6) {
+            Text("Live stopped")
+               .font(.system(size: 10, weight: .semibold))
+               .foregroundStyle(Palette.textSecondary)
+
+            Button("Resume", action: restart)
+               .buttonStyle(.plain)
+               .font(.system(size: 10, weight: .semibold))
+               .foregroundStyle(Palette.badge)
+         }
+         .help(problem)
+         .accessibilityElement(children: .combine)
+         .accessibilityLabel("Live stopped. \(problem)")
       }
    }
 }

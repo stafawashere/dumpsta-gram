@@ -59,7 +59,7 @@ private struct StoryBubble: View {
    var body: some View {
       Button(action: action) {
          VStack(spacing: 10) {
-            RingedAvatar(account: story.author, diameter: 76, showsRing: story.hasUnseenItems)
+            ringedAvatar
 
             Text(story.author.displayName)
                .font(.system(size: 13))
@@ -69,6 +69,40 @@ private struct StoryBubble: View {
          }
       }
       .buttonStyle(.plain)
+   }
+
+   // The engine's tray row has no unseen flag. An unknown row draws a plain ring with a question
+   // badge rather than the seen or the unseen ring, and rather than a dashed one that reads as
+   // the Add story bubble.
+   @ViewBuilder
+   private var ringedAvatar: some View {
+      if let hasUnseenItems = story.hasUnseenItems {
+         RingedAvatar(account: story.author, diameter: 76, showsRing: hasUnseenItems)
+      } else {
+         ZStack(alignment: .bottomTrailing) {
+            Circle()
+               .strokeBorder(Palette.textTertiary, lineWidth: 2)
+
+            Avatar(account: story.author, diameter: 66)
+               .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Image(systemName: "questionmark.circle.fill")
+               .font(.system(size: 16))
+               .foregroundStyle(Palette.textSecondary, Palette.card)
+         }
+         .frame(width: 76, height: 76)
+         .help(unknownHelp)
+      }
+   }
+
+   // TrayReel.seen_at is shown as the engine gave it. Whether an item newer than it exists is the
+   // engine's inference, not a property, so the app does not decide it.
+   private var unknownHelp: String {
+      guard let seenAt = story.seenAt else {
+         return "Instagram+ cannot read yet whether you have seen this story"
+      }
+
+      return "You last saw these stories at \(seenAt.formatted(date: .abbreviated, time: .shortened)). Instagram+ cannot read yet whether there is a newer one"
    }
 }
 

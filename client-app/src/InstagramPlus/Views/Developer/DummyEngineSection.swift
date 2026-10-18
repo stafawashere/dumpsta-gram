@@ -1,15 +1,49 @@
 import SwiftUI
 
 // Controls for the dummy engine: its timing preset, the failures it can be told to produce,
-// and a live log of every request it paced. None of this exists once the bridge lands.
+// and a live log of every request it paced. On the real engine it shows the Behavior in force
+// instead, because the protocol has no call to change it or to resume stopped writes. Both say
+// which engine is running and hold the choice for the next launch, which a launch argument or
+// INSTAGRAMPLUS_ENGINE still overrides.
 struct DummyEngineSection: View {
    @Environment(EngineGateway.self) private var gateway
    @AppStorage("dummyTiming") private var storedTiming = DummyEngine.Timing.fast.rawValue
+   @AppStorage(EngineSelection.nextLaunchKey) private var nextLaunchEngine = EngineSelection.real.rawValue
 
    @State private var status: DummyEngine.Status?
    @State private var faults = DummyEngine.Faults()
 
    var body: some View {
+      if gateway.dummy == nil {
+         realEngine
+      } else {
+         dummyEngine
+      }
+   }
+
+   private var realEngine: some View {
+      VStack(alignment: .leading, spacing: 10) {
+         Text("Engine behavior")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Palette.textSecondary)
+
+         runningEngine(isDummy: false)
+
+         Text("PARITY, the engine's default. Requests are paced like a person using instagram.com. It is chosen at launch and cannot be changed here yet.")
+            .font(.system(size: 13))
+            .foregroundStyle(Palette.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+         Hairline()
+         nextLaunch
+      }
+      .padding(20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.hairline))
+   }
+
+   private var dummyEngine: some View {
       VStack(alignment: .leading, spacing: 16) {
          HStack {
             Text("Dummy engine")
@@ -18,11 +52,14 @@ struct DummyEngineSection: View {
 
             Spacer()
 
-            Text("Stands in for Dumpsta-Engine until the bridge lands")
+            Text("Chosen at launch, a stand-in with no network")
                .font(.system(size: 11))
                .foregroundStyle(Palette.textTertiary)
          }
 
+         runningEngine(isDummy: true)
+         nextLaunch
+         Hairline()
          timing
          Hairline()
          faultControls
@@ -36,15 +73,45 @@ struct DummyEngineSection: View {
       .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
       .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.hairline))
       .task {
-         faults = await gateway.engine.status().faults
+         faults = await gateway.dummy?.status().faults ?? faults
 
          while !Task.isCancelled {
-            status = await gateway.engine.status()
+            status = await gateway.dummy?.status()
             try? await Task.sleep(for: .seconds(1))
          }
       }
       .onChange(of: faults) { _, newFaults in
-         Task { await gateway.engine.configure(faults: newFaults) }
+         Task { await gateway.dummy?.configure(faults: newFaults) }
+      }
+   }
+
+   private func runningEngine(isDummy: Bool) -> some View {
+      let description = isDummy ? "The dummy engine, mirroring Dumpsta-Engine 1.1.0" : "Dumpsta-Engine in embedded Python"
+
+      return HStack {
+         Text("Running now")
+
+         Spacer()
+
+         Text(description)
+            .foregroundStyle(Palette.textSecondary)
+      }
+      .font(.system(size: 13))
+   }
+
+   private var nextLaunch: some View {
+      let usesDummy = Binding<Bool>(
+         get: { nextLaunchEngine == EngineSelection.dummy.rawValue },
+         set: { nextLaunchEngine = $0 ? EngineSelection.dummy.rawValue : EngineSelection.real.rawValue }
+      )
+
+      return VStack(alignment: .leading, spacing: 4) {
+         Toggle("Use the dummy engine on the next launch", isOn: usesDummy)
+            .font(.system(size: 13))
+
+         Text("--engine and INSTAGRAMPLUS_ENGINE take precedence. --exercise and --snapshot-dir always use the dummy.")
+            .font(.system(size: 12))
+            .foregroundStyle(Palette.textSecondary)
       }
    }
 
@@ -53,7 +120,7 @@ struct DummyEngineSection: View {
          get: { DummyEngine.Timing(rawValue: storedTiming) ?? .fast },
          set: { newTiming in
             storedTiming = newTiming.rawValue
-            Task { await gateway.engine.configure(timing: newTiming) }
+            Task { await gateway.dummy?.configure(timing: newTiming) }
          }
       )
 
@@ -131,7 +198,7 @@ struct DummyEngineSection: View {
                Spacer()
 
                PrimaryButton(title: "Resume writes", isProminent: false) {
-                  Task { await gateway.engine.reconnect() }
+                  Task { await gateway.dummy?.reconnect() }
                }
             }
          }

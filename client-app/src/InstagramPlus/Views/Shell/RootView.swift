@@ -109,7 +109,7 @@ struct RootView: View {
          case .settings: SettingsView()
          case .profile(let accountID): ProfileView(accountID: accountID).id(accountID)
          case .hashtag(let name): CollectionPageView(kind: .hashtag(name)).id("tag:" + name)
-         case .place(_, let name): CollectionPageView(kind: .place(name)).id("place:" + name)
+         case .place(let placeID, let name): CollectionPageView(kind: .place(id: placeID, name: name)).id("place:" + placeID)
          case .archive: ArchiveView()
          case .relationships(let list): RelationshipListView(list: list).id(list)
       }

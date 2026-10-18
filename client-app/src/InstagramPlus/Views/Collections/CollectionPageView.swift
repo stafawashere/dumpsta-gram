@@ -3,15 +3,12 @@ import SwiftUI
 struct CollectionPageView: View {
    enum Kind: Hashable {
       case hashtag(String)
-      case place(String)
+      case place(id: String, name: String)
    }
 
    @Environment(SearchStore.self) private var search
 
    let kind: Kind
-
-   @State private var resolvedPlace: Place?
-   @State private var placeState = LoadState.idle
 
    var body: some View {
       ScrollView {
@@ -46,15 +43,12 @@ struct CollectionPageView: View {
    private var key: String {
       switch kind {
          case .hashtag(let name): "tag:" + name
-         case .place: "place:" + (resolvedPlace?.id ?? "")
+         case .place(let placeID, _): "place:" + placeID
       }
    }
 
    private var state: LoadState {
-      switch kind {
-         case .hashtag: search.collectionState(key)
-         case .place: resolvedPlace == nil ? placeState : search.collectionState(key)
-      }
+      search.collectionState(key)
    }
 
    private var header: some View {
@@ -89,14 +83,14 @@ struct CollectionPageView: View {
    private var title: String {
       switch kind {
          case .hashtag(let name): "#" + name
-         case .place(let name): name
+         case .place(_, let name): name
       }
    }
 
    private var postCount: Int? {
       switch kind {
          case .hashtag(let name): search.tagResults.first { $0.name == name }?.postCount
-         case .place: resolvedPlace?.postCount
+         case .place(let placeID, _): search.placeResults.first { $0.id == placeID }?.postCount
       }
    }
 
@@ -109,17 +103,8 @@ struct CollectionPageView: View {
          case .hashtag(let name):
             await search.loadHashtag(name)
 
-         case .place(let name):
-            placeState = .loading
-
-            guard let place = await search.findPlace(named: name) else {
-               placeState = .notFound
-               return
-            }
-
-            resolvedPlace = place
-            placeState = .loaded
-            await search.loadPlace(place.id)
+         case .place(let placeID, _):
+            await search.loadPlace(placeID)
       }
    }
 }
@@ -181,8 +166,12 @@ struct RelationshipListView: View {
 
             LoadStateContainer(state: profiles.relationshipsState, loadingLabel: "Loading", retry: { Task { await profiles.loadRelationships() } }) {
                let ids = memberIDs.sorted()
+               let isListUnreadable = list == .muted && !profiles.isMutedListKnown
 
-               if ids.isEmpty {
+               if isListUnreadable {
+                  EmptyStateView(symbolName: "speaker.slash", title: "Not available yet", message: "Instagram+ cannot read your muted accounts yet, so this list may not be empty.")
+                     .frame(height: 280)
+               } else if ids.isEmpty {
                   EmptyStateView(symbolName: "person.2", title: "Nobody here", message: emptyMessage)
                      .frame(height: 280)
                } else {
@@ -244,9 +233,11 @@ struct RelationshipListView: View {
             Text(account.username)
                .font(.system(size: 14, weight: .semibold))
 
-            Text(account.displayName)
-               .font(.system(size: 12))
-               .foregroundStyle(Palette.textSecondary)
+            if account.displayName != account.username {
+               Text(account.displayName)
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.textSecondary)
+            }
          }
          .foregroundStyle(Palette.textPrimary)
 

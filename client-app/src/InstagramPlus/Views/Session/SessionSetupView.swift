@@ -1,20 +1,27 @@
 import SwiftUI
 
-// Nothing typed here is stored or sent. The dummy engine accepts any session, and the bridge
-// (roadmap step 5.3) replaces connect() with adopting these cookies.
+// On the real engine the typed cookies go to the engine, which builds and saves the Session.
+// Nothing here stores, prints or logs them, and the fields are cleared as soon as they are sent.
+// The dummy engine accepts any session and the fields are discarded. Opened as a sheet to add
+// an account, a session the engine refuses is reported here and the account in use stays.
 struct SessionSetupView: View {
    @Environment(NavigationStore.self) private var navigation
    @Environment(EngineGateway.self) private var gateway
+   @Environment(AccountsStore.self) private var accounts
 
    @State private var sessionID = ""
    @State private var userID = ""
    @State private var csrfToken = ""
+   @State private var isConnecting = false
+   @State private var addProblem: String?
+
+   var isAddingAccount = false
 
    var body: some View {
       let hasSessionID = !sessionID.isEmpty
       let hasUserID = !userID.isEmpty
       let hasCSRFToken = !csrfToken.isEmpty
-      let canContinue = hasSessionID && hasUserID && hasCSRFToken
+      let canContinue = hasSessionID && hasUserID && hasCSRFToken && !isConnecting
 
       ScrollView {
          VStack(alignment: .leading, spacing: 0) {
@@ -69,7 +76,7 @@ struct SessionSetupView: View {
             .padding(.top, 18)
 
             Button(action: connect) {
-               Text("Continue")
+               Text(isConnecting ? "Connecting" : "Continue")
                   .font(.system(size: 14, weight: .semibold))
                   .foregroundStyle(.white)
                   .frame(maxWidth: .infinity)
@@ -81,14 +88,35 @@ struct SessionSetupView: View {
             .disabled(!canContinue)
             .padding(.top, 22)
 
-            Button("Continue with the dummy engine") {
-               connect()
+            if let addProblem {
+               Text(addProblem)
+                  .font(.system(size: 12))
+                  .foregroundStyle(Palette.badge)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .padding(.top, 12)
             }
-            .buttonStyle(.plain)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(Palette.link)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 14)
+
+            if isAddingAccount {
+               Button("Cancel") {
+                  accounts.isAddingAccount = false
+               }
+               .buttonStyle(.plain)
+               .font(.system(size: 13, weight: .semibold))
+               .foregroundStyle(Palette.link)
+               .frame(maxWidth: .infinity)
+               .padding(.top, 14)
+            }
+
+            if !accounts.isRealEngine {
+               Button("Continue with the dummy engine") {
+                  connect()
+               }
+               .buttonStyle(.plain)
+               .font(.system(size: 13, weight: .semibold))
+               .foregroundStyle(Palette.link)
+               .frame(maxWidth: .infinity)
+               .padding(.top, 14)
+            }
          }
          .foregroundStyle(Palette.textPrimary)
          .padding(36)
@@ -102,12 +130,30 @@ struct SessionSetupView: View {
    }
 
    private func connect() {
+      let typedSessionID = sessionID
+      let typedUserID = userID
+      let typedCSRFToken = csrfToken
+
       sessionID = ""
       userID = ""
       csrfToken = ""
-      navigation.route = .home
+      addProblem = nil
 
-      Task { await gateway.connect() }
+      if !isAddingAccount {
+         navigation.route = .home
+      }
+
+      guard accounts.isRealEngine else {
+         Task { await gateway.connect() }
+         return
+      }
+
+      isConnecting = true
+
+      Task {
+         addProblem = await accounts.adoptBrowserSession(sessionID: typedSessionID, userID: typedUserID, csrfToken: typedCSRFToken)
+         isConnecting = false
+      }
    }
 }
 
