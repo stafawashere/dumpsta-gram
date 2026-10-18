@@ -197,7 +197,7 @@ enum SnapshotProbe {
 
 @MainActor
 private final class InteractionProbe {
-   static let expectedCheckCount = 42
+   static let expectedCheckCount = 50
 
    let accounts: AccountsStore
 
@@ -237,6 +237,7 @@ private final class InteractionProbe {
       await runCore()
       await runAdditions()
       await runMessages()
+      await runWrites()
       await runSignIn()
 
       let summary = "exercise summary: PASS \(passed) FAIL \(failed) of \(Self.expectedCheckCount) expected\n"
@@ -302,7 +303,7 @@ private final class InteractionProbe {
       let status = await gateway.dummyEngine.status()
       let refusedLocally = status.requests.first?.outcome.contains("nothing sent") == true
       check("an unrecognised rejection stops later writes", status.writesStopped && refusedLocally)
-      await gateway.dummyEngine.reconnect()
+      _ = try? await gateway.dummyEngine.clearWriteStop()
 
       faults = DummyEngine.Faults()
       faults.checkpointOnNextRequest = true
@@ -429,6 +430,131 @@ private final class InteractionProbe {
 
       await gateway.resumeAfterCheckpoint()
       await engine.configure(faults: DummyEngine.Faults())
+   }
+
+   // Messages writes: a note shown while its write is paced, rolled back when it certainly
+   // failed, read back when the outcome is unknown; resuming writes after the stop; an uncertain
+   // unsend read back; a write the engine lacks refused before anything is sent; and read
+   // receipts turned off.
+   private func runWrites() async {
+      let engine = gateway.dummyEngine
+      var faults = DummyEngine.Faults()
+      faults.repliesFromOthers = false
+      faults.writeHoldSeconds = 1
+      await engine.configure(faults: faults)
+
+      func lastRequestID() async -> Int {
+         await engine.status().requests.map(\.id).max() ?? 0
+      }
+
+      func requestNames(after id: Int) async -> [String] {
+         await engine.status().requests.filter { $0.id > id }.sorted { $0.id < $1.id }.map(\.name)
+      }
+
+      // The resume after the last checkpoint reloads the pages. Their reads finish first, so the
+      // request counts below hold only what each write caused.
+      var quietFor = 0
+      var seen = await lastRequestID()
+      for _ in 0..<40 where quietFor < 3 {
+         try? await Task.sleep(for: .milliseconds(200))
+         let latest = await lastRequestID()
+         quietFor = latest == seen ? quietFor + 1 : 0
+         seen = latest
+      }
+
+      var mark = await lastRequestID()
+      let pendingSet = Task { await direct.setNote("probe note", closeFriendsOnly: false) }
+      try? await Task.sleep(for: .milliseconds(300))
+      let shownWhilePaced = direct.viewerNote?.text == "probe note" && direct.viewerNote?.isPending == true
+      let notYetUpstream = await engine.world.notes.contains { $0.text == "probe note" } == false
+      await pendingSet.value
+      let upstreamNote = await engine.world.notes.first { $0.authorID == gateway.viewerID }
+      let settled = direct.viewerNote?.isPending == false && direct.viewerNote?.id == upstreamNote?.id && upstreamNote?.text == "probe note"
+      var names = await requestNames(after: mark)
+      check("writes: a note shows at once while its write is paced, then settles without a tray read", shownWhilePaced && notYetUpstream && settled && names == ["set_note"], names.joined(separator: ","))
+
+      faults.writeHoldSeconds = 0
+      faults.unrecognisedRejectionOnNextWrite = true
+      await engine.configure(faults: faults)
+      let before = direct.viewerNote
+      await direct.setNote("refused note", closeFriendsOnly: true)
+      let upstreamAfterRefusal = await engine.world.notes.first { $0.authorID == gateway.viewerID }
+      check("writes: a note that certainly failed gives way to the one before", direct.viewerNote == before && upstreamAfterRefusal?.id == before?.id && before != nil, "\(direct.viewerNote?.text ?? "none") after \(before?.text ?? "none")")
+
+      faults.unrecognisedRejectionOnNextWrite = false
+      await engine.configure(faults: faults)
+      let stoppedBefore = await engine.status().writesStopped
+      await accounts.active.resumeWrites()
+      let stoppedAfter = await engine.status().writesStopped
+      await direct.setNote("after resume", closeFriendsOnly: false)
+      let upstreamAfterResume = await engine.world.notes.first { $0.authorID == gateway.viewerID }?.text
+      check("writes: resume writes lifts the stop and the next write goes out", stoppedBefore && !stoppedAfter && upstreamAfterResume == "after resume" && direct.viewerNote?.text == "after resume")
+
+      faults.transportFailureRate = 1
+      await engine.configure(faults: faults)
+      let kept = direct.viewerNote
+      await direct.deleteViewerNote()
+      faults.transportFailureRate = 0
+      await engine.configure(faults: faults)
+      let upstreamKept = await engine.world.notes.contains { $0.id == kept?.id }
+      check("writes: a note delete that certainly failed puts the note back", kept != nil && direct.viewerNote == kept && upstreamKept)
+
+      faults.outcomeUnknownOnNextWrite = true
+      await engine.configure(faults: faults)
+      mark = await lastRequestID()
+      await direct.deleteViewerNote()
+      names = await requestNames(after: mark)
+      let upstreamGone = await engine.world.notes.contains { $0.authorID == gateway.viewerID } == false
+      check("writes: an uncertain note delete reads the tray back and is not resent", names == ["delete_note", "notes"] && upstreamGone && direct.viewerNote == nil, names.joined(separator: ","))
+
+      let threadID = "t.ben"
+      await direct.select(threadID)
+      await direct.send("probe unsend", to: threadID)
+      let sentID = direct.messages(in: threadID).last { $0.text == "probe unsend" }?.id
+      faults.outcomeUnknownOnNextWrite = true
+      await engine.configure(faults: faults)
+      mark = await lastRequestID()
+
+      if let sentID {
+         await direct.unsend(sentID, in: threadID)
+      }
+
+      names = await requestNames(after: mark)
+      let unsentUpstream = await engine.world.messages[threadID]?.contains { $0.id == sentID } == false
+      let unsentHere = direct.messages(in: threadID).contains { $0.id == sentID } == false
+      check("writes: an uncertain unsend reads the thread back and is not resent", sentID != nil && names == ["unsend_message", "thread_messages"] && unsentUpstream && unsentHere, names.joined(separator: ","))
+      await engine.configure(faults: DummyEngine.Faults())
+
+      // A throwaway account whose engine lacks the message reaction.
+      let lacking = DummyEngine(timing: .instant, world: .seed(), unwiredWrites: [.reaction])
+      let lackingGateway = EngineGateway(engine: lacking)
+      let lackingDirect = DirectStore(gateway: lackingGateway)
+      await lackingDirect.select("t.shea")
+      let target = lackingDirect.messages(in: "t.shea").first { !$0.viewerReacted && $0.delivery == .sent }
+      let lackingMark = await lacking.status().requests.map(\.id).max() ?? 0
+
+      if let target {
+         await lackingDirect.toggleReaction(target.id, in: "t.shea")
+      }
+
+      let sentAnything = await lacking.status().requests.contains { $0.id > lackingMark }
+      let wasNoticed = lackingGateway.notices.contains { $0.title == "Not wired yet" }
+      let isUnchanged = target.map { lackingDirect.message($0.id, in: "t.shea")?.viewerReacted == false } ?? false
+      check("writes: a write the engine lacks is disabled and refused before anything is sent", !lackingGateway.isWired(.reaction) && lackingGateway.isWired(.reply) && !sentAnything && wasNoticed && isUnchanged)
+
+      // A throwaway account with read receipts off.
+      let quiet = DummyEngine(timing: .instant, world: .seed())
+      let quietGateway = EngineGateway(engine: quiet)
+      let quietDirect = DirectStore(gateway: quietGateway)
+      await quietGateway.setBehavior(Engine.BehaviorChoice(markThreadsRead: false, markStoriesSeen: true))
+      await quiet.setUnread("t.ilse", true)
+      await quietDirect.loadInbox()
+      let countBefore = quietDirect.unreadThreadCount
+      await quietDirect.select("t.ilse")
+      let unreadUpstream = await quiet.world.threads["t.ilse"]?.isUnread == true
+      let unreadHere = quietDirect.threads.first { $0.id == "t.ilse" }?.isUnread == true
+      check("writes: with read receipts off an opened thread stays unread", unreadUpstream && unreadHere && quietDirect.unreadThreadCount == countBefore && quietDirect.messageState(for: "t.ilse") == .loaded)
+      await quietDirect.stopListening()
    }
 
    private func runAdditions() async {
