@@ -27,23 +27,45 @@ enum CallOutcome<Value> {
    case halted
 }
 
+// An engine that can still be stopped after reconnect() returns. The dummy clears every stop on
+// reconnect, so only the real engine reports one.
+protocol ReportsSessionStop: Sendable {
+   func sessionStop() async -> SessionState?
+   func reopenFailure() async -> EngineError?
+}
+
 // The one place engine results become interface state. Checkpoints and revoked sessions stop
 // every later call here rather than in each store, and nothing in this file retries a write.
 @MainActor
 @Observable
 final class EngineGateway {
-   let engine: DummyEngine
+   let engine: any AppEngine
 
-   private(set) var session: SessionState = .active
+   private(set) var session: SessionState
    private(set) var sessionGeneration = 0
    private(set) var notices: [Notice] = []
    private(set) var pendingWrites = 0
 
-   init(engine: DummyEngine) {
+   init(engine: any AppEngine, session: SessionState = .active) {
       self.engine = engine
+      self.session = session
    }
 
    var client: any AppEngine { engine }
+
+   // The dummy's developer controls and the DEBUG probe. Nil on the real engine.
+   var dummy: DummyEngine? { engine as? DummyEngine }
+
+   #if DEBUG
+   // The snapshot probe only ever runs on the dummy, which EngineSelection guarantees.
+   var dummyEngine: DummyEngine {
+      guard let dummy else {
+         preconditionFailure("the snapshot probe ran on the real engine")
+      }
+
+      return dummy
+   }
+   #endif
 
    var viewerID: String { engine.viewerID }
 
@@ -97,6 +119,48 @@ final class EngineGateway {
       }
    }
 
+   // MARK: Events
+   // The listener polls inside the engine and its events wait in a buffer. Starting and draining
+   // stop with the session, so a checkpointed or revoked session reaches nothing. Stopping always
+   // reaches the engine, because a listener must be stopped even after it failed. A listener that
+   // stopped is reported to the store and never restarted here.
+
+   func startEvents(since messageID: String?) async -> Bool {
+      guard isActive else {
+         return false
+      }
+
+      await engine.startEvents(since: messageID)
+      return true
+   }
+
+   func drainEvents() async -> [Engine.Event] {
+      guard isActive else {
+         return []
+      }
+
+      let events = await engine.drainEvents()
+
+      for case .listenerStopped(let reason) in events {
+         switch reason {
+            case .checkpoint(let checkpoint):
+               enterCheckpoint(checkpoint)
+
+            case .error(.authenticationFailed):
+               session = .revoked
+
+            case .error:
+               break
+         }
+      }
+
+      return events
+   }
+
+   func stopEvents() async {
+      await engine.stopEvents()
+   }
+
    func enterCheckpoint(_ checkpoint: Checkpoint) {
       session = .checkpoint(checkpoint)
    }
@@ -115,6 +179,15 @@ final class EngineGateway {
 
          case .outcomeUnknown:
             post(Notice(tone: .warning, title: "Could not confirm \(label)", message: "It may have gone through. Instagram+ is checking instead of trying again."))
+
+         case .upstreamRejected(let code) where code == EngineError.notWiredCode:
+            post(Notice(tone: .info, title: "Not wired yet", message: "Instagram+ does not reach the engine for \(label) yet. Nothing was sent."))
+
+         case .upstreamRejected(let code) where code == EngineError.sessionUnavailableCode:
+            post(Notice(tone: .error, title: "The session is not open", message: "Instagram+ could not reopen this account's session, so nothing was sent for \(label). Reconnect it in Settings."))
+
+         case .upstreamRejected(let code) where code == EngineError.bridgeFailureCode:
+            post(Notice(tone: .error, title: "The engine bridge failed on \(label)", message: "Nothing was retried. The unified log has the engine's traceback."))
 
          case .upstreamRejected(let code) where code == EngineError.writesStoppedCode || code == "unrecognised":
             post(Notice(tone: .error, title: "Writes are stopped", message: "Instagram refused a write for a reason nothing explains. Check the account in a browser before resuming writes in Settings."))
@@ -149,19 +222,40 @@ final class EngineGateway {
    // A person confirming a checkpoint in their browser resumes future calls. The call the
    // checkpoint interrupted is not replayed.
    func resumeAfterCheckpoint() async {
-      await engine.reconnect()
-      session = .active
-      sessionGeneration += 1
+      await reconnectEngine()
    }
 
    func connect() async {
+      await reconnectEngine()
+   }
+
+   // A reconnect that meets the checkpoint or the revoked session again keeps that state.
+   private func reconnectEngine() async {
       await engine.reconnect()
+
+      let stoppable = engine as? any ReportsSessionStop
+      let stopAfterReconnect = await stoppable?.sessionStop()
+
+      if let stopAfterReconnect {
+         session = stopAfterReconnect
+         return
+      }
+
+      // A reopen that failed for any other reason leaves no open client, so the session is shown
+      // as signed out, which stops every later call, rather than as active.
+      if let reopenFailure = await stoppable?.reopenFailure() {
+         session = .signedOut
+         handle(reopenFailure, label: "reopening the session", isWrite: false)
+         post(Notice(tone: .error, title: "The session is not open", message: "Instagram+ could not reopen this account's session. Nothing is sent until it is connected again."))
+         return
+      }
+
       session = .active
       sessionGeneration += 1
    }
 
    func signOut() async {
-      await engine.stopEvents()
+      await engine.close()
       session = .signedOut
    }
 

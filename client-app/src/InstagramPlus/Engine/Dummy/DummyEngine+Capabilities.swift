@@ -72,7 +72,7 @@ extension DummyEngine {
             throw .notFound
          }
 
-         return post
+         return withAudio(post)
       }
    }
 
@@ -317,7 +317,7 @@ extension DummyEngine {
    }
 
    func markStorySeen(userID: String) async throws(EngineError) -> EngineResult<Void> {
-      try await perform("mark_story_seen (proposed)", kind: .read) { () throws(EngineError) in
+      try await perform("mark_story_seen (proposed)", kind: .write) { () throws(EngineError) in
          guard let index = world.stories.firstIndex(where: { $0.userID == userID }) else {
             return
          }
@@ -332,10 +332,15 @@ extension DummyEngine {
             .filter(\.isReel)
             .sorted { $0.takenAt > $1.takenAt }
             .compactMap { record in
-               world.enginePost(record.pk).map { Engine.Reel(post: $0, audioTitle: record.audioTitle ?? "Original audio", playCount: record.likeCount * 11) }
+               world.enginePost(record.pk).map { Engine.Reel(post: withAudio($0), audioTitle: record.audioTitle ?? "Original audio", playCount: record.likeCount * 11, audioID: record.audioTitle.map(Self.audioID(forTitle:))) }
             }
 
-         return Engine.Page(items: reels, hasNextPage: false, endCursor: nil)
+         let start = Int(cursor ?? "0") ?? 0
+         let end = min(start + Self.reelsPageSize, reels.count)
+         let slice = start < end ? Array(reels[start..<end]) : []
+         let hasNextPage = end < reels.count
+
+         return Engine.Page(items: slice, hasNextPage: hasNextPage, endCursor: hasNextPage ? String(end) : nil)
       }
    }
 
@@ -441,6 +446,26 @@ extension DummyEngine {
       }
    }
 
+   // The dummy world holds every tile of these grids, so its first page is the whole grid.
+   func profileReelsPage(userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      Self.wholePage(try await profileReels(userID: userID))
+   }
+
+   func taggedPostsPage(userID: String) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      Self.wholePage(try await taggedPosts(userID: userID))
+   }
+
+   func savedPostsPage() async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      Self.wholePage(try await savedPosts())
+   }
+
+   private static func wholePage(_ result: EngineResult<[Engine.GridTile]>) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      switch result {
+         case .value(let tiles): .value(Engine.Page(items: tiles, hasNextPage: false, endCursor: nil))
+         case .checkpoint(let checkpoint): .checkpoint(checkpoint)
+      }
+   }
+
    func highlights(userID: String) async throws(EngineError) -> EngineResult<[Engine.Highlight]> {
       try await perform("highlights (proposed)", kind: .read) { () throws(EngineError) -> [Engine.Highlight] in
          world.canSeePosts(of: userID) ? world.highlights[userID] ?? [] : []
@@ -482,6 +507,146 @@ extension DummyEngine {
    func unsave(postPK: String) async throws(EngineError) -> EngineResult<Void> {
       try await perform("unsave (proposed)", kind: .write) { () throws(EngineError) in
          world.posts[postPK]?.hasSaved = false
+      }
+   }
+
+   // MARK: Story reels and the posts grid by username
+   // A reel read marks its first item seen, as the engine's default Behavior does, so the dummy
+   // counts it as a write.
+
+   func storyReel(userID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel?> {
+      try await perform("stories.reel", kind: .write) { () throws(EngineError) -> Engine.StoryReel? in
+         guard let index = world.stories.firstIndex(where: { $0.userID == userID }), let owner = world.user(userID) else {
+            return nil
+         }
+
+         let record = world.stories[index]
+         world.stories[index].isSeen = true
+
+         return Self.dummyReel(id: "reel.\(userID)", owner: owner, title: nil, itemCount: record.itemCount, latestAt: record.latestAt)
+      }
+   }
+
+   func highlightReel(highlightID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel> {
+      try await perform("stories.highlight", kind: .write) { () throws(EngineError) -> Engine.StoryReel in
+         let match = world.highlights.lazy.compactMap { ownerID, highlights in
+            highlights.first { $0.id == highlightID }.map { (ownerID, $0) }
+         }.first
+
+         guard let (ownerID, highlight) = match, let owner = world.user(ownerID) ?? world.user(viewerID) else {
+            throw .notFound
+         }
+
+         return Self.dummyReel(id: highlight.id, owner: owner, title: highlight.title, itemCount: highlight.itemCount ?? 3, latestAt: .now.addingTimeInterval(-86_400 * 30))
+      }
+   }
+
+   func markStorySeen(reelID: String, itemID: String) async throws(EngineError) -> EngineResult<Void> {
+      try await perform("stories.mark_seen", kind: .write) { () throws(EngineError) in
+         guard itemID.hasPrefix(reelID) else {
+            throw .notFound
+         }
+      }
+   }
+
+   func profilePosts(username: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await perform("profiles.posts", kind: .read) { () throws(EngineError) -> Engine.Page<Engine.GridTile> in
+         guard let user = world.users.values.first(where: { $0.username == username }) else {
+            throw .notFound
+         }
+
+         guard world.canSeePosts(of: user.id) else {
+            return Engine.Page(items: [], hasNextPage: false, endCursor: nil)
+         }
+
+         let tiles = world.posts.values
+            .filter { $0.authorID == user.id && !$0.isReel }
+            .sorted { $0.takenAt > $1.takenAt }
+            .compactMap { world.tile($0.pk) }
+
+         let start = cursor.flatMap(Int.init) ?? 0
+         let end = min(start + Self.profilePageSize, tiles.count)
+         let page = start < end ? Array(tiles[start..<end]) : []
+         let hasNextPage = end < tiles.count
+
+         return Engine.Page(items: page, hasNextPage: hasNextPage, endCursor: hasNextPage ? String(end) : nil)
+      }
+   }
+
+   static let profilePageSize = 12
+
+   private static func dummyReel(id: String, owner: DummyWorld.User, title: String?, itemCount: Int, latestAt: Date) -> Engine.StoryReel {
+      let items = (0..<itemCount).map { position in
+         let takenAt = latestAt.addingTimeInterval(Double(position - itemCount + 1) * 600)
+
+         return Engine.StoryItem(
+            id: "\(id).\(position)",
+            pk: "\(id).\(position)",
+            ownerID: owner.id,
+            mediaType: 1,
+            takenAt: takenAt,
+            expiringAt: takenAt.addingTimeInterval(86_400),
+            images: [],
+            videoDuration: nil,
+            canReply: true
+         )
+      }
+
+      return Engine.StoryReel(id: id, ownerID: owner.id, ownerUsername: owner.username, title: title, latestItemAt: latestAt, items: items)
+   }
+}
+
+extension DummyEngine {
+   static let explorePageSize = 12
+   static let reelsPageSize = 3
+
+   func explore(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.GridTile>> {
+      try await perform("feeds.explore", kind: .read) { () throws(EngineError) -> Engine.Page<Engine.GridTile> in
+         let tiles = world.posts.values
+            .filter { $0.authorID != viewerID && world.canSeePosts(of: $0.authorID) }
+            .sorted { $0.likeCount > $1.likeCount }
+            .compactMap { world.tile($0.pk) }
+
+         let start = Int(cursor ?? "0") ?? 0
+         let end = min(start + Self.explorePageSize, tiles.count)
+         let slice = start < end ? Array(tiles[start..<end]) : []
+         let hasNextPage = end < tiles.count
+
+         return Engine.Page(items: slice, hasNextPage: hasNextPage, endCursor: hasNextPage ? String(end) : nil)
+      }
+   }
+
+   func recentSearches() async throws(EngineError) -> EngineResult<[Engine.RecentSearch]> {
+      try await perform("search.recent", kind: .read) { () throws(EngineError) -> [Engine.RecentSearch] in
+         let accounts = world.suggestedIDs.prefix(2).compactMap { world.summary($0) }.map { summary in
+            Engine.RecentSearch(kind: .account, account: summary, keyword: nil)
+         }
+
+         return accounts + [
+            Engine.RecentSearch(kind: .keyword, account: nil, keyword: "film cameras"),
+            Engine.RecentSearch(kind: .place, account: nil, keyword: nil),
+         ]
+      }
+   }
+
+   // The seeded rows are typed, and one row arrives untyped the way the real engine sends every
+   // row, so both renderings stay exercised.
+   func activityFeed() async throws(EngineError) -> EngineResult<Engine.ActivityFeed> {
+      try await perform("account.activity", kind: .read) { () throws(EngineError) -> Engine.ActivityFeed in
+         let storyLiker = world.summary("noor.aziz")
+         let untyped = storyLiker.map { liker in
+            Engine.UntypedActivityEntry(
+               id: "a.untyped.1",
+               rawKind: "story_like",
+               text: "\(liker.username) liked your story.",
+               accountID: liker.id,
+               accountUsername: liker.username,
+               occurredAt: Date.now.addingTimeInterval(-30 * 60),
+               mediaCode: nil
+            )
+         }
+
+         return Engine.ActivityFeed(entries: world.activity, untyped: untyped.map { [$0] } ?? [], hasUnseen: true)
       }
    }
 }

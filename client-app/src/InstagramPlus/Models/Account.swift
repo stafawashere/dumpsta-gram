@@ -4,6 +4,7 @@ struct Account: Identifiable, Hashable, Sendable {
    let displayName: String
    let location: String?
    var isVerified = false
+   var profilePicURL: String?
 
    var initials: String {
       let words = displayName.split(separator: " ").prefix(2)

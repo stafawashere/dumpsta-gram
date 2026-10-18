@@ -148,7 +148,7 @@ struct DummyWorld: Sendable {
          carouselMediaCount: isCarousel ? 3 : nil,
          accessibilityCaption: record.accessibilityCaption,
          likeAndViewCountsDisabled: record.hidesCounts,
-         location: record.location,
+         location: record.location.map { Engine.Location(id: placeID(for: $0), name: $0) },
          hasSaved: record.hasSaved,
          commentsDisabled: record.commentsDisabled
       )

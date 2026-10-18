@@ -105,7 +105,7 @@ extension DummyEngine {
          }
 
          for threadFBID in threadFBIDs where world.threads[threadFBID] != nil {
-            _ = world.appendMessage(threadFBID: threadFBID, senderID: viewerID, text: "https://www.instagram.com/p/\(code)/", offlineThreadingID: nil)
+            _ = world.appendMessage(threadFBID: threadFBID, senderID: viewerID, text: "Shared a post, \(code)", offlineThreadingID: nil)
          }
       }
    }
@@ -311,7 +311,9 @@ extension DummyEngine {
          Engine.Relationships(
             closeFriendIDs: world.closeFriendIDs.sorted(),
             blockedIDs: world.blockedIDs.sorted(),
-            mutedIDs: world.mutedIDs.sorted()
+            mutedIDs: world.mutedIDs.sorted(),
+            closeFriends: world.closeFriendIDs.sorted().compactMap { world.summary($0) },
+            blocked: world.blockedIDs.sorted().compactMap { world.summary($0) }
          )
       }
    }
