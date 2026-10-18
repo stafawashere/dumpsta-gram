@@ -44,6 +44,9 @@ alias dumpstagram.LocationTab -> dumpstagram.models.discovery.LocationTab
 alias dumpstagram.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.MessageKind -> dumpstagram.models.messages.MessageKind
+alias dumpstagram.MessageMedia -> dumpstagram.models.messages.MessageMedia
+alias dumpstagram.MessageMediaKind -> dumpstagram.models.messages.MessageMediaKind
 alias dumpstagram.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.MutualFollowers -> dumpstagram.models.profiles.MutualFollowers
@@ -154,6 +157,7 @@ field dumpstagram.behavior.Behavior.feed_first_page: FeedFirstPage = <dumpstagra
 field dumpstagram.behavior.Behavior.follow_list_statuses: bool = True
 field dumpstagram.behavior.Behavior.inbox_route: InboxRoute = <dumpstagram.behavior.InboxRoute>
 field dumpstagram.behavior.Behavior.mark_stories_seen: bool = True
+field dumpstagram.behavior.Behavior.mark_threads_read: bool = True
 field dumpstagram.behavior.Behavior.page_load_companions: bool = True
 field dumpstagram.behavior.Behavior.poll_interval_seconds: float = 60.0
 field dumpstagram.behavior.Behavior.post_route: PostRoute = <dumpstagram.behavior.PostRoute>
@@ -288,6 +292,9 @@ alias dumpstagram.models.LocationTab -> dumpstagram.models.discovery.LocationTab
 alias dumpstagram.models.MediaAudio -> dumpstagram.models.feed.MediaAudio
 alias dumpstagram.models.MediaImage -> dumpstagram.models.feed.MediaImage
 alias dumpstagram.models.Message -> dumpstagram.models.messages.Message
+alias dumpstagram.models.MessageKind -> dumpstagram.models.messages.MessageKind
+alias dumpstagram.models.MessageMedia -> dumpstagram.models.messages.MessageMedia
+alias dumpstagram.models.MessageMediaKind -> dumpstagram.models.messages.MessageMediaKind
 alias dumpstagram.models.MessageRequests -> dumpstagram.models.threads.MessageRequests
 alias dumpstagram.models.MessageSender -> dumpstagram.models.messages.MessageSender
 alias dumpstagram.models.MutualFollowers -> dumpstagram.models.profiles.MutualFollowers
@@ -572,6 +579,7 @@ field dumpstagram.models.feed.Post.location: Location | None = None
 field dumpstagram.models.feed.Post.media_type: int
 field dumpstagram.models.feed.Post.original_height: int | None = None
 field dumpstagram.models.feed.Post.original_width: int | None = None
+property dumpstagram.models.feed.Post.permalink -> str
 field dumpstagram.models.feed.Post.pk: str
 field dumpstagram.models.feed.Post.product_type: str
 field dumpstagram.models.feed.Post.tagged_place: TaggedPlace | None = None
@@ -616,7 +624,10 @@ field dumpstagram.models.messages.Message.content_type: str
 field dumpstagram.models.messages.Message.id: str
 field dumpstagram.models.messages.Message.is_ai_generated: bool = False
 field dumpstagram.models.messages.Message.is_forwarded: bool = False
+field dumpstagram.models.messages.Message.is_from_viewer: bool | None = None
 field dumpstagram.models.messages.Message.is_pinned: bool = False
+field dumpstagram.models.messages.Message.kind: MessageKind = <MessageKind.OTHER: 'other'>
+field dumpstagram.models.messages.Message.media: tuple[MessageMedia, ...] = ()
 field dumpstagram.models.messages.Message.offline_threading_id: str | None = None
 field dumpstagram.models.messages.Message.reactions: tuple[Reaction, ...] = ()
 field dumpstagram.models.messages.Message.replied_to_message_id: str | None = None
@@ -624,13 +635,43 @@ field dumpstagram.models.messages.Message.sender: MessageSender
 field dumpstagram.models.messages.Message.sent_at: datetime
 field dumpstagram.models.messages.Message.text: str | None
 field dumpstagram.models.messages.Message.thread_fbid: str
+class dumpstagram.models.messages.MessageKind(enum.StrEnum)
+data dumpstagram.models.messages.MessageKind.ACTION_LOG: MessageKind = <MessageKind.ACTION_LOG: 'SlideMessageAdminText'>
+data dumpstagram.models.messages.MessageKind.ANIMATED_IMAGE: MessageKind = <MessageKind.ANIMATED_IMAGE: 'SlideMessageAnimatedMediaContent'>
+data dumpstagram.models.messages.MessageKind.AUDIO: MessageKind = <MessageKind.AUDIO: 'SlideMessageAudiosContent'>
+data dumpstagram.models.messages.MessageKind.IMAGE: MessageKind = <MessageKind.IMAGE: 'SlideMessageImageContent'>
+data dumpstagram.models.messages.MessageKind.MULTI_MEDIA: MessageKind = <MessageKind.MULTI_MEDIA: 'SlideMessageMultiMediaContent'>
+data dumpstagram.models.messages.MessageKind.MUSIC_STICKER: MessageKind = <MessageKind.MUSIC_STICKER: 'SlideMessageMusicStickerXMAContent'>
+data dumpstagram.models.messages.MessageKind.OTHER: MessageKind = <MessageKind.OTHER: 'other'>
+data dumpstagram.models.messages.MessageKind.SHARE: MessageKind = <MessageKind.SHARE: 'SlideMessageXMAContent'>
+data dumpstagram.models.messages.MessageKind.STICKER: MessageKind = <MessageKind.STICKER: 'SlideMessageCutoutStickerXMAContent'>
+data dumpstagram.models.messages.MessageKind.TEXT: MessageKind = <MessageKind.TEXT: 'SlideMessageText'>
+data dumpstagram.models.messages.MessageKind.VIDEO: MessageKind = <MessageKind.VIDEO: 'SlideMessageVideosContent'>
+data dumpstagram.models.messages.MessageKind.VIEW_ONCE_IMAGE: MessageKind = <MessageKind.VIEW_ONCE_IMAGE: 'SlideMessageRavenImageContent'>
+data dumpstagram.models.messages.MessageKind.VIEW_ONCE_VIDEO: MessageKind = <MessageKind.VIEW_ONCE_VIDEO: 'SlideMessageRavenVideoContent'>
+class dumpstagram.models.messages.MessageMedia()
+field dumpstagram.models.messages.MessageMedia.duration_ms: int | None = None
+field dumpstagram.models.messages.MessageMedia.height: int | None = None
+field dumpstagram.models.messages.MessageMedia.kind: MessageMediaKind
+field dumpstagram.models.messages.MessageMedia.preview_url: str | None = None
+field dumpstagram.models.messages.MessageMedia.url: str
+field dumpstagram.models.messages.MessageMedia.width: int | None = None
+class dumpstagram.models.messages.MessageMediaKind(enum.StrEnum)
+data dumpstagram.models.messages.MessageMediaKind.ANIMATED_IMAGE: MessageMediaKind = <MessageMediaKind.ANIMATED_IMAGE: 'animated_image'>
+data dumpstagram.models.messages.MessageMediaKind.AUDIO: MessageMediaKind = <MessageMediaKind.AUDIO: 'audio'>
+data dumpstagram.models.messages.MessageMediaKind.IMAGE: MessageMediaKind = <MessageMediaKind.IMAGE: 'image'>
+data dumpstagram.models.messages.MessageMediaKind.SHARE_PREVIEW: MessageMediaKind = <MessageMediaKind.SHARE_PREVIEW: 'share_preview'>
+data dumpstagram.models.messages.MessageMediaKind.STICKER: MessageMediaKind = <MessageMediaKind.STICKER: 'sticker'>
+data dumpstagram.models.messages.MessageMediaKind.VIDEO: MessageMediaKind = <MessageMediaKind.VIDEO: 'video'>
 class dumpstagram.models.messages.MessageSender()
 field dumpstagram.models.messages.MessageSender.fbid: str
 field dumpstagram.models.messages.MessageSender.igid: str | None = None
 field dumpstagram.models.messages.MessageSender.name: str | None = None
 class dumpstagram.models.messages.Reaction()
 field dumpstagram.models.messages.Reaction.emoji: str
+field dumpstagram.models.messages.Reaction.is_from_viewer: bool | None = None
 field dumpstagram.models.messages.Reaction.sender_fbid: str
+field dumpstagram.models.messages.Reaction.sender_igid: str | None = None
 class dumpstagram.models.messages.SentMessage()
 field dumpstagram.models.messages.SentMessage.id: str
 field dumpstagram.models.messages.SentMessage.offline_threading_id: str
@@ -677,6 +718,7 @@ field dumpstagram.models.posts.PostDetail.location: Location | None = None
 field dumpstagram.models.posts.PostDetail.media_type: int
 field dumpstagram.models.posts.PostDetail.original_height: int | None = None
 field dumpstagram.models.posts.PostDetail.original_width: int | None = None
+property dumpstagram.models.posts.PostDetail.permalink -> str
 field dumpstagram.models.posts.PostDetail.pk: str
 field dumpstagram.models.posts.PostDetail.product_type: str
 field dumpstagram.models.posts.PostDetail.taken_at: datetime
@@ -782,6 +824,7 @@ field dumpstagram.models.profiles.Profile.is_professional_account: bool = False
 field dumpstagram.models.profiles.Profile.is_unpublished: bool = False
 field dumpstagram.models.profiles.Profile.is_verified: bool
 field dumpstagram.models.profiles.Profile.media_count: int
+property dumpstagram.models.profiles.Profile.permalink -> str
 field dumpstagram.models.profiles.Profile.profile_pic_url: str
 field dumpstagram.models.profiles.Profile.reported_clips_count: int | None = None
 field dumpstagram.models.profiles.Profile.total_clips_count: int
@@ -1123,6 +1166,14 @@ def dumpstagram.namespaces.stories.SyncStories.highlight(self, highlight_id: str
 def dumpstagram.namespaces.stories.SyncStories.mark_seen(self, item: StoryItem, *, reel: StoryReel) -> None
 def dumpstagram.namespaces.stories.SyncStories.reel(self, user_id: str) -> StoryReel | None
 def dumpstagram.namespaces.stories.SyncStories.tray(self) -> tuple[TrayReel, ...]
+module dumpstagram.pending
+class dumpstagram.pending.PendingCall(typing.Generic)
+def dumpstagram.pending.PendingCall.__init__(self) -> None
+def dumpstagram.pending.PendingCall.cancel(self) -> bool
+def dumpstagram.pending.PendingCall.done(self) -> bool
+property dumpstagram.pending.PendingCall.operation -> str
+def dumpstagram.pending.PendingCall.result(self, timeout: float | None = None) -> T
+def dumpstagram.pending.submit(client: SyncClient, operation: str, *args: Any, **kwargs: Any) -> PendingCall[Any]
 module dumpstagram.session
 class dumpstagram.session.ProxyConfig()
 field dumpstagram.session.ProxyConfig.url: str

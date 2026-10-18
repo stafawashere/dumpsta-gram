@@ -165,8 +165,16 @@ browser sends when it opens a thread, about 42 kB for 20 messages. `ThreadFirstP
 sends the scrolling query instead, which no browser was observed to do for the newest page.
 Every older page and every top-up goes through `IGDMessageListOffMsysQuery` under both, which
 replaced `useIGDMessageListPaginationQuery` in the browser by 2026-09-23. One request either
-way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries,
-and neither marks the thread seen.
+way. Neither sends the inbox burst or the fifteen prefetches a browser's thread load carries.
+
+`mark_threads_read`, added in the 1.2.0 work on 2026-10-18, follows every thread open under
+`ThreadFirstPage.DETAIL` with the mark read a browser sends once a thread is open in a visible
+tab, when the open's own read receipts say the viewer has not read to the newest message:
+`useIGDMarkThreadAsReadMutation` as a write, then `useIGDMarkThreadAsReadValidationMutation` as an
+ordinary paced request. The other participants see the receipt move. It counts against the write
+budget and waits out the write spacing, and when it raises, the page is not returned. A thread
+already read, an older page, a top-up and the `QUERY` route send nothing. A browser sends it about
+6 s after the open; the engine sends it as soon as the write spacing allows. False marks nothing.
 
 `inbox_route` decides how `notes()`, `direct.inbox()` with no cursor and `direct.unread_counts()`
 read, since E2 batch 9 (W87). `InboxRoute.PAGE`, the parity default, loads
@@ -316,6 +324,19 @@ of four fields and one `Message` field line, per 17.7 in [build-plan.md](build-p
 browser sends around a send, a mark read, its validation and a thread refetch, is a recorded
 departure in [web-request-contract.md](web-request-contract.md).
 
+`Message` gained three fields on 2026-10-18 for 1.2.0, all with defaults, so the change is
+additive. `is_from_viewer: bool | None` is the sender's `igid` equal to the session's
+`ds_user_id`; a live read that day found it agreeing with the sender's `fbid` equal to the
+inbox's mailbox id on 40 of 40 messages, and `Session.actor_id` equal to neither, so the actor id
+is not the messaging id. `None` when the node's sender carries no `igid`, or when the mapper was
+not told the viewer. `kind: MessageKind` is the content's `__typename`, the twelve the 7967-message
+oracle held plus `OTHER` for any other, which is returned rather than failing the page.
+`media: tuple[MessageMedia, ...]` is what the message carries to draw: a photo, video, voice
+clip, animated image, sticker or share preview, each a `MessageMedia(kind, url, preview_url,
+width, height, duration_ms)`. A view-once item and a music sticker carry none. `Reaction` gained
+`sender_igid`, read from `msg_reactions` by the reaction's own `sender_fbid`, and
+`is_from_viewer` by the same rule as the message.
+
 `page_load_companions` decides whether a document load also sends the queries a browser's page
 load sends beside its own. It applies to the three routes that load a document, the home document
 under `FeedFirstPage.DOCUMENT`, the profile page under `ProfileRoute.PAGE` and the direct inbox
@@ -375,9 +396,9 @@ cannot be read. It is for a person who has looked at the account, never for a pr
 wants its writes back. See [rate-limiting-and-safety.md](rate-limiting-and-safety.md). No setting makes the engine retry
 a write, ruling 13.
 
-Other companion requests and side effects such as marking a thread read become fields with
-parity defaults when the requests behind them are implemented, which is an additive snapshot
-change.
+Other companion requests and side effects become fields with parity defaults when the requests
+behind them are implemented, which is an additive snapshot change, as `mark_stories_seen` and
+`mark_threads_read` were.
 The presets are `PARITY`, `EXPORT` and `FAST`, and what each one costs is in
 [rate-limiting-and-safety.md](rate-limiting-and-safety.md).
 
