@@ -2,9 +2,9 @@ import SwiftUI
 
 // Controls for the dummy engine: its timing preset, the failures it can be told to produce,
 // and a live log of every request it paced. On the real engine it shows the Behavior in force
-// instead, because the protocol has no call to change it or to resume stopped writes. Both say
-// which engine is running and hold the choice for the next launch, which a launch argument or
-// INSTAGRAMPLUS_ENGINE still overrides.
+// instead; the read receipt and seen mark switches and Resume writes are in the Writes and
+// receipts card. Both say which engine is running and hold the choice for the next launch, which
+// a launch argument or INSTAGRAMPLUS_ENGINE still overrides.
 struct DummyEngineSection: View {
    @Environment(EngineGateway.self) private var gateway
    @AppStorage("dummyTiming") private var storedTiming = DummyEngine.Timing.fast.rawValue
@@ -29,7 +29,7 @@ struct DummyEngineSection: View {
 
          runningEngine(isDummy: false)
 
-         Text("PARITY, the engine's default. Requests are paced like a person using instagram.com. It is chosen at launch and cannot be changed here yet.")
+         Text("PARITY, the engine's default. Requests are paced like a person using instagram.com, writes about 30 seconds apart. Read receipts and story seen marks can be turned off under Writes and receipts.")
             .font(.system(size: 13))
             .foregroundStyle(Palette.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -198,7 +198,7 @@ struct DummyEngineSection: View {
                Spacer()
 
                PrimaryButton(title: "Resume writes", isProminent: false) {
-                  Task { await gateway.dummy?.reconnect() }
+                  Task { _ = await gateway.resumeWrites() }
                }
             }
          }

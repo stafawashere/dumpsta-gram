@@ -249,7 +249,7 @@ extension DummyEngine {
             throw .notFound
          }
 
-         if cursor == nil {
+         if cursor == nil, behavior.markThreadsRead {
             world.threads[threadFBID]?.isUnread = false
          }
 
@@ -542,16 +542,20 @@ extension DummyEngine {
 
    // MARK: Story reels and the posts grid by username
    // A reel read marks its first item seen, as the engine's default Behavior does, so the dummy
-   // counts it as a write.
+   // counts it as a write. With the person's seen marks off it is a plain read.
 
    func storyReel(userID: String) async throws(EngineError) -> EngineResult<Engine.StoryReel?> {
-      try await perform("stories.reel", kind: .write) { () throws(EngineError) -> Engine.StoryReel? in
+      let marksSeen = behavior.markStoriesSeen
+
+      return try await perform("stories.reel", kind: marksSeen ? .write : .read) { () throws(EngineError) -> Engine.StoryReel? in
          guard let index = world.stories.firstIndex(where: { $0.userID == userID }), let owner = world.user(userID) else {
             return nil
          }
 
          let record = world.stories[index]
-         world.stories[index].isSeen = true
+         if marksSeen {
+            world.stories[index].isSeen = true
+         }
 
          return Self.dummyReel(id: "reel.\(userID)", owner: owner, title: nil, itemCount: record.itemCount, latestAt: record.latestAt)
       }

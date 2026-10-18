@@ -136,7 +136,7 @@ final class DirectStore {
             inboxCursor = load.threads.hasNextPage ? load.threads.endCursor : nil
             isInboxStale = false
             inboxState = .loaded
-            notes = load.notes.map(note(from:))
+            notes = keepingPendingNote(load.notes.map(note(from:)))
             notesState = .loaded
             unreadCounts = load.unreadCounts
 
@@ -205,6 +205,10 @@ final class DirectStore {
    }
 
    func resolveRequest(_ threadID: DirectThread.ID, accept: Bool) async {
+      guard !gateway.refuseUnwired(.requestResolution) else {
+         return
+      }
+
       pendingRequestIDs.insert(threadID)
       defer { pendingRequestIDs.remove(threadID) }
 
@@ -247,7 +251,7 @@ final class DirectStore {
       let engine = engine
       switch await gateway.read("notes", { () async throws(EngineError) in try await engine.notes() }) {
          case .success(let engineNotes):
-            notes = engineNotes.map(note(from:))
+            notes = keepingPendingNote(engineNotes.map(note(from:)))
             notesState = .loaded
 
          case .failure(let error):
@@ -256,6 +260,16 @@ final class DirectStore {
          case .halted:
             notesState = notesState.hasLoaded ? notesState : .idle
       }
+   }
+
+   // A tray read that lands while the viewer's note is still on its way would replace it with
+   // the note from before, so the pending one stays in its place until its own write answers.
+   private func keepingPendingNote(_ loaded: [Note]) -> [Note] {
+      guard let pending = viewerNote, pending.isPending else {
+         return loaded
+      }
+
+      return [pending] + loaded.filter { $0.author.id != viewerID }
    }
 
    private func note(from engineNote: Engine.Note) -> Note {
@@ -270,14 +284,16 @@ final class DirectStore {
    // Opening a thread reads its newest page, which is what has the engine mark it read
    // (Behavior.mark_threads_read). A loaded thread that is read already is shown as it is; one
    // that became unread since, through the listener, is read again so the mark is sent, rather
-   // than only cleared here.
+   // than only cleared here. With read receipts off nothing would be marked, so a loaded thread
+   // is not read again for it.
    func select(_ threadID: DirectThread.ID) async {
       selectedThreadID = threadID
 
       let hasMessages = messageState(for: threadID).hasLoaded
       let isUnread = threads.first { $0.id == threadID }?.isUnread ?? false
+      let sendsReceipts = gateway.behavior.markThreadsRead
 
-      if hasMessages, !isUnread {
+      if hasMessages, !isUnread || !sendsReceipts {
          return
       }
 
@@ -330,6 +346,7 @@ final class DirectStore {
       }
 
       let wasUnread = threads.first { $0.id == threadID }?.isUnread ?? false
+      let sendsReceipts = gateway.behavior.markThreadsRead
 
       let engine = engine
       switch await gateway.read("the conversation", { () async throws(EngineError) in try await engine.messages(threadFBID: threadID, after: nil) }) {
@@ -349,10 +366,14 @@ final class DirectStore {
             }
 
             messageStates[threadID] = .loaded
-            markRead(threadID)
 
-            if wasUnread {
-               adjustUnreadCount(by: -1)
+            // The engine marked the thread read only if the person sends read receipts.
+            if sendsReceipts {
+               markRead(threadID)
+
+               if wasUnread {
+                  adjustUnreadCount(by: -1)
+               }
             }
 
          case .failure(let error):
@@ -429,6 +450,10 @@ final class DirectStore {
    }
 
    func createThread(with accounts: [Account]) async -> Bool {
+      guard !gateway.refuseUnwired(.newThread) else {
+         return false
+      }
+
       let engine = engine
       let userIDs = accounts.map(\.id)
 
@@ -447,6 +472,10 @@ final class DirectStore {
    }
 
    func setMuted(_ muted: Bool, threadID: DirectThread.ID) async {
+      guard !gateway.refuseUnwired(.mute) else {
+         return
+      }
+
       guard let index = threads.firstIndex(where: { $0.id == threadID }) else {
          return
       }
@@ -483,6 +512,10 @@ final class DirectStore {
          return
       }
 
+      if repliedToID != nil, gateway.refuseUnwired(.reply) {
+         return
+      }
+
       let localID = "local." + UUID().uuidString
       let pending = DirectMessage(id: localID, senderID: viewerID, text: trimmedText, sentAt: .now, reactionCount: 0, delivery: .sending, repliedToID: repliedToID)
       messages[threadID, default: []].append(pending)
@@ -501,6 +534,10 @@ final class DirectStore {
    }
 
    func sendPhoto(_ imageURL: URL, to threadID: DirectThread.ID) async {
+      guard !gateway.refuseUnwired(.photo) else {
+         return
+      }
+
       let localID = "local." + UUID().uuidString
       let pending = DirectMessage(id: localID, senderID: viewerID, text: "", sentAt: .now, reactionCount: 0, delivery: .sending, imageURL: imageURL)
       messages[threadID, default: []].append(pending)
@@ -572,12 +609,18 @@ final class DirectStore {
             await rereadMessages(threadID)
 
          case .failure, .halted:
-            messages[threadID]?.insert(removed, at: min(index, messages[threadID]?.count ?? 0))
+            // The position is read before the insert, which may not read the array it modifies.
+            let position = min(index, messages[threadID]?.count ?? 0)
+            messages[threadID]?.insert(removed, at: position)
       }
    }
 
    func toggleReaction(_ messageID: DirectMessage.ID, in threadID: DirectThread.ID) async {
       guard let message = message(messageID, in: threadID), message.delivery == .sent else {
+         return
+      }
+
+      guard !gateway.refuseUnwired(.reaction) else {
          return
       }
 
@@ -628,40 +671,77 @@ final class DirectStore {
 
    // MARK: Notes
 
+   // The note shows at once, marked pending, while set_note waits its turn in the pacer. The
+   // engine's answer replaces it, so a set note costs no tray read. A note that certainly was
+   // not set gives way to the one before it; when the outcome is unknown the tray is read again
+   // instead, and nothing is sent twice.
    func setNote(_ text: String, closeFriendsOnly: Bool) async {
       let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !trimmedText.isEmpty else {
          return
       }
 
+      let previous = viewerNote
+      let author = previous?.author ?? Account(id: viewerID, username: viewerID, displayName: viewerID, location: nil)
+      let provisional = Note(id: "local.note." + UUID().uuidString, author: author, text: trimmedText, isCloseFriends: closeFriendsOnly, postedAt: .now, isPending: true)
+      replaceViewerNote(with: provisional)
+
       let engine = engine
       let audience: Engine.NoteAudience = closeFriendsOnly ? .closeFriends : .mutualFollows
       let outcome = await gateway.write("the note") { () async throws(EngineError) in try await engine.setNote(text: trimmedText, audience: audience) }
 
       switch outcome {
-         case .success, .failure(.outcomeUnknown):
+         case .success(let engineNote):
+            replaceViewerNote(with: note(from: engineNote), ifStill: provisional.id)
+
+         case .failure(.outcomeUnknown):
+            // The tray read decides, so the pending note must not be kept over its answer.
+            replaceViewerNote(with: previous, ifStill: provisional.id)
             await loadNotes()
 
          case .failure, .halted:
-            break
+            replaceViewerNote(with: previous, ifStill: provisional.id)
       }
    }
 
+   // The note leaves the tray at once. A delete that certainly failed puts it back; an unknown
+   // one reads the tray again.
    func deleteViewerNote() async {
-      guard let note = viewerNote else {
+      guard let note = viewerNote, !note.isPending else {
          return
       }
 
-      notes.removeAll { $0.id == note.id }
+      replaceViewerNote(with: nil)
 
       let engine = engine
       let outcome = await gateway.write("the note delete") { () async throws(EngineError) in try await engine.deleteNote(noteID: note.id) }
 
-      if case .success = outcome {
+      switch outcome {
+         case .success:
+            break
+
+         case .failure(.outcomeUnknown):
+            await loadNotes()
+
+         case .failure, .halted:
+            if viewerNote == nil {
+               replaceViewerNote(with: note)
+            }
+      }
+   }
+
+   // The viewer has at most one note, kept first in the tray. With ifStill, nothing changes when
+   // a later change already replaced the note that id names.
+   private func replaceViewerNote(with replacement: Note?, ifStill expectedID: Note.ID? = nil) {
+      if let expectedID, viewerNote?.id != expectedID {
          return
       }
 
-      await loadNotes()
+      notes.removeAll { $0.author.id == viewerID }
+
+      if let replacement {
+         notes.insert(replacement, at: 0)
+      }
    }
 
    // MARK: Events
