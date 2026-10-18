@@ -60,6 +60,21 @@ protocol EngineClient: Sendable {
    func drainEvents() async -> [Engine.Event]
    func stopEvents() async
 
+   // Direct writes this engine has no method for. The interface disables their controls.
+   nonisolated var unwiredWrites: Set<Engine.UnwiredWrite> { get }
+
+   // The Behavior choice the client was opened with, read once when its stores are built.
+   nonisolated var launchBehavior: Engine.BehaviorChoice { get }
+
+   // A person's Behavior choice, applied to this client and to every client a reconnect opens.
+   // Nothing is sent.
+   func setBehavior(_ choice: Engine.BehaviorChoice) async throws(EngineError) -> EngineResult<Void>
+
+   // Lifts the write stop the engine keeps for this account (session.clear_write_stop), only
+   // ever on a person's explicit choice, and answers whether one was set. The open client keeps
+   // its own stop until it is reopened, so the gateway reconnects after this. Nothing is sent.
+   func clearWriteStop() async throws(EngineError) -> EngineResult<Bool>
+
    // Session lifecycle. reconnect() runs only when a person resolved a checkpoint or asked to
    // reconnect, and it never replays the interrupted call. close() releases the client on sign
    // out and when an account is removed.
