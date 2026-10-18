@@ -4,6 +4,63 @@ What the app's interface does on every interaction, what it still lacks, and wha
 has to grow before the bridge can replace the dummy. Written 2026-09-27 against Dumpsta-Engine
 1.1.0 and `engine/tests/public_surface.txt` at that version.
 
+## Status, 2026-09-30
+
+The bridge replaced the dummy on 2026-09-30, and the real engine is now the app's default. This
+plan is kept as the record of what the dummy taught. The live ledger is the "Final state"
+section of [engine-wiring-audit-2026-09-30.md](engine-wiring-audit-2026-09-30.md), and the
+counts below are copied from it.
+
+| Bucket | Count |
+|---|---|
+| Wired through the real engine | 58 |
+| Wired with a named gap | 16 |
+| Blocked | 2 |
+| Engine gap remaining | 44 (11 reads, 28 writes, 4 local fields, 1 surface entry point) |
+| Engine capability the app lacks or leaves unconsumed | 14 |
+| Local only | 17 |
+| Non-negotiable violations left in Swift | 2 |
+
+Wired: the viewer's and other profiles by id and by username, the profile posts, reels and
+tagged grids, followers, following, mutual followers and similar accounts; `hasNewPosts`
+and `suggestedUsers` on Home; comments, replies, likers and more from the
+author on post detail, with the `postPage` read and `post(pk:)` read-backs; like, unlike,
+comment, delete comment, delete post, photo and carousel publishing, follow and unfollow; the
+inbox, message requests, unread counts and the badge, send, unsend, set and delete note, and
+the three event calls; download; story and highlight reels with `markStorySeen(reelID:itemID:)`;
+search, explore, explore posts, keyword search, place posts, audio and audio clips; follow
+requests and the activity unread dot; group member counts; session setup, the revoked and
+checkpoint states, the account switcher and log out; carousel pages, avatars and remote image
+loading through `Services/MediaLoader.swift`. Wired with a named gap: `feed`, `messages`,
+`notes`, the location tap, video, `storiesTray`, `reels`, `activityFeed`, the saved grid,
+`highlights`, `relationships`, the recents read, `savedCollections`, `searchTop`, `hashtag` and
+the session row in Settings. Each renders what is missing as unknown rather than as a default.
+
+Blocked, two: resuming writes after a write stop and changing the timing or `Behavior`. The
+engine has `Session.clear_write_stop` and the `Behavior` presets, but the protocol has no
+method for either, so on the real engine the app cannot lift a write stop and every client
+runs PARITY.
+
+Wired but not confirmed live in this run: post detail extras (`media.page`, likers, more from
+the author, replies, the audio chip), https media loading and video, `profile(username:)`, the
+inbox read, adoption from the setup view, and the story and highlight reel reads. No write was
+sent live. The resume step is `REQUEST_CAP=7 client-app/scripts/run-real-engine.command
+post-detail <png>`, then the "code as read matches" line.
+
+Top three engine gaps left:
+
+1. Mark a direct thread read. Opening a thread never sends what a browser sends, against the
+   parity default of ADR-0013, and the finding `mark-a-direct-thread-read` is verified, so it
+   can be built without a new run.
+2. A non-blocking submit entry point. Every engine call holds the one bridge actor, so a paced
+   write stalls every read on every account for about 30 s.
+3. A viewer flag on `Message` and `Reaction`, with a typed media kind beside it. Both are
+   surface additions with no request, and together they remove the two violations left in
+   Swift.
+
+Story replies, action 21, are an engine gap. The reply field shows the "Not wired yet" notice
+on either engine and sends nothing. Before 2026-09-30 it sent a direct message in their place.
+
 ## The dummy engine
 
 `src/InstagramPlus/Engine/Dummy/DummyEngine.swift` is an actor that conforms to the same two
@@ -68,6 +125,9 @@ confirm it.
    message read would wait behind it. INFERENCE from the documented architecture and the
    blocking facade, not yet observed. The bridge should either drive `AsyncClient` from the
    queue, or keep a write lane separate from the read lane. This needs deciding in step 5.2.
+   On 2026-09-30 the bridge shipped with every call blocking the one actor, which the verifier
+   confirmed by reading the code rather than by timing a run. It is recorded as a limitation
+   and as the engine gap "non-blocking submit entry point".
 3. **A cold start costs about 20 s at parity.** The home page makes six reads: feed, stories,
    suggestions, profile activity, the viewer's profile and the inbox, at a mean 3.3 s apart.
    The feed goes first so the page is useful after one read, and the rest fill in behind it.
@@ -82,6 +142,8 @@ confirm it.
    the archive, profile editing, close friends, blocking, muting, search beyond accounts,
    hashtag and place pages, follower lists and saved posts are all dummy-only today. The post
    settings on Create (location, hidden counts, comments off) are not sent at all.
+   By 2026-09-30 the engine had grown, and the audit's final state left 44 engine gaps, 28 of
+   them writes. See the status section above.
 7. **`publish_photo` needs an image.** Create will not share a caption on its own.
 8. **The engine's `Post` has no location, share count or save count.** The mockup shows all
    three. The dummy carries location as a proposed field and the interface shows no count
@@ -157,8 +219,10 @@ Instagram+.app/Contents/MacOS/Instagram+ --exercise
 Instagram+.app/Contents/MacOS/Instagram+ --snapshot-dir <path>
 ```
 
-`--exercise` drives 23 interactions through the stores and prints one PASS or FAIL line
-each. The first 13 cover feed, pagination, likes, uncertain and failed writes, the inbox and
+`--exercise` drives 28 interactions through the stores and prints one PASS or FAIL line
+each, then `exercise summary: PASS n FAIL n of 28 expected`. It always runs on the dummy, and
+since 2026-09-30 the dummy's rolls are seeded under `--exercise`, so the run is deterministic.
+The first 13 cover feed, pagination, likes, uncertain and failed writes, the inbox and
 listener, sending, a reply through the event buffer, the write stop, checkpoints and parity
 spacing. The other 10 cover carousel publishing, accepting a message request, a reaction, older
 messages, creating a conversation, a comment like, a threaded reply, blocking removing an
@@ -166,6 +230,11 @@ author from the feed, a hashtag page, and adding and switching accounts. Run 202
 pass. Five checks were proven able to fail by breaking the code each guards: the read-back on
 an uncertain write, the refusal while checkpointed, request acceptance, the blocked-author
 filter and loading older messages. Each went red and all 23 passed once restored.
+On 2026-09-30 five checks were added: a follow and an unfollow reach the engine, a second
+account gets its own engine client, removing an account closes its client, and removing an
+account deletes only its own session file. Each was broken and watched go red before it
+counted, and the final verifier of that run quoted `exercise summary: PASS 28 FAIL 0 of 28
+expected` twice.
 `DUMMY_ENGINE_TRACE=1` prints every request to standard error.
 
 `--snapshot-dir` writes 31 captures: every page, both themes where it matters, the hashtag,
