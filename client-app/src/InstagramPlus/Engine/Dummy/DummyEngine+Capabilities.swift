@@ -204,15 +204,42 @@ extension DummyEngine {
 
    // MARK: Direct
 
+   // One read, as the engine's inbox_load is one page load.
+   func inboxLoad() async throws(EngineError) -> EngineResult<Engine.InboxLoad> {
+      try await perform("inbox_load", kind: .read) { () throws(EngineError) -> Engine.InboxLoad in
+         Engine.InboxLoad(threads: inboxPage(after: nil), notes: world.notes, unreadCounts: currentUnreadCounts())
+      }
+   }
+
    func inbox(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>> {
       try await perform("inbox", kind: .read) { () throws(EngineError) -> Engine.Page<Engine.DirectThread> in
-         let threads = world.threads.values
-            .filter { !$0.isRequest }
-            .compactMap { world.engineThread($0.fbid) }
-            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+         inboxPage(after: cursor)
+      }
+   }
 
+   private func inboxPage(after cursor: String?) -> Engine.Page<Engine.DirectThread> {
+      let threads = world.threads.values
+         .filter { !$0.isRequest }
+         .compactMap { world.engineThread($0.fbid) }
+         .sorted { $0.lastActivityAt > $1.lastActivityAt }
+
+      // One page holds every thread unless the exercise asked for smaller pages. The cursor
+      // is the dummy's own offset, opaque to the store like the engine's.
+      guard let pageSize = inboxPageSize else {
          return Engine.Page(items: threads, hasNextPage: false, endCursor: nil)
       }
+
+      let start = min(cursor.flatMap(Int.init) ?? 0, threads.count)
+      let end = min(start + pageSize, threads.count)
+      let hasMore = end < threads.count
+
+      return Engine.Page(items: Array(threads[start..<end]), hasNextPage: hasMore, endCursor: hasMore ? String(end) : nil)
+   }
+
+   private func currentUnreadCounts() -> Engine.UnreadCounts {
+      let unread = world.threads.values.filter { $0.isUnread && !$0.isRequest }.count
+      let pending = world.threads.values.filter(\.isRequest).count
+      return Engine.UnreadCounts(inbox: unread, pending: pending)
    }
 
    // The first page opens the thread the way a browser does, which marks it seen upstream.
@@ -254,9 +281,7 @@ extension DummyEngine {
 
    func unreadCounts() async throws(EngineError) -> EngineResult<Engine.UnreadCounts> {
       try await perform("unread_counts", kind: .read) { () throws(EngineError) -> Engine.UnreadCounts in
-         let unread = world.threads.values.filter { $0.isUnread && !$0.isRequest }.count
-         let pending = world.threads.values.filter(\.isRequest).count
-         return Engine.UnreadCounts(inbox: unread, pending: pending)
+         currentUnreadCounts()
       }
    }
 
@@ -588,7 +613,7 @@ extension DummyEngine {
             id: "\(id).\(position)",
             pk: "\(id).\(position)",
             ownerID: owner.id,
-            mediaType: 1,
+            mediaKind: .photo,
             takenAt: takenAt,
             expiringAt: takenAt.addingTimeInterval(86_400),
             images: [],

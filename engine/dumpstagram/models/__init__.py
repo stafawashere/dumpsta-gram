@@ -39,6 +39,7 @@ from dumpstagram.models.feed import (
    Location,
    MediaAudio,
    MediaImage,
+   MediaKind,
    Post,
    PostAuthor,
    TaggedPlace,
@@ -97,6 +98,7 @@ from dumpstagram.models.stories import (
 )
 from dumpstagram.models.threads import (
    DirectThread,
+   InboxLoad,
    MessageRequests,
    ThreadParticipant,
    UnreadCounts,
@@ -118,6 +120,7 @@ __all__ = [
    "Comment",
    "CommentAuthor",
    "DirectThread",
+   "InboxLoad",
    "Event",
    "EventsDropped",
    "AudioPage",
@@ -138,6 +141,7 @@ __all__ = [
    "LocationTab",
    "MediaAudio",
    "MediaImage",
+   "MediaKind",
    "Message",
    "MessageKind",
    "MessageMedia",

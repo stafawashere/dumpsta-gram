@@ -215,7 +215,32 @@ enum RealEngineProbe {
       let unreadThreads = direct.threads.filter(\.isUnread).count
       let engineUnread = direct.unreadThreadCount.map(String.init) ?? "not read"
 
-      print("[probe] inbox state \(describe(state)), threads \(direct.threads.count), unread threads in page \(unreadThreads), engine unread count \(engineUnread), listener \(describe(direct.listener)), session \(describe(session.gateway.session))")
+      print("[probe] inbox state \(describe(state)), threads \(direct.threads.count), unread threads in page \(unreadThreads), engine unread count \(engineUnread), more pages \(direct.hasMoreThreads), listener \(describe(direct.listener)), session \(describe(session.gateway.session))")
+
+      // MessagesView reads notes and requests beside the inbox.
+      let notesState = await settle(session) { direct.notesState }
+      let requestsState = await settle(session) { direct.requestsState }
+      print("[probe] notes state \(describe(notesState)), notes \(direct.notes.count), requests state \(describe(requestsState)), requests \(direct.requests.count)")
+
+      if direct.hasMoreThreads, session.gateway.isActive {
+         let firstPage = direct.threads.count
+         await direct.loadMoreThreads()
+         let listedIDs = direct.threads.map(\.id)
+         print("[probe] second inbox page: threads \(firstPage) then \(listedIDs.count), duplicates \(listedIDs.count - Set(listedIDs).count), more pages \(direct.hasMoreThreads)")
+      }
+
+      // A thread already read is opened, so no mark read is sent and nobody sees a receipt move.
+      if let readThread = direct.orderedThreads.first(where: { !$0.isUnread }), session.gateway.isActive {
+         await direct.select(readThread.id)
+         let messages = direct.messages(in: readThread.id)
+         let fromViewer = messages.filter { $0.senderID == direct.viewerID }.count
+         let withMedia = messages.filter { $0.imageURL != nil }.count
+         print("[probe] read thread opened: state \(describe(direct.messageState(for: readThread.id))), group \(readThread.isGroup), messages \(messages.count), from viewer \(fromViewer), with media \(withMedia), older pages \(direct.hasOlderMessages(readThread.id)), still read \(direct.threads.first { $0.id == readThread.id }?.isUnread == false)")
+      } else {
+         print("[probe] no read thread on the first page, none opened")
+      }
+
+      print("[probe] session \(describe(session.gateway.session)) at the end")
 
       try? await Task.sleep(for: .seconds(3))
       capture(to: outputURL)

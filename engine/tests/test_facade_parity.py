@@ -804,6 +804,7 @@ CORE_FUNCTION_FOR_ALIAS = {
    "account.saved": "dumpstagram._core.account.read_saved_posts",
    "direct.delete_note": "dumpstagram._core.writes.notes.delete_note",
    "direct.inbox": "dumpstagram._core.inbox.read_inbox_page",
+   "direct.inbox_load": "dumpstagram._core.inbox_load.read_inbox_load",
    "direct.message_requests": "dumpstagram._core.inbox.read_message_requests",
    "direct.messages": "dumpstagram._core.direct.read_thread_messages",
    "direct.notes": "dumpstagram._core.notes.read_notes",

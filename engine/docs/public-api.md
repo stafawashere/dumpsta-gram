@@ -663,6 +663,18 @@ counts = await aclient.direct.unread_counts()              # UnreadCounts(inbox=
 requests = client.direct.message_requests()                # MessageRequests(pending=(), spam=(), ...)
 ```
 
+Since release phase 3 (2026-10-18), `direct.inbox_load()` returns an `InboxLoad` holding the
+inbox's first page (`threads`, a `Page[DirectThread]` whose `end_cursor` `direct.inbox(after=...)`
+takes), the notes tray (`notes`) and the counts (`unread_counts`). Under `InboxRoute.PAGE` it is
+one inbox page load, where calling `inbox()`, `notes()` and `unread_counts()` in turn is three; under
+`QUERIES` it is four requests. A failure in any of the three parts raises, rather than a partial
+answer. A screen that shows the inbox, its notes and its badge calls this once.
+
+Every model that carries the upstream's `media_type` number (`Post`, `CarouselChild`,
+`PostDetail`, `PostThumbnail`, `PublishedPost`, `ReelThumbnail`, `SavedPost`, `SearchPost`,
+`StoryItem`) has a `media_kind` property since release phase 3, a `MediaKind` of `PHOTO` (1),
+`VIDEO` (2), `CAROUSEL` (8) or `OTHER` for any other number, so a consumer never reads the numbers.
+
 `DirectThread` carries `thread_fbid`, which `direct.messages` takes, `title`, `is_group`,
 `participants`, `last_activity_at`, `last_message_id` and `snippet` from the newest message the
 row carries, and the flags `is_unread`, `is_marked_unread`, `is_muted` and `is_pinned`. The rows

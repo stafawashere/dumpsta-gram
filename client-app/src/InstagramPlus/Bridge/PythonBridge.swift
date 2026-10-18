@@ -260,30 +260,46 @@ actor PythonBridge {
       }
    }
 
+   func inboxLoad(_ handle: Handle) throws(EngineError) -> EngineResult<Engine.InboxLoad> {
+      try call(handle) { client in
+         let load = try client.direct.inbox_load.throwing.dynamicallyCall(withArguments: [])
+         let counts = try load.field("unread_counts")
+
+         return Engine.InboxLoad(
+            threads: try decodePage(load.field("threads"), decodeThread),
+            notes: try decodeNotes(load.field("notes")),
+            unreadCounts: Engine.UnreadCounts(inbox: try counts.int("inbox"), pending: try counts.int("pending"))
+         )
+      }
+   }
+
    func notes(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.Note]> {
       try call(handle) { client in
-         let notes = try client.direct.notes.throwing.dynamicallyCall(withArguments: [])
-         var unknownAudiences: [Int] = []
-
-         let decoded = try Array(notes).compactMap { note -> Engine.Note? in
-            let audienceValue = try note.int("audience")
-
-            guard let audience = Engine.NoteAudience(rawValue: audienceValue) else {
-               unknownAudiences.append(audienceValue)
-               return nil
-            }
-
-            return try decodeNote(note, audience: audience)
-         }
-
-         // A note whose audience the Swift mirror lacks cannot be shown with the right label, so
-         // it is left out and counted rather than dropped unseen.
-         if !unknownAudiences.isEmpty {
-            logger.log("notes skipped \(unknownAudiences.count) notes with audiences the Swift mirror lacks: \(unknownAudiences.map(String.init).joined(separator: ","), privacy: .public)")
-         }
-
-         return decoded
+         try decodeNotes(client.direct.notes.throwing.dynamicallyCall(withArguments: []))
       }
+   }
+
+   private func decodeNotes(_ notes: PythonObject) throws -> [Engine.Note] {
+      var unknownAudiences: [Int] = []
+
+      let decoded = try Array(notes).compactMap { note -> Engine.Note? in
+         let audienceValue = try note.int("audience")
+
+         guard let audience = Engine.NoteAudience(rawValue: audienceValue) else {
+            unknownAudiences.append(audienceValue)
+            return nil
+         }
+
+         return try decodeNote(note, audience: audience)
+      }
+
+      // A note whose audience the Swift mirror lacks cannot be shown with the right label, so
+      // it is left out and counted rather than dropped unseen.
+      if !unknownAudiences.isEmpty {
+         logger.log("notes skipped \(unknownAudiences.count) notes with audiences the Swift mirror lacks: \(unknownAudiences.map(String.init).joined(separator: ","), privacy: .public)")
+      }
+
+      return decoded
    }
 
    func storiesTray(_ handle: Handle) throws(EngineError) -> EngineResult<[Engine.StoryTrayEntry]> {
@@ -364,7 +380,7 @@ actor PythonBridge {
             Engine.GridTile(
                pk: try post.string("pk"),
                code: try post.string("code"),
-               kind: Engine.GridTile.Kind(mediaType: try post.int("media_type")),
+               kind: try decodeMediaKind(post),
                likeCount: try post.int("like_count"),
                commentCount: nil,
                images: try Array(post.field("images")).map(decodeImage)
@@ -1090,7 +1106,7 @@ actor PythonBridge {
                id: try item.string("id"),
                pk: try item.string("pk"),
                ownerID: try item.string("owner_id"),
-               mediaType: try item.int("media_type"),
+               mediaKind: try decodeMediaKind(item),
                takenAt: try item.date("taken_at"),
                expiringAt: try item.date("expiring_at"),
                images: try Array(item.field("images")).map(decodeImage),
@@ -1129,7 +1145,7 @@ actor PythonBridge {
       Engine.GridTile(
          pk: try post.string("pk"),
          code: try post.string("code"),
-         kind: Engine.GridTile.Kind(mediaType: try post.int("media_type")),
+         kind: try decodeMediaKind(post),
          likeCount: try post.int("like_count"),
          commentCount: try post.int("comment_count"),
          images: try Array(post.field("images")).map(decodeImage)
@@ -1203,7 +1219,7 @@ actor PythonBridge {
          commentCount: try post.int("comment_count"),
          hasLiked: try post.bool("has_liked"),
          isSeen: carriesSeenFlag ? try post.bool("is_seen") : nil,
-         mediaType: try post.int("media_type"),
+         mediaKind: try decodeMediaKind(post),
          images: try Array(post.field("images")).map(decodeImage),
          carouselMediaCount: try post.optionalInt("carousel_media_count"),
          accessibilityCaption: try post.optionalString("accessibility_caption"),
@@ -1217,7 +1233,7 @@ actor PythonBridge {
             Engine.CarouselChild(
                id: try child.string("id"),
                pk: try child.string("pk"),
-               mediaType: try child.int("media_type"),
+               mediaKind: try decodeMediaKind(child),
                images: try Array(child.field("images")).map(decodeImage),
                videos: try Array(child.field("videos")).map(decodeVideo),
                videoDuration: try child.optionalDouble("video_duration")
@@ -1294,6 +1310,17 @@ actor PythonBridge {
          kind: try message.field("kind").string("value"),
          media: try Array(message.field("media")).map(decodeMessageMedia)
       )
+   }
+
+   // Every model that carries media_type has the engine's media_kind beside it.
+   private func decodeMediaKind(_ media: PythonObject) throws -> Engine.MediaKind {
+      let kindValue = try media.field("media_kind").string("value")
+
+      guard let kind = Engine.MediaKind(rawValue: kindValue) else {
+         throw DecodeFailure(path: "media_kind \(kindValue)")
+      }
+
+      return kind
    }
 
    private func decodeMessageMedia(_ item: PythonObject) throws -> Engine.MessageMedia {

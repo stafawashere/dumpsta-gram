@@ -57,11 +57,19 @@ enum Engine {
       let name: String
    }
 
-   // mediaType is the upstream's number as the engine passes it through. See Post.Kind.
+   // The engine's MediaKind, read from its media_kind property, so the upstream's media_type
+   // numbers are never read in Swift. other is a number outside the three the engine knows.
+   enum MediaKind: String, Sendable, Hashable {
+      case photo
+      case video
+      case carousel
+      case other
+   }
+
    struct CarouselChild: Sendable, Hashable {
       let id: String
       let pk: String
-      let mediaType: Int
+      let mediaKind: MediaKind
       let images: [MediaImage]
       let videos: [VideoRendition]
       let videoDuration: Double?
@@ -80,7 +88,7 @@ enum Engine {
       let commentCount: Int
       let hasLiked: Bool
       let isSeen: Bool?
-      let mediaType: Int
+      let mediaKind: MediaKind
       let images: [MediaImage]
       let carouselMediaCount: Int?
       let accessibilityCaption: String?
@@ -246,6 +254,13 @@ enum Engine {
       let pending: Int
    }
 
+   // direct.inbox_load: what one inbox page load answers, read together.
+   struct InboxLoad: Sendable {
+      let threads: Page<DirectThread>
+      let notes: [Note]
+      let unreadCounts: UnreadCounts
+   }
+
    struct MessageRequests: Sendable {
       let pending: [DirectThread]
       let spam: [DirectThread]
@@ -300,7 +315,7 @@ enum Engine {
       let id: String
       let pk: String
       let ownerID: String
-      let mediaType: Int
+      let mediaKind: MediaKind
       let takenAt: Date
       let expiringAt: Date
       let images: [MediaImage]
@@ -320,11 +335,7 @@ enum Engine {
    }
 
    struct GridTile: Sendable, Hashable {
-      enum Kind: Sendable, Hashable {
-         case photo
-         case carousel
-         case video
-      }
+      typealias Kind = MediaKind
 
       let pk: String
       let code: String

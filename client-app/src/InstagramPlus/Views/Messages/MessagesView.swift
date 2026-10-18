@@ -29,12 +29,15 @@ struct MessagesView: View {
          }
       }
       .task {
+         // The inbox load brings the notes and the unread count with it. Requests are their own
+         // read, sent once here and again on a refresh.
          if !direct.inboxState.hasLoaded {
             await direct.loadInbox()
          }
 
-         await direct.loadNotes()
-         await direct.loadRequests()
+         if !direct.requestsState.hasLoaded {
+            await direct.loadRequests()
+         }
       }
       .sheet(isPresented: $isComposingNote) {
          NoteComposer()
@@ -78,8 +81,10 @@ struct MessagesView: View {
          .padding(.horizontal, 22)
          .padding(.top, 24)
 
-         NotesTray(notes: direct.notes, viewer: profiles.viewerAccount, viewerNote: direct.viewerNote) {
+         NotesTray(notes: direct.notes, state: direct.notesState, viewer: profiles.viewerAccount, viewerNote: direct.viewerNote) {
             isComposingNote = true
+         } retry: {
+            Task { await direct.loadNotes() }
          }
          .padding(.top, 16)
 
@@ -134,8 +139,8 @@ struct MessagesView: View {
          LoadStateContainer(state: isShowingRequests ? direct.requestsState : direct.inboxState, loadingLabel: "Loading inbox", retry: reload) {
             ScrollView {
                LazyVStack(spacing: 0) {
-                  if isShowingRequests, visibleThreads.isEmpty {
-                     Text("No message requests.")
+                  if visibleThreads.isEmpty {
+                     Text(emptyListText)
                         .font(.system(size: 13))
                         .foregroundStyle(Palette.textSecondary)
                         .padding(24)
@@ -183,8 +188,21 @@ struct MessagesView: View {
       }
    }
 
+   private var emptyListText: String {
+      let isFiltering = !filter.trimmingCharacters(in: .whitespaces).isEmpty
+
+      if isFiltering {
+         return "No conversations match."
+      }
+
+      return isShowingRequests ? "No message requests." : "No messages yet."
+   }
+
    private func reload() {
-      Task { await direct.loadInbox() }
+      Task {
+         await direct.loadInbox()
+         await direct.loadRequests()
+      }
    }
 }
 
@@ -225,9 +243,11 @@ private struct ListenerBadge: View {
 
 private struct NotesTray: View {
    let notes: [Note]
+   let state: LoadState
    let viewer: Account
    let viewerNote: Note?
    let compose: () -> Void
+   let retry: () -> Void
 
    var body: some View {
       let otherNotes = notes.filter { $0.author.id != viewer.id }
@@ -242,10 +262,53 @@ private struct NotesTray: View {
             ForEach(otherNotes) { note in
                NoteBubble(author: note.author, text: note.text, isPlaceholder: false, isCloseFriends: note.isCloseFriends)
             }
+
+            trayStatus(isEmpty: otherNotes.isEmpty)
+               .frame(height: 48)
+               .padding(.top, 26)
          }
          .padding(.horizontal, 22)
       }
       .scrollIndicators(.never)
+   }
+
+   @ViewBuilder
+   private func trayStatus(isEmpty: Bool) -> some View {
+      switch state {
+         case .idle, .notFound:
+            EmptyView()
+
+         case .loading:
+            HStack(spacing: 6) {
+               ProgressView()
+                  .controlSize(.small)
+
+               Text("Loading notes")
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(Palette.textSecondary)
+
+         case .failed(let message):
+            HStack(spacing: 6) {
+               Text("Notes did not load.")
+                  .help(message)
+
+               Button("Retry", action: retry)
+                  .buttonStyle(.plain)
+                  .font(.system(size: 11, weight: .semibold))
+                  .foregroundStyle(Palette.link)
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(Palette.textSecondary)
+
+         case .loaded:
+            if isEmpty {
+               Text("No notes from people you follow right now.")
+                  .font(.system(size: 11))
+                  .foregroundStyle(Palette.textTertiary)
+                  .frame(maxWidth: 150, alignment: .leading)
+            }
+      }
    }
 }
 

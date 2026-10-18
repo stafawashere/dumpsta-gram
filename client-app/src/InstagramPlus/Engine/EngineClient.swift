@@ -27,6 +27,8 @@ protocol EngineClient: Sendable {
    func deletePost(postPK: String, code: String) async throws(EngineError) -> EngineResult<Void>
 
    func inbox(after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.DirectThread>>
+   // The inbox's first page, the notes tray and the unread counts from one inbox page load.
+   func inboxLoad() async throws(EngineError) -> EngineResult<Engine.InboxLoad>
    func messages(threadFBID: String, after cursor: String?) async throws(EngineError) -> EngineResult<Engine.Page<Engine.Message>>
    func messageRequests() async throws(EngineError) -> EngineResult<Engine.MessageRequests>
    func unreadCounts() async throws(EngineError) -> EngineResult<Engine.UnreadCounts>
