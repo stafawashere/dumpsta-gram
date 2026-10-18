@@ -1281,10 +1281,35 @@ actor PythonBridge {
          sentAt: try message.date("sent_at"),
          contentType: try message.string("content_type"),
          reactions: try Array(message.field("reactions")).map { reaction in
-            Engine.Reaction(emoji: try reaction.string("emoji"), senderFBID: try reaction.string("sender_fbid"))
+            Engine.Reaction(
+               emoji: try reaction.string("emoji"),
+               senderFBID: try reaction.string("sender_fbid"),
+               senderIGID: try reaction.optionalString("sender_igid"),
+               isFromViewer: try reaction.optionalBool("is_from_viewer")
+            )
          },
          repliedToMessageID: try message.optionalString("replied_to_message_id"),
-         offlineThreadingID: try message.optionalString("offline_threading_id")
+         offlineThreadingID: try message.optionalString("offline_threading_id"),
+         isFromViewer: try message.optionalBool("is_from_viewer"),
+         kind: try message.field("kind").string("value"),
+         media: try Array(message.field("media")).map(decodeMessageMedia)
+      )
+   }
+
+   private func decodeMessageMedia(_ item: PythonObject) throws -> Engine.MessageMedia {
+      let kindValue = try item.field("kind").string("value")
+
+      guard let kind = Engine.MessageMedia.Kind(rawValue: kindValue) else {
+         throw DecodeFailure(path: "MessageMedia.kind \(kindValue)")
+      }
+
+      return Engine.MessageMedia(
+         kind: kind,
+         url: try item.string("url"),
+         previewURL: try item.optionalString("preview_url"),
+         width: try item.optionalInt("width"),
+         height: try item.optionalInt("height"),
+         durationMS: try item.optionalInt("duration_ms")
       )
    }
 

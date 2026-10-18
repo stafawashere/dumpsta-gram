@@ -241,6 +241,21 @@ struct DummyWorld: Sendable {
       return true
    }
 
+   // The engine sets who sent a message and who reacted when it maps a read, so the dummy sets
+   // them as it hands messages out, by the same rule: the sender's and reactor's account id.
+   func asRead(_ message: Engine.Message) -> Engine.Message {
+      let viewerFBID = users[viewerID]?.fbid ?? viewerID
+      var read = message
+      read.isFromViewer = message.sender.igid == viewerID
+      read.kind = message.media.isEmpty ? "SlideMessageText" : "SlideMessageImageContent"
+      read.reactions = message.reactions.map { reaction in
+         var marked = reaction
+         marked.isFromViewer = reaction.senderFBID == viewerFBID
+         return marked
+      }
+      return read
+   }
+
    mutating func setReaction(_ emoji: String?, threadFBID: String, messageID: String) -> Bool {
       guard let index = messages[threadFBID]?.firstIndex(where: { $0.id == messageID }) else {
          return false
@@ -264,7 +279,7 @@ struct DummyWorld: Sendable {
          reactions: reactions,
          repliedToMessageID: message.repliedToMessageID,
          offlineThreadingID: message.offlineThreadingID,
-         mediaURL: message.mediaURL
+         media: message.media
       )
       messages[threadFBID]![index] = message
       return true
@@ -323,7 +338,7 @@ struct DummyWorld: Sendable {
          reactions: [],
          repliedToMessageID: replyingTo,
          offlineThreadingID: offlineThreadingID,
-         mediaURL: mediaURL
+         media: mediaURL.map { [Engine.MessageMedia(kind: .image, url: $0)] } ?? []
       )
 
       messages[threadFBID, default: []].append(message)
