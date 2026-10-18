@@ -246,6 +246,7 @@ class SpyCapability:
 
    def __init__(self) -> None:
       self.calls: list[tuple[Any, ...]] = []
+      self.marks: list[bool] = []
 
    async def __call__(
       self,
@@ -258,10 +259,12 @@ class SpyCapability:
       first_page: ThreadFirstPage = ThreadFirstPage.QUERY,
       user_agent: str = "",
       deadline: float | None = None,
+      mark_read: bool = False,
    ) -> Page[Message]:
       self.calls.append(
          (sender, session, thread_fbid, after, newer_than_message_id, first_page, user_agent)
       )
+      self.marks.append(mark_read)
 
       return Page(items=(), has_next_page=False)
 
@@ -289,6 +292,7 @@ async def test_the_async_facade_forwards_every_argument(monkeypatch: pytest.Monk
    assert newer_than == MESSAGE_ID
    assert first_page is ThreadFirstPage.DETAIL
    assert user_agent == "a-user-agent"
+   assert spy.marks == [True]
    assert page.items == ()
 
 
@@ -311,6 +315,7 @@ def test_the_sync_facade_forwards_every_argument(monkeypatch: pytest.MonkeyPatch
    assert newer_than == MESSAGE_ID
    assert first_page is ThreadFirstPage.DETAIL
    assert user_agent == "a-user-agent"
+   assert spy.marks == [True]
    assert page.items == ()
 
 

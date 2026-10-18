@@ -44,7 +44,23 @@ OLDER_PAGE_DOC_ID = "28079551424999855"
 RETIRED_DOC_ID = "27502152406082940"
 
 
-def detail_payload(nodes: list[dict[str, Any]], *, end_cursor: str | None = None) -> dict[str, Any]:
+VIEWER_MESSAGING_FBID = "17841400000000099"
+THREAD_ID = "340282366841710301244276017723107508000"
+"""A 39-digit ``thread_id`` of the shape every captured thread open carried."""
+
+
+def detail_payload(
+   nodes: list[dict[str, Any]],
+   *,
+   end_cursor: str | None = None,
+   read_to_ms: int | None = None,
+) -> dict[str, Any]:
+   """A thread open, with the read state every captured open carried: the viewer's messaging
+   id, the read receipts, the last activity and the marked unread flag. ``read_to_ms`` is the
+   viewer's receipt, at the newest message unless given, so a default open is already read."""
+
+   newest_ms = max((int(entry["timestamp_ms"]) for entry in nodes), default=0)
+   receipt_ms = newest_ms if read_to_ms is None else read_to_ms
    connection = {
       "edges": [{"cursor": CURSOR, "node": entry} for entry in nodes],
       "page_info": {
@@ -54,7 +70,21 @@ def detail_payload(nodes: list[dict[str, Any]], *, end_cursor: str | None = None
          "end_cursor": end_cursor,
       },
    }
-   thread = {"id": THREAD_FBID, "thread_fbid": THREAD_FBID, "slide_messages": connection}
+   thread = {
+      "id": THREAD_FBID,
+      "thread_fbid": THREAD_FBID,
+      "thread_id": THREAD_ID,
+      "slide_messages": connection,
+      "viewer": {"interop_messaging_user_fbid": VIEWER_MESSAGING_FBID},
+      "slide_read_receipts": [
+         {
+            "participant_fbid": VIEWER_MESSAGING_FBID,
+            "watermark_timestamp_ms": str(receipt_ms),
+         }
+      ],
+      "last_activity_timestamp_ms": str(newest_ms),
+      "marked_as_unread": False,
+   }
 
    return {
       "data": {"get_slide_thread_nullable": {"as_ig_direct_thread": thread, "id": THREAD_FBID}},

@@ -334,7 +334,10 @@ class InboxPoller:
             user_agent=self._user_agent,
          )
 
-      return await self._read(build, parse_thread_message_page)
+      def parse(payload: Any) -> Page[Message]:
+         return parse_thread_message_page(payload, viewer_igid=self._session.ds_user_id)
+
+      return await self._read(build, parse)
 
    async def _read[T](self, build: Callable[[], Request], parse: Callable[[Any], T]) -> T:
       async def attempt() -> T:

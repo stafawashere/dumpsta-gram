@@ -13,8 +13,82 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
-__all__ = ["Message", "MessageSender", "Reaction", "SentMessage"]
+__all__ = [
+   "Message",
+   "MessageKind",
+   "MessageMedia",
+   "MessageMediaKind",
+   "MessageSender",
+   "Reaction",
+   "SentMessage",
+]
+
+
+class MessageKind(StrEnum):
+   """What one message is, read from the ``__typename`` of the node's ``content`` object.
+
+   The values are the upstream's own type names, reproduced rather than renamed. Every member
+   but :attr:`OTHER` was seen in the 7967-message thread oracle read on 2026-09-22
+   (``tests/fixtures/thread_oracle``), where twelve type names covered nineteen
+   ``content_type`` values. ``content_type`` stays on :class:`Message` as sent, because it is
+   finer: a shared reel, a shared note and an expired story share all arrive as
+   :attr:`SHARE`.
+
+   :attr:`OTHER` is a content type name not listed here. A direct thread can hold kinds the
+   oracle did not, and failing the whole page over one message would hide every other message
+   in it, so such a message is still returned, with this kind, no media, and its
+   ``content_type`` as sent. It is a named member a caller can test for, not a guess.
+   """
+
+   TEXT = "SlideMessageText"
+   IMAGE = "SlideMessageImageContent"
+   VIDEO = "SlideMessageVideosContent"
+   MULTI_MEDIA = "SlideMessageMultiMediaContent"
+   AUDIO = "SlideMessageAudiosContent"
+   ANIMATED_IMAGE = "SlideMessageAnimatedMediaContent"
+   SHARE = "SlideMessageXMAContent"
+   STICKER = "SlideMessageCutoutStickerXMAContent"
+   MUSIC_STICKER = "SlideMessageMusicStickerXMAContent"
+   VIEW_ONCE_IMAGE = "SlideMessageRavenImageContent"
+   VIEW_ONCE_VIDEO = "SlideMessageRavenVideoContent"
+   ACTION_LOG = "SlideMessageAdminText"
+   OTHER = "other"
+
+
+class MessageMediaKind(StrEnum):
+   """What one :class:`MessageMedia` holds."""
+
+   IMAGE = "image"
+   VIDEO = "video"
+   AUDIO = "audio"
+   ANIMATED_IMAGE = "animated_image"
+   STICKER = "sticker"
+   SHARE_PREVIEW = "share_preview"
+
+
+@dataclass(frozen=True)
+class MessageMedia:
+   """One picture, video, voice clip or preview a message carries.
+
+   ``url`` is the asset itself: the photo, the video file, the voice clip, the animated image
+   as WebP, the sticker, or for a share the preview picture the share shows. ``preview_url`` is
+   the still the thread draws before the asset loads, where the upstream sends one.
+   ``width`` and ``height`` are the preview's, the only dimensions sent, and ``None`` for a
+   voice clip. ``duration_ms`` is set for a voice clip only.
+
+   Every URL is a signed CDN address that expires, so a message read long ago may no longer
+   load. A view-once photo or video carries none: its attachment was null on fourteen of the
+   sixteen in the oracle, and opening one is something a person does on purpose.
+   """
+
+   kind: MessageMediaKind
+   url: str
+   preview_url: str | None = None
+   width: int | None = None
+   height: int | None = None
+   duration_ms: int | None = None
 
 
 @dataclass(frozen=True)
@@ -38,12 +112,19 @@ class Reaction:
    """One reaction on one message.
 
    Mapped from the node's ``reactions`` list. The node also carries ``msg_reactions``, which
-   was non-empty on exactly the same message and carries no emoji, so it is dropped rather
-   than merged.
+   lists the same senders by ``sender_fbid`` with their ``sender_igid`` and no emoji: the two
+   named the same senders on all 293 reacted messages of the thread oracle. ``sender_igid`` is
+   read from it, and ``None`` when it lists no entry for this sender.
+
+   ``is_from_viewer`` is whether the viewer reacted: ``sender_igid`` equal to the session's
+   ``ds_user_id``, the rule :attr:`Message.is_from_viewer` uses. ``None`` when ``sender_igid``
+   is, because then nothing on the node says who reacted.
    """
 
    emoji: str
    sender_fbid: str
+   sender_igid: str | None = None
+   is_from_viewer: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +147,18 @@ class Message:
    :meth:`~dumpstagram.aio.AsyncClient.send_message` is found again exactly, by
    :attr:`SentMessage.offline_threading_id`. Every live node measured carries it. ``None``
    when a node carries it as null or not at all.
+
+   ``is_from_viewer`` is whether the viewer sent the message: the sender's ``igid`` equal to the
+   session's ``ds_user_id``. On 2026-10-18 that agreed on all 40 messages of two live threads
+   with the sender's ``fbid`` equal to the viewer's messaging id, the inbox's mailbox id, and
+   neither matched ``Session.actor_id``, which is a third id (log
+   ``viewer-identity-identity-2026-10-18-042908.json``). ``None`` when the node's sender
+   carries no ``igid``, which none of the 8007 measured nodes did.
+
+   ``kind`` is what the message is, and ``media`` what it carries to draw, in the upstream's
+   order: one item for most kinds, several for a multi-photo message, none for text, an action
+   log line, a view-once item, a music sticker or an unknown kind. A share carries its preview
+   picture when the share has one.
    """
 
    id: str
@@ -80,6 +173,9 @@ class Message:
    is_pinned: bool = False
    is_ai_generated: bool = False
    offline_threading_id: str | None = None
+   is_from_viewer: bool | None = None
+   kind: MessageKind = MessageKind.OTHER
+   media: tuple[MessageMedia, ...] = ()
 
 
 @dataclass(frozen=True)
