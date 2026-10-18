@@ -27,9 +27,10 @@ this script has no rule for loses its value rather than keeping it:
 - every other string becomes a placeholder of the same length, an empty string stays empty,
   and a URL becomes a URL on a reserved domain
 
-Run from ``engine/`` with ``uv run python scripts/build_thread_oracle.py``, or pass
-``--capture`` and ``--independent`` to point at other inputs. Writes a report to
-``engine/logs/``.
+Run from ``engine/`` with ``uv run python scripts/build_thread_oracle.py --independent
+<ghost scrape.json>``. The ghost export it was first built from is gone with the prior project,
+so the committed fixtures cannot be rebuilt from it. ``--capture`` points at another capture.
+Writes a report to ``engine/logs/``.
 """
 
 from __future__ import annotations
@@ -46,11 +47,6 @@ ENGINE = Path(__file__).resolve().parents[1]
 LOG_DIR = ENGINE / "logs"
 FIXTURE_DIR = ENGINE / "tests" / "fixtures" / "thread_oracle"
 EXPORT_ROOT = ENGINE / "exports"
-
-GHOST_EXPORT = Path(
-   "/Users/mahfujm/Documents/dumpsta-js/ghost/exports/"
-   "ghost-17945046917948992-2026-09-21-00-24-36/scrape.json"
-)
 
 SHIFTED_EPOCH_MS = 1_577_836_800_000
 """2020-01-01T00:00:00Z. The oldest message in the capture lands here."""
@@ -278,7 +274,7 @@ def connection_of(payload: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
    parser = argparse.ArgumentParser()
    parser.add_argument("--capture", type=Path, default=None)
-   parser.add_argument("--independent", type=Path, default=GHOST_EXPORT)
+   parser.add_argument("--independent", type=Path, required=True)
    arguments = parser.parse_args()
 
    capture_dir = (arguments.capture or latest_capture()).resolve()
