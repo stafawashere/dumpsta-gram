@@ -815,6 +815,12 @@ def _receipt_watermarks(thread: dict[str, Any], participant_fbid: str, path: str
    return watermarks
 
 
+NO_ACTIVITY_MS = "-1"
+"""The last activity of a thread that lists no message. A thread open of the owner-approved write
+thread answered it on 2026-10-18 whenever every message had been unsent, and a digit string once
+one was listed again (``engine/logs/empty-thread-shape-2026-10-18-063942.json``)."""
+
+
 def _is_unread(thread: dict[str, Any], viewer_fbid: str, path: str) -> bool:
    """Whether ``thread`` is unread to the viewer whose messaging id is ``viewer_fbid``.
 
@@ -822,10 +828,16 @@ def _is_unread(thread: dict[str, Any], viewer_fbid: str, path: str) -> bool:
    its last activity or absent. The browser's own rule has not been read, so this is the
    engine's reading of the row (INFERENCE). On 2026-09-24, 29 of the 30 rows of two inbox pages
    carried the viewer's receipt at or after the last activity, and one carried it 166 s before,
-   the one row this calls unread.
+   the one row this calls unread. A thread with no activity, ``NO_ACTIVITY_MS``, has nothing to
+   read, so only the marked unread flag can make it unread. Any other value that is not a string
+   of digits still raises.
    """
 
    is_marked_unread = _required_flag(thread, "marked_as_unread", path)
+
+   if _required(thread, "last_activity_timestamp_ms", path) == NO_ACTIVITY_MS:
+      return is_marked_unread
+
    last_activity_ms = _milliseconds(thread, "last_activity_timestamp_ms", path)
    watermarks = _receipt_watermarks(thread, viewer_fbid, path)
    has_read_to_the_end = bool(watermarks) and max(watermarks) >= last_activity_ms
