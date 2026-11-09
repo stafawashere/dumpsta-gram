@@ -18,8 +18,9 @@ run mypy uv run mypy &
 run ruff-check uv run ruff check &
 run ruff-format uv run ruff format --check &
 run provenance bash -c "cd '$ROOT' && uv run --no-project python skills/reverse-engineer/scripts/check_provenance.py" &
+run harness-anchors uv run python scripts/check_harness_anchors.py &
 wait
 cat "logs/gates-$TAG.summary"
-for n in pytest mypy ruff-check ruff-format provenance; do
+for n in pytest mypy ruff-check ruff-format provenance harness-anchors; do
    echo "-- $n: $(tail -1 "logs/$n-$TAG.log")"
 done

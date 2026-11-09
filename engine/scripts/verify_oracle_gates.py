@@ -57,6 +57,7 @@ THREAD_PAGE_REPEATS_ITS_LAST = (
 EVERY_EDGE_MAPPED = """      parse_message(
          _required(edge, "node", f"{connection_path}.edges[{index}]"),
          f"{connection_path}.edges[{index}].node",
+         viewer_igid=viewer_igid,
       )
       for index, edge in enumerate(edges)
    )"""
@@ -64,6 +65,7 @@ EVERY_EDGE_MAPPED = """      parse_message(
 ONLY_TEXT_MAPPED = """      parse_message(
          _required(edge, "node", f"{connection_path}.edges[{index}]"),
          f"{connection_path}.edges[{index}].node",
+         viewer_igid=viewer_igid,
       )
       for index, edge in enumerate(edges)
       if edge["node"]["content_type"] == "TEXT"

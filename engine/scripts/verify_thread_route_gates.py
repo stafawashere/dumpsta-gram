@@ -97,8 +97,8 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_DIRECT,
-            "   return _message_page(payload, THREAD_DETAIL_PATH)",
-            "   return _message_page(payload, THREAD_PAGE_PATH)",
+            "   return _message_page(payload, THREAD_DETAIL_PATH, viewer_igid)",
+            "   return _message_page(payload, THREAD_PAGE_PATH, viewer_igid)",
          )
       ],
    },
@@ -108,10 +108,10 @@ MUTATIONS: list[dict[str, object]] = [
       "edits": [
          (
             PARSE_DIRECT,
-            "   return _message_page(payload, THREAD_DETAIL_PATH)",
+            "   return _message_page(payload, THREAD_DETAIL_PATH, viewer_igid)",
             '   if payload["data"]["get_slide_thread_nullable"] is None:\n'
             "      return Page(items=(), has_next_page=False)\n\n"
-            "   return _message_page(payload, THREAD_DETAIL_PATH)",
+            "   return _message_page(payload, THREAD_DETAIL_PATH, viewer_igid)",
          )
       ],
    },
